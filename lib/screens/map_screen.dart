@@ -10,6 +10,8 @@ import '../models/airport.dart';
 import '../models/navaid.dart';
 import '../services/airport_service.dart';
 import '../services/navaid_service.dart';
+import '../services/runway_service.dart';
+import '../services/frequency_service.dart';
 import '../services/flight_service.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
@@ -31,6 +33,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   late final FlightService _flightService;
   late final AirportService _airportService;
   late final NavaidService _navaidService;
+  late final RunwayService _runwayService;
+  late final FrequencyService _frequencyService;
   late final LocationService _locationService;
   late final WeatherService _weatherService;
   late final MapController _mapController;
@@ -81,6 +85,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       _locationService = Provider.of<LocationService>(context, listen: false);
       _airportService = Provider.of<AirportService>(context, listen: false);
       _navaidService = Provider.of<NavaidService>(context, listen: false);
+      _runwayService = Provider.of<RunwayService>(context, listen: false);
+      _frequencyService = Provider.of<FrequencyService>(context, listen: false);
       _weatherService = Provider.of<WeatherService>(context, listen: false);
       _servicesInitialized = true;
 
@@ -442,18 +448,20 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 SizedBox(width: 16),
-                Text('Refreshing airports and navigation aids...'),
+                Text('Refreshing all aviation data...'),
               ],
             ),
-            duration: Duration(seconds: 3),
+            duration: Duration(seconds: 5),
           ),
         );
       }
 
-      // Refresh airports and navaids
+      // Refresh all data services
       await Future.wait([
         _airportService.refreshData(),
         _navaidService.refreshData(),
+        _runwayService.fetchRunways(forceRefresh: true),
+        _frequencyService.fetchFrequencies(forceRefresh: true),
       ]);
 
       // Reload current view
@@ -465,8 +473,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Data refreshed successfully'),
-            duration: Duration(seconds: 2),
+            content: Text('✅ All data refreshed successfully'),
+            duration: Duration(seconds: 3),
           ),
         );
       }
@@ -478,7 +486,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ Error refreshing data: $e'),
-            duration: const Duration(seconds: 3),
+            duration: const Duration(seconds: 4),
           ),
         );
       }

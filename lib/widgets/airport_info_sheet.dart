@@ -1,5 +1,6 @@
 import 'dart:developer' show log;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/airport.dart';
 import '../models/runway.dart';
@@ -42,15 +43,26 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
   bool _frequenciesTabInitialized = false;
   List<Runway> _runways = [];
   List<Frequency> _frequencies = [];
-  final RunwayService _runwayService = RunwayService();
-  final FrequencyService _frequencyService = FrequencyService();
+
+  // Get services from Provider instead of creating new instances
+  late final RunwayService _runwayService;
+  late final FrequencyService _frequencyService;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_handleTabChange);
-    _initializeServices();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Get services from Provider
+    _runwayService = Provider.of<RunwayService>(context, listen: false);
+    _frequencyService = Provider.of<FrequencyService>(context, listen: false);
+
+    log('✅ Services obtained from Provider - Runway: ${_runwayService.runways.length}, Frequency: ${_frequencyService.frequencies.length}');
   }
 
   @override
@@ -60,19 +72,17 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
     super.dispose();
   }
 
-  Future<void> _initializeServices() async {
-    await _runwayService.initialize();
-    await _runwayService.fetchRunways();
-    await _frequencyService.initialize();
-    await _frequencyService.fetchFrequencies();
-  }
-
   void _handleTabChange() {
+    log('🔧 DEBUG: Tab changed to index ${_tabController.index}');
+
     if (_tabController.index == 1 && !_weatherTabInitialized) {
+      log('🔧 DEBUG: Initializing weather tab');
       _fetchWeather();
     } else if (_tabController.index == 2 && !_runwaysTabInitialized) {
+      log('🔧 DEBUG: Initializing runways tab');
       _fetchRunways();
     } else if (_tabController.index == 3 && !_frequenciesTabInitialized) {
+      log('🔧 DEBUG: Initializing frequencies tab');
       _fetchFrequencies();
     }
   }
@@ -158,11 +168,42 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
     });
 
     try {
+      // Debug: Check total frequencies available in service
+      final totalFrequenciesInService = _frequencyService.frequencies.length;
+      log('🔧 DEBUG: Total frequencies in service: $totalFrequenciesInService');
+
+      // Debug: Service loading state
+      log('🔧 DEBUG: Service loading state: ${_frequencyService.isLoading}');
+
       log('🔍 Looking for frequencies for airport: ${widget.airport.icao}');
       log('📋 Airport details - ICAO: ${widget.airport.icao}, IATA: ${widget.airport.iata}, Local: ${widget.airport.localCode}, GPS: ${widget.airport.gpsCode}');
 
       List<Frequency> frequencies = _frequencyService.getFrequenciesForAirport(widget.airport.icao);
       log('📻 Found ${frequencies.length} frequencies for ICAO: ${widget.airport.icao}');
+
+      // Debug: Show some sample frequencies if we have any in the service
+      if (totalFrequenciesInService > 0 && frequencies.isEmpty) {
+        log('🔧 DEBUG: Service has frequencies but none found for ${widget.airport.icao}');
+        // Sample first few frequencies to see what airport codes are available
+        final sampleSize = totalFrequenciesInService > 10 ? 10 : totalFrequenciesInService;
+        log('🔧 DEBUG: Sample airport codes in frequency data:');
+        for (int i = 0; i < sampleSize; i++) {
+          final freq = _frequencyService.frequencies[i];
+          log('   - ${freq.airportIdent}');
+        }
+
+        // Try exact case-insensitive search
+        final upperIcao = widget.airport.icao.toUpperCase();
+        final lowerIcao = widget.airport.icao.toLowerCase();
+        log('🔧 DEBUG: Trying case variations - upper: $upperIcao, lower: $lowerIcao');
+
+        final matchingFreqs = _frequencyService.frequencies.where((f) =>
+          f.airportIdent.toUpperCase() == upperIcao).toList();
+        log('🔧 DEBUG: Case-insensitive match found: ${matchingFreqs.length} frequencies');
+        if (matchingFreqs.isNotEmpty) {
+          frequencies = matchingFreqs;
+        }
+      }
 
       // Try with other identifiers if available
       if (frequencies.isEmpty && widget.airport.iata != null && widget.airport.iata!.isNotEmpty) {
@@ -196,10 +237,21 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
 
       log('📻 Total frequencies found: ${frequencies.length}');
 
+      // Debug: Log the actual frequencies found
+      if (frequencies.isNotEmpty) {
+        log('🔧 DEBUG: Found frequencies:');
+        for (final freq in frequencies) {
+          log('   - ${freq.type}: ${freq.frequencyMhz} MHz (${freq.description ?? 'No description'})');
+        }
+      } else {
+        log('🔧 DEBUG: No frequencies found for this airport');
+      }
+
       if (mounted) {
         setState(() {
           _frequencies = frequencies;
         });
+        log('🔧 DEBUG: Updated UI state with ${frequencies.length} frequencies');
       }
     } catch (e) {
       log('❌ Error fetching frequencies: $e');

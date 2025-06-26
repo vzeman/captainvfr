@@ -9,6 +9,7 @@ import 'services/cache_service.dart';
 import 'services/runway_service.dart';
 import 'services/navaid_service.dart';
 import 'services/weather_service.dart';
+import 'services/frequency_service.dart';
 
 void main() async {
   // Ensure Flutter binding is initialized
@@ -27,12 +28,13 @@ void main() async {
     final runwayService = RunwayService();
     final navaidService = NavaidService();
     final weatherService = WeatherService();
+    final frequencyService = FrequencyService();
     final flightService = FlightService(
       barometerService: barometerService,
     );
 
     // Initialize data services and check for cached data
-    await _initializeDataServices(airportService, runwayService, navaidService, weatherService);
+    await _initializeDataServices(airportService, runwayService, navaidService, weatherService, frequencyService);
 
     // Initialize the app with providers
     runApp(
@@ -48,6 +50,7 @@ void main() async {
           Provider<RunwayService>.value(value: runwayService),
           Provider<NavaidService>.value(value: navaidService),
           Provider<WeatherService>.value(value: weatherService),
+          Provider<FrequencyService>.value(value: frequencyService),
         ],
         child: const CaptainVFRApp(),
       ),
@@ -85,6 +88,7 @@ Future<void> _initializeDataServices(
   RunwayService runwayService,
   NavaidService navaidService,
   WeatherService weatherService,
+  FrequencyService frequencyService,
 ) async {
   debugPrint('🚀 Initializing data services and checking cache...');
 
@@ -95,6 +99,7 @@ Future<void> _initializeDataServices(
       runwayService.initialize(),
       navaidService.initialize(),
       weatherService.initialize(),
+      frequencyService.initialize(),
     ]);
 
     // Check if we have cached data, if not, fetch from network
@@ -122,6 +127,18 @@ Future<void> _initializeDataServices(
       futures.add(navaidService.fetchNavaids());
     } else {
       debugPrint('✅ Found ${navaidService.navaids.length} cached navaids');
+    }
+
+    // Check frequencies
+    if (frequencyService.frequencies.isEmpty) {
+      debugPrint('📡 No cached frequencies found, fetching from network...');
+      futures.add(frequencyService.fetchFrequencies());
+    } else {
+      debugPrint('✅ Found ${frequencyService.frequencies.length} cached frequencies');
+      // TODO: Remove this debug code after testing - force refresh to get corrected parsing
+      debugPrint('🔧 DEBUG: Forcing frequency refresh to test corrected CSV parsing');
+      await frequencyService.clearCache();
+      futures.add(frequencyService.fetchFrequencies(forceRefresh: true));
     }
 
     // Wait for all network requests to complete
