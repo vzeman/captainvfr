@@ -56,7 +56,8 @@ dependencies:
   dio: ^5.4.0  # For better HTTP client features
   url_launcher: ^6.2.5
   latlong2: ^0.9.0+1
-  
+  archive: ^3.4.10  # For gzip decompression of weather data
+
   # HTTP Client
   http: ^1.2.1  # For making HTTP requests
   

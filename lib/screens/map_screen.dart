@@ -14,6 +14,7 @@ import '../services/weather_service.dart';
 import '../widgets/airport_marker.dart';
 import '../widgets/airport_info_sheet.dart';
 import '../widgets/flight_dashboard.dart';
+import '../widgets/airport_search_delegate.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -278,6 +279,32 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     }
   }
   
+  // Handle airport selection from search
+  void _onAirportSelectedFromSearch(Airport airport) {
+    // Focus map on the selected airport
+    _mapController.move(
+      airport.position,
+      14.0, // Zoom level for airport focus
+    );
+
+    // Load airports in the new area
+    _loadAirports();
+
+    // Show airport info sheet
+    _onAirportSelected(airport);
+  }
+
+  // Show airport search
+  void _showAirportSearch() {
+    showSearch(
+      context: context,
+      delegate: AirportSearchDelegate(
+        airportService: _airportService,
+        onAirportSelected: _onAirportSelectedFromSearch,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -423,6 +450,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 ],
               ),
               actions: [
+                IconButton(
+                  icon: const Icon(Icons.search, color: Colors.black),
+                  onPressed: _showAirportSearch,
+                  tooltip: 'Search airports',
+                ),
                 IconButton(
                   icon: const Icon(Icons.my_location, color: Colors.black),
                   onPressed: _centerOnLocation,

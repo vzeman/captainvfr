@@ -219,15 +219,40 @@ class AirportService {
     }
   }
   
-  // Find airport by ICAO code
-  Airport? findAirportByIcao(String icao) {
+  /// Search airports by name or code
+  List<Airport> searchAirports(String query) {
+    if (query.isEmpty) return [];
+
+    final searchQuery = query.toLowerCase().trim();
+
+    return _airports.where((airport) {
+      // Search by ICAO code
+      if (airport.icao.toLowerCase().contains(searchQuery)) return true;
+
+      // Search by IATA code if available
+      if (airport.iata?.toLowerCase().contains(searchQuery) == true) return true;
+
+      // Search by name
+      if (airport.name.toLowerCase().contains(searchQuery)) return true;
+
+      // Search by municipality if available
+      if (airport.municipality?.toLowerCase().contains(searchQuery) == true) return true;
+
+      return false;
+    }).toList();
+  }
+
+  /// Find airport by exact ICAO code
+  Airport? findAirportByIcao(String icaoCode) {
     try {
-      return _airports.firstWhere((airport) => airport.icao == icao.toUpperCase());
+      return _airports.firstWhere(
+        (airport) => airport.icao.toLowerCase() == icaoCode.toLowerCase(),
+      );
     } catch (e) {
       return null;
     }
   }
-  
+
   /// Find airports near a position
   List<Airport> findAirportsNearby(LatLng position, {double radiusKm = 50.0}) {
     if (_airports.isEmpty) return [];

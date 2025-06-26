@@ -424,102 +424,116 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
   Widget _buildWeatherSection() {
     final airport = widget.airport;
     final weatherService = widget.weatherService;
-    
-    // Handle case when no weather data is available
-    if (airport.rawMetar == null) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text('No weather data available'),
-        ),
-      );
-    }
 
-    // Extract weather data with null safety
-    final metar = airport.rawMetar ?? 'No METAR data';
-    final taf = airport.taf ?? 'No TAF data';
-    final flightCategory = airport.flightCategory;
+    return FutureBuilder<Map<String, String?>>(
+      future: _loadWeatherData(weatherService, airport.icao),
+      builder: (context, snapshot) {
+        final isLoading = snapshot.connectionState == ConnectionState.waiting;
+        final lastFetch = weatherService.lastFetch;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16, left: 16, right: 16, top: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
+        Map<String, String?>? weatherData;
+        if (snapshot.hasData) {
+          weatherData = snapshot.data;
+        }
+
+        final metar = weatherData?['metar'];
+        final taf = weatherData?['taf'];
+
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with flight category
-            if (flightCategory != null) ...[
-              Row(
-                children: [
-                  Container(
-                    width: 16,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: _getCategoryColor(flightCategory),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.black26),
-                    ),
+            Row(
+              children: [
+                Text(
+                  'Weather Information',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${widget.airport.flightCategory} Conditions',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const Spacer(),
-                  if (widget.airport.observationTime != null)
-                    Text(
-                      'Updated: ${DateFormat('HH:mm').format(widget.airport.observationTime!)}Z',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                ],
-              ),
-              const Divider(),
-            ],
-            
-            // Weather details - Show raw METAR since we don't have parsed weather data
-            const Divider(),
-            const Text(
-              'Raw METAR:',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: !isLoading
+                      ? () async {
+                          await weatherService.forceReload();
+                          setState(() {});
+                        }
+                      : null,
+                  tooltip: 'Reload weather data',
+                  iconSize: 20,
+                ),
+                if (isLoading) const SizedBox(width: 16),
+                if (isLoading) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+              ],
             ),
-            const SizedBox(height: 4),
-            SelectableText(
-              metar,
-              style: const TextStyle(
-                fontFamily: 'RobotoMono',
-                fontSize: 12,
-                color: Colors.black87,
-              ),
-            ),
-            
-            // TAF if available
-            if (taf != 'No TAF data') ...[
-              const Divider(),
-              const Text(
-                'TAF:',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-              ),
-              const SizedBox(height: 4),
-              SelectableText(
-                taf,
-                style: const TextStyle(
-                  fontFamily: 'RobotoMono',
-                  fontSize: 12,
+            const SizedBox(height: 8),
+            if (metar != null && metar.isNotEmpty)
+              _buildWeatherInfoRow(Icons.cloud, 'METAR', metar)
+            else if (isLoading)
+              const Text('Loading weather...')
+            else
+              Text('No METAR data available for ${airport.icao}'),
+            if (taf != null && taf.isNotEmpty)
+              _buildWeatherInfoRow(Icons.description, 'TAF', taf)
+            else if (!isLoading && metar != null)
+              Text('No TAF data available for ${airport.icao}',
+                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            if (lastFetch != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text('Last update: '
+                    '${lastFetch.toLocal().toString().substring(0, 16)}',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ),
-            ],
+            // Debug info
+            if (!isLoading && metar == null && taf == null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Debug: Searching for ICAO: ${airport.icao}',
+                      style: const TextStyle(fontSize: 10, color: Colors.orange)),
+                    FutureBuilder<String>(
+                      future: _getDebugInfo(weatherService),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          return Text(snapshot.data!,
+                            style: const TextStyle(fontSize: 10, color: Colors.orange));
+                        }
+                        return const Text('Loading debug info...',
+                          style: TextStyle(fontSize: 10, color: Colors.orange));
+                      },
+                    ),
+                  ],
+                ),
+              ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
-  
+
+  // Helper method to load weather data
+  Future<Map<String, String?>> _loadWeatherData(WeatherService weatherService, String icao) async {
+    final metar = await weatherService.getMetar(icao);
+    final taf = await weatherService.getTaf(icao);
+    return {
+      'metar': metar,
+      'taf': taf,
+    };
+  }
+
+  // Helper method to get debug information
+  Future<String> _getDebugInfo(WeatherService weatherService) async {
+    // Try to get a sample of cached data to see what's available
+    final metar = await weatherService.getMetar('KJFK'); // Try a well-known airport
+    final taf = await weatherService.getTaf('KJFK');
+
+    return 'Sample KJFK - METAR: ${metar != null ? 'Found' : 'Not found'}, TAF: ${taf != null ? 'Found' : 'Not found'}';
+  }
+
   // Helper to get color for flight category
   Color _getCategoryColor(String category) {
     switch (category) {
