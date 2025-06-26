@@ -301,6 +301,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     setState(() {
       _showNavaids = !_showNavaids;
     });
+
+    // Load navaids immediately when toggled on
+    if (_showNavaids) {
+      _loadNavaids();
+    }
   }
 
   // Handle map tap
@@ -503,6 +508,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               onPositionChanged: (position, hasGesture) {
                 if (hasGesture) {
                   _loadAirports();
+                  // Also load navaids if they're enabled
+                  if (_showNavaids) {
+                    _loadNavaids();
+                  }
                 }
               },
             ),

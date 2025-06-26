@@ -119,46 +119,30 @@ class NavaidMarkersLayer extends StatelessWidget {
   final List<Navaid> navaids;
   final ValueChanged<Navaid>? onNavaidTap;
   final double markerSize;
-  final bool showOnlyMajorTypes;
 
   const NavaidMarkersLayer({
     super.key,
     required this.navaids,
     this.onNavaidTap,
     this.markerSize = 20.0,
-    this.showOnlyMajorTypes = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Filter navaids based on zoom level or preferences
-    final filteredNavaids = showOnlyMajorTypes
-        ? navaids.where(_isMajorNavaidType).toList()
-        : navaids;
-
-    final markers = filteredNavaids
-        .map(
-          (navaid) => Marker(
-            width: markerSize,
-            height: markerSize,
-            point: navaid.position,
-            child: NavaidMarker(
-              navaid: navaid,
-              onTap: onNavaidTap != null ? () => onNavaidTap!(navaid) : null,
-              size: markerSize,
-              isSelected: false,
-            ),
+    return MarkerLayer(
+      markers: navaids.map((navaid) {
+        return Marker(
+          point: navaid.position,
+          width: markerSize + 4, // Slightly larger for touch area
+          height: markerSize + 4,
+          child: NavaidMarker(
+            navaid: navaid,
+            size: markerSize,
+            onTap: () => onNavaidTap?.call(navaid),
           ),
-        )
-        .toList();
-
-    return MarkerLayer(markers: markers);
-  }
-
-  /// Check if navaid type should be shown at lower zoom levels
-  bool _isMajorNavaidType(Navaid navaid) {
-    final majorTypes = ['VOR', 'VORDME', 'VORTAC', 'NDB', 'TACAN', 'ILS'];
-    return majorTypes.contains(navaid.type.toUpperCase());
+        );
+      }).toList(),
+    );
   }
 }
 
