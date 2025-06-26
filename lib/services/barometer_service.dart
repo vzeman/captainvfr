@@ -16,17 +16,22 @@ class BarometerService {
   // Stream that emits whenever there's a barometer update
   Stream<void> get onBarometerUpdate => _updateController.stream;
   
-  BarometerService();
+  // Constructor with initialization
+  BarometerService() {
+    _pressureHPa = seaLevelPressure;
+    _altitudeMeters = 0.0;
+  }
   
   // Get current pressure in hPa
   double? get pressureHPa => _pressureHPa;
+  
+  // Alias for pressureHPa for backward compatibility
+  double? get lastPressure => _pressureHPa;
   
   // Get current altitude in meters (calculated from pressure)
   double? get altitudeMeters => _altitudeMeters;
   
   // Start listening to sensor updates
-  // Note: This is a placeholder implementation since not all devices have a barometer
-  // On devices without a barometer, we'll simulate pressure changes based on device movement
   Future<void> startListening() async {
     try {
       _sensorSubscription = userAccelerometerEventStream().listen((event) {

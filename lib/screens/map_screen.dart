@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:geolocator/geolocator.dart';
 import 'dart:async' show Timer;
 import 'package:provider/provider.dart';
@@ -38,9 +38,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   String _errorMessage = '';
   Timer? _debounceTimer;
   
-  // Weather data
-  final Map<String, DateTime> _weatherFetchTimes = {};
-  static const Duration _weatherRefreshInterval = Duration(minutes: 15);
+  // Weather service for airport details
   
   // Location and map state
   Position? _currentPosition;
@@ -132,10 +130,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       if (!mounted) return;
       
       try {
-        final bounds = _mapController.bounds;
-        if (bounds == null) return;
-        
-        final zoom = _mapController.zoom;
+        final bounds = _mapController.camera.visibleBounds;
+        final zoom = _mapController.camera.zoom;
         
         // Get airports within the current map bounds
         final airports = await _airportService.getAirportsInBounds(
@@ -188,51 +184,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         setState(() {
           _airports = [..._airports, ...newAirports];
         });
-        
-        // Fetch weather for the new airports
-        _fetchWeatherForAirports(newAirports);
       }
     } catch (e) {
       debugPrint('Error loading nearby airports: $e');
-    }
-  }
-  
-  // Fetch weather data for a list of airports
-  Future<void> _fetchWeatherForAirports(List<Airport> airports) async {
-    if (airports.isEmpty) return;
-    
-    final now = DateTime.now();
-    
-    for (final airport in airports) {
-      // Skip if we've checked this airport recently
-      final lastFetch = _weatherFetchTimes[airport.icao];
-      if (lastFetch != null && now.difference(lastFetch) < _weatherRefreshInterval) {
-        continue;
-      }
-      
-      // Mark this airport as being fetched
-      _weatherFetchTimes[airport.icao] = now;
-      
-      try {
-        // Fetch METAR data
-        final metar = await _weatherService.fetchMetar(airport.icao);
-        if (metar != null && mounted) {
-          setState(() {
-            airport.updateWeather(metar);
-          });
-        }
-        
-        // Fetch TAF data
-        final taf = await _weatherService.fetchTaf(airport.icao);
-        if (taf != null && mounted) {
-          setState(() {
-            airport.taf = taf;
-            airport.lastWeatherUpdate = DateTime.now().toUtc();
-          });
-        }
-      } catch (e) {
-        debugPrint('Error fetching weather for ${airport.icao}: $e');
-      }
     }
   }
   
@@ -246,7 +200,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         });
         _mapController.move(
           LatLng(position.latitude, position.longitude),
-          _mapController.zoom,
+          _mapController.camera.zoom,
         );
         _loadAirports();
       }
@@ -291,74 +245,34 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   
   // Handle airport selection
   Future<void> _onAirportSelected(Airport airport) async {
-    if (!mounted) return;
-    
-    // Show loading indicator
-    final scaffold = ScaffoldMessenger.of(context);
-    scaffold.showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            SizedBox(width: 24, height: 24, child: CircularProgressIndicator()),
-            SizedBox(width: 16),
-            Text('Loading weather data...'),
-          ],
-        ),
-        duration: Duration(seconds: 5),
-      ),
-    );
+    debugPrint('_onAirportSelected called for ${airport.icao} - ${airport.name}');
+    if (!mounted) {
+      debugPrint('Context not mounted, returning early');
+      return;
+    }
     
     try {
-      // Fetch weather data for this airport
-      final now = DateTime.now();
-      final lastFetch = _weatherFetchTimes[airport.icao];
-      
-      if (lastFetch == null || now.difference(lastFetch) > _weatherRefreshInterval) {
-        _weatherFetchTimes[airport.icao] = now;
-        
-        // Fetch METAR data
-        final metar = await _weatherService.fetchMetar(airport.icao);
-        if (metar != null && mounted) {
-          setState(() {
-            airport.updateWeather(metar);
-          });
-        }
-        
-        // Fetch TAF data
-        final taf = await _weatherService.fetchTaf(airport.icao);
-        if (taf != null && mounted) {
-          setState(() {
-            airport.taf = taf;
-            airport.lastWeatherUpdate = DateTime.now().toUtc();
-          });
-        }
-      }
-      
-      // Dismiss loading overlay
+      debugPrint('Showing bottom sheet for ${airport.icao}');
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        builder: (BuildContext context) => AirportInfoSheet(
+          airport: airport,
+          weatherService: _weatherService,
+          onClose: () {
+            debugPrint('Closing bottom sheet for ${airport.icao}');
+            Navigator.of(context).pop();
+          },
+        ),
+      );
+      debugPrint('Bottom sheet closed for ${airport.icao}');
+    } catch (e, stackTrace) {
+      debugPrint('Error showing bottom sheet for ${airport.icao}: $e');
+      debugPrint('Stack trace: $stackTrace');
+      // Try to show error to user
       if (mounted) {
-        scaffold.hideCurrentSnackBar();
-      }
-      
-      // Show airport info sheet
-      if (mounted) {
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          builder: (BuildContext context) => AirportInfoSheet(
-            airport: airport,
-            onClose: () => Navigator.of(context).pop(),
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint('Error fetching weather for ${airport.icao}: $e');
-      if (mounted) {
-        scaffold.hideCurrentSnackBar();
-        scaffold.showSnackBar(
-          SnackBar(
-            content: Text('Failed to load weather data: ${e.toString()}'),
-            duration: const Duration(seconds: 3),
-          ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error showing airport details')),
         );
       }
     }
@@ -374,15 +288,17 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              center: _currentPosition != null
+              initialCenter: _currentPosition != null
                   ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
                   : const LatLng(0, 0), // Default center
-              zoom: _initialZoom,
+              initialZoom: _initialZoom,
               minZoom: _minZoom,
               maxZoom: _maxZoom,
-              interactiveFlags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+              interactionOptions: InteractionOptions(
+                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+              ),
               onTap: (_, __) => _onMapTapped(),
-              onPositionChanged: (MapPosition position, bool hasGesture) {
+              onPositionChanged: (position, hasGesture) {
                 if (hasGesture) {
                   _loadAirports();
                 }
@@ -444,8 +360,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   heroTag: 'zoomIn',
                   onPressed: () {
                     _mapController.move(
-                      _mapController.center,
-                      _mapController.zoom + 1,
+                      _mapController.camera.center,
+                      _mapController.camera.zoom + 1,
                     );
                   },
                   child: const Icon(Icons.add),
@@ -455,8 +371,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   heroTag: 'zoomOut',
                   onPressed: () {
                     _mapController.move(
-                      _mapController.center,
-                      _mapController.zoom - 1,
+                      _mapController.camera.center,
+                      _mapController.camera.zoom - 1,
                     );
                   },
                   child: const Icon(Icons.remove),

@@ -109,61 +109,102 @@ class AirportService {
   
   // Fetch all airports from OurAirports
   Future<void> fetchNearbyAirports({LatLng? position}) async {
-    print('fetchNearbyAirports called with position: $position');
+    print('🚀 fetchNearbyAirports called with position: $position');
     if (_isLoading) {
-      print('Already loading airports, skipping...');
+      print('⏳ Already loading airports, skipping...');
       return;
     }
     
     // If we already have airports, no need to fetch again
     if (_airports.isNotEmpty) {
-      print('Using cached airports');
+      print('✅ Using cached airports (${_airports.length} airports)');
       return;
     }
     
     _isLoading = true;
-    print('Fetching all airports...');
+    print('🌐 Fetching all airports...');
     
     try {
       // First try to fetch from network
       final url = '$_baseUrl/airports.csv';
-      print('Fetching airports from: $url');
+      print('🔗 Fetching airports from: $url');
       
+      final stopwatch = Stopwatch()..start();
       final response = await http.get(Uri.parse(url));
-      print('Airport data response status: ${response.statusCode}');
+      print('📡 Airport data response status: ${response.statusCode} (took ${stopwatch.elapsedMilliseconds}ms)');
       
       if (response.statusCode == 200) {
+        print('📊 Successfully fetched airport data. Parsing...');
         // Parse CSV response
         final lines = const LineSplitter().convert(response.body);
+        print('📄 Parsed ${lines.length} lines from CSV');
+        
         if (lines.length > 1) { // Skip header
-          _airports = lines.skip(1).where((line) {
+          print('🔍 Filtering valid airport entries...');
+          final header = lines[0].split(',');
+          print('📋 CSV Header: $header');
+          
+          final filteredAirports = <String>[];
+          int invalidCount = 0;
+          
+          for (var i = 1; i < lines.length; i++) {
+            final line = lines[i];
+            if (line.trim().isEmpty) continue;
+            
             final values = line.split(',');
-            // Only include airports with valid coordinates and ICAO codes
             if (values.length >= 14 && values[1].isNotEmpty) {
               final lat = double.tryParse(values[4]) ?? 0.0;
               final lon = double.tryParse(values[5]) ?? 0.0;
-              return lat != 0.0 && lon != 0.0; // Filter out invalid coordinates
+              
+              if (lat != 0.0 && lon != 0.0) {
+                filteredAirports.add(line);
+              } else {
+                invalidCount++;
+              }
+            } else {
+              invalidCount++;
             }
-            return false;
-          }).map((line) {
-            final values = line.split(',');
-            final lat = double.tryParse(values[4]) ?? 0.0;
-            final lon = double.tryParse(values[5]) ?? 0.0;
-            final elevation = double.tryParse(values[6])?.toInt() ?? 0;
-            
-            return Airport(
-              icao: values[1].replaceAll('"', '').trim(),
-              iata: values[13].replaceAll('"', '').trim(),
-              name: values[3].replaceAll('"', '').trim(),
-              city: values[10].replaceAll('"', '').trim(),
-              country: values[8].replaceAll('"', '').trim(),
-              position: LatLng(lat, lon),
-              elevation: elevation,
-              type: values[2].replaceAll('"', '').trim(),
-            );
-          }).toList();
+          }
           
-          print('Loaded ${_airports.length} airports');
+          print('✅ Found ${filteredAirports.length} valid airport entries in CSV (${invalidCount} invalid entries skipped)');
+          
+          print('🏗  Creating Airport objects...');
+          _airports = filteredAirports.map((line) {
+            final values = line.split(',');
+            try {
+              final lat = double.tryParse(values[4]) ?? 0.0;
+              final lon = double.tryParse(values[5]) ?? 0.0;
+              final elevation = double.tryParse(values[6])?.toInt() ?? 0;
+              
+              final icao = values[1].replaceAll('"', '').trim();
+              final name = values[3].replaceAll('"', '').trim();
+              final city = values[10].replaceAll('"', '').trim();
+              final country = values[8].replaceAll('"', '').trim();
+              final type = values[2].replaceAll('"', '').trim();
+              
+              return Airport(
+                icao: icao,
+                iata: values.length > 13 ? values[13].replaceAll('"', '').trim() : '',
+                name: name,
+                city: city,
+                country: country,
+                position: LatLng(lat, lon),
+                elevation: elevation,
+                type: type,
+              );
+            } catch (e) {
+              print('❌ Error parsing airport data: $e');
+              print('Problematic line: $line');
+              return null;
+            }
+          }).whereType<Airport>().toList();
+          
+          print('✨ Successfully created ${_airports.length} Airport objects');
+          
+          if (_airports.isNotEmpty) {
+            print('🏢 First airport: ${_airports.first.icao} - ${_airports.first.name} (${_airports.first.position})');
+            print('🏢 Last airport: ${_airports.last.icao} - ${_airports.last.name} (${_airports.last.position})');
+          }
         }
       } else {
         throw Exception('Failed to load airports: ${response.statusCode}');

@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
-class AltitudeChart extends StatelessWidget {
-  final List<double> altitudeData;
-  final double? currentAltitude;
-  final double? minAltitude;
-  final double? maxAltitude;
+class SpeedChart extends StatelessWidget {
+  final List<double> speedData; // In m/s
+  final double? currentSpeed;
+  final double? minSpeed;
+  final double? maxSpeed;
 
-  const AltitudeChart({
+  const SpeedChart({
     super.key,
-    required this.altitudeData,
-    this.currentAltitude,
-    this.minAltitude,
-    this.maxAltitude,
+    required this.speedData,
+    this.currentSpeed,
+    this.minSpeed,
+    this.maxSpeed,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (altitudeData.isEmpty) {
+    if (speedData.isEmpty) {
       return const Center(
         child: Text(
-          'No altitude data available\nStart tracking to see altitude changes',
+          'No speed data available\nStart tracking to see speed changes',
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.grey),
         ),
@@ -30,9 +30,13 @@ class AltitudeChart extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     
+    // Convert m/s to km/h for display
+    final speedsKmh = speedData.map((s) => s * 3.6).toList();
     // Calculate min and max for the Y axis
-    final minY = minAltitude ?? (altitudeData.isNotEmpty ? altitudeData.reduce((a, b) => a < b ? a : b) - 50 : 0);
-    final maxY = maxAltitude ?? (altitudeData.isNotEmpty ? altitudeData.reduce((a, b) => a > b ? a : b) + 50 : 1000);
+    final minY = 0.0; // Always start from 0 for speed
+    final maxY = maxSpeed != null 
+        ? maxSpeed! * 3.6 * 1.1 
+        : (speedsKmh.isNotEmpty ? speedsKmh.reduce((a, b) => a > b ? a : b) * 1.1 : 100.0);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -59,10 +63,10 @@ class AltitudeChart extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 30,
-                interval: (altitudeData.length / 4).ceilToDouble().clamp(1, double.infinity),
+                interval: (speedData.length / 4).ceilToDouble().clamp(1, double.infinity),
                 getTitlesWidget: (value, meta) {
                   final index = value.toInt();
-                  if (index >= 0 && index < altitudeData.length) {
+                  if (index >= 0 && index < speedData.length) {
                     final minutes = (index / 60).floor();
                     return Padding(
                       padding: const EdgeInsets.only(top: 8.0),
@@ -79,7 +83,7 @@ class AltitudeChart extends StatelessWidget {
                 reservedSize: 50,
                 interval: (maxY - minY) / 4,
                 getTitlesWidget: (value, meta) {
-                  return Text('${value.toInt()}m');
+                  return Text('${value.toInt()}');
                 },
               ),
             ),
@@ -92,40 +96,33 @@ class AltitudeChart extends StatelessWidget {
             ),
           ),
           minX: 0,
-          maxX: altitudeData.length > 0 ? (altitudeData.length - 1).toDouble() : 1,
+          maxX: speedData.isNotEmpty ? (speedData.length - 1).toDouble() : 1,
           minY: minY,
           maxY: maxY,
           lineBarsData: [
             LineChartBarData(
-              spots: altitudeData.asMap().entries.map((entry) {
-                return FlSpot(entry.key.toDouble(), entry.value);
+              spots: speedsKmh.asMap().entries.map((entry) {
+                return FlSpot(entry.key.toDouble(), entry.value.toDouble());
               }).toList(),
               isCurved: true,
-              color: Theme.of(context).colorScheme.primary,
+              color: Colors.blue,
               barWidth: 2,
               isStrokeCapRound: true,
               dotData: FlDotData(show: false),
               belowBarData: BarAreaData(
                 show: true,
-                gradient: LinearGradient(
-                  colors: [
-                    Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                    Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
+                color: Colors.blue.withOpacity(0.2),
               ),
             ),
           ],
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
-              getTooltipItems: (touchedSpots) {
-                return touchedSpots.map((touchedSpot) {
+              getTooltipItems: (List<LineBarSpot> spots) {
+                return spots.map((spot) {
                   return LineTooltipItem(
-                    '${touchedSpot.y.toStringAsFixed(1)} m',
+                    '${spot.y.toStringAsFixed(1)} km/h\n${(spot.x / 60).toStringAsFixed(1)} min',
                     TextStyle(
-                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                      color: isDark ? Colors.white : Colors.black,
                       fontWeight: FontWeight.bold,
                     ),
                   );

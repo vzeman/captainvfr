@@ -3,18 +3,93 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import '../models/airport.dart';
+import '../services/weather_service.dart';
 
-class AirportInfoSheet extends StatelessWidget {
+// Key for testing
+const Key kAirportInfoSheetKey = Key('airport_info_sheet');
+
+class AirportInfoSheet extends StatefulWidget {
   final Airport airport;
   final VoidCallback onClose;
   final VoidCallback? onNavigate;
+  final WeatherService weatherService;
 
   const AirportInfoSheet({
     super.key,
     required this.airport,
     required this.onClose,
     this.onNavigate,
+    required this.weatherService,
   });
+
+  @override
+  State<AirportInfoSheet> createState() => _AirportInfoSheetState();
+}
+
+class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  bool _isLoadingWeather = false;
+  String? _weatherError;
+  bool _weatherTabInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_handleTabChange);
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_handleTabChange);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _handleTabChange() {
+    if (_tabController.index == 1 && !_weatherTabInitialized) {
+      _fetchWeather();
+    }
+  }
+
+  Future<void> _fetchWeather() async {
+    if (widget.airport.rawMetar != null || _isLoadingWeather) return;
+
+    setState(() {
+      _isLoadingWeather = true;
+      _weatherError = null;
+      _weatherTabInitialized = true;
+    });
+
+    try {
+      final metar = await widget.weatherService.fetchMetar(widget.airport.icao);
+      final taf = await widget.weatherService.fetchTaf(widget.airport.icao);
+      
+      if (mounted) {
+        setState(() {
+          if (metar != null) {
+            widget.airport.updateWeather(metar);
+          }
+          if (taf != null) {
+            widget.airport.taf = taf;
+            widget.airport.lastWeatherUpdate = DateTime.now().toUtc();
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _weatherError = 'Failed to load weather data: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingWeather = false;
+        });
+      }
+    }
+  }
 
   Widget _buildInfoRow(BuildContext context, String label, String value) {
     final theme = Theme.of(context);
@@ -121,6 +196,191 @@ class AirportInfoSheet extends StatelessWidget {
     }
   }
 
+  // Build the airport information tab content
+  Widget _buildInfoTab() {
+    final runways = widget.airport.runwaysList;
+    final frequencies = widget.airport.frequenciesList;
+    
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Basic Info Section
+          _buildSectionHeader('Airport Information', icon: Icons.info_outline),
+          _buildInfoRow(context, 'Name', widget.airport.name),
+          if (widget.airport.municipality != null)
+            _buildInfoRow(context, 'Location', widget.airport.municipality!),
+          _buildInfoRow(context, 'Country', widget.airport.country),
+          if (widget.airport.region != null)
+            _buildInfoRow(context, 'Region', widget.airport.region!),
+          _buildInfoRow(context, 'Type', widget.airport.typeDisplay ?? 'Unknown'),
+          _buildInfoRow(context, 'Elevation', '${widget.airport.elevation} ft MSL'),
+          
+          // Coordinates
+          _buildInfoRow(
+            context, 
+            'Coordinates', 
+            '${widget.airport.latitude.toStringAsFixed(4)}°N, ${widget.airport.longitude.toStringAsFixed(4)}°E'
+          ),
+          
+          // Runways Section
+          if (runways.isNotEmpty) ...[
+            _buildSectionHeader('Runways', icon: Icons.run_circle_outlined),
+            ...runways.map((r) => _buildRunwayInfo(r)).toList(),
+          ],
+          
+          // Frequencies Section
+          if (frequencies.isNotEmpty) ...[
+            _buildSectionHeader('Frequencies', icon: Icons.radio),
+            ...frequencies.map((f) => _buildFrequencyInfo(f)).toList(),
+          ],
+          
+          // Action Buttons
+          if (widget.airport.website != null || widget.airport.phone != null) ...[
+            _buildSectionHeader('Actions', icon: Icons.quick_contacts_dialer),
+            if (widget.airport.phone != null) ...[
+              _buildActionButton(
+                context: context,
+                icon: Icons.phone,
+                label: 'Call ${widget.airport.phone}',
+                onPressed: () => _launchUrl(context, 'tel:${widget.airport.phone}'),
+              ),
+            ],
+            if (widget.airport.website != null) ...[
+              _buildActionButton(
+                context: context,
+                icon: Icons.language,
+                label: 'Visit Website',
+                onPressed: () => _launchUrl(context, widget.airport.website!),
+              ),
+            ],
+          ],
+          
+          // Navigation button
+          if (widget.onNavigate != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: widget.onNavigate,
+                icon: const Icon(Icons.navigation, size: 20),
+                label: const Text('Navigate to Airport'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
+          
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF000000).withAlpha(51),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header with close button
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.flight_takeoff,
+                  color: theme.primaryColor,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${widget.airport.icao} - ${widget.airport.name}',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (widget.airport.iata != null || widget.airport.icaoCode != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          [
+                            if (widget.airport.icaoCode != null) 'ICAO: ${widget.airport.icaoCode}',
+                            if (widget.airport.iata != null) 'IATA: ${widget.airport.iata}',
+                          ].join(' • '),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.hintColor,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: widget.onClose,
+                  tooltip: 'Close',
+                ),
+              ],
+            ),
+          ),
+          
+          const Divider(height: 1),
+          
+          // Tab Bar
+          TabBar(
+            controller: _tabController,
+            labelColor: theme.primaryColor,
+            unselectedLabelColor: theme.hintColor,
+            indicatorColor: theme.primaryColor,
+            tabs: const [
+              Tab(icon: Icon(Icons.info_outline), text: 'Info'),
+              Tab(icon: Icon(Icons.cloud), text: 'Weather'),
+            ],
+          ),
+          
+          // Tab Bar View
+          SizedBox(
+            height: 300, // Fixed height for the tab content
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // Info Tab
+                _buildInfoTab(),
+                
+                // Weather Tab
+                SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: _buildWeatherSection(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
   // Build a weather information row with icon and text
   Widget _buildWeatherInfoRow(IconData icon, String label, String value) {
     return Padding(
@@ -162,9 +422,23 @@ class AirportInfoSheet extends StatelessWidget {
 
   // Build the weather section of the info sheet
   Widget _buildWeatherSection() {
-    if (airport.metarText == null) {
-      return const SizedBox.shrink();
+    final airport = widget.airport;
+    final weatherService = widget.weatherService;
+    
+    // Handle case when no weather data is available
+    if (airport.rawMetar == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text('No weather data available'),
+        ),
+      );
     }
+
+    // Extract weather data with null safety
+    final metar = airport.rawMetar ?? 'No METAR data';
+    final taf = airport.taf ?? 'No TAF data';
+    final flightCategory = airport.flightCategory;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16, left: 16, right: 16, top: 8),
@@ -174,30 +448,30 @@ class AirportInfoSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header with flight category
-            if (airport.flightCategory != null) ...[
+            if (flightCategory != null) ...[
               Row(
                 children: [
                   Container(
                     width: 16,
                     height: 16,
                     decoration: BoxDecoration(
-                      color: _getCategoryColor(airport.flightCategory!),
+                      color: _getCategoryColor(flightCategory),
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.black26),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '${airport.flightCategory} Conditions',
+                    '${widget.airport.flightCategory} Conditions',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
                   const Spacer(),
-                  if (airport.observationTime != null)
+                  if (widget.airport.observationTime != null)
                     Text(
-                      'Updated: ${DateFormat('HH:mm').format(airport.observationTime!)}Z',
+                      'Updated: ${DateFormat('HH:mm').format(widget.airport.observationTime!)}Z',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],
@@ -208,44 +482,24 @@ class AirportInfoSheet extends StatelessWidget {
               const Divider(),
             ],
             
-            // Weather details
-            if (airport.windInfo != null)
-              _buildWeatherInfoRow(Icons.air, 'Wind', airport.windInfo!),
-              
-            if (airport.visibilityInfo != null)
-              _buildWeatherInfoRow(Icons.visibility, 'Visibility', airport.visibilityInfo!),
-              
-            if (airport.cloudCover != null)
-              _buildWeatherInfoRow(Icons.cloud, 'Clouds', airport.cloudCover!),
-              
-            if (airport.temperature != null)
-              _buildWeatherInfoRow(Icons.thermostat, 'Temp', airport.temperature!),
-              
-            if (airport.dewPoint != null)
-              _buildWeatherInfoRow(Icons.water_drop, 'Dewpoint', airport.dewPoint!),
-              
-            if (airport.altimeter != null)
-              _buildWeatherInfoRow(Icons.speed, 'Altimeter', airport.altimeter!),
-              
-            // Raw METAR
-            if (airport.metarText != null) ...[
-              const Divider(),
-              const Text(
-                'Raw METAR:',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            // Weather details - Show raw METAR since we don't have parsed weather data
+            const Divider(),
+            const Text(
+              'Raw METAR:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+            const SizedBox(height: 4),
+            SelectableText(
+              metar,
+              style: const TextStyle(
+                fontFamily: 'RobotoMono',
+                fontSize: 12,
+                color: Colors.black87,
               ),
-              const SizedBox(height: 4),
-              SelectableText(
-                airport.metarText!,
-                style: const TextStyle(
-                  fontFamily: 'RobotoMono',
-                  fontSize: 12,
-                ),
-              ),
-            ],
+            ),
             
-            // Raw TAF if available
-            if (airport.tafText != null) ...[
+            // TAF if available
+            if (taf != 'No TAF data') ...[
               const Divider(),
               const Text(
                 'TAF:',
@@ -253,7 +507,7 @@ class AirportInfoSheet extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               SelectableText(
-                airport.tafText!,
+                taf,
                 style: const TextStyle(
                   fontFamily: 'RobotoMono',
                   fontSize: 12,
@@ -282,102 +536,83 @@ class AirportInfoSheet extends StatelessWidget {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF000000).withAlpha(51), // 20% opacity of black
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+  // Build a section header
+  Widget _buildSectionHeader(String title, {IconData? icon}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: Row(
         children: [
-          // Header with close button
-          Row(
-            children: [
-              Icon(
-                Icons.flight_takeoff,
-                color: theme.primaryColor,
-                size: 24,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  '${airport.icao} - ${airport.name}',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: onClose,
-                tooltip: 'Close',
-              ),
-            ],
-          ),
-          
-          const Divider(),
-          
-          // Weather section
-          _buildWeatherSection(),
-          
-          // Airport details
-          _buildInfoRow(context, 'Location', '${airport.city}, ${airport.country}'),
-          _buildInfoRow(context, 'Type', airport.typeDisplay),
-          _buildInfoRow(context, 'Elevation', '${airport.elevation} ft MSL'),
-          
-          if (airport.website != null || airport.phone != null) ...[
-            const SizedBox(height: 8),
-            const Divider(),
-            if (airport.phone != null) ...[
-              _buildActionButton(
-                context: context,
-                icon: Icons.phone,
-                label: 'Call ${airport.phone}',
-                onPressed: () => _launchUrl(context, 'tel:${airport.phone}'),
-              ),
-            ],
-            if (airport.website != null) ...[
-              _buildActionButton(
-                context: context,
-                icon: Icons.language,
-                label: 'Visit Website',
-                onPressed: () => _launchUrl(context, airport.website!),
-              ),
-            ],
+          if (icon != null) ...[
+            Icon(icon, size: 20, color: Colors.blue),
+            const SizedBox(width: 8),
           ],
-          
-          // Navigation button
-          if (onNavigate != null) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: onNavigate,
-                icon: const Icon(Icons.navigation, size: 20),
-                label: const Text('Navigate to Airport'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
             ),
-          ],
+          ),
         ],
       ),
+    );
+  }
+
+  // Build a runway information card
+  Widget _buildRunwayInfo(Map<String, dynamic> runway) {
+    final length = runway['length_ft']?.toString() ?? 'Unknown';
+    final width = runway['width_ft']?.toString() ?? 'Unknown';
+    final surface = runway['surface']?.toString().replaceAll('_', ' ').toLowerCase() ?? 'Unknown';
+    final leIdent = runway['le_ident']?.toString() ?? '';
+    final heIdent = runway['he_ident']?.toString() ?? '';
+    
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '$leIdent / $heIdent',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text('$length x $width ft'),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text('Surface: $surface'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Build a frequency information row
+  Widget _buildFrequencyInfo(Map<String, dynamic> freq) {
+    final type = freq['type']?.toString() ?? 'Unknown';
+    final mhz = double.tryParse(freq['frequency_mhz']?.toString() ?? '') ?? 0.0;
+    final description = freq['description']?.toString() ?? '';
+    
+    // Format frequency to 3 decimal places with leading zeros
+    final freqStr = mhz.toStringAsFixed(3).padLeft(7, '0');
+    
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      leading: Container(
+        width: 80,
+        alignment: Alignment.centerLeft,
+        child: Text(
+          type,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+      title: Text('$freqStr MHz'),
+      subtitle: description.isNotEmpty ? Text(description) : null,
     );
   }
 }

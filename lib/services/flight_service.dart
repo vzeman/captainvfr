@@ -1,17 +1,18 @@
 import 'dart:async';
-import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-// latlong2 is used via flight_point.dart
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 import '../models/flight.dart';
 import '../models/flight_point.dart';
 import 'barometer_service.dart';
 import 'altitude_service.dart';
+import 'flight_storage_service.dart';
 
-const String _flightKey = 'saved_flights';
+// Constants for sensor data collection
+const double _gravity = 9.80665; // Standard gravity (m/s²)
 
 class FlightService with ChangeNotifier {
   final List<FlightPoint> _flightPath = [];
@@ -43,9 +44,50 @@ class FlightService with ChangeNotifier {
   List<Flight> _flights = [];
   List<Flight> get flights => List.unmodifiable(_flights);
   
+  // Sensor data streams
+  StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
+  StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
+  
+  // Current sensor values
+  double _currentXAccel = 0.0;
+  double _currentYAccel = 0.0;
+  double _currentZAccel = 0.0;
+  double _currentXGyro = 0.0;
+  double _currentYGyro = 0.0;
+  double _currentZGyro = 0.0;
+  
+  // Compass subscription
+  StreamSubscription<CompassEvent>? _compassSubscription;
+  
   // Initialize with required services
-  FlightService({required BarometerService barometerService, this.onFlightPathUpdated}) 
-    : _barometerService = barometerService;
+  FlightService({this.onFlightPathUpdated, BarometerService? barometerService}) 
+      : _barometerService = barometerService ?? BarometerService() {
+    _initSensors();
+    _initializeStorage();
+  }
+  
+  Future<void> _initializeStorage() async {
+    await FlightStorageService.init();
+    await _loadFlights();
+  }
+  
+  // Initialize sensor subscriptions
+  void _initSensors() {
+    // Accelerometer
+    _accelerometerSubscription = accelerometerEvents.listen((AccelerometerEvent event) {
+      // Convert from m/s² to g's if needed
+      _currentXAccel = event.x / _gravity;
+      _currentYAccel = event.y / _gravity;
+      _currentZAccel = event.z / _gravity;
+    });
+    
+    // Gyroscope
+    _gyroscopeSubscription = gyroscopeEvents.listen((GyroscopeEvent event) {
+      _currentXGyro = event.x;
+      _currentYGyro = event.y;
+      _currentZGyro = event.z;
+    });
+  }
   
   Future<void> initialize() async {
     debugPrint('FlightService initialized');
@@ -55,31 +97,14 @@ class FlightService with ChangeNotifier {
   // Load saved flights from storage
   Future<void> _loadFlights() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final String? flightsJson = prefs.getString(_flightKey);
-      
-      if (flightsJson != null) {
-        final List<dynamic> decoded = jsonDecode(flightsJson);
-        _flights = decoded.map((item) => Flight.fromMap(item)).toList();
-        notifyListeners();
-      }
+      _flights = await FlightStorageService.getAllFlights();
+      notifyListeners();
     } catch (e) {
       debugPrint('Error loading flights: $e');
     }
   }
   
-  // Save flights to storage
-  Future<void> _saveFlights() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final String encodedData = jsonEncode(
-        _flights.map((flight) => flight.toMap()).toList(),
-      );
-      await prefs.setString(_flightKey, encodedData);
-    } catch (e) {
-      debugPrint('Error saving flights: $e');
-    }
-  }
+
   
   // Get all flights
   Future<List<Flight>> getFlights() async {
@@ -87,17 +112,20 @@ class FlightService with ChangeNotifier {
     return _flights;
   }
   
-  // Add a completed flight
+  // Add a new flight to the history
   Future<void> addFlight(Flight flight) async {
-    _flights.insert(0, flight); // Add new flights at the beginning
-    await _saveFlights();
+    _flights.add(flight);
+    await FlightStorageService.saveFlight(flight);
     notifyListeners();
   }
   
   // Clear all flight history
   Future<void> clearFlights() async {
+    // Delete all flights from storage
+    for (final flight in _flights) {
+      await FlightStorageService.deleteFlight(flight.id);
+    }
     _flights.clear();
-    await _saveFlights();
     notifyListeners();
   }
   
@@ -137,25 +165,34 @@ class FlightService with ChangeNotifier {
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 5, // meters
       ),
-    ).listen((position) {
-      final now = DateTime.now();
-      final point = FlightPoint(
-        latitude: position.latitude,
-        longitude: position.longitude,
-        altitude: _currentBaroAltitude ?? position.altitude, // Use baro altitude if available
-        speed: position.speed,
-        heading: _currentHeading ?? 0,
-        timestamp: now,
-      );
-      
-      _addFlightPoint(point);
-    });
-    
-    // Start listening to compass updates
-    FlutterCompass.events?.listen((event) {
-      _currentHeading = event.heading;
-      notifyListeners();
-    });
+    ).listen(_onPositionChanged);
+  }
+  
+  void _onPositionChanged(Position position) {
+    if (!_isTracking) return;
+
+    final point = FlightPoint(
+      latitude: position.latitude,
+      longitude: position.longitude,
+      altitude: position.altitude,
+      speed: position.speed,
+      heading: _currentHeading ?? 0.0,
+      accuracy: position.accuracy,
+      verticalAccuracy: 0.0, // position.verticalAccuracy not available in current geolocator
+      speedAccuracy: position.speedAccuracy,
+      headingAccuracy: 0.0, // position.headingAccuracy not available in current geolocator
+      xAcceleration: _currentXAccel,
+      yAcceleration: _currentYAccel,
+      zAcceleration: _currentZAccel,
+      xGyro: _currentXGyro,
+      yGyro: _currentYGyro,
+      zGyro: _currentZGyro,
+      pressure: _barometerService?.lastPressure ?? 0.0,
+    );
+
+    _flightPath.add(point);
+    _updateFlightStats();
+    onFlightPathUpdated?.call();
   }
   
   // Stop tracking flight
@@ -218,44 +255,100 @@ class FlightService with ChangeNotifier {
     notifyListeners();
   }
   
-  // Create a new Flight from the current flight path
+  // Create a flight from the current tracking data
   Flight _createFlight() {
     if (_flightPath.isEmpty) {
-      throw StateError('Cannot create flight from empty flight path');
+      throw Exception('No flight data to save');
     }
-
+    
     final startTime = _flightPath.first.timestamp;
     final endTime = _flightPath.last.timestamp;
     
-    // Calculate max altitude
-    final maxAltitude = _flightPath
-        .map((point) => point.altitude)
-        .reduce((a, b) => a > b ? a : b);
+    // Calculate max altitude and speed
+    double maxAltitude = 0.0;
+    double maxSpeed = 0.0;
     
-    // Calculate speeds between points
-    final speeds = <double>[];
-    for (var i = 1; i < _flightPath.length; i++) {
-      final p1 = _flightPath[i - 1];
-      final p2 = _flightPath[i];
-      final distance = Geolocator.distanceBetween(
-        p1.position.latitude,
-        p1.position.longitude,
-        p2.position.latitude,
-        p2.position.longitude,
-      );
-      final timeDiff = p2.timestamp.difference(p1.timestamp).inMilliseconds / 1000.0;
-      speeds.add(timeDiff > 0 ? distance / timeDiff : 0);
+    // Convert flight path to FlightPoint objects
+    final flightPoints = <FlightPoint>[];
+    
+    // Add first point
+    if (_flightPath.isNotEmpty) {
+      final firstPoint = _flightPath.first;
+      flightPoints.add(FlightPoint(
+        latitude: firstPoint.position.latitude,
+        longitude: firstPoint.position.longitude,
+        altitude: firstPoint.altitude,
+        speed: 0.0, // Initial speed is 0
+        heading: 0.0, // Will be updated with next point
+        timestamp: firstPoint.timestamp,
+        accuracy: firstPoint.accuracy,
+        verticalAccuracy: 0.0, // Not available from Position
+        speedAccuracy: 0.0, // Not available from Position
+        headingAccuracy: 0.0, // Not available from Position
+        xAcceleration: 0.0, // Will be updated by sensor service
+        yAcceleration: 0.0, // Will be updated by sensor service
+        zAcceleration: 0.0, // Will be updated by sensor service
+        xGyro: 0.0, // Will be updated by sensor service
+        yGyro: 0.0, // Will be updated by sensor service
+        zGyro: 0.0, // Will be updated by sensor service
+        pressure: 0.0, // Will be updated by barometer service
+      ));
     }
     
-    // Calculate max speed
-    final maxSpeed = speeds.isNotEmpty 
-        ? speeds.reduce((a, b) => a > b ? a : b)
-        : 0.0;
+    // Process subsequent points
+    for (var i = 1; i < _flightPath.length; i++) {
+      final prevPoint = _flightPath[i - 1];
+      final currPoint = _flightPath[i];
+      
+      // Calculate distance between points
+      final distance = Geolocator.distanceBetween(
+        prevPoint.position.latitude,
+        prevPoint.position.longitude,
+        currPoint.position.latitude,
+        currPoint.position.longitude,
+      );
+      
+      // Calculate time difference in seconds
+      final timeDiff = currPoint.timestamp.difference(prevPoint.timestamp).inSeconds.toDouble();
+      final speed = timeDiff > 0 ? distance / timeDiff : 0.0; // m/s
+      
+      // Calculate heading (bearing) between points
+      final heading = Geolocator.bearingBetween(
+        prevPoint.position.latitude,
+        prevPoint.position.longitude,
+        currPoint.position.latitude,
+        currPoint.position.longitude,
+      );
+      
+      maxSpeed = math.max(maxSpeed, speed);
+      maxAltitude = math.max(maxAltitude, currPoint.altitude);
+      
+      // Add the flight point with calculated data
+      flightPoints.add(FlightPoint(
+        latitude: currPoint.position.latitude,
+        longitude: currPoint.position.longitude,
+        altitude: currPoint.altitude,
+        speed: speed,
+        heading: heading,
+        timestamp: currPoint.timestamp,
+        accuracy: currPoint.accuracy,
+        verticalAccuracy: 0.0, // Not available from Position
+        speedAccuracy: 0.0, // Not available from Position
+        headingAccuracy: 0.0, // Not available from Position
+        xAcceleration: 0.0, // Will be updated by sensor service
+        yAcceleration: 0.0, // Will be updated by sensor service
+        zAcceleration: 0.0, // Will be updated by sensor service
+        xGyro: 0.0, // Will be updated by sensor service
+        yGyro: 0.0, // Will be updated by sensor service
+        zGyro: 0.0, // Will be updated by sensor service
+        pressure: 0.0, // Will be updated by barometer service
+      ));
+    }
     
     // Calculate moving time (time spent moving > 1 m/s)
-    final movingTime = speeds.fold<Duration>(
+    final movingTime = flightPoints.fold<Duration>(
       Duration.zero,
-      (total, speed) => speed > 1.0 
+      (total, point) => point.speed > 1.0 
           ? total + Duration(seconds: 1) 
           : total,
     );
@@ -264,18 +357,12 @@ class FlightService with ChangeNotifier {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       startTime: startTime,
       endTime: endTime,
-      path: _flightPath.map((point) => LatLng(
-        point.position.latitude,
-        point.position.longitude,
-      )).toList(),
+      path: flightPoints,
       maxAltitude: maxAltitude,
       distanceTraveled: _totalDistance,
       movingTime: movingTime,
       maxSpeed: maxSpeed,
       averageSpeed: _averageSpeed,
-      timestamps: _flightPath.map((p) => p.timestamp).toList(),
-      speeds: speeds,
-      altitudes: _flightPath.map((p) => p.altitude).toList(),
     );
   }
 
@@ -285,23 +372,22 @@ class FlightService with ChangeNotifier {
     onFlightPathUpdated?.call();
   }
   
-  // Add a new position to the flight path
-  void _addFlightPoint(FlightPoint point) {
-    _flightPath.add(point);
-    
+  // Update flight statistics
+  void _updateFlightStats() {
     // Calculate distance from last point if available
     if (_flightPath.length > 1) {
       final prevPoint = _flightPath[_flightPath.length - 2];
+      final currentPoint = _flightPath.last;
       final distance = Geolocator.distanceBetween(
         prevPoint.position.latitude,
         prevPoint.position.longitude,
-        point.position.latitude,
-        point.position.longitude,
+        currentPoint.position.latitude,
+        currentPoint.position.longitude,
       );
       _totalDistance += distance;
       
       // Calculate speed based on distance and time
-      final timeDiff = point.timestamp.difference(prevPoint.timestamp);
+      final timeDiff = currentPoint.timestamp.difference(prevPoint.timestamp);
       final seconds = timeDiff.inMilliseconds / 1000.0;
       
       if (seconds > 0) {
@@ -313,101 +399,86 @@ class FlightService with ChangeNotifier {
     }
     
     _lastPosition = Position(
-      latitude: point.position.latitude,
-      longitude: point.position.longitude,
-      timestamp: point.timestamp,
-      accuracy: 0,
-      altitude: point.altitude,
-      heading: point.heading,
-      speed: point.speed,
-      speedAccuracy: 0,
-      headingAccuracy: 0,
-      altitudeAccuracy: 0,
+      latitude: _flightPath.last.position.latitude,
+      longitude: _flightPath.last.position.longitude,
+      timestamp: _flightPath.last.timestamp,
+      accuracy: _flightPath.last.accuracy,
+      altitude: _flightPath.last.altitude,
+      heading: _flightPath.last.heading,
+      speed: _flightPath.last.speed,
+      speedAccuracy: _flightPath.last.speedAccuracy,
+      headingAccuracy: _flightPath.last.headingAccuracy,
+      altitudeAccuracy: _flightPath.last.verticalAccuracy,
     );
     
     // Notify listeners
     notifyListeners();
   }
   
-  // Get the duration of the current flight
-  Duration get flightDuration {
-    if (_startTime == null) return Duration.zero;
-    return DateTime.now().difference(_startTime!);
-  }
-  
-  // Get the total distance of the current flight in meters
-  double get flightDistance => _totalDistance;
-  
-  // Get the average speed in meters per second
-  double get averageSpeed {
-    final duration = flightDuration;
-    if (duration.inSeconds == 0) return 0.0;
-    return _totalDistance / duration.inSeconds;
-  }
-  
-  // Get the current flight time as a formatted string (HH:MM:SS)
+  // Format duration as HH:MM:SS
   String get formattedFlightTime {
-    final duration = flightDuration;
+    final duration = movingTime;
     final hours = duration.inHours.toString().padLeft(2, '0');
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$hours:$minutes:$seconds';
   }
   
-  // Calculate total distance of the flight path in meters
-  double getTotalDistance() {
+  // Get the maximum speed from the current flight in m/s
+  double get maxSpeed {
+    if (_flightPath.isEmpty) return 0.0;
+    return _flightPath.map((p) => p.speed).reduce((a, b) => a > b ? a : b);
+  }
+  
+  // Get the current speed in m/s
+  double get currentSpeed => _flightPath.isEmpty ? 0.0 : _flightPath.last.speed;
+  
+  // Get the current heading in degrees
+  double? get currentHeading => _currentHeading;
+  
+  // Get the barometric altitude in meters
+  double? get barometricAltitude => _currentBaroAltitude;
+  
+  // Get the barometric pressure in hPa if available
+  double? get barometricPressure => _barometerService?.pressureHPa;
+  
+  // Get the total distance of the flight in meters
+  double get totalDistance {
     if (_flightPath.length < 2) return 0.0;
     
-    double totalDistance = 0.0;
+    double distance = 0.0;
     for (int i = 1; i < _flightPath.length; i++) {
       final prev = _flightPath[i - 1];
       final current = _flightPath[i];
-      totalDistance += Geolocator.distanceBetween(
+      distance += Geolocator.distanceBetween(
         prev.latitude,
         prev.longitude,
         current.latitude,
         current.longitude,
       );
     }
-    
-    return totalDistance;
+    return distance;
   }
   
-  // Calculate average speed in km/h
-  double getAverageSpeed() {
-    if (_flightPath.isEmpty) return 0.0;
-    
-    final totalSpeed = _flightPath
-        .map((point) => point.speed)
-        .reduce((a, b) => a + b);
-    
-    return (totalSpeed / _flightPath.length) * 3.6; // Convert m/s to km/h
+  // Initialize compass
+  void _initCompass() {
+    _compassSubscription = FlutterCompass.events?.listen((event) {
+      _currentHeading = event.heading;
+      notifyListeners();
+    });
   }
   
-  // Clean up resources
-  @override
-  void dispose() {
-    _barometerSubscription?.cancel();
-    _barometerService?.dispose();
-    _positionSubscription?.cancel();
-    _isTracking = false;
-    _flightPath.clear();
-    super.dispose();
+  // Get the total moving time of the current flight
+  Duration get movingTime {
+    if (_startTime == null) return Duration.zero;
+    final endTime = _isTracking ? DateTime.now() : _flightPath.last.timestamp;
+    return endTime.difference(_startTime!);
   }
   
-  // Get current barometric altitude if available
-  double? get barometricAltitude => _currentBaroAltitude;
+  // Get the flight duration as a Duration object (alias for movingTime)
+  Duration get flightDuration => movingTime;
   
-  // Get current barometric pressure if available
-  double? get barometricPressure => _barometerService?.pressureHPa;
-  
-  // Get current speed in m/s
-  double get currentSpeed => _lastPosition?.speed ?? 0.0;
-  
-  // Get current heading in degrees
-  double? get currentHeading => _currentHeading;
-  
-  // Calculate vertical speed in m/s
+  // Get the vertical speed in m/s
   double get verticalSpeed {
     if (_flightPath.length < 2) return 0.0;
     
@@ -417,5 +488,19 @@ class FlightService with ChangeNotifier {
     final timeDiff = currentPoint.timestamp.difference(previousPoint.timestamp).inSeconds;
     
     return timeDiff > 0 ? altitudeDiff / timeDiff : 0.0;
+  }
+
+  // Clean up resources
+  @override
+  void dispose() {
+    _positionSubscription?.cancel();
+    _barometerSubscription?.cancel();
+    _compassSubscription?.cancel();
+    _accelerometerSubscription?.cancel();
+    _gyroscopeSubscription?.cancel();
+    _barometerService?.dispose();
+    _isTracking = false;
+    _flightPath.clear();
+    super.dispose();
   }
 }
