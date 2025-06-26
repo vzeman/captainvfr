@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/airport.dart';
 import '../models/runway.dart';
+import '../models/frequency.dart';
 import '../services/weather_service.dart';
 import '../services/runway_service.dart';
+import '../services/frequency_service.dart';
 
 // Key for testing
 const Key kAirportInfoSheetKey = Key('airport_info_sheet');
@@ -31,19 +33,24 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
   late TabController _tabController;
   bool _isLoadingWeather = false;
   bool _isLoadingRunways = false;
+  bool _isLoadingFrequencies = false;
   String? _weatherError;
   String? _runwaysError;
+  String? _frequenciesError;
   bool _weatherTabInitialized = false;
   bool _runwaysTabInitialized = false;
+  bool _frequenciesTabInitialized = false;
   List<Runway> _runways = [];
+  List<Frequency> _frequencies = [];
   final RunwayService _runwayService = RunwayService();
+  final FrequencyService _frequencyService = FrequencyService();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_handleTabChange);
-    _initializeRunwayService();
+    _initializeServices();
   }
 
   @override
@@ -53,9 +60,11 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
     super.dispose();
   }
 
-  Future<void> _initializeRunwayService() async {
+  Future<void> _initializeServices() async {
     await _runwayService.initialize();
     await _runwayService.fetchRunways();
+    await _frequencyService.initialize();
+    await _frequencyService.fetchFrequencies();
   }
 
   void _handleTabChange() {
@@ -63,6 +72,8 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
       _fetchWeather();
     } else if (_tabController.index == 2 && !_runwaysTabInitialized) {
       _fetchRunways();
+    } else if (_tabController.index == 3 && !_frequenciesTabInitialized) {
+      _fetchFrequencies();
     }
   }
 
@@ -132,6 +143,75 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
       if (mounted) {
         setState(() {
           _isLoadingRunways = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _fetchFrequencies() async {
+    if (_frequenciesTabInitialized) return;
+
+    setState(() {
+      _isLoadingFrequencies = true;
+      _frequenciesError = null;
+      _frequenciesTabInitialized = true;
+    });
+
+    try {
+      log('🔍 Looking for frequencies for airport: ${widget.airport.icao}');
+      log('📋 Airport details - ICAO: ${widget.airport.icao}, IATA: ${widget.airport.iata}, Local: ${widget.airport.localCode}, GPS: ${widget.airport.gpsCode}');
+
+      List<Frequency> frequencies = _frequencyService.getFrequenciesForAirport(widget.airport.icao);
+      log('📻 Found ${frequencies.length} frequencies for ICAO: ${widget.airport.icao}');
+
+      // Try with other identifiers if available
+      if (frequencies.isEmpty && widget.airport.iata != null && widget.airport.iata!.isNotEmpty) {
+        log('🔍 Trying with IATA code: ${widget.airport.iata}');
+        final iataFrequencies = _frequencyService.getFrequenciesForAirport(widget.airport.iata!);
+        log('📻 Found ${iataFrequencies.length} frequencies with IATA code');
+        if (iataFrequencies.isNotEmpty) {
+          frequencies = [...frequencies, ...iataFrequencies];
+        }
+      }
+
+      // Try with local code if available
+      if (frequencies.isEmpty && widget.airport.localCode != null && widget.airport.localCode!.isNotEmpty) {
+        log('🔍 Trying with local code: ${widget.airport.localCode}');
+        final localFrequencies = _frequencyService.getFrequenciesForAirport(widget.airport.localCode!);
+        log('📻 Found ${localFrequencies.length} frequencies with local code');
+        if (localFrequencies.isNotEmpty) {
+          frequencies = [...frequencies, ...localFrequencies];
+        }
+      }
+
+      // Try with GPS code if available
+      if (frequencies.isEmpty && widget.airport.gpsCode != null && widget.airport.gpsCode!.isNotEmpty) {
+        log('🔍 Trying with GPS code: ${widget.airport.gpsCode}');
+        final gpsFrequencies = _frequencyService.getFrequenciesForAirport(widget.airport.gpsCode!);
+        log('📻 Found ${gpsFrequencies.length} frequencies with GPS code');
+        if (gpsFrequencies.isNotEmpty) {
+          frequencies = [...frequencies, ...gpsFrequencies];
+        }
+      }
+
+      log('📻 Total frequencies found: ${frequencies.length}');
+
+      if (mounted) {
+        setState(() {
+          _frequencies = frequencies;
+        });
+      }
+    } catch (e) {
+      log('❌ Error fetching frequencies: $e');
+      if (mounted) {
+        setState(() {
+          _frequenciesError = 'Failed to load frequency data: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingFrequencies = false;
         });
       }
     }
@@ -751,6 +831,147 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
     );
   }
 
+  // Build the frequencies tab content
+  Widget _buildFrequenciesTab() {
+    if (_isLoadingFrequencies) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading frequency data...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_frequenciesError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.orange),
+              const SizedBox(height: 16),
+              Text(
+                _frequenciesError!,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _frequenciesTabInitialized = false;
+                  });
+                  _fetchFrequencies();
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_frequencies.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.radio, size: 48, color: Colors.grey),
+              SizedBox(height: 16),
+              Text(
+                'No frequency data available for this airport',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Frequency List
+          Text(
+            'Frequencies (${_frequencies.length})',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          ..._frequencies.map((frequency) => _buildFrequencyCard(frequency)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFrequencyCard(Frequency frequency) {
+    final theme = Theme.of(context);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Frequency header with type and frequency
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withAlpha(51), // 20% opacity
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    frequency.type,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  frequency.frequencyFormatted,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+
+            // Description if available
+            if (frequency.description != null && frequency.description!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                frequency.description!,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.hintColor,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -816,6 +1037,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
               Tab(text: 'Info', icon: Icon(Icons.info_outline)),
               Tab(text: 'Weather', icon: Icon(Icons.cloud_outlined)),
               Tab(text: 'Runways', icon: Icon(Icons.straighten)),
+              Tab(text: 'Frequencies', icon: Icon(Icons.radio)),
             ],
           ),
           
@@ -827,6 +1049,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
                 _buildInfoTab(),
                 _buildWeatherTab(),
                 _buildRunwaysTab(),
+                _buildFrequenciesTab(),
               ],
             ),
           ),

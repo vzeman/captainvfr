@@ -518,8 +518,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             children: [
               // Tile layer
               TileLayer(
-                urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                subdomains: const ['a', 'b', 'c'],
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.captainvfr',
               ),
               // Flight path layer

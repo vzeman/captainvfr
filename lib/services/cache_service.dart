@@ -1,26 +1,29 @@
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
 import '../models/runway.dart';
+import '../models/frequency.dart';
 
-/// Cache service for storing airports, navaids, and runways locally
+/// Cache service for storing airports, navaids, runways, and frequencies locally
 class CacheService {
   static const String _airportsBoxName = 'airports_cache';
   static const String _navaidsBoxName = 'navaids_cache';
   static const String _runwaysBoxName = 'runways_cache';
+  static const String _frequenciesBoxName = 'frequencies_cache';
   static const String _metadataBoxName = 'cache_metadata';
   static const String _weatherBoxName = 'weather_cache';
 
   static const String _airportsLastFetchKey = 'airports_last_fetch';
   static const String _navaidsLastFetchKey = 'navaids_last_fetch';
   static const String _runwaysLastFetchKey = 'runways_last_fetch';
+  static const String _frequenciesLastFetchKey = 'frequencies_last_fetch';
   static const String _weatherLastFetchKey = 'weather_last_fetch';
 
   late Box<Map> _airportsBox;
   late Box<Map> _navaidsBox;
   late Box<Map> _runwaysBox;
+  late Box<Map> _frequenciesBox;
   late Box<dynamic> _metadataBox;
   late Box<String> _weatherBox;
 
@@ -42,6 +45,7 @@ class CacheService {
       _airportsBox = await Hive.openBox<Map>(_airportsBoxName);
       _navaidsBox = await Hive.openBox<Map>(_navaidsBoxName);
       _runwaysBox = await Hive.openBox<Map>(_runwaysBoxName);
+      _frequenciesBox = await Hive.openBox<Map>(_frequenciesBoxName);
       _metadataBox = await Hive.openBox(_metadataBoxName);
       _weatherBox = await Hive.openBox<String>(_weatherBoxName);
 
@@ -145,6 +149,31 @@ class CacheService {
       print('✅ Cached ${navaids.length} navaids successfully');
     } catch (e) {
       print('❌ Error caching navaids: $e');
+      rethrow;
+    }
+  }
+
+  /// Cache frequencies data
+  Future<void> cacheFrequencies(List<Frequency> frequencies) async {
+    await _ensureInitialized();
+
+    try {
+      print('💾 Caching ${frequencies.length} frequencies...');
+
+      // Clear existing data
+      await _frequenciesBox.clear();
+
+      // Cache frequencies as maps
+      for (final frequency in frequencies) {
+        await _frequenciesBox.put(frequency.id, frequency.toMap());
+      }
+
+      // Update last fetch timestamp
+      await _metadataBox.put(_frequenciesLastFetchKey, DateTime.now().toIso8601String());
+
+      print('✅ Cached ${frequencies.length} frequencies successfully');
+    } catch (e) {
+      print('❌ Error caching frequencies: $e');
       rethrow;
     }
   }
@@ -340,6 +369,28 @@ class CacheService {
     }
   }
 
+  /// Get cached frequencies
+  Future<List<Frequency>> getCachedFrequencies() async {
+    await _ensureInitialized();
+
+    try {
+      final frequencies = <Frequency>[];
+
+      for (final key in _frequenciesBox.keys) {
+        final data = _frequenciesBox.get(key);
+        if (data != null) {
+          final frequency = Frequency.fromMap(Map<String, dynamic>.from(data));
+          frequencies.add(frequency);
+        }
+      }
+
+      return frequencies;
+    } catch (e) {
+      print('❌ Error loading cached frequencies: $e');
+      return [];
+    }
+  }
+
   /// Get cached weather data
   Future<String?> getCachedWeather(String icao) async {
     await _ensureInitialized();
@@ -382,6 +433,16 @@ class CacheService {
     return null;
   }
 
+  /// Get frequencies last fetch timestamp
+  Future<DateTime?> getFrequenciesLastFetch() async {
+    await _ensureInitialized();
+    final timestampStr = _metadataBox.get(_frequenciesLastFetchKey);
+    if (timestampStr != null) {
+      return DateTime.tryParse(timestampStr);
+    }
+    return null;
+  }
+
   /// Get weather last fetch timestamp
   Future<DateTime?> getWeatherLastFetch() async {
     await _ensureInitialized();
@@ -404,6 +465,12 @@ class CacheService {
     await _metadataBox.put(_navaidsLastFetchKey, timestamp.toIso8601String());
   }
 
+  /// Set frequencies last fetch timestamp
+  Future<void> setFrequenciesLastFetch(DateTime timestamp) async {
+    await _ensureInitialized();
+    await _metadataBox.put(_frequenciesLastFetchKey, timestamp.toIso8601String());
+  }
+
   /// Set weather last fetch timestamp
   Future<void> setWeatherLastFetch(DateTime timestamp) async {
     await _ensureInitialized();
@@ -424,6 +491,13 @@ class CacheService {
     await _metadataBox.delete(_navaidsLastFetchKey);
   }
 
+  /// Clear frequencies cache
+  Future<void> clearFrequenciesCache() async {
+    await _ensureInitialized();
+    await _frequenciesBox.clear();
+    await _metadataBox.delete(_frequenciesLastFetchKey);
+  }
+
   /// Clear weather cache
   Future<void> clearWeatherCache() async {
     await _ensureInitialized();
@@ -437,6 +511,7 @@ class CacheService {
     await _airportsBox.clear();
     await _navaidsBox.clear();
     await _runwaysBox.clear();
+    await _frequenciesBox.clear();
     await _metadataBox.clear();
     await _weatherBox.clear();
     print('🗑️ All caches cleared');
