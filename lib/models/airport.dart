@@ -1,4 +1,5 @@
 import 'package:latlong2/latlong.dart';
+import 'dart:convert';
 
 class Airport {
   final String icao;
@@ -7,18 +8,52 @@ class Airport {
   final String city;
   final String country;
   final LatLng position;
+  final int elevation; // in feet
   
-  // Position getters for compatibility with marker system
-  double get latitude => position.latitude;
-  double get longitude => position.longitude;
-  final int elevation;
+  // Additional details
   final String? website;
   final String? phone;
   final String? runways;
+  final String? frequencies;
   final bool hasFuel;
   final bool hasCustoms;
   final String type; // small_airport, medium_airport, large_airport
-  
+  final String? icaoCode;
+  final String? iataCode;
+  final String? municipality;
+  final String? region;
+  final String? countryCode;
+  final String? gpsCode;
+  final String? localCode;
+
+  Airport({
+    required this.icao,
+    this.iata,
+    required this.name,
+    required this.city,
+    required this.country,
+    required this.position,
+    this.elevation = 0,
+    this.website,
+    this.phone,
+    this.runways,
+    this.frequencies,
+    this.hasFuel = false,
+    this.hasCustoms = false,
+    this.type = 'small_airport',
+    this.icaoCode,
+    this.iataCode,
+    this.municipality,
+    this.region,
+    this.countryCode,
+    this.gpsCode,
+    this.localCode,
+  });
+
+  // Position getters for compatibility with marker system
+  double get latitude => position.latitude;
+  double get longitude => position.longitude;
+
   // Weather information
   String? rawMetar;
   String? taf;
@@ -49,40 +84,34 @@ class Airport {
     return 'VFR';
   }
 
-  Airport({
-    required this.icao,
-    this.iata,
-    required this.name,
-    required this.city,
-    required this.country,
-    required this.position,
-    this.elevation = 0,
-    this.website,
-    this.phone,
-    this.runways,
-    this.hasFuel = false,
-    this.hasCustoms = false,
-    this.type = 'small_airport',
-  });
-
   factory Airport.fromJson(Map<String, dynamic> json) {
     return Airport(
-      icao: json['icao'] ?? '',
-      iata: json['iata'],
-      name: json['name'] ?? 'Unknown Airport',
-      city: json['city'] ?? 'Unknown',
-      country: json['country'] ?? 'Unknown',
+      icao: (json['icao'] ?? json['ident'] ?? '').toString(),
+      iata: json['iata']?.toString(),
+      name: (json['name'] ?? 'Unknown Airport').toString(),
+      city: (json['municipality'] ?? json['city'] ?? 'Unknown').toString(),
+      country: (json['country_name'] ?? json['country'] ?? 'Unknown').toString(),
       position: LatLng(
-        double.tryParse(json['latitude_deg'] ?? '0') ?? 0.0,
-        double.tryParse(json['longitude_deg'] ?? '0') ?? 0.0,
+        (json['latitude_deg'] ?? json['latitude'] ?? 0.0).toDouble(),
+        (json['longitude_deg'] ?? json['longitude'] ?? 0.0).toDouble(),
       ),
-      elevation: int.tryParse(json['elevation_ft'] ?? '0') ?? 0,
-      website: json['home_link'],
-      phone: json['phone_number'],
-      runways: json['runways'],
-      hasFuel: (json['fuel_types'] as String?)?.isNotEmpty ?? false,
-      hasCustoms: (json['customs'] as String?) == 'true',
-      type: json['type'] ?? 'small_airport',
+      elevation: (json['elevation_ft'] ?? json['elevation'] ?? 0).toInt(),
+      website: json['home_link']?.toString() ?? json['website']?.toString(),
+      phone: json['phone_number']?.toString() ?? json['phone']?.toString(),
+      runways: json['runways']?.toString(),
+      frequencies: json['frequencies']?.toString(),
+      hasFuel: (json['fuel_types'] as String?)?.isNotEmpty ?? 
+               json['fuel_available'] == true,
+      hasCustoms: (json['customs'] as String?) == 'true' || 
+                 json['customs_airport'] == true,
+      type: (json['type'] ?? 'small_airport').toString(),
+      icaoCode: json['icao_code']?.toString(),
+      iataCode: json['iata_code']?.toString(),
+      municipality: json['municipality']?.toString(),
+      region: (json['region_name'] ?? json['region'])?.toString(),
+      countryCode: (json['iso_country'] ?? json['country_code'])?.toString(),
+      gpsCode: json['gps_code']?.toString(),
+      localCode: json['local_code']?.toString(),
     );
   }
 
@@ -97,7 +126,50 @@ class Airport {
   bool get hasWeatherData => rawMetar != null || rawText != null;
 
   // Get airport type as a display string
-  String get typeDisplay {
+  // Runway information
+  List<Map<String, dynamic>> get runwaysList {
+    if (runways == null) return [];
+    try {
+      final List<dynamic> decoded = jsonDecode(runways!);
+      return decoded.cast<Map<String, dynamic>>();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // Communication frequencies
+  List<Map<String, dynamic>> get frequenciesList {
+    if (frequencies == null) return [];
+    try {
+      final List<dynamic> decoded = jsonDecode(frequencies!);
+      return decoded.cast<Map<String, dynamic>>()
+          .where((f) => f['frequency_mhz'] != null)
+          .toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // Get main frequency by type (TWR, GND, ATIS, etc.)
+  String? getFrequencyByType(String type) {
+    final freq = frequenciesList.firstWhere(
+      (f) => f['type']?.toString().toLowerCase() == type.toLowerCase(),
+      orElse: () => <String, dynamic>{},
+    );
+    
+    if (freq.isEmpty) return null;
+    final mhz = double.tryParse(freq['frequency_mhz']?.toString() ?? '') ?? 0;
+    if (mhz == 0) return null;
+    
+    // Format frequency to 3 decimal places
+    final mhzStr = mhz.toStringAsFixed(3);
+    return mhzStr.replaceAllMapped(
+      RegExp(r'(\d+)(\d{3})'),
+      (match) => '${match[1]}.${match[2]}',
+    );
+  }
+
+  String? get typeDisplay {
     switch (type) {
       case 'small_airport':
         return 'Small Airport';

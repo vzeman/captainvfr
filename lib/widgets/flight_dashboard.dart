@@ -144,7 +144,7 @@ class FlightDashboard extends StatelessWidget {
         ),
         _buildSmallIndicator(
           'DIST',
-          '${(flightService.flightDistance / 1000).toStringAsFixed(1)} km',
+          '${(flightService.totalDistance / 1000).toStringAsFixed(1)} km',
           FlightIcons.distance,
         ),
         _buildSmallIndicator(

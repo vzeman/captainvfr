@@ -1,26 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
-class AltitudeChart extends StatelessWidget {
-  final List<double> altitudeData;
-  final double? currentAltitude;
-  final double? minAltitude;
-  final double? maxAltitude;
+class VibrationChart extends StatelessWidget {
+  final List<double> vibrationData; // Vibration intensity values
+  final double? currentVibration;
+  final double? maxVibration;
 
-  const AltitudeChart({
+  const VibrationChart({
     super.key,
-    required this.altitudeData,
-    this.currentAltitude,
-    this.minAltitude,
-    this.maxAltitude,
+    required this.vibrationData,
+    this.currentVibration,
+    this.maxVibration,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (altitudeData.isEmpty) {
+    if (vibrationData.isEmpty) {
       return const Center(
         child: Text(
-          'No altitude data available\nStart tracking to see altitude changes',
+          'No vibration data available\nStart tracking to see vibration data',
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.grey),
         ),
@@ -31,8 +29,10 @@ class AltitudeChart extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     
     // Calculate min and max for the Y axis
-    final minY = minAltitude ?? (altitudeData.isNotEmpty ? altitudeData.reduce((a, b) => a < b ? a : b) - 50 : 0);
-    final maxY = maxAltitude ?? (altitudeData.isNotEmpty ? altitudeData.reduce((a, b) => a > b ? a : b) + 50 : 1000);
+    final minY = 0.0;
+    final maxY = maxVibration != null 
+        ? maxVibration! * 1.2 
+        : (vibrationData.isNotEmpty ? vibrationData.reduce((a, b) => a > b ? a : b) * 1.2 : 1.0);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -59,10 +59,10 @@ class AltitudeChart extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 30,
-                interval: (altitudeData.length / 4).ceilToDouble().clamp(1, double.infinity),
+                interval: (vibrationData.length / 4).ceilToDouble().clamp(1, double.infinity),
                 getTitlesWidget: (value, meta) {
                   final index = value.toInt();
-                  if (index >= 0 && index < altitudeData.length) {
+                  if (index >= 0 && index < vibrationData.length) {
                     final minutes = (index / 60).floor();
                     return Padding(
                       padding: const EdgeInsets.only(top: 8.0),
@@ -77,9 +77,9 @@ class AltitudeChart extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 50,
-                interval: (maxY - minY) / 4,
+                interval: maxY / 4,
                 getTitlesWidget: (value, meta) {
-                  return Text('${value.toInt()}m');
+                  return Text(value.toStringAsFixed(1));
                 },
               ),
             ),
@@ -92,40 +92,33 @@ class AltitudeChart extends StatelessWidget {
             ),
           ),
           minX: 0,
-          maxX: altitudeData.length > 0 ? (altitudeData.length - 1).toDouble() : 1,
+          maxX: vibrationData.isNotEmpty ? (vibrationData.length - 1).toDouble() : 1,
           minY: minY,
           maxY: maxY,
           lineBarsData: [
             LineChartBarData(
-              spots: altitudeData.asMap().entries.map((entry) {
+              spots: vibrationData.asMap().entries.map((entry) {
                 return FlSpot(entry.key.toDouble(), entry.value);
               }).toList(),
               isCurved: true,
-              color: Theme.of(context).colorScheme.primary,
+              color: Colors.orange,
               barWidth: 2,
               isStrokeCapRound: true,
               dotData: FlDotData(show: false),
               belowBarData: BarAreaData(
                 show: true,
-                gradient: LinearGradient(
-                  colors: [
-                    Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                    Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
+                color: Colors.orange.withOpacity(0.2),
               ),
             ),
           ],
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
-              getTooltipItems: (touchedSpots) {
-                return touchedSpots.map((touchedSpot) {
+              getTooltipItems: (List<LineBarSpot> spots) {
+                return spots.map((spot) {
                   return LineTooltipItem(
-                    '${touchedSpot.y.toStringAsFixed(1)} m',
+                    '${spot.y.toStringAsFixed(2)} g\n${(spot.x / 60).toStringAsFixed(1)} min',
                     TextStyle(
-                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                      color: isDark ? Colors.white : Colors.black,
                       fontWeight: FontWeight.bold,
                     ),
                   );

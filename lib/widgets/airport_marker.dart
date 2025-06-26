@@ -17,6 +17,8 @@ class AirportMarker extends StatelessWidget {
     this.showLabel = true,
     this.isSelected = false,
   });
+  
+
 
   @override
   Widget build(BuildContext context) {
@@ -24,6 +26,8 @@ class AirportMarker extends StatelessWidget {
     final color = _getAirportColor(airport.type);
     final borderColor = isSelected ? Colors.amber : color;
     final borderWidth = isSelected ? 3.0 : 2.0;
+    
+    debugPrint('Building marker for ${airport.icao} - ${airport.name} (${airport.position})');
     
     debugPrint('Building marker for ${airport.icao} - ${airport.name}');
     
@@ -38,17 +42,18 @@ class AirportMarker extends StatelessWidget {
         debugPrint('Marker tapped: ${airport.icao} - ${airport.name}');
         if (onTap != null) {
           debugPrint('Calling onTap callback for ${airport.icao}');
-          onTap!();
-        } else {
-          debugPrint('No onTap callback provided for ${airport.icao}');
+          try {
+            onTap!();
+            debugPrint('Successfully called onTap for ${airport.icao}');
+          } catch (e, stackTrace) {
+            debugPrint('Error in onTap callback for ${airport.icao}: $e');
+            debugPrint('Stack trace: $stackTrace');
+          }
         }
         
         // Show weather tooltip if we have weather data
         if (airport.hasWeatherData) {
-          debugPrint('Showing weather tooltip for ${airport.icao}');
           _showWeatherTooltip(context, airport);
-        } else {
-          debugPrint('No weather data available for ${airport.icao}');
         }
       },
       behavior: HitTestBehavior.opaque,
@@ -111,17 +116,16 @@ class AirportMarker extends StatelessWidget {
       ),
     );
   }
-  
+
   void _showWeatherTooltip(BuildContext context, Airport airport) {
-    debugPrint('_showWeatherTooltip called for ${airport.icao}');
-    if (airport.rawMetar == null) {
-      debugPrint('No rawMetar available for ${airport.icao}');
+    if (airport.rawMetar == null && airport.taf == null) {
+      debugPrint('No weather data available for ${airport.icao}');
       return;
     }
     
     final windInfo = airport.windInfo ?? 'Unknown';
     final visibility = airport.visibilityInfo ?? 'Unknown';
-    
+
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -133,27 +137,38 @@ class AirportMarker extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (airport.flightCategory != null) Text(
-                  'Conditions: ${airport.flightCategory}',
-                  style: TextStyle(
-                    color: _getAirportColor(airport.type),
-                    fontWeight: FontWeight.bold,
+                if (airport.flightCategory != null) ...[
+                  Text(
+                    'Conditions: ${airport.flightCategory}',
+                    style: TextStyle(
+                      color: _getAirportColor(airport.type),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                if (airport.rawMetar != null) Text('METAR: ${airport.rawMetar}'),
-                if (airport.taf != null) ...[
                   const SizedBox(height: 8),
-                  Text('TAF: ${airport.taf}'),
                 ],
-                const SizedBox(height: 8),
+                if (airport.rawMetar != null) ...[
+                  const Text('METAR:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text(airport.rawMetar!),
+                  const SizedBox(height: 8),
+                ],
+                if (airport.taf != null) ...[
+                  const Text('TAF:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text(airport.taf!),
+                  const SizedBox(height: 8),
+                ],
+                const SizedBox(height: 4),
                 Text('Wind: $windInfo'),
+                const SizedBox(height: 4),
                 Text('Visibility: $visibility'),
-                Text('Last Updated: ${airport.lastWeatherUpdate?.toLocal().toString() ?? 'Unknown'}'),
+                if (airport.lastWeatherUpdate != null) ...[
+                  const SizedBox(height: 4),
+                  Text('Updated: ${airport.lastWeatherUpdate!.toLocal().toString().substring(0, 16)}'),
+                ],
               ],
             ),
           ),
-          actions: [
+          actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Close'),
@@ -163,7 +178,7 @@ class AirportMarker extends StatelessWidget {
       },
     );
   }
-  
+
   // Get appropriate icon based on airport type
   IconData _getAirportIcon(String type) {
     switch (type) {

@@ -4,6 +4,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
 import '../models/flight.dart';
 import '../widgets/altitude_chart.dart';
+import '../widgets/speed_chart.dart';
+import '../widgets/vibration_chart.dart';
 
 class FlightDetailScreen extends StatefulWidget {
   final Flight flight;
@@ -29,13 +31,16 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
 
   void _fitBounds() {
     if (widget.flight.path.isEmpty) return;
+    
+    final positions = widget.flight.positions;
+    if (positions.isEmpty) return;
 
-    double minLat = widget.flight.path.first.latitude;
-    double maxLat = widget.flight.path.first.latitude;
-    double minLng = widget.flight.path.first.longitude;
-    double maxLng = widget.flight.path.first.longitude;
+    double minLat = positions.first.latitude;
+    double maxLat = positions.first.latitude;
+    double minLng = positions.first.longitude;
+    double maxLng = positions.first.longitude;
 
-    for (final point in widget.flight.path) {
+    for (final point in positions) {
       if (point.latitude < minLat) minLat = point.latitude;
       if (point.latitude > maxLat) maxLat = point.latitude;
       if (point.longitude < minLng) minLng = point.longitude;
@@ -86,13 +91,16 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                           widget.flight.altitudes.any((alt) => alt > 0);
 
     return DefaultTabController(
-      length: 2,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Flight Details'),
           bottom: TabBar(
+            isScrollable: true,
             tabs: const [
               Tab(icon: Icon(Icons.info_outline), text: 'Info'),
+              Tab(icon: Icon(Icons.speed), text: 'Speed'),
+              Tab(icon: Icon(Icons.vibration), text: 'Vibration'),
               Tab(icon: Icon(Icons.terrain), text: 'Altitude'),
             ],
             labelColor: Theme.of(context).colorScheme.onPrimary,
@@ -121,6 +129,68 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                 children: [
                   // Info Tab
                   _buildFlightInfo(context, dateFormat, hours, minutes, seconds),
+                  
+                  // Speed Tab
+                  widget.flight.speeds.isNotEmpty
+                      ? SpeedChart(
+                          speedData: widget.flight.speeds,
+                          currentSpeed: widget.flight.speeds.isNotEmpty 
+                              ? widget.flight.speeds.last 
+                              : null,
+                          minSpeed: 0,
+                          maxSpeed: widget.flight.speeds.isNotEmpty 
+                              ? widget.flight.speeds.reduce((a, b) => a > b ? a : b)
+                              : null,
+                        )
+                      : Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.speed,
+                                size: 48,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No speed data available',
+                                style: TextStyle(
+                                  color: Theme.of(context).disabledColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                  
+                  // Vibration Tab
+                  widget.flight.vibrationData.isNotEmpty
+                      ? VibrationChart(
+                          vibrationData: widget.flight.vibrationData,
+                          currentVibration: widget.flight.vibrationData.isNotEmpty 
+                              ? widget.flight.vibrationData.last 
+                              : null,
+                          maxVibration: widget.flight.vibrationData.isNotEmpty 
+                              ? widget.flight.vibrationData.reduce((a, b) => a > b ? a : b)
+                              : null,
+                        )
+                      : Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.vibration,
+                                size: 48,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No vibration data available',
+                                style: TextStyle(
+                                  color: Theme.of(context).disabledColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                  
                   // Altitude Tab
                   hasAltitudeData 
                       ? AltitudeChart(
@@ -168,18 +238,22 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
       return const Center(child: Text('No flight path data available'));
     }
     
+    final positions = widget.flight.positions;
+    final startPoint = positions.isNotEmpty ? positions.first : const LatLng(0, 0);
+    final endPoint = positions.length > 1 ? positions.last : positions.first;
+    
     return FlutterMap(
       mapController: _mapController,
       options: MapOptions(
-        initialCenter: widget.flight.path.isNotEmpty 
-            ? widget.flight.path[0] 
-            : const LatLng(0, 0),
+        initialCenter: startPoint,
         initialZoom: 10.0,
         maxZoom: 18.0,
         minZoom: 3.0,
-        interactiveFlags: InteractiveFlag.pinchZoom | 
-                         InteractiveFlag.drag | 
-                         InteractiveFlag.doubleTapZoom,
+        interactionOptions: InteractionOptions(
+          flags: InteractiveFlag.pinchZoom | 
+                 InteractiveFlag.drag | 
+                 InteractiveFlag.doubleTapZoom,
+        ),
         onTap: (point, latLng) {
           // Handle map tap
         },
@@ -196,7 +270,7 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
         PolylineLayer(
           polylines: [
             Polyline(
-              points: widget.flight.path,
+              points: positions,
               color: Colors.blue.withOpacity(0.8),
               strokeWidth: 4.0,
             ),
@@ -206,15 +280,15 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
           markers: [
             // Start marker
             Marker(
-              point: widget.flight.path.first,
+              point: startPoint,
               width: 30,
               height: 30,
               child: const Icon(Icons.location_history, color: Colors.green, size: 30),
             ),
             // End marker
-            if (widget.flight.path.length > 1)
+            if (positions.length > 1)
               Marker(
-                point: widget.flight.path.last,
+                point: endPoint,
                 width: 30,
                 height: 30,
                 child: const Icon(Icons.location_on, color: Colors.red, size: 30),
