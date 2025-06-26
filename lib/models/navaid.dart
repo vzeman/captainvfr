@@ -131,16 +131,16 @@ class Navaid {
     );
   }
 
-  /// Get display frequency in MHz
-  String get frequencyMhz => (frequencyKhz / 1000).toStringAsFixed(3);
+  /// Get frequency in MHz for display
+  double get frequencyMhz => frequencyKhz / 1000.0;
 
-  /// Get navaid type display name
+  /// Get formatted display name for navaid type
   String get typeDisplay {
     switch (type.toUpperCase()) {
       case 'VOR':
         return 'VOR';
       case 'VORDME':
-        return 'VOR-DME';
+        return 'VOR/DME';
       case 'VORTAC':
         return 'VORTAC';
       case 'NDB':
@@ -153,8 +153,18 @@ class Navaid {
         return 'DME';
       case 'ILS':
         return 'ILS';
+      case 'LOC':
+        return 'Localizer';
+      case 'GS':
+        return 'Glideslope';
+      case 'OM':
+        return 'Outer Marker';
+      case 'MM':
+        return 'Middle Marker';
+      case 'IM':
+        return 'Inner Marker';
       default:
-        return type.toUpperCase();
+        return type;
     }
   }
 
@@ -169,6 +179,6 @@ class Navaid {
 
   @override
   String toString() {
-    return 'Navaid($ident - $name, $typeDisplay, ${frequencyMhz}MHz)';
+    return 'Navaid{ident: $ident, name: $name, type: $type, frequency: ${frequencyMhz}MHz}';
   }
 }
