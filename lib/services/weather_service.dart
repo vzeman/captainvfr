@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
 import 'dart:io';
 import 'package:archive/archive.dart';
+import 'cache_service.dart';
 
 /// Service for fetching and managing weather data for airports
 
@@ -16,6 +17,7 @@ class WeatherService {
 
   final _logger = Logger();
   final _client = http.Client();
+  final _cacheService = CacheService();
 
   Map<String, String> _metarCache = {};
   Map<String, String> _tafCache = {};
@@ -24,12 +26,46 @@ class WeatherService {
 
   WeatherService();
 
+  /// Initialize the weather service and load cached data
+  Future<void> initialize() async {
+    await _cacheService.initialize();
+    await _loadCachedData();
+  }
+
+  /// Load cached weather data from persistent storage
+  Future<void> _loadCachedData() async {
+    try {
+      final cachedMetars = await _cacheService.getCachedMetars();
+      final cachedTafs = await _cacheService.getCachedTafs();
+      final lastFetch = await _cacheService.getWeatherLastFetch();
+
+      if (cachedMetars.isNotEmpty || cachedTafs.isNotEmpty) {
+        _metarCache = cachedMetars;
+        _tafCache = cachedTafs;
+        _lastFetch = lastFetch;
+        _logger.d('📦 Loaded ${cachedMetars.length} METARs and ${cachedTafs.length} TAFs from cache');
+
+        if (lastFetch != null) {
+          final age = DateTime.now().difference(lastFetch);
+          _logger.d('📅 Cached weather data is ${age.inMinutes} minutes old');
+        }
+      }
+    } catch (e) {
+      _logger.w('⚠️ Failed to load cached weather data: $e');
+    }
+  }
+
   /// Fetch all METARs and TAFs if cache is expired (15 minute cache)
   Future<void> _fetchAllWeatherIfNeeded() async {
     // If there's already an ongoing fetch, wait for it and return
     if (_ongoingFetch != null) {
       await _ongoingFetch;
       return;
+    }
+
+    // Load from persistent cache if in-memory cache is empty
+    if (_metarCache.isEmpty && _tafCache.isEmpty) {
+      await _loadCachedData();
     }
 
     // Check if we have data and it's less than 15 minutes old
@@ -56,17 +92,34 @@ class WeatherService {
       _logger.d('🌍 Fetching all METARs and TAFs');
       final metarResp = await _client.get(Uri.parse(_metarUrl));
       final tafResp = await _client.get(Uri.parse(_tafUrl));
+
       if (metarResp.statusCode == 200) {
         _metarCache = _parseGzCsv(metarResp.bodyBytes, isMetar: true);
         _logger.d('✅ Loaded ${_metarCache.length} METARs');
       }
+
       if (tafResp.statusCode == 200) {
         _tafCache = _parseGzCsv(tafResp.bodyBytes, isMetar: false);
         _logger.d('✅ Loaded ${_tafCache.length} TAFs');
       }
+
       _lastFetch = DateTime.now();
+
+      // Save to persistent cache
+      await _saveToPersistentCache();
+
     } catch (e, st) {
       _logger.e('❌ Error fetching global weather', error: e, stackTrace: st);
+    }
+  }
+
+  /// Save weather data to persistent cache
+  Future<void> _saveToPersistentCache() async {
+    try {
+      await _cacheService.cacheWeatherBulk(_metarCache, _tafCache);
+      _logger.d('💾 Saved weather data to persistent cache');
+    } catch (e) {
+      _logger.w('⚠️ Failed to save weather data to cache: $e');
     }
   }
 

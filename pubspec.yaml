@@ -48,10 +48,9 @@ dependencies:
   logger: ^2.5.0
   
   # Local Storage
-  hive: ^2.2.3
   hive_flutter: ^1.1.0
-  path_provider: ^2.1.2
-  
+  path_provider: ^2.1.4
+
   # Network & Utilities
   dio: ^5.4.0  # For better HTTP client features
   url_launcher: ^6.2.5

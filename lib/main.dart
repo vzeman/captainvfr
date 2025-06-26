@@ -5,19 +5,34 @@ import 'services/location_service.dart';
 import 'services/barometer_service.dart';
 import 'services/flight_service.dart';
 import 'services/airport_service.dart';
+import 'services/cache_service.dart';
+import 'services/runway_service.dart';
+import 'services/navaid_service.dart';
+import 'services/weather_service.dart';
 
 void main() async {
   // Ensure Flutter binding is initialized
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
+    // Initialize cache service first
+    final cacheService = CacheService();
+    await cacheService.initialize();
+    debugPrint('✅ Cache service initialized');
+
     // Initialize services
     final locationService = LocationService();
     final barometerService = BarometerService();
     final airportService = AirportService();
+    final runwayService = RunwayService();
+    final navaidService = NavaidService();
+    final weatherService = WeatherService();
     final flightService = FlightService(
       barometerService: barometerService,
     );
+
+    // Initialize data services and check for cached data
+    await _initializeDataServices(airportService, runwayService, navaidService, weatherService);
 
     // Initialize the app with providers
     runApp(
@@ -29,12 +44,16 @@ void main() async {
             value: flightService,
           ),
           Provider<AirportService>.value(value: airportService),
+          Provider<CacheService>.value(value: cacheService),
+          Provider<RunwayService>.value(value: runwayService),
+          Provider<NavaidService>.value(value: navaidService),
+          Provider<WeatherService>.value(value: weatherService),
         ],
         child: const CaptainVFRApp(),
       ),
     );
 
-    // Initialize services after first frame
+    // Initialize flight service after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         await flightService.initialize();
@@ -57,6 +76,66 @@ void main() async {
         ),
       ),
     );
+  }
+}
+
+/// Initialize data services and ensure cached data is available
+Future<void> _initializeDataServices(
+  AirportService airportService,
+  RunwayService runwayService,
+  NavaidService navaidService,
+  WeatherService weatherService,
+) async {
+  debugPrint('🚀 Initializing data services and checking cache...');
+
+  try {
+    // Initialize all services
+    await Future.wait([
+      airportService.initialize(),
+      runwayService.initialize(),
+      navaidService.initialize(),
+      weatherService.initialize(),
+    ]);
+
+    // Check if we have cached data, if not, fetch from network
+    final futures = <Future>[];
+
+    // Check airports
+    if (airportService.airports.isEmpty) {
+      debugPrint('📡 No cached airports found, fetching from network...');
+      futures.add(airportService.fetchNearbyAirports());
+    } else {
+      debugPrint('✅ Found ${airportService.airports.length} cached airports');
+    }
+
+    // Check runways
+    if (runwayService.runways.isEmpty) {
+      debugPrint('📡 No cached runways found, fetching from network...');
+      futures.add(runwayService.fetchRunways());
+    } else {
+      debugPrint('✅ Found ${runwayService.runways.length} cached runways');
+    }
+
+    // Check navaids
+    if (navaidService.navaids.isEmpty) {
+      debugPrint('📡 No cached navaids found, fetching from network...');
+      futures.add(navaidService.fetchNavaids());
+    } else {
+      debugPrint('✅ Found ${navaidService.navaids.length} cached navaids');
+    }
+
+    // Wait for all network requests to complete
+    if (futures.isNotEmpty) {
+      await Future.wait(futures);
+      debugPrint('✅ All missing data has been fetched and cached');
+    } else {
+      debugPrint('✅ All data was available from cache');
+    }
+
+  } catch (e, stackTrace) {
+    debugPrint('❌ Error initializing data services: $e');
+    debugPrint('Stack trace: $stackTrace');
+    // Continue with app initialization even if data loading fails
   }
 }
 
