@@ -10,29 +10,39 @@ class FrequencyService {
 
   List<Frequency> _frequencies = [];
   bool _isLoading = false;
-  final CacheService _cacheService = CacheService();
+  late final CacheService _cacheService;
 
   // Singleton pattern
   static final FrequencyService _instance = FrequencyService._internal();
   factory FrequencyService() => _instance;
-  FrequencyService._internal();
+  FrequencyService._internal() {
+    // Use the singleton CacheService instance
+    _cacheService = CacheService();
+  }
 
   bool get isLoading => _isLoading;
   List<Frequency> get frequencies => List.unmodifiable(_frequencies);
 
   /// Initialize the service and load cached data
   Future<void> initialize() async {
+    developer.log('🔧 FrequencyService: Starting initialization...');
     await _cacheService.initialize();
+    developer.log('🔧 FrequencyService: Cache service initialized');
     await _loadCachedFrequencies();
+    developer.log('🔧 FrequencyService: Cached frequencies loaded, count: ${_frequencies.length}');
   }
 
   /// Load frequencies from cache
   Future<void> _loadCachedFrequencies() async {
     try {
+      developer.log('🔧 FrequencyService: Loading frequencies from cache...');
       final cachedFrequencies = await _cacheService.getCachedFrequencies();
+      developer.log('🔧 FrequencyService: Retrieved ${cachedFrequencies.length} frequencies from cache');
       if (cachedFrequencies.isNotEmpty) {
         _frequencies = cachedFrequencies;
         developer.log('✅ Loaded ${_frequencies.length} frequencies from cache');
+      } else {
+        developer.log('⚠️ No frequencies found in cache');
       }
     } catch (e) {
       developer.log('❌ Error loading cached frequencies: $e');
@@ -96,6 +106,21 @@ class FrequencyService {
 
     try {
       final lines = csvData.split('\n');
+      developer.log('📊 DEBUG: CSV has ${lines.length} lines (including header)');
+
+      // Show the header line for debugging
+      if (lines.isNotEmpty) {
+        developer.log('📊 DEBUG: CSV header: ${lines[0]}');
+      }
+
+      // Show a few sample data lines
+      if (lines.length > 1) {
+        developer.log('📊 DEBUG: Sample CSV lines:');
+        final sampleCount = lines.length > 5 ? 5 : lines.length - 1;
+        for (int i = 1; i <= sampleCount; i++) {
+          developer.log('   Line ${i}: ${lines[i]}');
+        }
+      }
 
       // Skip header row
       for (int i = 1; i < lines.length; i++) {
@@ -105,9 +130,17 @@ class FrequencyService {
         try {
           final frequency = Frequency.fromCsv(line);
           frequencies.add(frequency);
+
+          // Debug first few parsed frequencies
+          if (frequencies.length <= 10) {
+            developer.log('📊 DEBUG: Parsed frequency ${frequencies.length}: ${frequency.toString()}');
+          }
         } catch (e) {
           // Skip malformed rows
-          developer.log('⚠️ Skipping malformed frequency row: $e');
+          developer.log('⚠️ Skipping malformed frequency row at line $i: $e');
+          if (i <= 10) {
+            developer.log('⚠️ Problematic line: $line');
+          }
           continue;
         }
       }
@@ -122,9 +155,59 @@ class FrequencyService {
 
   /// Get frequencies for a specific airport
   List<Frequency> getFrequenciesForAirport(String airportIdent) {
-    return _frequencies.where((frequency) =>
+    developer.log('🔍 DEBUG: Searching frequencies for airport: "$airportIdent"');
+    developer.log('🔍 DEBUG: Total frequencies in service: ${_frequencies.length}');
+
+    if (_frequencies.isEmpty) {
+      developer.log('⚠️ DEBUG: No frequencies loaded in service');
+      return [];
+    }
+
+    // Show some sample airport identifiers from the frequency data
+    if (_frequencies.length > 0) {
+      developer.log('🔍 DEBUG: Sample airport identifiers in frequency data:');
+      final sampleSize = _frequencies.length > 20 ? 20 : _frequencies.length;
+      for (int i = 0; i < sampleSize; i++) {
+        final freq = _frequencies[i];
+        developer.log('   Sample ${i + 1}: "${freq.airportIdent}" (${freq.type}: ${freq.frequencyMhz} MHz)');
+      }
+    }
+
+    // Try exact match first
+    final exactMatches = _frequencies.where((frequency) =>
+      frequency.airportIdent == airportIdent
+    ).toList();
+    developer.log('🔍 DEBUG: Exact matches for "$airportIdent": ${exactMatches.length}');
+
+    // Try case-insensitive match
+    final caseInsensitiveMatches = _frequencies.where((frequency) =>
       frequency.airportIdent.toUpperCase() == airportIdent.toUpperCase()
     ).toList();
+    developer.log('🔍 DEBUG: Case-insensitive matches for "$airportIdent": ${caseInsensitiveMatches.length}');
+
+    // If we found matches, log them
+    if (caseInsensitiveMatches.isNotEmpty) {
+      developer.log('🔍 DEBUG: Found frequencies:');
+      for (final freq in caseInsensitiveMatches) {
+        developer.log('   - ${freq.type}: ${freq.frequencyMhz} MHz (${freq.description ?? "No description"})');
+      }
+    } else {
+      // Try partial matches to see if there are similar airport codes
+      final partialMatches = _frequencies.where((frequency) =>
+        frequency.airportIdent.toUpperCase().contains(airportIdent.toUpperCase()) ||
+        airportIdent.toUpperCase().contains(frequency.airportIdent.toUpperCase())
+      ).toList();
+      developer.log('🔍 DEBUG: Partial matches for "$airportIdent": ${partialMatches.length}');
+
+      if (partialMatches.isNotEmpty) {
+        developer.log('🔍 DEBUG: Partial matches found:');
+        for (final freq in partialMatches.take(10)) {
+          developer.log('   - "${freq.airportIdent}" (${freq.type}: ${freq.frequencyMhz} MHz)');
+        }
+      }
+    }
+
+    return caseInsensitiveMatches;
   }
 
   /// Get frequencies for multiple airports
@@ -175,10 +258,15 @@ class FrequencyService {
     return types;
   }
 
-  /// Clear all cached data
+  /// Clear cached frequencies and force fresh data fetch
   Future<void> clearCache() async {
-    await _cacheService.clearFrequenciesCache();
-    _frequencies.clear();
-    developer.log('🗑️ Cleared frequencies cache');
+    try {
+      developer.log('🧹 Clearing frequency cache...');
+      await _cacheService.clearFrequencies();
+      _frequencies.clear();
+      developer.log('✅ Frequency cache cleared');
+    } catch (e) {
+      developer.log('❌ Error clearing frequency cache: $e');
+    }
   }
 }

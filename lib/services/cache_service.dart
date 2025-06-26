@@ -516,4 +516,16 @@ class CacheService {
     await _weatherBox.clear();
     print('🗑️ All caches cleared');
   }
+
+  /// Clear all cached frequencies
+  Future<void> clearFrequencies() async {
+    try {
+      await _frequenciesBox.clear();
+      await _metadataBox.delete(_frequenciesLastFetchKey);
+      print('✅ Cleared all cached frequencies');
+    } catch (e) {
+      print('❌ Error clearing frequencies cache: $e');
+      rethrow;
+    }
+  }
 }
