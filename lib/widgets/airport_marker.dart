@@ -49,14 +49,10 @@ class AirportMarker extends StatelessWidget {
             debugPrint('Error in onTap callback for ${airport.icao}: $e');
             debugPrint('Stack trace: $stackTrace');
           }
-        }
-        
-        // Show weather tooltip if we have weather data
-        if (airport.hasWeatherData) {
-          _showWeatherTooltip(context, airport);
+        } else {
+          debugPrint('No onTap callback provided for ${airport.icao}');
         }
       },
-      behavior: HitTestBehavior.opaque,
       child: Center(
         child: Stack(
           alignment: Alignment.center,

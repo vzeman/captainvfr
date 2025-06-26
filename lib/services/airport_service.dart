@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
-import 'dart:math' show sin, cos, sqrt, atan2;
+import 'dart:math' show sin, cos, sqrt, atan2, pi;
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import '../models/airport.dart';
+import 'cache_service.dart';
 
 // Extension to add distance calculation to LatLng (Haversine formula)
 extension LatLngExt on LatLng {
@@ -39,7 +40,8 @@ class AirportService {
   
   List<Airport> _airports = [];
   bool _isLoading = false;
-  
+  final CacheService _cacheService = CacheService();
+
   // Singleton pattern
   static final AirportService _instance = AirportService._internal();
   factory AirportService() => _instance;
@@ -48,28 +50,36 @@ class AirportService {
   bool get isLoading => _isLoading;
   List<Airport> get airports => List.unmodifiable(_airports);
   
-  // Load airports from bundled asset (for offline use)
-  Future<void> loadFromAsset() async {
-    if (_isLoading) return;
-    _isLoading = true;
-    
+  /// Initialize the service and load cached data
+  Future<void> initialize() async {
+    await _cacheService.initialize();
+    await _loadFromCache();
+  }
+
+  /// Load airports from cache if available
+  Future<void> _loadFromCache() async {
     try {
-      // For now, we'll initialize with an empty list
-      // In a real app, you would load this from a bundled JSON file
-      _airports = [];
-      // If we have no airports, try fetching from network
-      if (_airports.isEmpty) {
-        await fetchNearbyAirports();
+      developer.log('📱 Loading airports from cache...');
+      _airports = await _cacheService.getCachedAirports();
+      if (_airports.isNotEmpty) {
+        developer.log('✅ Loaded ${_airports.length} airports from cache');
+      } else {
+        developer.log('📱 No cached airports found, will fetch from network');
       }
     } catch (e) {
-      developer.log('Error loading airports from asset', error: e);
-      // If offline data fails, try fetching from network
-      await fetchNearbyAirports();
-    } finally {
-      _isLoading = false;
+      developer.log('❌ Error loading airports from cache: $e');
+      _airports = [];
     }
   }
   
+  /// Force refresh data from network
+  Future<void> refreshData() async {
+    developer.log('🔄 Force refreshing airports data...');
+    await _cacheService.clearAllCaches();
+    _airports.clear();
+    await fetchNearbyAirports(forceRefresh: true);
+  }
+
   // Get current location (placeholder - will be implemented with location service)
   Future<LatLng?> getCurrentLocation() async {
     // This is a placeholder implementation
@@ -108,15 +118,15 @@ class AirportService {
   }
   
   // Fetch all airports from OurAirports
-  Future<void> fetchNearbyAirports({LatLng? position}) async {
-    print('🚀 fetchNearbyAirports called with position: $position');
+  Future<void> fetchNearbyAirports({LatLng? position, bool forceRefresh = false}) async {
+    print('🚀 fetchNearbyAirports called with position: $position, forceRefresh: $forceRefresh');
     if (_isLoading) {
       print('⏳ Already loading airports, skipping...');
       return;
     }
     
-    // If we already have airports, no need to fetch again
-    if (_airports.isNotEmpty) {
+    // If we already have airports and not forcing refresh, no need to fetch again
+    if (_airports.isNotEmpty && !forceRefresh) {
       print('✅ Using cached airports (${_airports.length} airports)');
       return;
     }
@@ -169,7 +179,7 @@ class AirportService {
           print('✅ Found ${filteredAirports.length} valid airport entries in CSV (${invalidCount} invalid entries skipped)');
           
           print('🏗  Creating Airport objects...');
-          _airports = filteredAirports.map((line) {
+          final parsedAirports = filteredAirports.map((line) {
             final values = line.split(',');
             try {
               final lat = double.tryParse(values[4]) ?? 0.0;
@@ -199,8 +209,13 @@ class AirportService {
             }
           }).whereType<Airport>().toList();
           
+          _airports = parsedAirports;
+
           print('✨ Successfully created ${_airports.length} Airport objects');
           
+          // Cache the airports
+          await _cacheService.cacheAirports(_airports);
+
           if (_airports.isNotEmpty) {
             print('🏢 First airport: ${_airports.first.icao} - ${_airports.first.name} (${_airports.first.position})');
             print('🏢 Last airport: ${_airports.last.icao} - ${_airports.last.name} (${_airports.last.position})');
@@ -212,8 +227,10 @@ class AirportService {
     } catch (e, stackTrace) {
       print('Error fetching nearby airports: $e');
       print('Stack trace: $stackTrace');
-      // Fall back to local asset if available
-      await loadFromAsset();
+      // Fall back to cached data if network fails
+      if (!forceRefresh) {
+        await _loadFromCache();
+      }
     } finally {
       _isLoading = false;
     }

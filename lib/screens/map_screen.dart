@@ -7,11 +7,14 @@ import 'dart:async' show Timer;
 import 'package:provider/provider.dart';
 import 'flight_log_screen.dart';
 import '../models/airport.dart';
+import '../models/navaid.dart';
 import '../services/airport_service.dart';
+import '../services/navaid_service.dart';
 import '../services/flight_service.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
 import '../widgets/airport_marker.dart';
+import '../widgets/navaid_marker.dart';
 import '../widgets/airport_info_sheet.dart';
 import '../widgets/flight_dashboard.dart';
 import '../widgets/airport_search_delegate.dart';
@@ -27,6 +30,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   // Services
   late final FlightService _flightService;
   late final AirportService _airportService;
+  late final NavaidService _navaidService;
   late final LocationService _locationService;
   late final WeatherService _weatherService;
   late final MapController _mapController;
@@ -35,17 +39,17 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   bool _isLoading = true;
   bool _isTracking = false;
   bool _showStats = false;
+  bool _showNavaids = false; // Toggle for navaid display
   bool _servicesInitialized = false;
   String _errorMessage = '';
   Timer? _debounceTimer;
-  
-  // Weather service for airport details
   
   // Location and map state
   Position? _currentPosition;
   List<LatLng> _flightPathPoints = [];
   List<Airport> _airports = [];
-  
+  List<Navaid> _navaids = [];
+
   // UI state
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   
@@ -57,9 +61,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   @override
   void initState() {
     super.initState();
-    
-    // Initialize services
-    _weatherService = WeatherService();
     
     // Initialize map controller
     _mapController = MapController();
@@ -74,12 +75,17 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   void didChangeDependencies() {
     super.didChangeDependencies();
     
-    // Get services from provider if not already initialized
+    // Initialize services from Provider to ensure they're properly initialized
     if (!_servicesInitialized) {
       _flightService = Provider.of<FlightService>(context, listen: false);
       _locationService = Provider.of<LocationService>(context, listen: false);
       _airportService = Provider.of<AirportService>(context, listen: false);
+      _navaidService = Provider.of<NavaidService>(context, listen: false);
+      _weatherService = Provider.of<WeatherService>(context, listen: false);
       _servicesInitialized = true;
+
+      // Initialize services with caching
+      _initializeServices();
     }
   }
   
@@ -101,10 +107,34 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           _errorMessage = '';
           _isLoading = false; // Set loading to false when location is loaded
         });
-        _mapController.move(
-          LatLng(position.latitude, position.longitude),
-          _initialZoom,
-        );
+
+        // Wait for the next frame to ensure FlutterMap is rendered before using MapController
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _mapController.camera != null) {
+            try {
+              _mapController.move(
+                LatLng(position.latitude, position.longitude),
+                _initialZoom,
+              );
+            } catch (e) {
+              debugPrint('Error moving map: $e');
+              // Fallback: try again after a short delay
+              Future.delayed(const Duration(milliseconds: 100), () {
+                if (mounted) {
+                  try {
+                    _mapController.move(
+                      LatLng(position.latitude, position.longitude),
+                      _initialZoom,
+                    );
+                  } catch (e) {
+                    debugPrint('Error moving map (retry): $e');
+                  }
+                }
+              });
+            }
+          }
+        });
+
         await _loadAirports();
       }
     } catch (e) {
@@ -114,9 +144,19 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           _errorMessage = 'Failed to get location: ${e.toString()}';
           _isLoading = false; // Also set loading to false on error
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error getting location: ${e.toString()}')),
-        );
+
+        // Only show SnackBar if we have a valid Scaffold context
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            try {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error getting location: ${e.toString()}')),
+              );
+            } catch (scaffoldError) {
+              debugPrint('Could not show SnackBar: $scaffoldError');
+            }
+          }
+        });
       }
     }
   }
@@ -191,6 +231,30 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     }
   }
   
+  // Load navaids in the current map view
+  Future<void> _loadNavaids() async {
+    if (!_showNavaids) return;
+
+    try {
+      // Ensure navaids are fetched
+      await _navaidService.fetchNavaids();
+
+      final bounds = _mapController.camera.visibleBounds;
+      final navaids = _navaidService.getNavaidsInBounds(
+        bounds.southWest,
+        bounds.northEast,
+      );
+
+      if (mounted) {
+        setState(() {
+          _navaids = navaids;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading navaids: $e');
+    }
+  }
+
   // Center map on current location
   Future<void> _centerOnLocation() async {
     try {
@@ -232,6 +296,13 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     });
   }
   
+  // Toggle navaid visibility
+  void _toggleNavaids() {
+    setState(() {
+      _showNavaids = !_showNavaids;
+    });
+  }
+
   // Handle map tap
   void _onMapTapped() {
     debugPrint('Map tapped');
@@ -305,6 +376,110 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     );
   }
 
+  // Handle navaid selection
+  Future<void> _onNavaidSelected(Navaid navaid) async {
+    debugPrint('_onNavaidSelected called for ${navaid.ident} - ${navaid.name}');
+    if (!mounted) {
+      debugPrint('Context not mounted, returning early');
+      return;
+    }
+
+    try {
+      debugPrint('Showing bottom sheet for ${navaid.ident}');
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        builder: (BuildContext context) => NavaidInfoSheet(
+          navaid: navaid,
+          onClose: () {
+            debugPrint('Closing bottom sheet for ${navaid.ident}');
+            Navigator.of(context).pop();
+          },
+        ),
+      );
+      debugPrint('Bottom sheet closed for ${navaid.ident}');
+    } catch (e, stackTrace) {
+      debugPrint('Error showing bottom sheet for ${navaid.ident}: $e');
+      debugPrint('Stack trace: $stackTrace');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error showing navaid details')),
+        );
+      }
+    }
+  }
+
+  /// Initialize services with cached data
+  Future<void> _initializeServices() async {
+    try {
+      await _airportService.initialize();
+      await _navaidService.initialize();
+      debugPrint('✅ Services initialized with cached data');
+    } catch (e) {
+      debugPrint('❌ Error initializing services: $e');
+    }
+  }
+
+  /// Refresh all data from network
+  Future<void> _refreshAllData() async {
+    try {
+      debugPrint('🔄 Refreshing all data...');
+
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 16),
+                Text('Refreshing airports and navigation aids...'),
+              ],
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+
+      // Refresh airports and navaids
+      await Future.wait([
+        _airportService.refreshData(),
+        _navaidService.refreshData(),
+      ]);
+
+      // Reload current view
+      await _loadAirports();
+      if (_showNavaids) {
+        await _loadNavaids();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Data refreshed successfully'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      debugPrint('✅ All data refreshed successfully');
+    } catch (e) {
+      debugPrint('❌ Error refreshing data: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error refreshing data: $e'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -354,6 +529,12 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 airports: _airports,
                 onAirportTap: _onAirportSelected,
               ),
+              // Navaid markers
+              if (_showNavaids && _navaids.isNotEmpty)
+                NavaidMarkersLayer(
+                  navaids: _navaids,
+                  onNavaidTap: _onNavaidSelected,
+                ),
               // Current position marker
               if (_currentPosition != null)
                 MarkerLayer(
@@ -439,14 +620,31 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         builder: (context) => const FlightLogScreen(),
                       ),
                     );
+                  } else if (value == 'refresh_data') {
+                    _refreshAllData();
                   }
                 },
                 itemBuilder: (BuildContext context) => [
                   const PopupMenuItem(
                     value: 'flight_log',
-                    child: Text('Flight Log'),
+                    child: Row(
+                      children: [
+                        Icon(Icons.flight, size: 20),
+                        SizedBox(width: 8),
+                        Text('Flight Log'),
+                      ],
+                    ),
                   ),
-                  // Add more menu items here as needed
+                  const PopupMenuItem(
+                    value: 'refresh_data',
+                    child: Row(
+                      children: [
+                        Icon(Icons.refresh, size: 20),
+                        SizedBox(width: 8),
+                        Text('Refresh Data'),
+                      ],
+                    ),
+                  ),
                 ],
               ),
               actions: [
@@ -469,6 +667,14 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 IconButton(
                   icon: const Icon(Icons.analytics, color: Colors.black),
                   onPressed: _toggleStats,
+                ),
+                IconButton(
+                  icon: Icon(
+                    _showNavaids ? Icons.visibility : Icons.visibility_off,
+                    color: Colors.black,
+                  ),
+                  onPressed: _toggleNavaids,
+                  tooltip: 'Toggle Navaids',
                 ),
               ],
             ),
