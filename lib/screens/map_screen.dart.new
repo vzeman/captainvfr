@@ -1,0 +1,376 @@
+import 'dart:async';
+import 'dart:io' show Platform;
+import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
+import '../models/airport.dart';
+import '../services/airport_service.dart';
+import '../services/flight_service.dart';
+import '../services/location_service.dart';
+import '../services/barometer_service.dart';
+import '../widgets/airport_marker.dart';
+import '../widgets/airport_info_sheet.dart';
+import '../widgets/flight_dashboard.dart';
+
+class MapScreen extends StatefulWidget {
+  const MapScreen({super.key});
+
+  @override
+  MapScreenState createState() => MapScreenState();
+}
+
+class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixin {
+  // Services
+  late final FlightService _flightService;
+  late final AirportService _airportService;
+  late final LocationService _locationService;
+  late final MapController _mapController;
+  
+  // Animation controllers
+  late final AnimationController _animationController;
+  
+  // State variables
+  bool _isLoading = true;
+  bool _isTracking = false;
+  bool _showStats = false;
+  String _errorMessage = '';
+  
+  // Location and map state
+  Position? _currentPosition;
+  List<LatLng> _flightPathPoints = [];
+  List<Airport> _airports = [];
+  
+  // UI state
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  
+  // Map settings
+  static const double _initialZoom = 12.0;
+  static const double _maxZoom = 18.0;
+  static const double _minZoom = 3.0;
+  
+  @override
+  void initState() {
+    super.initState();
+    
+    // Initialize services
+    final barometerService = BarometerService();
+    _flightService = FlightService(barometerService: barometerService);
+    _airportService = AirportService();
+    _locationService = LocationService();
+    
+    // Initialize map controller
+    _mapController = MapController();
+    
+    // Initialize animation controller for the flight dashboard
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.dismissed && mounted) {
+          setState(() => _showStats = false);
+        }
+      });
+    
+    // Initial setup
+    _initLocation();
+    
+    // Show flight dashboard after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _toggleStats();
+    });
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Get services from provider
+    _flightService = Provider.of<FlightService>(context, listen: false);
+    _locationService = Provider.of<LocationService>(context, listen: false);
+    _airportService = Provider.of<AirportService>(context, listen: false);
+  }
+  
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _mapController.dispose();
+    _flightService.dispose();
+    super.dispose();
+  }
+  
+  // Initialize location services and get current position
+  Future<void> _initLocation() async {
+    try {
+      final position = await _locationService.getCurrentLocation();
+      if (mounted) {
+        setState(() => _currentPosition = position);
+        _mapController.move(
+          LatLng(position.latitude, position.longitude),
+          _initialZoom,
+        );
+        _loadAirports();
+      }
+    } catch (e) {
+      debugPrint('Error initializing location: $e');
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to get location: ${e.toString()}';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+  
+  // Load airports near current location
+  Future<void> _loadAirports() async {
+    if (_currentPosition == null) return;
+    
+    try {
+      final position = LatLng(_currentPosition!.latitude, _currentPosition!.longitude);
+      await _airportService.fetchNearbyAirports(position: position);
+      
+      if (mounted) {
+        setState(() {
+          _airports = _airportService.airports;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading airports: $e');
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load airports: ${e.toString()}';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+  
+  // Center map on current location
+  Future<void> _centerOnLocation() async {
+    try {
+      final position = await _locationService.getCurrentLocation();
+      if (mounted) {
+        setState(() => _currentPosition = position);
+        _mapController.move(
+          LatLng(position.latitude, position.longitude),
+          _mapController.zoom,
+        );
+        _loadAirports();
+      }
+    } catch (e) {
+      debugPrint('Error centering on location: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not get current location')),
+        );
+      }
+    }
+  }
+  
+  // Toggle flight tracking
+  void _toggleTracking() {
+    setState(() => _isTracking = !_isTracking);
+    if (_isTracking) {
+      _flightService.startTracking();
+      _centerOnLocation();
+    } else {
+      _flightService.stopTracking();
+    }
+  }
+  
+  // Toggle flight dashboard visibility
+  void _toggleStats() {
+    setState(() {
+      _showStats = !_showStats;
+      if (_showStats) {
+        _animationController.forward();
+      } else {
+        _animationController.reverse();
+      }
+    });
+  }
+  
+  // Handle map tap
+  void _onMapTapped() {
+    // Close any open dialogs or menus when tapping the map
+    if (mounted) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
+  }
+  
+  // Handle airport selection
+  void _onAirportSelected(Airport airport) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext context) => AirportInfoSheet(
+        airport: airport,
+        onClose: () => Navigator.of(context).pop(),
+      ),
+    );
+  }
+  
+  // Format duration in HH:MM:SS format
+  @visibleForTesting
+  String formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = twoDigits(duration.inHours);
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return '$hours:$minutes:$seconds';
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: _scaffoldKey,
+      body: Stack(
+        children: [
+          // Map layer
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              center: _currentPosition != null
+                  ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
+                  : const LatLng(0, 0), // Default center
+              zoom: _initialZoom,
+              maxZoom: _maxZoom,
+              minZoom: _minZoom,
+              interactiveFlags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+              onTap: (_, __) => _onMapTapped(),
+            ),
+            children: [
+              // Tile layer
+              TileLayer(
+                urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                subdomains: const ['a', 'b', 'c'],
+                userAgentPackageName: 'com.example.captainvfr',
+              ),
+              
+              // User location marker
+              if (_currentPosition != null)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                      width: 40,
+                      height: 40,
+                      builder: (context) => const Icon(
+                        Icons.my_location,
+                        color: Colors.blue,
+                        size: 24,
+                      ),
+                    ),
+                  ],
+                ),
+              
+              // Airport markers
+              if (_airports.isNotEmpty)
+                AirportMarkersLayer(
+                  airports: _airports,
+                  onAirportTap: _onAirportSelected,
+                ),
+              
+              // Flight path
+              if (_flightPathPoints.length > 1)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _flightPathPoints,
+                      color: Colors.blue.withOpacity(0.7),
+                      strokeWidth: 3.0,
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          
+          // App bar
+          Positioned(
+            top: MediaQuery.of(context).padding.top,
+            left: 0,
+            right: 0,
+            child: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.menu, color: Colors.black87),
+                onPressed: () {
+                  // TODO: Implement menu
+                },
+              ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.my_location, color: Colors.blue),
+                  onPressed: _centerOnLocation,
+                ),
+                IconButton(
+                  icon: Icon(
+                    _isTracking ? Icons.gps_fixed : Icons.gps_not_fixed,
+                    color: _isTracking ? Colors.blue : Colors.grey,
+                  ),
+                  onPressed: _toggleTracking,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.analytics, color: Colors.black87),
+                  onPressed: _toggleStats,
+                ),
+              ],
+            ),
+          ),
+          
+          // Flight dashboard
+          if (_showStats)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 1),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(
+                  parent: _animationController,
+                  curve: Curves.easeOut,
+                )),
+                child: FlightDashboard(
+                  flightService: _flightService,
+                  onClose: _toggleStats,
+                ),
+              ),
+            ),
+          
+          // Loading indicator
+          if (_isLoading)
+            const Center(
+              child: CircularProgressIndicator(),
+            ),
+            
+          // Error message
+          if (_errorMessage.isNotEmpty)
+            Positioned(
+              top: 100,
+              left: 20,
+              right: 20,
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red),
+                ),
+                child: Text(
+                  _errorMessage,
+                  style: const TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

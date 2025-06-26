@@ -1,4 +1,30 @@
 # Flutter/Dart/Pub
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
@@ -7,7 +33,7 @@
 .packages
 .pub-cache/
 .pub/
-build/
+/build/
 
 # Android related
 **/android/**/gradle-wrapper.jar
@@ -64,10 +90,7 @@ build/
 **/macos/Flutter/Flutter-Only.xcschemev2.xcscheme
 **/macos/Flutter/Flutter-Only.xcschemev2.xcschememanagement.plist
 **/macos/Flutter/Flutter-Only.xcworkspace
-**/macos/Flutter/Flutter-Only.xcworkspace/
 **/macos/Flutter/Flutter-Only.xcworkspace/contents.xcworkspacedata
-**/macos/Flutter/Flutter-Only.xcworkspace/xcshareddata/
-**/macos/Flutter/Flutter-Only.xcworkspace/xcuserdata/
 **/macos/Flutter/Flutter-Only.xcworkspace/xcshareddata/
 **/macos/Flutter/Flutter-Only.xcworkspace/xcuserdata/
 **/macos/Flutter/Flutter-Only.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
@@ -81,14 +104,16 @@ build/
 **/macos/Runner.xcodeproj/project.xcworkspace/
 **/macos/Runner.xcodeproj/xcuserdata/
 
-# IntelliJ/Android Studio
-.idea/
-*.iml
-
 # VS Code
 .vscode/
 
-# Miscellaneous
-.DS_Store
-*.swp
-*.swo
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio build artifacts
+/android/app/debug
+/android/app/profile
+/android/app/release
