@@ -331,49 +331,63 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
           const SizedBox(height: 16),
           
           // Flight details grid
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            childAspectRatio: 3,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              _buildInfoTile(
-                context,
-                icon: Icons.calendar_today,
-                title: 'Date',
-                value: dateFormat.format(flight.startTime),
+              SizedBox(
+                width: (MediaQuery.of(context).size.width - 48) / 2, // Half width minus padding and spacing
+                child: _buildInfoTile(
+                  context,
+                  icon: Icons.calendar_today,
+                  title: 'Date',
+                  value: dateFormat.format(flight.startTime),
+                ),
               ),
-              _buildInfoTile(
-                context,
-                icon: Icons.speed,
-                title: 'Max Speed',
-                value: '${(flight.maxSpeed * 3.6).toStringAsFixed(1)} km/h',
+              SizedBox(
+                width: (MediaQuery.of(context).size.width - 48) / 2,
+                child: _buildInfoTile(
+                  context,
+                  icon: Icons.speed,
+                  title: 'Max Speed',
+                  value: '${(flight.maxSpeed * 3.6).toStringAsFixed(1)} km/h',
+                ),
               ),
-              _buildInfoTile(
-                context,
-                icon: Icons.height,
-                title: 'Max Altitude',
-                value: '${flight.maxAltitude.toStringAsFixed(0)} m',
+              SizedBox(
+                width: (MediaQuery.of(context).size.width - 48) / 2,
+                child: _buildInfoTile(
+                  context,
+                  icon: Icons.height,
+                  title: 'Max Altitude',
+                  value: '${flight.maxAltitude.toStringAsFixed(0)} m',
+                ),
               ),
-              _buildInfoTile(
-                context,
-                icon: Icons.airplanemode_active,
-                title: 'Distance',
-                value: '${(flight.distanceTraveled / 1000).toStringAsFixed(1)} km',
+              SizedBox(
+                width: (MediaQuery.of(context).size.width - 48) / 2,
+                child: _buildInfoTile(
+                  context,
+                  icon: Icons.airplanemode_active,
+                  title: 'Distance',
+                  value: '${(flight.distanceTraveled / 1000).toStringAsFixed(1)} km',
+                ),
               ),
-              _buildInfoTile(
-                context,
-                icon: Icons.timer,
-                title: 'Moving Time',
-                value: '${flight.movingTime.inMinutes} min',
+              SizedBox(
+                width: (MediaQuery.of(context).size.width - 48) / 2,
+                child: _buildInfoTile(
+                  context,
+                  icon: Icons.timer,
+                  title: 'Moving Time',
+                  value: '${flight.movingTime.inMinutes} min',
+                ),
               ),
-              _buildInfoTile(
-                context,
-                icon: Icons.assessment,
-                title: 'Points',
-                value: '${flight.path.length}',
+              SizedBox(
+                width: (MediaQuery.of(context).size.width - 48) / 2,
+                child: _buildInfoTile(
+                  context,
+                  icon: Icons.assessment,
+                  title: 'Points',
+                  value: '${flight.path.length}',
+                ),
               ),
             ],
           ),
