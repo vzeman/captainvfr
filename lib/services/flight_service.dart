@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import '../models/flight.dart';
 import '../models/flight_point.dart';
+import '../models/moving_segment.dart';
 import 'barometer_service.dart';
 import 'altitude_service.dart';
 import 'flight_storage_service.dart';
@@ -26,6 +27,24 @@ class FlightService with ChangeNotifier {
   double _totalDistance = 0.0;
   double _averageSpeed = 0.0;
   
+  // New comprehensive time tracking variables
+  DateTime? _recordingStartedZulu;
+  DateTime? _recordingStoppedZulu;
+  DateTime? _movingStartedZulu;
+  DateTime? _movingStoppedZulu;
+  final List<MovingSegment> _movingSegments = [];
+  bool _isCurrentlyMoving = false;
+  DateTime? _currentMovingSegmentStart;
+  double _currentMovingSegmentDistance = 0.0;
+  final List<double> _currentMovingSegmentSpeeds = [];
+  final List<double> _currentMovingSegmentHeadings = [];
+  final List<double> _currentMovingSegmentAltitudes = [];
+  FlightPoint? _currentMovingSegmentStartPoint;
+  final List<FlightPoint> _pausePoints = [];
+
+  // Constants
+  static const double _movingSpeedThreshold = 1.0 / 3.6; // 1 km/h in m/s
+
   // Services
   final BarometerService? _barometerService;
   final AltitudeService _altitudeService = AltitudeService();
@@ -140,6 +159,21 @@ class FlightService with ChangeNotifier {
     _totalDistance = 0.0;
     _averageSpeed = 0.0;
     
+    // Initialize comprehensive time tracking
+    _recordingStartedZulu = DateTime.now().toUtc();
+    _recordingStoppedZulu = null;
+    _movingStartedZulu = null;
+    _movingStoppedZulu = null;
+    _movingSegments.clear();
+    _isCurrentlyMoving = false;
+    _currentMovingSegmentStart = null;
+    _currentMovingSegmentDistance = 0.0;
+    _currentMovingSegmentSpeeds.clear();
+    _currentMovingSegmentHeadings.clear();
+    _currentMovingSegmentAltitudes.clear();
+    _currentMovingSegmentStartPoint = null;
+    _pausePoints.clear();
+
     // Start barometer service if available
     _barometerService?.startListening();
     _altitudeService.startTracking();
@@ -191,68 +225,188 @@ class FlightService with ChangeNotifier {
     );
 
     _flightPath.add(point);
+
+    // Handle moving segment tracking
+    _updateMovingSegments(point);
+
     _updateFlightStats();
     onFlightPathUpdated?.call();
   }
   
+  // Update moving segments based on current speed
+  void _updateMovingSegments(FlightPoint point) {
+    final isMoving = point.speed > _movingSpeedThreshold;
+    final now = DateTime.now().toUtc();
+
+    if (isMoving && !_isCurrentlyMoving) {
+      // Started moving
+      _isCurrentlyMoving = true;
+      _currentMovingSegmentStart = now;
+      _currentMovingSegmentDistance = 0.0;
+      _currentMovingSegmentSpeeds.clear();
+      _currentMovingSegmentHeadings.clear();
+      _currentMovingSegmentAltitudes.clear();
+      _currentMovingSegmentStartPoint = point;
+
+      if (_movingStartedZulu == null) {
+        _movingStartedZulu = now;
+      }
+
+      debugPrint('Aircraft started moving at ${_formatZuluTime(now)}');
+
+    } else if (!isMoving && _isCurrentlyMoving) {
+      // Stopped moving
+      _isCurrentlyMoving = false;
+      _movingStoppedZulu = now;
+
+      // Create moving segment with comprehensive data
+      if (_currentMovingSegmentStart != null &&
+          _currentMovingSegmentSpeeds.isNotEmpty &&
+          _currentMovingSegmentStartPoint != null) {
+
+        // Calculate averages
+        final avgSpeed = _currentMovingSegmentSpeeds.reduce((a, b) => a + b) / _currentMovingSegmentSpeeds.length;
+        final avgHeading = _currentMovingSegmentHeadings.isNotEmpty
+            ? _currentMovingSegmentHeadings.reduce((a, b) => a + b) / _currentMovingSegmentHeadings.length
+            : 0.0;
+        final avgAltitude = _currentMovingSegmentAltitudes.isNotEmpty
+            ? _currentMovingSegmentAltitudes.reduce((a, b) => a + b) / _currentMovingSegmentAltitudes.length
+            : point.altitude;
+
+        // Calculate min/max altitudes
+        final maxAlt = _currentMovingSegmentAltitudes.isNotEmpty
+            ? _currentMovingSegmentAltitudes.reduce((a, b) => a > b ? a : b)
+            : point.altitude;
+        final minAlt = _currentMovingSegmentAltitudes.isNotEmpty
+            ? _currentMovingSegmentAltitudes.reduce((a, b) => a < b ? a : b)
+            : point.altitude;
+
+        final segment = MovingSegment(
+          start: _currentMovingSegmentStart!,
+          end: now,
+          duration: now.difference(_currentMovingSegmentStart!),
+          distance: _currentMovingSegmentDistance,
+          averageSpeed: avgSpeed,
+          averageHeading: avgHeading,
+          startAltitude: _currentMovingSegmentStartPoint!.altitude,
+          endAltitude: point.altitude,
+          averageAltitude: avgAltitude,
+          maxAltitude: maxAlt,
+          minAltitude: minAlt,
+        );
+        _movingSegments.add(segment);
+      }
+
+      // Mark pause point
+      _pausePoints.add(point);
+
+      debugPrint('Aircraft stopped moving at ${_formatZuluTime(now)}');
+
+    } else if (isMoving && _isCurrentlyMoving) {
+      // Continue moving - update current segment
+      if (_flightPath.length > 1) {
+        final prevPoint = _flightPath[_flightPath.length - 2];
+        final distance = Geolocator.distanceBetween(
+          prevPoint.latitude, prevPoint.longitude,
+          point.latitude, point.longitude,
+        );
+        _currentMovingSegmentDistance += distance;
+        _currentMovingSegmentSpeeds.add(point.speed);
+        _currentMovingSegmentHeadings.add(point.heading);
+        _currentMovingSegmentAltitudes.add(point.altitude);
+      }
+    }
+  }
+
+  // Format Zulu time for logging
+  String _formatZuluTime(DateTime dateTime) {
+    final utc = dateTime.toUtc();
+    return '${utc.hour.toString().padLeft(2, '0')}:'
+           '${utc.minute.toString().padLeft(2, '0')}:'
+           '${utc.second.toString().padLeft(2, '0')}Z';
+  }
+
   // Stop tracking flight
   Future<void> stopTracking() async {
     if (!_isTracking) return;
     _isTracking = false;
+
+    // Set recording stopped time
+    _recordingStoppedZulu = DateTime.now().toUtc();
+
+    // Finalize any ongoing moving segment
+    if (_isCurrentlyMoving && _currentMovingSegmentStart != null && _currentMovingSegmentStartPoint != null) {
+      // Calculate averages for final segment
+      final avgSpeed = _currentMovingSegmentSpeeds.isNotEmpty
+          ? _currentMovingSegmentSpeeds.reduce((a, b) => a + b) / _currentMovingSegmentSpeeds.length
+          : 0.0;
+      final avgHeading = _currentMovingSegmentHeadings.isNotEmpty
+          ? _currentMovingSegmentHeadings.reduce((a, b) => a + b) / _currentMovingSegmentHeadings.length
+          : 0.0;
+      final avgAltitude = _currentMovingSegmentAltitudes.isNotEmpty
+          ? _currentMovingSegmentAltitudes.reduce((a, b) => a + b) / _currentMovingSegmentAltitudes.length
+          : _currentMovingSegmentStartPoint!.altitude;
+
+      // Calculate min/max altitudes
+      final maxAlt = _currentMovingSegmentAltitudes.isNotEmpty
+          ? _currentMovingSegmentAltitudes.reduce((a, b) => a > b ? a : b)
+          : _currentMovingSegmentStartPoint!.altitude;
+      final minAlt = _currentMovingSegmentAltitudes.isNotEmpty
+          ? _currentMovingSegmentAltitudes.reduce((a, b) => a < b ? a : b)
+          : _currentMovingSegmentStartPoint!.altitude;
+
+      final segment = MovingSegment(
+        start: _currentMovingSegmentStart!,
+        end: _recordingStoppedZulu!,
+        duration: _recordingStoppedZulu!.difference(_currentMovingSegmentStart!),
+        distance: _currentMovingSegmentDistance,
+        averageSpeed: avgSpeed,
+        averageHeading: avgHeading,
+        startAltitude: _currentMovingSegmentStartPoint!.altitude,
+        endAltitude: _flightPath.isNotEmpty ? _flightPath.last.altitude : _currentMovingSegmentStartPoint!.altitude,
+        averageAltitude: avgAltitude,
+        maxAltitude: maxAlt,
+        minAltitude: minAlt,
+      );
+      _movingSegments.add(segment);
+    }
+
     _positionSubscription?.cancel();
     _barometerSubscription?.cancel();
     _barometerService?.stopListening();
     _altitudeService.stopTracking();
     
-    // Calculate flight metrics
+    // Create a flight from the current path
     if (_flightPath.isNotEmpty) {
-      // Calculate max speed and moving time
-      double maxSpeed = 0;
-      Duration movingTime = Duration.zero;
-      
-      // Calculate speeds between points and moving time
-      final speeds = <double>[];
-      final altitudes = <double>[];
-      final timestamps = <DateTime>[];
-      
-      for (int i = 1; i < _flightPath.length; i++) {
-        final p1 = _flightPath[i-1];
-        final p2 = _flightPath[i];
-        
-        final distance = Geolocator.distanceBetween(
-          p1.position.latitude, p1.position.longitude,
-          p2.position.latitude, p2.position.longitude,
-        );
-        
-        final timeDiff = p2.timestamp.difference(p1.timestamp);
-        final seconds = timeDiff.inMilliseconds / 1000.0;
-        
-        if (seconds > 0) {
-          final speed = distance / seconds;
-          speeds.add(speed);
-          
-          if (speed > 1.0) { // Consider moving if speed > 1 m/s
-            movingTime += timeDiff;
-          }
-        }
-        
-        altitudes.add(p2.altitude);
-        timestamps.add(p2.timestamp);
-      }
-      
-      // Create a flight from the current path
       Flight flight = _createFlight();
-      
       await addFlight(flight);
     }
     
     // Reset tracking state
+    _resetTrackingState();
+
+    notifyListeners();
+  }
+
+  // Reset all tracking state
+  void _resetTrackingState() {
     _flightPath.clear();
     _lastPosition = null;
     _totalDistance = 0.0;
     _averageSpeed = 0.0;
-    
-    notifyListeners();
+    _recordingStartedZulu = null;
+    _recordingStoppedZulu = null;
+    _movingStartedZulu = null;
+    _movingStoppedZulu = null;
+    _movingSegments.clear();
+    _isCurrentlyMoving = false;
+    _currentMovingSegmentStart = null;
+    _currentMovingSegmentDistance = 0.0;
+    _currentMovingSegmentSpeeds.clear();
+    _currentMovingSegmentHeadings.clear();
+    _currentMovingSegmentAltitudes.clear();
+    _currentMovingSegmentStartPoint = null;
+    _pausePoints.clear();
   }
   
   // Create a flight from the current tracking data
@@ -363,6 +517,15 @@ class FlightService with ChangeNotifier {
       movingTime: movingTime,
       maxSpeed: maxSpeed,
       averageSpeed: _averageSpeed,
+      recordingStartedZulu: _recordingStartedZulu,
+      recordingStoppedZulu: _recordingStoppedZulu,
+      movingStartedZulu: _movingStartedZulu,
+      movingStoppedZulu: _movingStoppedZulu,
+      movingSegments: List.from(_movingSegments),
+      totalRecordingTime: _recordingStoppedZulu != null && _recordingStartedZulu != null
+          ? _recordingStoppedZulu!.difference(_recordingStartedZulu!)
+          : Duration.zero,
+      pausePoints: List.from(_pausePoints),
     );
   }
 
@@ -503,4 +666,33 @@ class FlightService with ChangeNotifier {
     _flightPath.clear();
     super.dispose();
   }
+}
+
+// Represents a segment of time where the flight was moving
+class MovingSegment {
+  final DateTime start;
+  final DateTime end;
+  final Duration duration;
+  final double distance;
+  final double averageSpeed;
+  final double averageHeading;
+  final double startAltitude;
+  final double endAltitude;
+  final double averageAltitude;
+  final double maxAltitude;
+  final double minAltitude;
+
+  MovingSegment({
+    required this.start,
+    required this.end,
+    required this.duration,
+    required this.distance,
+    required this.averageSpeed,
+    required this.averageHeading,
+    required this.startAltitude,
+    required this.endAltitude,
+    required this.averageAltitude,
+    required this.maxAltitude,
+    required this.minAltitude,
+  });
 }

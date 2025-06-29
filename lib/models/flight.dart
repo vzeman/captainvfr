@@ -1,6 +1,7 @@
 import 'package:latlong2/latlong.dart';
 import 'package:hive/hive.dart';
 import 'flight_point.dart';
+import 'moving_segment.dart';
 
 // Extension to convert FlightPoint to LatLng
 extension FlightPointExtension on FlightPoint {
@@ -36,6 +37,28 @@ class Flight extends HiveObject {
   @HiveField(8)
   double averageSpeed;
   
+  // New time tracking fields
+  @HiveField(9)
+  DateTime recordingStartedZulu;
+
+  @HiveField(10)
+  DateTime? recordingStoppedZulu;
+
+  @HiveField(11)
+  DateTime? movingStartedZulu;
+
+  @HiveField(12)
+  DateTime? movingStoppedZulu;
+
+  @HiveField(13)
+  List<MovingSegment> movingSegments;
+
+  @HiveField(14)
+  Duration totalRecordingTime;
+
+  @HiveField(15)
+  List<FlightPoint> pausePoints; // Points where speed dropped below 1km/h
+
   // Computed properties instead of stored fields for better data consistency
   List<DateTime> get timestamps => path.map((p) => p.timestamp).toList();
   List<double> get speeds => path.map((p) => p.speed).toList();
@@ -53,13 +76,24 @@ class Flight extends HiveObject {
     Duration? movingTime,
     double? maxSpeed,
     double? averageSpeed,
-  }) : 
+    DateTime? recordingStartedZulu,
+    this.recordingStoppedZulu,
+    this.movingStartedZulu,
+    this.movingStoppedZulu,
+    List<MovingSegment>? movingSegments,
+    Duration? totalRecordingTime,
+    List<FlightPoint>? pausePoints,
+  }) :
     path = path ?? [],
     maxAltitude = maxAltitude ?? 0.0,
     distanceTraveled = distanceTraveled ?? 0.0,
     movingTime = movingTime ?? Duration.zero,
     maxSpeed = maxSpeed ?? 0.0,
-    averageSpeed = averageSpeed ?? 0.0;
+    averageSpeed = averageSpeed ?? 0.0,
+    recordingStartedZulu = recordingStartedZulu ?? DateTime.now().toUtc(),
+    movingSegments = movingSegments ?? [],
+    totalRecordingTime = totalRecordingTime ?? Duration.zero,
+    pausePoints = pausePoints ?? [];
 
   // Factory constructor for creating a new flight
   factory Flight.newFlight() {
@@ -73,6 +107,10 @@ class Flight extends HiveObject {
       movingTime: Duration.zero,
       maxSpeed: 0.0,
       averageSpeed: 0.0,
+      recordingStartedZulu: now.toUtc(),
+      movingSegments: [],
+      totalRecordingTime: Duration.zero,
+      pausePoints: [],
     );
   }
   
@@ -92,6 +130,13 @@ class Flight extends HiveObject {
     Duration? movingTime,
     double? maxSpeed,
     double? averageSpeed,
+    DateTime? recordingStartedZulu,
+    DateTime? recordingStoppedZulu,
+    DateTime? movingStartedZulu,
+    DateTime? movingStoppedZulu,
+    List<MovingSegment>? movingSegments,
+    Duration? totalRecordingTime,
+    List<FlightPoint>? pausePoints,
   }) {
     return Flight(
       id: id ?? this.id,
@@ -103,6 +148,13 @@ class Flight extends HiveObject {
       movingTime: movingTime ?? this.movingTime,
       maxSpeed: maxSpeed ?? this.maxSpeed,
       averageSpeed: averageSpeed ?? this.averageSpeed,
+      recordingStartedZulu: recordingStartedZulu ?? this.recordingStartedZulu,
+      recordingStoppedZulu: recordingStoppedZulu ?? this.recordingStoppedZulu,
+      movingStartedZulu: movingStartedZulu ?? this.movingStartedZulu,
+      movingStoppedZulu: movingStoppedZulu ?? this.movingStoppedZulu,
+      movingSegments: movingSegments ?? List.from(this.movingSegments),
+      totalRecordingTime: totalRecordingTime ?? this.totalRecordingTime,
+      pausePoints: pausePoints ?? List.from(this.pausePoints),
     );
   }
 
@@ -148,6 +200,62 @@ class Flight extends HiveObject {
       movingTime: Duration(milliseconds: (map['movingTime'] ?? 0) as int),
       maxSpeed: (map['maxSpeed'] ?? 0.0).toDouble(),
       averageSpeed: (map['averageSpeed'] ?? 0.0).toDouble(),
+      recordingStartedZulu: DateTime.parse(map['recordingStartedZulu']).toUtc(),
+      recordingStoppedZulu: map['recordingStoppedZulu'] != null
+          ? DateTime.parse(map['recordingStoppedZulu']).toUtc()
+          : null,
+      movingStartedZulu: map['movingStartedZulu'] != null
+          ? DateTime.parse(map['movingStartedZulu']).toUtc()
+          : null,
+      movingStoppedZulu: map['movingStoppedZulu'] != null
+          ? DateTime.parse(map['movingStoppedZulu']).toUtc()
+          : null,
+      movingSegments: map['movingSegments'] != null
+          ? (map['movingSegments'] as List<dynamic>).map<MovingSegment>((dynamic segment) {
+              final s = segment as Map<String, dynamic>;
+              return MovingSegment(
+                start: DateTime.parse(s['start']).toUtc(),
+                end: DateTime.parse(s['end']).toUtc(),
+                duration: Duration(milliseconds: (s['duration'] ?? 0) as int),
+                distance: (s['distance']?.toDouble() ?? 0.0),
+                averageSpeed: (s['averageSpeed']?.toDouble() ?? 0.0),
+                averageHeading: (s['averageHeading']?.toDouble() ?? 0.0),
+                startAltitude: (s['startAltitude']?.toDouble() ?? 0.0),
+                endAltitude: (s['endAltitude']?.toDouble() ?? 0.0),
+                averageAltitude: (s['averageAltitude']?.toDouble() ?? 0.0),
+                maxAltitude: (s['maxAltitude']?.toDouble() ?? 0.0),
+                minAltitude: (s['minAltitude']?.toDouble() ?? 0.0),
+              );
+            }).toList()
+          : <MovingSegment>[],
+      totalRecordingTime: Duration(milliseconds: (map['totalRecordingTime'] ?? 0) as int),
+      pausePoints: map['pausePoints'] != null
+          ? (map['pausePoints'] as List<dynamic>).map<FlightPoint>((dynamic point) {
+              final p = point as Map<String, dynamic>;
+              return FlightPoint(
+                latitude: (p['latitude'] ?? p['lat'] ?? 0.0).toDouble(),
+                longitude: (p['longitude'] ?? p['lng'] ?? 0.0).toDouble(),
+                altitude: (p['altitude'] ?? 0.0).toDouble(),
+                speed: (p['speed'] ?? 0.0).toDouble(),
+                heading: (p['heading'] ?? 0.0).toDouble(),
+                timestamp: p['timestamp'] != null
+                    ? DateTime.parse(p['timestamp'].toString())
+                    : DateTime.now(),
+                // Default values for sensor data
+                accuracy: (p['accuracy'] ?? 0.0).toDouble(),
+                verticalAccuracy: (p['verticalAccuracy'] ?? 0.0).toDouble(),
+                speedAccuracy: (p['speedAccuracy'] ?? 0.0).toDouble(),
+                headingAccuracy: (p['headingAccuracy'] ?? 0.0).toDouble(),
+                xAcceleration: (p['xAcceleration'] ?? 0.0).toDouble(),
+                yAcceleration: (p['yAcceleration'] ?? 0.0).toDouble(),
+                zAcceleration: (p['zAcceleration'] ?? 0.0).toDouble(),
+                xGyro: (p['xGyro'] ?? 0.0).toDouble(),
+                yGyro: (p['yGyro'] ?? 0.0).toDouble(),
+                zGyro: (p['zGyro'] ?? 0.0).toDouble(),
+                pressure: (p['pressure'] ?? 0.0).toDouble(),
+              );
+            }).toList()
+          : <FlightPoint>[],
     );
   }
   
