@@ -77,7 +77,7 @@ class VibrationChart extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 50,
-                interval: maxY / 4,
+                interval: (maxY / 4).clamp(0.1, double.infinity),
                 getTitlesWidget: (value, meta) {
                   return Text(value.toStringAsFixed(1));
                 },
