@@ -44,9 +44,31 @@ class FlightStorageService {
   }
   
   // Get all flights
-  static List<Flight> getAllFlights() {
+  static Future<List<Flight>> getAllFlights() async {
     final flightBox = Hive.box<Flight>(_flightBox);
-    return flightBox.values.toList();
+    final flightPointsBox = Hive.box<FlightPoint>(_flightPointsBox);
+
+    final flights = <Flight>[];
+
+    for (final flight in flightBox.values) {
+      // Retrieve all points for this flight
+      final path = <FlightPoint>[];
+
+      int i = 0;
+      while (true) {
+        final point = flightPointsBox.get('${flight.id}_$i');
+        if (point == null) break;
+
+        path.add(point);
+        i++;
+      }
+
+      // Create a flight instance with the loaded points
+      final flightWithPath = flight.copyWith(path: path);
+      flights.add(flightWithPath);
+    }
+
+    return flights;
   }
   
   // Get a specific flight by ID with all its points
