@@ -695,32 +695,3 @@ class FlightService with ChangeNotifier {
     super.dispose();
   }
 }
-
-// Represents a segment of time where the flight was moving
-class MovingSegment {
-  final DateTime start;
-  final DateTime end;
-  final Duration duration;
-  final double distance;
-  final double averageSpeed;
-  final double averageHeading;
-  final double startAltitude;
-  final double endAltitude;
-  final double averageAltitude;
-  final double maxAltitude;
-  final double minAltitude;
-
-  MovingSegment({
-    required this.start,
-    required this.end,
-    required this.duration,
-    required this.distance,
-    required this.averageSpeed,
-    required this.averageHeading,
-    required this.startAltitude,
-    required this.endAltitude,
-    required this.averageAltitude,
-    required this.maxAltitude,
-    required this.minAltitude,
-  });
-}

@@ -57,7 +57,7 @@ class WeatherService {
     }
   }
 
-  /// Fetch all METARs and TAFs if cache is expired (15 minute cache)
+  /// Fetch all METARs and TAFs if cache is expired (30+ minute cache with graceful degradation)
   Future<void> _fetchAllWeatherIfNeeded() async {
     // If there's already an ongoing fetch, wait for it and return
     if (_ongoingFetch != null) {
@@ -70,20 +70,24 @@ class WeatherService {
       await _loadCachedData();
     }
 
-    // Check if we have data and it's less than 15 minutes old
+    // Use more aggressive caching - only fetch if data is very old or missing
     if (_metarCache.isNotEmpty && _tafCache.isNotEmpty && _lastFetch != null) {
       final timeSinceLastFetch = DateTime.now().difference(_lastFetch!);
-      if (timeSinceLastFetch < const Duration(minutes: 15)) {
+      // Extended cache time to 30 minutes to reduce network requests
+      if (timeSinceLastFetch < const Duration(minutes: 30)) {
         _logger.d('🕒 Using cached weather data (${timeSinceLastFetch.inMinutes} minutes old)');
         return;
       }
     }
 
-    // Start fetch and ensure only one happens at a time
-    _logger.d('🌍 Starting weather fetch...');
+    // Only fetch if we have no data at all or data is very stale (30+ minutes)
+    _logger.d('🌍 Starting weather fetch (cache age: ${_lastFetch != null ? DateTime.now().difference(_lastFetch!).inMinutes : "unknown"} minutes)...');
     _ongoingFetch = _fetchAllWeather();
     try {
       await _ongoingFetch;
+    } catch (e) {
+      _logger.e('❌ Failed to fetch weather data, using cached data: $e');
+      // Continue with cached data even if fetch fails
     } finally {
       _ongoingFetch = null;
     }
@@ -381,234 +385,67 @@ class WeatherService {
     _client.close();
   }
 
-  /// Fetch weather data ONLY for airports currently visible on the map
-  /// This method is optimized to minimize network requests and only load weather
-  /// for airports that are actually displayed to the user
+  /// Fetch weather data ONLY from cached/bulk data - NO individual API requests
+  /// This method is optimized to minimize network requests and serve from local memory
   Future<Map<String, String>> getMetarsForAirports(List<String> icaoCodes) async {
     if (icaoCodes.isEmpty) {
       _logger.d('🚫 No airports provided for weather fetch - skipping');
       return {};
     }
 
-    // Limit the number of airports to prevent excessive API calls
-    const maxVisibleAirports = 50; // Reasonable limit for map display
-    if (icaoCodes.length > maxVisibleAirports) {
-      _logger.w('⚠️ Too many airports requested (${icaoCodes.length}), limiting to $maxVisibleAirports');
-      icaoCodes = icaoCodes.take(maxVisibleAirports).toList();
+    _logger.d('🔍 Getting METARs for ${icaoCodes.length} airports from cache');
+
+    // Load from persistent cache if in-memory cache is empty
+    if (_metarCache.isEmpty) {
+      await _loadCachedData();
     }
 
+    // Trigger bulk data refresh in background if needed (but don't wait for it)
+    await _fetchAllWeatherIfNeeded();
+
     final results = <String, String>{};
-    final expiredCodes = <String>[];
-    final now = DateTime.now();
 
-    _logger.d('🔍 Checking weather cache for ${icaoCodes.length} visible airports');
-
-    // Check each airport individually for expired weather data (15 minutes)
+    // Get data from cache for all requested airports
     for (final icao in icaoCodes) {
       final icaoUpper = icao.toUpperCase();
       final cachedMetar = _metarCache[icaoUpper];
-      final timestamp = _metarTimestamps[icaoUpper];
 
-      if (cachedMetar != null && timestamp != null) {
-        final age = now.difference(timestamp);
-        if (age < const Duration(minutes: 15)) {
-          // Weather data is still fresh, use cached version
-          results[icao] = cachedMetar;
-          continue;
-        } else {
-          _logger.d('🕒 METAR for $icao is ${age.inMinutes} minutes old - needs refresh');
-        }
-      }
-
-      // Weather data is missing or expired, needs to be fetched
-      expiredCodes.add(icao);
-    }
-
-    // If all airports have fresh data, return immediately
-    if (expiredCodes.isEmpty) {
-      _logger.d('✅ All ${icaoCodes.length} visible airports have fresh weather data (< 15 min)');
-      return results;
-    }
-
-    _logger.d('🌤️ Need to fetch weather for ${expiredCodes.length}/${icaoCodes.length} visible airports only');
-
-    // Check if we should fetch all data or individual airports
-    final shouldFetchAll = _shouldFetchAllWeather();
-
-    if (shouldFetchAll) {
-      _logger.d('📡 Fetching all weather data (cache is empty or very old)');
-      // Fetch all weather data and update timestamps
-      await _fetchAllWeatherIfNeeded();
-
-      // Update timestamps for all fetched data
-      final fetchTime = DateTime.now();
-      for (final icao in _metarCache.keys) {
-        _metarTimestamps[icao] = fetchTime;
-      }
-
-      // Get the requested airports from the full cache
-      for (final icao in icaoCodes) {
-        final metar = getCachedMetar(icao);
-        if (metar != null) {
-          results[icao] = metar;
-        }
-      }
-    } else {
-      _logger.d('🎯 Fetching individual METARs for ${expiredCodes.length} specific airports');
-      // Fetch individual airports that are expired
-      for (final icao in expiredCodes) {
-        try {
-          final metar = await _fetchIndividualMetar(icao);
-          if (metar != null) {
-            final icaoUpper = icao.toUpperCase();
-            _metarCache[icaoUpper] = metar;
-            _metarTimestamps[icaoUpper] = now;
-            results[icao] = metar;
-            _logger.d('✅ Updated METAR for visible airport: $icao');
-          } else {
-            _logger.w('❌ No METAR available for visible airport: $icao');
-          }
-        } catch (e) {
-          _logger.w('⚠️ Failed to fetch individual METAR for visible airport $icao: $e');
-        }
+      if (cachedMetar != null) {
+        results[icao] = cachedMetar;
       }
     }
 
-    _logger.d('🌤️ Returning weather data for ${results.length}/${icaoCodes.length} visible airports');
+    _logger.d('🌤️ Returning ${results.length}/${icaoCodes.length} METARs from cache');
     return results;
   }
 
-  /// Check if we should fetch all weather data
-  bool _shouldFetchAllWeather() {
-    if (_metarCache.isEmpty || _lastFetch == null) {
-      return true;
-    }
-
-    final timeSinceLastFetch = DateTime.now().difference(_lastFetch!);
-    return timeSinceLastFetch >= const Duration(minutes: 15);
-  }
-
-  /// Fetch individual METAR for a specific airport
-  Future<String?> _fetchIndividualMetar(String icaoCode) async {
-    try {
-      final url = 'https://aviationweather.gov/cgi-bin/json/MetarJSON.php?ids=$icaoCode';
-      final response = await _client.get(Uri.parse(url));
-
-      if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        if (jsonData is List && jsonData.isNotEmpty) {
-          final metarData = jsonData.first;
-          if (metarData['rawOb'] != null) {
-            _logger.d('✅ Fetched individual METAR for $icaoCode');
-            return metarData['rawOb'] as String;
-          }
-        }
-      }
-
-      _logger.w('⚠️ No METAR data found for $icaoCode');
-      return null;
-    } catch (e) {
-      _logger.e('❌ Error fetching individual METAR for $icaoCode', error: e);
-      return null;
-    }
-  }
-
-  /// Get TAFs for specific airports with 15-minute caching per airport
+  /// Get TAFs for specific airports - ONLY from cached/bulk data
   Future<Map<String, String>> getTafsForAirports(List<String> icaoCodes) async {
     if (icaoCodes.isEmpty) return {};
 
-    final results = <String, String>{};
-    final expiredCodes = <String>[];
-    final now = DateTime.now();
+    _logger.d('🔍 Getting TAFs for ${icaoCodes.length} airports from cache');
 
-    // Check each airport individually for expired TAF data (15 minutes)
+    // Load from persistent cache if in-memory cache is empty
+    if (_tafCache.isEmpty) {
+      await _loadCachedData();
+    }
+
+    // Trigger bulk data refresh in background if needed (but don't wait for it)
+    await _fetchAllWeatherIfNeeded();
+
+    final results = <String, String>{};
+
+    // Get data from cache for all requested airports
     for (final icao in icaoCodes) {
       final icaoUpper = icao.toUpperCase();
       final cachedTaf = _tafCache[icaoUpper];
-      final timestamp = _tafTimestamps[icaoUpper];
 
-      if (cachedTaf != null && timestamp != null) {
-        final age = now.difference(timestamp);
-        if (age < const Duration(minutes: 15)) {
-          // TAF data is still fresh, use cached version
-          results[icao] = cachedTaf;
-          continue;
-        }
-      }
-
-      // TAF data is missing or expired, needs to be fetched
-      expiredCodes.add(icao);
-    }
-
-    // If all airports have fresh data, return immediately
-    if (expiredCodes.isEmpty) {
-      _logger.d('🕒 All ${icaoCodes.length} airports have fresh TAF data (< 15 min)');
-      return results;
-    }
-
-    _logger.d('🌤️ Need to fetch TAFs for ${expiredCodes.length}/${icaoCodes.length} airports');
-
-    final shouldFetchAll = _shouldFetchAllWeather();
-
-    if (shouldFetchAll) {
-      // Fetch all weather data and update timestamps
-      await _fetchAllWeatherIfNeeded();
-
-      // Update timestamps for all fetched TAF data
-      final fetchTime = DateTime.now();
-      for (final icao in _tafCache.keys) {
-        _tafTimestamps[icao] = fetchTime;
-      }
-
-      // Get the requested airports from the full cache
-      for (final icao in icaoCodes) {
-        final taf = getCachedTaf(icao);
-        if (taf != null) {
-          results[icao] = taf;
-        }
-      }
-    } else {
-      // Fetch individual TAFs that are expired
-      for (final icao in expiredCodes) {
-        try {
-          final taf = await _fetchIndividualTaf(icao);
-          if (taf != null) {
-            final icaoUpper = icao.toUpperCase();
-            _tafCache[icaoUpper] = taf;
-            _tafTimestamps[icaoUpper] = now;
-            results[icao] = taf;
-          }
-        } catch (e) {
-          _logger.w('⚠️ Failed to fetch individual TAF for $icao: $e');
-        }
+      if (cachedTaf != null) {
+        results[icao] = cachedTaf;
       }
     }
 
+    _logger.d('🌤️ Returning ${results.length}/${icaoCodes.length} TAFs from cache');
     return results;
-  }
-
-  /// Fetch individual TAF for a specific airport
-  Future<String?> _fetchIndividualTaf(String icaoCode) async {
-    try {
-      final url = 'https://aviationweather.gov/cgi-bin/json/TafJSON.php?ids=$icaoCode';
-      final response = await _client.get(Uri.parse(url));
-
-      if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        if (jsonData is List && jsonData.isNotEmpty) {
-          final tafData = jsonData.first;
-          if (tafData['rawTAF'] != null) {
-            _logger.d('✅ Fetched individual TAF for $icaoCode');
-            return tafData['rawTAF'] as String;
-          }
-        }
-      }
-
-      _logger.w('⚠️ No TAF data found for $icaoCode');
-      return null;
-    } catch (e) {
-      _logger.e('❌ Error fetching individual TAF for $icaoCode', error: e);
-      return null;
-    }
   }
 }
