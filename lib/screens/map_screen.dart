@@ -20,6 +20,7 @@ import '../widgets/navaid_marker.dart';
 import '../widgets/airport_info_sheet.dart';
 import '../widgets/flight_dashboard.dart';
 import '../widgets/airport_search_delegate.dart';
+import '../widgets/metar_overlay.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -44,6 +45,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   bool _isTracking = false;
   bool _showStats = false;
   bool _showNavaids = false; // Toggle for navaid display
+  bool _showMetar = false; // Toggle for METAR overlay
   bool _servicesInitialized = false;
   String _errorMessage = '';
   Timer? _debounceTimer;
@@ -116,7 +118,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
         // Wait for the next frame to ensure FlutterMap is rendered before using MapController
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && _mapController.camera != null) {
+          if (mounted) {
             try {
               _mapController.move(
                 LatLng(position.latitude, position.longitude),
@@ -314,6 +316,13 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     }
   }
 
+  // Toggle METAR overlay visibility
+  void _toggleMetar() {
+    setState(() {
+      _showMetar = !_showMetar;
+    });
+  }
+
   // Handle map tap
   void _onMapTapped() {
     debugPrint('Map tapped');
@@ -371,6 +380,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
     // Load airports in the new area
     _loadAirports();
+
+    // Load weather data for new airports if METAR overlay is enabled
+    if (_showMetar) {
+      _loadWeatherForVisibleAirports();
+    }
 
     // Show airport info sheet
     _onAirportSelected(airport);
@@ -493,6 +507,48 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     }
   }
 
+  // Load weather data for airports currently visible on the map
+  Future<void> _loadWeatherForVisibleAirports() async {
+    if (_airports.isEmpty) return;
+
+    try {
+      // Get airport ICAOs that don't have weather data yet
+      final airportIcaos = _airports
+          .where((airport) => airport.rawMetar == null)
+          .map((airport) => airport.icao)
+          .toList();
+
+      if (airportIcaos.isEmpty) return;
+
+      debugPrint('🌤️ Loading weather for ${airportIcaos.length} airports...');
+
+      // Fetch weather data for airports without it
+      await _weatherService.initialize(); // Ensure weather service is initialized
+
+      // Update airports with weather data from cache
+      bool hasUpdates = false;
+      for (final airport in _airports) {
+        if (airport.rawMetar == null) {
+          final metar = await _weatherService.fetchMetar(airport.icao);
+          if (metar != null) {
+            airport.updateWeather(metar);
+            hasUpdates = true;
+          }
+        }
+      }
+
+      // Trigger UI update if we got new weather data
+      if (hasUpdates && mounted) {
+        setState(() {
+          // Force rebuild to show updated weather data
+        });
+        debugPrint('✅ Updated weather data for visible airports');
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading weather for visible airports: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -519,6 +575,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   // Also load navaids if they're enabled
                   if (_showNavaids) {
                     _loadNavaids();
+                  }
+                  // Load weather data for new airports if METAR overlay is enabled
+                  if (_showMetar) {
+                    _loadWeatherForVisibleAirports();
                   }
                 }
               },
@@ -550,6 +610,13 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 NavaidMarkersLayer(
                   navaids: _navaids,
                   onNavaidTap: _onNavaidSelected,
+                ),
+              // METAR overlay
+              if (_showMetar)
+                MetarOverlay(
+                  airports: _airports,
+                  showMetarLayer: _showMetar,
+                  onAirportTap: _onAirportSelected,
                 ),
               // Current position marker
               if (_currentPosition != null)
@@ -691,6 +758,14 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   ),
                   onPressed: _toggleNavaids,
                   tooltip: 'Toggle Navaids',
+                ),
+                IconButton(
+                  icon: Icon(
+                    _showMetar ? Icons.cloud : Icons.cloud_off,
+                    color: Colors.black,
+                  ),
+                  onPressed: _toggleMetar,
+                  tooltip: 'Toggle METAR Overlay',
                 ),
               ],
             ),
