@@ -100,7 +100,7 @@ class FlightService with ChangeNotifier {
   // Initialize sensor subscriptions
   void _initSensors() {
     // Accelerometer
-    _accelerometerSubscription = accelerometerEvents.listen((AccelerometerEvent event) {
+    _accelerometerSubscription = accelerometerEventStream().listen((AccelerometerEvent event) {
       // Convert from m/s² to g's if needed
       _currentXAccel = event.x / _gravity;
       _currentYAccel = event.y / _gravity;
@@ -108,7 +108,7 @@ class FlightService with ChangeNotifier {
     });
     
     // Gyroscope
-    _gyroscopeSubscription = gyroscopeEvents.listen((GyroscopeEvent event) {
+    _gyroscopeSubscription = gyroscopeEventStream().listen((GyroscopeEvent event) {
       _currentXGyro = event.x;
       _currentYGyro = event.y;
       _currentZGyro = event.z;

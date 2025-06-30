@@ -80,9 +80,11 @@ class _OfflineMapScreenState extends State<OfflineMapScreen> {
         southWest: LatLng(south, west),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Invalid coordinates: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invalid coordinates: $e')),
+        );
+      }
     }
   }
 

@@ -741,7 +741,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               interactionOptions: InteractionOptions(
                 flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
               ),
-              onTap: (_, __) => _onMapTapped(),
+              onTap: (_, _) => _onMapTapped(),
               onPositionChanged: (position, hasGesture) {
                 if (hasGesture) {
                   _loadAirports();

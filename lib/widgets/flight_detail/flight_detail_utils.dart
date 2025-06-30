@@ -47,6 +47,6 @@ class FlightDetailUtils {
     }
 
     // Share the flight data using the correct SharePlus API
-    Share.share(sb.toString());
+    SharePlus.instance.share(ShareParams(text: sb.toString()));
   }
 }
