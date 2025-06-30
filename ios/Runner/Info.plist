@@ -51,5 +51,7 @@
 	<string>This app needs access to location when in the background to track your flight path and provide navigation assistance.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>This app needs access to location when in the background to track your flight path and provide navigation assistance.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>This app needs access to motion and barometer data to provide accurate altitude tracking and flight monitoring.</string>
 </dict>
 </plist>

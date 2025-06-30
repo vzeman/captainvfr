@@ -144,6 +144,12 @@ class BarometerService {
       _pressureWindow.removeAt(0);
     }
 
+    // Safety check to prevent "Bad state: No element" error
+    if (_pressureWindow.isEmpty) {
+      _logger.w('Pressure window is empty, skipping update');
+      return;
+    }
+
     final smoothedPressure = _pressureWindow.reduce((a, b) => a + b) / _pressureWindow.length;
 
     _pressureHPa = smoothedPressure;
@@ -231,6 +237,9 @@ class BarometerService {
     try {
       await _sensorSubscription?.cancel();
       _sensorSubscription = null;
+
+      // Clear the pressure window to prevent stale data
+      _pressureWindow.clear();
 
       if (_isBarometerAvailable) {
         await _methodChannel.invokeMethod('stopPressureUpdates');
