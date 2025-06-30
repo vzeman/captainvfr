@@ -98,7 +98,7 @@ class AirportMarker extends StatelessWidget {
                 width: weatherDotSize,
                 height: weatherDotSize,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.9),
+                  color: color.withValues(alpha: 0.9),
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: Colors.white,
