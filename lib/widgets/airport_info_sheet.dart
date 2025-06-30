@@ -993,7 +993,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
             ),
             const SizedBox(height: 4),
             Text(
-              '${widget.airport.lastWeatherUpdate!.toLocal().toString().substring(0, 19)}',
+              widget.airport.lastWeatherUpdate!.toLocal().toString().substring(0, 19),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).hintColor,
               ),

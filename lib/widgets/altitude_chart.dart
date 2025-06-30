@@ -92,7 +92,7 @@ class AltitudeChart extends StatelessWidget {
             ),
           ),
           minX: 0,
-          maxX: altitudeData.length > 0 ? (altitudeData.length - 1).toDouble() : 1,
+          maxX: altitudeData.isNotEmpty ? (altitudeData.length - 1).toDouble() : 1,
           minY: minY,
           maxY: maxY,
           lineBarsData: [

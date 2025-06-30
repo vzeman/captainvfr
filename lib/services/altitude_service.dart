@@ -28,7 +28,7 @@ class AltitudeService {
   Stream<List<double>> get altitudeHistoryStream => _altitudeHistoryController.stream;
 
   // State
-  List<double> _altitudeHistory = [];
+  final List<double> _altitudeHistory = [];
   static const int _maxHistoryLength = 1000; // Store up to 1000 altitude points
   bool _isTracking = false;
   StreamSubscription<dynamic>? _sensorSubscription;

@@ -108,7 +108,7 @@ class NavaidService {
             }
           }
 
-          developer.log('✅ Found ${filteredNavaids.length} valid navaid entries in CSV (${invalidCount} invalid entries skipped)');
+          developer.log('✅ Found ${filteredNavaids.length} valid navaid entries in CSV ($invalidCount invalid entries skipped)');
 
           developer.log('🏗  Creating Navaid objects...');
           final parsedNavaids = <Navaid>[];

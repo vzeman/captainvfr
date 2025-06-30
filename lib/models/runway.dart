@@ -190,6 +190,6 @@ class Runway {
 
   @override
   String toString() {
-    return 'Runway(${designation}, ${lengthFormatted}, $surfaceFormatted)';
+    return 'Runway($designation, $lengthFormatted, $surfaceFormatted)';
   }
 }

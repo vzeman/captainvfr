@@ -118,7 +118,7 @@ class FrequencyService {
         developer.log('📊 DEBUG: Sample CSV lines:');
         final sampleCount = lines.length > 5 ? 5 : lines.length - 1;
         for (int i = 1; i <= sampleCount; i++) {
-          developer.log('   Line ${i}: ${lines[i]}');
+          developer.log('   Line $i: ${lines[i]}');
         }
       }
 
@@ -164,7 +164,7 @@ class FrequencyService {
     }
 
     // Show some sample airport identifiers from the frequency data
-    if (_frequencies.length > 0) {
+    if (_frequencies.isNotEmpty) {
       developer.log('🔍 DEBUG: Sample airport identifiers in frequency data:');
       final sampleSize = _frequencies.length > 20 ? 20 : _frequencies.length;
       for (int i = 0; i < sampleSize; i++) {
