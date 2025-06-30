@@ -199,7 +199,12 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           setState(() {
             _airports = airports;
           });
-          
+
+          // Refresh weather data for visible airports if METAR overlay is enabled
+          if (_showMetar) {
+            _refreshWeatherForVisibleAirports(airports);
+          }
+
           // If we're at a high zoom level, also load nearby airports just outside the view
           if (zoom > 10) {
             final radiusKm = _calculateRadiusForZoom(zoom);
@@ -217,6 +222,71 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     });
   }
   
+  /// Refresh weather data for visible airports when map focus changes
+  Future<void> _refreshWeatherForVisibleAirports(List<Airport> airports) async {
+    if (!_showMetar || airports.isEmpty) return;
+
+    try {
+      // Filter airports that should have weather data (medium/large airports)
+      final airportsNeedingWeather = airports.where((airport) {
+        return _shouldFetchWeatherForAirport(airport);
+      }).toList();
+
+      if (airportsNeedingWeather.isEmpty) return;
+
+      // Get ICAO codes for airports that need weather refresh
+      final icaoCodes = airportsNeedingWeather.map((a) => a.icao).toList();
+
+      debugPrint('🌤️ Refreshing weather for ${icaoCodes.length} visible airports');
+
+      // Fetch weather data for visible airports
+      final metarData = await _weatherService.getMetarsForAirports(icaoCodes);
+      final tafData = await _weatherService.getTafsForAirports(icaoCodes);
+
+      // Update airports with fresh weather data
+      for (final airport in airportsNeedingWeather) {
+        final metar = metarData[airport.icao];
+        final taf = tafData[airport.icao];
+
+        if (metar != null) {
+          airport.updateWeather(metar, taf: taf);
+        }
+      }
+
+      // Trigger UI update to show fresh weather data
+      if (mounted) {
+        setState(() {
+          // Update the airports list to reflect new weather data
+          _airports = [...airports];
+        });
+      }
+
+      debugPrint('✅ Weather refresh completed for visible airports');
+    } catch (e) {
+      debugPrint('❌ Error refreshing weather for visible airports: $e');
+    }
+  }
+
+  /// Check if weather data should be fetched for this airport type
+  bool _shouldFetchWeatherForAirport(Airport airport) {
+    // Only fetch weather for medium and large airports
+    // Small airports, heliports, seaplane bases typically don't have weather stations
+    switch (airport.type.toLowerCase()) {
+      case 'large_airport':
+      case 'medium_airport':
+        return true;
+      case 'small_airport':
+      case 'heliport':
+      case 'seaplane_base':
+      case 'closed':
+        return false;
+      default:
+        // For unknown types, check if it has an ICAO code
+        // Airports with proper ICAO codes are more likely to have weather data
+        return airport.icao.length == 4 && RegExp(r'^[A-Z]{4}$').hasMatch(airport.icao);
+    }
+  }
+
   // Calculate radius in kilometers based on zoom level
   double _calculateRadiusForZoom(double zoom) {
     // These values can be adjusted based on testing
@@ -357,6 +427,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     setState(() {
       _showMetar = !_showMetar;
     });
+
+    // When METAR overlay is turned on, refresh weather for currently visible airports
+    if (_showMetar && _airports.isNotEmpty) {
+      _refreshWeatherForVisibleAirports(_airports);
+    }
   }
 
   // Toggle heliport visibility
@@ -537,7 +612,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ All data refreshed successfully'),
+            content: Text('�� All data refreshed successfully'),
             duration: Duration(seconds: 3),
           ),
         );
@@ -587,7 +662,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
       debugPrint('🌤️ Loading weather for ${visibleAirportIcaos.length}/${_airports.length} visible airports...');
 
-      // Fetch weather data only for visible airports (much more efficient)
+      // Fetch weather data for visible airports
       await _weatherService.initialize();
       final metarData = await _weatherService.getMetarsForAirports(visibleAirportIcaos);
 

@@ -60,11 +60,19 @@ class AirportService {
   Future<void> _loadFromCache() async {
     try {
       developer.log('📱 Loading airports from cache...');
-      _airports = await _cacheService.getCachedAirports();
+      final cachedAirports = await _cacheService.getCachedAirports();
+
+      // Filter out closed airports from cached data as well
+      _airports = cachedAirports.where((airport) =>
+        airport.type.toLowerCase() != 'closed'
+      ).toList();
+
+      final filteredCount = cachedAirports.length - _airports.length;
+
       if (_airports.isNotEmpty) {
-        developer.log('✅ Loaded ${_airports.length} airports from cache');
+        developer.log('✅ Loaded ${_airports.length} airports from cache (${filteredCount} closed airports filtered out)');
       } else {
-        developer.log('📱 No cached airports found, will fetch from network');
+        developer.log('📱 No valid cached airports found, will fetch from network');
       }
     } catch (e) {
       developer.log('❌ Error loading airports from cache: $e');
@@ -105,21 +113,16 @@ class AirportService {
       print('Using ${_airports.length} cached airports');
     }
     
-    // Filter airports within the bounding box and exclude CLOSED airports
+    // Filter airports within the bounding box (closed airports already excluded at data loading level)
     return _airports.where((airport) {
       final lat = airport.position.latitude;
       final lng = airport.position.longitude;
       
       // Check if airport is within bounds
-      final withinBounds = lat >= southWest.latitude &&
-                          lat <= northEast.latitude &&
-                          lng >= southWest.longitude &&
-                          lng <= northEast.longitude;
-
-      // Exclude closed airports (case-insensitive check for "closed" type)
-      final isNotClosed = airport.type.toLowerCase() != 'closed';
-
-      return withinBounds && isNotClosed;
+      return lat >= southWest.latitude &&
+             lat <= northEast.latitude &&
+             lng >= southWest.longitude &&
+             lng <= northEast.longitude;
     }).toList();
   }
   
@@ -162,7 +165,8 @@ class AirportService {
           
           final filteredAirports = <String>[];
           int invalidCount = 0;
-          
+          int closedCount = 0;
+
           for (var i = 1; i < lines.length; i++) {
             final line = lines[i];
             if (line.trim().isEmpty) continue;
@@ -171,7 +175,14 @@ class AirportService {
             if (values.length >= 14 && values[1].isNotEmpty) {
               final lat = double.tryParse(values[4]) ?? 0.0;
               final lon = double.tryParse(values[5]) ?? 0.0;
-              
+              final type = values[2].replaceAll('"', '').trim().toLowerCase();
+
+              // Skip closed airports entirely
+              if (type == 'closed') {
+                closedCount++;
+                continue;
+              }
+
               if (lat != 0.0 && lon != 0.0) {
                 filteredAirports.add(line);
               } else {
@@ -182,8 +193,8 @@ class AirportService {
             }
           }
           
-          print('✅ Found ${filteredAirports.length} valid airport entries in CSV (${invalidCount} invalid entries skipped)');
-          
+          print('✅ Found ${filteredAirports.length} valid airport entries in CSV (${invalidCount} invalid entries skipped, ${closedCount} closed airports excluded)');
+
           print('🏗  Creating Airport objects...');
           final parsedAirports = filteredAirports.map((line) {
             final values = line.split(',');
