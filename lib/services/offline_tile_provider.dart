@@ -12,7 +12,6 @@ class OfflineTileProvider extends TileProvider {
   final String urlTemplate;
   final OfflineMapService offlineMapService;
   final String? userAgentPackageName;
-  final Logger _logger = Logger();
 
   OfflineTileProvider({
     required this.urlTemplate,

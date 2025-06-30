@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
-import 'dart:math' show sin, cos, sqrt, atan2, pi;
+import 'dart:math' show sin, cos, sqrt, atan2;
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import '../models/airport.dart';

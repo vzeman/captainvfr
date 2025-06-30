@@ -9,7 +9,6 @@ import 'cache_service.dart';
 /// Service for fetching and managing weather data for airports
 
 class WeatherService {
-  static const String _baseUrl = 'https://aviationweather.gov/cgi-bin/data';
   static const String _metarUrl = 'https://aviationweather.gov/data/cache/metars.cache.csv.gz';
   static const String _tafUrl = 'https://aviationweather.gov/data/cache/tafs.cache.csv.gz';
   static const Duration cacheDuration = Duration(minutes: 5); // Keep for backwards compatibility

@@ -200,47 +200,52 @@ class _OfflineMapScreenState extends State<OfflineMapScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
+              // Remove horizontal padding to allow full-width panels
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Cache Statistics Card
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Cache Statistics',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          if (_cacheStats != null) ...[
-                            Text('Total Tiles: ${_cacheStats!['totalTiles']}'),
-                            Text('Total Size: ${_cacheStats!['totalSizeMB']} MB'),
-                            const SizedBox(height: 8),
-                            const Text('Zoom Levels:'),
-                            ...(_cacheStats!['zoomLevels'] as List).map(
-                              (level) => Text(
-                                '  Level ${level['z']}: ${level['count']} tiles',
+                  // Cache Statistics Card - Full Width
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Cache Statistics',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          ] else
-                            const Text('No cached tiles'),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _clearCache,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
+                            const SizedBox(height: 8),
+                            if (_cacheStats != null) ...[
+                              Text('Total Tiles: ${_cacheStats!['totalTiles']}'),
+                              Text('Total Size: ${_cacheStats!['totalSizeMB']} MB'),
+                              const SizedBox(height: 8),
+                              const Text('Zoom Levels:'),
+                              ...(_cacheStats!['zoomLevels'] as List).map(
+                                (level) => Text(
+                                  '  Level ${level['z']}: ${level['count']} tiles',
+                                ),
+                              ),
+                            ] else
+                              const Text('No cached tiles'),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _clearCache,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                              ),
+                              child: const Text('Clear Cache'),
                             ),
-                            child: const Text('Clear Cache'),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -249,177 +254,195 @@ class _OfflineMapScreenState extends State<OfflineMapScreen> {
 
                   // Download Progress Card
                   if (_isDownloading)
-                    Card(
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              const Text(
+                                'Downloading...',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              LinearProgressIndicator(value: _downloadProgress),
+                              const SizedBox(height: 8),
+                              Text('$_currentTiles / $_totalTiles tiles'),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: _stopDownload,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.stop, size: 18),
+                                    SizedBox(width: 8),
+                                    Text('Stop Download'),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Quick Download Card - Full Width
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Card(
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Downloading...',
+                              'Quick Download',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             const SizedBox(height: 8),
-                            LinearProgressIndicator(value: _downloadProgress),
-                            const SizedBox(height: 8),
-                            Text('$_currentTiles / $_totalTiles tiles'),
+                            const Text('Download tiles for current map area'),
                             const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: _stopDownload,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
-                                foregroundColor: Colors.white,
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.stop, size: 18),
-                                  SizedBox(width: 8),
-                                  Text('Stop Download'),
-                                ],
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _isDownloading ? null : _downloadCurrentArea,
+                                child: const Text('Download Current Area'),
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-
-                  // Quick Download Card
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Quick Download',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text('Download tiles for current map area'),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _isDownloading ? null : _downloadCurrentArea,
-                            child: const Text('Download Current Area'),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
 
                   const SizedBox(height: 16),
 
-                  // Custom Area Download Card
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Custom Area Download',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                  // Custom Area Download Card - Full Width
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Custom Area Download',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
+                            const SizedBox(height: 16),
 
-                          // Coordinate inputs
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _northController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'North Latitude',
-                                    hintText: '50.0',
+                            // Coordinate inputs
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _northController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'North Latitude',
+                                      hintText: '50.0',
+                                    ),
+                                    keyboardType: TextInputType.number,
                                   ),
-                                  keyboardType: TextInputType.number,
                                 ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: TextField(
-                                  controller: _eastController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'East Longitude',
-                                    hintText: '15.0',
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _eastController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'East Longitude',
+                                      hintText: '15.0',
+                                    ),
+                                    keyboardType: TextInputType.number,
                                   ),
-                                  keyboardType: TextInputType.number,
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _southController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'South Latitude',
-                                    hintText: '48.0',
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _southController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'South Latitude',
+                                      hintText: '48.0',
+                                    ),
+                                    keyboardType: TextInputType.number,
                                   ),
-                                  keyboardType: TextInputType.number,
                                 ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: TextField(
-                                  controller: _westController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'West Longitude',
-                                    hintText: '12.0',
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _westController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'West Longitude',
+                                      hintText: '12.0',
+                                    ),
+                                    keyboardType: TextInputType.number,
                                   ),
-                                  keyboardType: TextInputType.number,
                                 ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Zoom level sliders
+                            Text('Min Zoom Level: $_minZoom'),
+                            Slider(
+                              value: _minZoom.toDouble(),
+                              min: 4,
+                              max: 16,
+                              divisions: 12,
+                              onChanged: (value) {
+                                setState(() {
+                                  _minZoom = value.round();
+                                  if (_minZoom > _maxZoom) _maxZoom = _minZoom;
+                                });
+                              },
+                            ),
+                            Text('Max Zoom Level: $_maxZoom'),
+                            Slider(
+                              value: _maxZoom.toDouble(),
+                              min: 4,
+                              max: 16,
+                              divisions: 12,
+                              onChanged: (value) {
+                                setState(() {
+                                  _maxZoom = value.round();
+                                  if (_maxZoom < _minZoom) _minZoom = _maxZoom;
+                                });
+                              },
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _isDownloading ? null : _downloadCustomArea,
+                                child: const Text('Download Custom Area'),
                               ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // Zoom level sliders
-                          Text('Min Zoom Level: $_minZoom'),
-                          Slider(
-                            value: _minZoom.toDouble(),
-                            min: 4,
-                            max: 16,
-                            divisions: 12,
-                            onChanged: (value) {
-                              setState(() {
-                                _minZoom = value.round();
-                                if (_minZoom > _maxZoom) _maxZoom = _minZoom;
-                              });
-                            },
-                          ),
-                          Text('Max Zoom Level: $_maxZoom'),
-                          Slider(
-                            value: _maxZoom.toDouble(),
-                            min: 4,
-                            max: 16,
-                            divisions: 12,
-                            onChanged: (value) {
-                              setState(() {
-                                _maxZoom = value.round();
-                                if (_maxZoom < _minZoom) _minZoom = _maxZoom;
-                              });
-                            },
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          ElevatedButton(
-                            onPressed: _isDownloading ? null : _downloadCustomArea,
-                            child: const Text('Download Custom Area'),
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -427,28 +450,32 @@ class _OfflineMapScreenState extends State<OfflineMapScreen> {
                   const SizedBox(height: 16),
 
                   // Information Card
-                  Card(
-                    color: Colors.blue[50],
-                    child: const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'ℹ️ Information',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Card(
+                      color: Colors.blue[50],
+                      child: const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'ℹ️ Information',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            '• Offline maps allow you to use navigation even without internet connection\n'
-                            '• Higher zoom levels provide more detail but require more storage\n'
-                            '• Download areas before your flight for best experience\n'
-                            '• Maps are automatically cached when viewed online',
-                          ),
-                        ],
+                            SizedBox(height: 8),
+                            Text(
+                              '• Offline maps allow you to use navigation even without internet connection\n'
+                              '• Higher zoom levels provide more detail but require more storage\n'
+                              '• Download areas before your flight for best experience\n'
+                              '• Maps are automatically cached when viewed online',
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

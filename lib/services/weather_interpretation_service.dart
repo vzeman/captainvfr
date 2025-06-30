@@ -211,7 +211,6 @@ class WeatherInterpretationService {
     String? weatherInfo;
     final List<String> cloudInfos = [];
     String? temperatureInfo;
-    String? pressureInfo;
     final List<String> weatherPhenomena = [];
 
     while (i < parts.length) {

@@ -92,9 +92,9 @@ class Flight extends HiveObject {
   // Get accelerometer data for vibration analysis
   List<double> get vibrationData {
     return path.map((point) {
-      final x = point.xAcceleration ?? 0.0;
-      final y = point.yAcceleration ?? 0.0;
-      final z = point.zAcceleration ?? 0.0;
+      final x = point.xAcceleration;
+      final y = point.yAcceleration;
+      final z = point.zAcceleration;
       return (x * x + y * y + z * z).abs(); // Magnitude of acceleration
     }).toList();
   }
