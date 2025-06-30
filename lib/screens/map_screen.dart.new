@@ -376,7 +376,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   polylines: [
                     Polyline(
                       points: _flightPathPoints,
-                      color: Colors.blue.withOpacity(0.7),
+                      color: Colors.blue.withValues(alpha: 0.7),
                       strokeWidth: 3.0,
                     ),
                   ],

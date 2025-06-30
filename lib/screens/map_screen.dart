@@ -775,7 +775,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   polylines: [
                     Polyline(
                       points: _flightPathPoints,
-                      color: Colors.blue.withOpacity(0.7),
+                      color: Colors.blue.withValues(alpha: 0.7),
                       strokeWidth: 4.0,
                     ),
                   ],
@@ -809,7 +809,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                       height: 16,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: _getSegmentColor(segment.type).withOpacity(0.7),
+                          color: _getSegmentColor(segment.type).withValues(alpha: 0.7),
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 2),
                         ),
@@ -880,11 +880,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             right: 16,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withValues(alpha: 0.9),
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -987,11 +987,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             left: 16, // Align with standard padding
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withValues(alpha: 0.9),
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
