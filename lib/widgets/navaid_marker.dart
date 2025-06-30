@@ -63,25 +63,25 @@ class NavaidMarker extends StatelessWidget {
       case 'VOR':
       case 'VORDME':
       case 'VORTAC':
-        return Icons.radio;
+        return Icons.explore; // Compass icon for VOR navigation
       case 'NDB':
       case 'LOCATOR':
-        return Icons.radio_button_checked;
+        return Icons.cell_tower; // Cell tower icon for beacon navigation
       case 'TACAN':
-        return Icons.gps_fixed;
+        return Icons.navigation; // Navigation icon for TACAN
       case 'DME':
-        return Icons.my_location;
+        return Icons.radar; // Radar icon for distance measuring equipment
       case 'ILS':
       case 'LOC':
-        return Icons.flight_land;
+        return Icons.flight_land; // Keep landing icon for ILS
       case 'GS':
-        return Icons.trending_down;
+        return Icons.trending_down; // Keep glide slope icon
       case 'OM':
       case 'MM':
       case 'IM':
-        return Icons.place;
+        return Icons.flag; // Flag icon for marker beacons
       default:
-        return Icons.navigation;
+        return Icons.explore; // Default to compass for unknown navigation aids
     }
   }
 

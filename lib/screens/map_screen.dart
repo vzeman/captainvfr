@@ -44,8 +44,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   bool _isLoading = true;
   bool _isTracking = false;
   bool _showStats = false;
-  bool _showNavaids = false; // Toggle for navaid display
+  bool _showNavaids = true; // Toggle for navaid display
   bool _showMetar = false; // Toggle for METAR overlay
+  bool _showHeliports = false; // Toggle for heliport display (default hidden)
+  bool _showSmallAirports = true; // Toggle for small airport display (default visible)
   bool _servicesInitialized = false;
   String _errorMessage = '';
   Timer? _debounceTimer;
@@ -144,6 +146,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         });
 
         await _loadAirports();
+
+        // Load navaids if they should be shown
+        if (_showNavaids) {
+          await _loadNavaids();
+        }
       }
     } catch (e) {
       debugPrint('Error initializing location: $e');
@@ -241,25 +248,44 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   
   // Load navaids in the current map view
   Future<void> _loadNavaids() async {
-    if (!_showNavaids) return;
+    if (!_showNavaids) {
+      debugPrint('🧭 _loadNavaids: _showNavaids is false, returning early');
+      return;
+    }
+
+    debugPrint('🧭 _loadNavaids: Starting to load navaids...');
 
     try {
       // Ensure navaids are fetched
+      debugPrint('🧭 _loadNavaids: Calling fetchNavaids...');
       await _navaidService.fetchNavaids();
 
+      final totalNavaids = _navaidService.navaids.length;
+      debugPrint('🧭 _loadNavaids: Total navaids available: $totalNavaids');
+
+      if (totalNavaids == 0) {
+        debugPrint('❌ _loadNavaids: No navaids available in service');
+        return;
+      }
+
       final bounds = _mapController.camera.visibleBounds;
+      debugPrint('🧭 _loadNavaids: Map bounds - SW: ${bounds.southWest}, NE: ${bounds.northEast}');
+
       final navaids = _navaidService.getNavaidsInBounds(
         bounds.southWest,
         bounds.northEast,
       );
 
+      debugPrint('🧭 _loadNavaids: Found ${navaids.length} navaids in current bounds');
+
       if (mounted) {
         setState(() {
           _navaids = navaids;
         });
+        debugPrint('✅ _loadNavaids: Updated state with ${navaids.length} navaids');
       }
     } catch (e) {
-      debugPrint('Error loading navaids: $e');
+      debugPrint('❌ Error loading navaids: $e');
     }
   }
 
@@ -306,20 +332,44 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   
   // Toggle navaid visibility
   void _toggleNavaids() {
+    debugPrint('🔴 _toggleNavaids: Button pressed! Starting toggle...');
+    debugPrint('🧭 _toggleNavaids: Current state: $_showNavaids');
     setState(() {
       _showNavaids = !_showNavaids;
     });
+    debugPrint('🧭 _toggleNavaids: New state: $_showNavaids');
 
     // Load navaids immediately when toggled on
     if (_showNavaids) {
+      debugPrint('🧭 _toggleNavaids: Calling _loadNavaids()...');
       _loadNavaids();
+    } else {
+      debugPrint('🧭 _toggleNavaids: Clearing navaids list');
+      setState(() {
+        _navaids = [];
+      });
     }
+    debugPrint('🔴 _toggleNavaids: Toggle completed!');
   }
 
   // Toggle METAR overlay visibility
   void _toggleMetar() {
     setState(() {
       _showMetar = !_showMetar;
+    });
+  }
+
+  // Toggle heliport visibility
+  void _toggleHeliports() {
+    setState(() {
+      _showHeliports = !_showHeliports;
+    });
+  }
+
+  // Toggle small airport visibility
+  void _toggleSmallAirports() {
+    setState(() {
+      _showSmallAirports = !_showSmallAirports;
     });
   }
 
@@ -512,28 +562,42 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     if (_airports.isEmpty) return;
 
     try {
-      // Get airport ICAOs that don't have weather data yet
-      final airportIcaos = _airports
-          .where((airport) => airport.rawMetar == null)
-          .map((airport) => airport.icao)
-          .toList();
+      // Get only the airports that are actually visible on the map (same filtering as markers)
+      final visibleAirports = _airports.where((airport) {
+        // Filter heliports based on toggle
+        if (airport.type == 'heliport' && !_showHeliports) {
+          return false;
+        }
+        // Filter small airports based on toggle
+        if (airport.type == 'small_airport' && !_showSmallAirports) {
+          return false;
+        }
+        // Filter closed airports (use correct lowercase "closed" check)
+        if (airport.type.toLowerCase() == 'closed') {
+          return false;
+        }
+        // Show medium and large airports always, and show small airports/heliports based on toggles
+        return true;
+      }).toList();
 
-      if (airportIcaos.isEmpty) return;
+      if (visibleAirports.isEmpty) return;
 
-      debugPrint('🌤️ Loading weather for ${airportIcaos.length} airports...');
+      // Get only the ICAOs of airports that are actually visible
+      final visibleAirportIcaos = visibleAirports.map((airport) => airport.icao).toList();
 
-      // Fetch weather data for airports without it
-      await _weatherService.initialize(); // Ensure weather service is initialized
+      debugPrint('🌤️ Loading weather for ${visibleAirportIcaos.length}/${_airports.length} visible airports...');
 
-      // Update airports with weather data from cache
+      // Fetch weather data only for visible airports (much more efficient)
+      await _weatherService.initialize();
+      final metarData = await _weatherService.getMetarsForAirports(visibleAirportIcaos);
+
+      // Update only the visible airports with weather data
       bool hasUpdates = false;
-      for (final airport in _airports) {
-        if (airport.rawMetar == null) {
-          final metar = await _weatherService.fetchMetar(airport.icao);
-          if (metar != null) {
-            airport.updateWeather(metar);
-            hasUpdates = true;
-          }
+      for (final airport in visibleAirports) {
+        final metar = metarData[airport.icao];
+        if (metar != null && airport.rawMetar != metar) {
+          airport.updateWeather(metar);
+          hasUpdates = true;
         }
       }
 
@@ -542,7 +606,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         setState(() {
           // Force rebuild to show updated weather data
         });
-        debugPrint('✅ Updated weather data for visible airports');
+        debugPrint('✅ Updated weather data for ${metarData.length} visible airports');
       }
     } catch (e) {
       debugPrint('❌ Error loading weather for visible airports: $e');
@@ -602,7 +666,18 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 ),
               // Airport markers with tap handling
               AirportMarkersLayer(
-                airports: _airports,
+                airports: _airports.where((airport) {
+                  // Filter heliports based on toggle
+                  if (airport.type == 'heliport' && !_showHeliports) {
+                    return false;
+                  }
+                  // Filter small airports based on toggle
+                  if (airport.type == 'small_airport' && !_showSmallAirports) {
+                    return false;
+                  }
+                  // Show medium and large airports always, and show small airports/heliports based on toggles
+                  return true;
+                }).toList(),
                 onAirportTap: _onAirportSelected,
               ),
               // Navaid markers
@@ -641,6 +716,57 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 ),
             ],
           ),
+          // Vertical layer controls on the right side - centered vertically
+          Positioned(
+            top: MediaQuery.of(context).size.height * 0.4, // Center vertically (40% from top)
+            right: 16,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.9),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildLayerToggle(
+                    icon: _showNavaids ? Icons.explore : Icons.explore_outlined,
+                    tooltip: 'Toggle Navaids',
+                    isActive: _showNavaids,
+                    onPressed: () {
+                      debugPrint('🔴 NAVAID BUTTON PRESSED DIRECTLY!');
+                      _toggleNavaids();
+                    },
+                  ),
+                  _buildLayerToggle(
+                    icon: _showMetar ? Icons.cloud : Icons.cloud_outlined,
+                    tooltip: 'Toggle METAR Overlay',
+                    isActive: _showMetar,
+                    onPressed: _toggleMetar,
+                  ),
+                  _buildLayerToggle(
+                    icon: _showHeliports ? Icons.adjust : Icons.radio_button_unchecked,
+                    tooltip: 'Toggle Heliports',
+                    isActive: _showHeliports,
+                    onPressed: _toggleHeliports,
+                  ),
+                  _buildLayerToggle(
+                    icon: _showSmallAirports ? Icons.airplanemode_active : Icons.airplanemode_inactive,
+                    tooltip: 'Toggle Small Airports',
+                    isActive: _showSmallAirports,
+                    onPressed: _toggleSmallAirports,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           // Zoom controls
           Positioned(
             bottom: 100,
@@ -685,7 +811,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 child: const FlightDashboard(),
               ),
             ),
-          // App bar
+          // App bar - simplified without leading or actions
           Positioned(
             top: MediaQuery.of(context).padding.top,
             left: 0,
@@ -693,81 +819,92 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             child: AppBar(
               backgroundColor: Colors.transparent,
               elevation: 0,
-              leading: PopupMenuButton<String>(
-                icon: const Icon(Icons.menu, color: Colors.black),
-                onSelected: (value) {
-                  if (value == 'flight_log') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const FlightLogScreen(),
-                      ),
-                    );
-                  } else if (value == 'refresh_data') {
-                    _refreshAllData();
-                  }
-                },
-                itemBuilder: (BuildContext context) => [
-                  const PopupMenuItem(
-                    value: 'flight_log',
-                    child: Row(
-                      children: [
-                        Icon(Icons.flight, size: 20),
-                        SizedBox(width: 8),
-                        Text('Flight Log'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'refresh_data',
-                    child: Row(
-                      children: [
-                        Icon(Icons.refresh, size: 20),
-                        SizedBox(width: 8),
-                        Text('Refresh Data'),
-                      ],
-                    ),
+              automaticallyImplyLeading: false, // Remove default leading button
+            ),
+          ),
+
+          // Navigation and action controls positioned on the left side
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 16, // Align with standard padding
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.9),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.search, color: Colors.black),
-                  onPressed: _showAirportSearch,
-                  tooltip: 'Search airports',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.my_location, color: Colors.black),
-                  onPressed: _centerOnLocation,
-                ),
-                IconButton(
-                  icon: Icon(
-                    _isTracking ? Icons.stop : Icons.flight,
-                    color: _isTracking ? Colors.red : Colors.black,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.menu, color: Colors.black),
+                    tooltip: 'Menu',
+                    onSelected: (value) {
+                      if (value == 'flight_log') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FlightLogScreen(),
+                          ),
+                        );
+                      } else if (value == 'refresh_data') {
+                        _refreshAllData();
+                      }
+                    },
+                    itemBuilder: (BuildContext context) => [
+                      const PopupMenuItem(
+                        value: 'flight_log',
+                        child: Row(
+                          children: [
+                            Icon(Icons.flight, size: 20),
+                            SizedBox(width: 8),
+                            Text('Flight Log'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'refresh_data',
+                        child: Row(
+                          children: [
+                            Icon(Icons.refresh, size: 20),
+                            SizedBox(width: 8),
+                            Text('Refresh Data'),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  onPressed: _toggleTracking,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.analytics, color: Colors.black),
-                  onPressed: _toggleStats,
-                ),
-                IconButton(
-                  icon: Icon(
-                    _showNavaids ? Icons.visibility : Icons.visibility_off,
-                    color: Colors.black,
+                  IconButton(
+                    icon: const Icon(Icons.search, color: Colors.black),
+                    onPressed: _showAirportSearch,
+                    tooltip: 'Search airports',
                   ),
-                  onPressed: _toggleNavaids,
-                  tooltip: 'Toggle Navaids',
-                ),
-                IconButton(
-                  icon: Icon(
-                    _showMetar ? Icons.cloud : Icons.cloud_off,
-                    color: Colors.black,
+                  IconButton(
+                    icon: const Icon(Icons.my_location, color: Colors.black),
+                    onPressed: _centerOnLocation,
+                    tooltip: 'Center on location',
                   ),
-                  onPressed: _toggleMetar,
-                  tooltip: 'Toggle METAR Overlay',
-                ),
-              ],
+                  IconButton(
+                    icon: Icon(
+                      _isTracking ? Icons.stop : Icons.flight,
+                      color: _isTracking ? Colors.red : Colors.black,
+                    ),
+                    onPressed: _toggleTracking,
+                    tooltip: _isTracking ? 'Stop tracking' : 'Start tracking',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.analytics, color: Colors.black),
+                    onPressed: _toggleStats,
+                    tooltip: 'Toggle flight dashboard',
+                  ),
+                ],
+              ),
             ),
           ),
           // Loading indicator
@@ -798,6 +935,19 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildLayerToggle({
+    required IconData icon,
+    required String tooltip,
+    required bool isActive,
+    required VoidCallback onPressed,
+  }) {
+    return IconButton(
+      icon: Icon(icon, color: isActive ? Colors.blue : Colors.black),
+      tooltip: tooltip,
+      onPressed: onPressed,
     );
   }
 }
