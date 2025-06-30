@@ -109,6 +109,11 @@ class _OfflineMapScreenState extends State<OfflineMapScreen> {
             _totalTiles = total;
             _downloadProgress = total > 0 ? current / total : 0.0;
           });
+
+          // Update cache statistics every 50 tiles or every 5% progress
+          if (current % 50 == 0 || (total > 0 && (current / total * 100).round() % 5 == 0)) {
+            _loadCacheStats();
+          }
         },
       );
 
@@ -122,8 +127,12 @@ class _OfflineMapScreenState extends State<OfflineMapScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final isUserCancelled = e.toString().contains('cancelled by user');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Download failed: $e')),
+          SnackBar(
+            content: Text(isUserCancelled ? '🛑 Download cancelled' : 'Download failed: $e'),
+            backgroundColor: isUserCancelled ? Colors.orange : Colors.red,
+          ),
         );
       }
     } finally {
@@ -132,6 +141,11 @@ class _OfflineMapScreenState extends State<OfflineMapScreen> {
       });
       await _loadCacheStats();
     }
+  }
+
+  /// Stop the current download
+  void _stopDownload() {
+    _offlineMapService.cancelDownload();
   }
 
   Future<void> _clearCache() async {
@@ -251,6 +265,22 @@ class _OfflineMapScreenState extends State<OfflineMapScreen> {
                             LinearProgressIndicator(value: _downloadProgress),
                             const SizedBox(height: 8),
                             Text('$_currentTiles / $_totalTiles tiles'),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _stopDownload,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.stop, size: 18),
+                                  SizedBox(width: 8),
+                                  Text('Stop Download'),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
