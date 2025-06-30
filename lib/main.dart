@@ -135,10 +135,6 @@ Future<void> _initializeDataServices(
       futures.add(frequencyService.fetchFrequencies());
     } else {
       debugPrint('✅ Found ${frequencyService.frequencies.length} cached frequencies');
-      // TODO: Remove this debug code after testing - force refresh to get corrected parsing
-      debugPrint('🔧 DEBUG: Forcing frequency refresh to test corrected CSV parsing');
-      await frequencyService.clearCache();
-      futures.add(frequencyService.fetchFrequencies(forceRefresh: true));
     }
 
     // Wait for all network requests to complete

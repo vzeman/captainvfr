@@ -227,6 +227,103 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Icon(
+                    Icons.flight,
+                    color: Colors.white,
+                    size: 48,
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'CaptainVFR',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Flight Navigation',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.map),
+              title: Text('Map View'),
+              selected: true,
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.flight_takeoff),
+              title: Text('Flight Log'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/flight-log');
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.speed),
+              title: Text('Altimeter Settings'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/altimeter-settings');
+              },
+            ),
+            Divider(),
+            ListTile(
+              leading: Icon(Icons.layers),
+              title: Text('Map Layers'),
+              subtitle: Text('Toggle map overlays'),
+              onTap: () {
+                Navigator.pop(context);
+                _showMapLayersDialog();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.location_on),
+              title: Text('Location Services'),
+              subtitle: Text('GPS and tracking settings'),
+              onTap: () {
+                Navigator.pop(context);
+                _showLocationSettingsDialog();
+              },
+            ),
+            Divider(),
+            ListTile(
+              leading: Icon(Icons.info_outline),
+              title: Text('About'),
+              onTap: () {
+                Navigator.pop(context);
+                _showAboutDialog();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.settings),
+              title: Text('Settings'),
+              onTap: () {
+                Navigator.pop(context);
+                _showSettingsDialog();
+              },
+            ),
+          ],
+        ),
+      ),
       body: Stack(
         children: [
           // Map layer
@@ -298,7 +395,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               leading: IconButton(
                 icon: const Icon(Icons.menu, color: Colors.black87),
                 onPressed: () {
-                  // TODO: Implement menu
+                  Scaffold.of(context).openDrawer();
                 },
               ),
               actions: [
@@ -370,6 +467,310 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             ),
         ],
       ),
+    );
+  }
+
+  void _showMapLayersDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Map Layers'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CheckboxListTile(
+                title: Text('Airports'),
+                value: true,
+                onChanged: (bool? value) {
+                  // Implement airport layer toggle
+                  setState(() {
+                    // Toggle airport visibility logic would go here
+                  });
+                },
+              ),
+              CheckboxListTile(
+                title: Text('Flight Path'),
+                value: true,
+                onChanged: (bool? value) {
+                  // Implement flight path toggle
+                  setState(() {
+                    // Toggle flight path visibility logic would go here
+                  });
+                },
+              ),
+              CheckboxListTile(
+                title: Text('Weather'),
+                value: false,
+                onChanged: (bool? value) {
+                  // Implement weather layer toggle
+                  setState(() {
+                    // Toggle weather overlay logic would go here
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showLocationSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Location Settings'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('GPS Tracking: ${_isTracking ? 'ON' : 'OFF'}'),
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _toggleTracking,
+                child: Text(_isTracking ? 'Stop Tracking' : 'Start Tracking'),
+              ),
+              SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: _centerOnLocation,
+                child: Text('Center on Current Location'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAboutDialog() {
+    showAboutDialog(
+      context: context,
+      applicationName: 'CaptainVFR',
+      applicationVersion: '1.0.0',
+      applicationIcon: Icon(Icons.flight, size: 48),
+      children: [
+        Text('A comprehensive VFR flight navigation app for pilots.'),
+        SizedBox(height: 16),
+        Text('Features:'),
+        Text('• Real-time GPS tracking'),
+        Text('• Airport information'),
+        Text('• Flight path recording'),
+        Text('• Aviation weather'),
+        Text('• Altimeter settings'),
+      ],
+    );
+  }
+
+  void _showSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Settings'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text('Units'),
+                subtitle: Text('Distance and speed units'),
+                trailing: Icon(Icons.chevron_right),
+                onTap: () {
+                  // Implement units settings
+                  Navigator.of(context).pop();
+                  _showUnitsDialog();
+                },
+              ),
+              ListTile(
+                title: Text('Map Style'),
+                subtitle: Text('Choose map appearance'),
+                trailing: Icon(Icons.chevron_right),
+                onTap: () {
+                  // Implement map style settings
+                  Navigator.of(context).pop();
+                  _showMapStyleDialog();
+                },
+              ),
+              ListTile(
+                title: Text('Notifications'),
+                subtitle: Text('Flight alerts and warnings'),
+                trailing: Icon(Icons.chevron_right),
+                onTap: () {
+                  // Implement notification settings
+                  Navigator.of(context).pop();
+                  _showNotificationDialog();
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showUnitsDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Units Settings'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<String>(
+                title: Text('Metric (km/h, meters)'),
+                value: 'metric',
+                groupValue: 'metric', // Default selection
+                onChanged: (String? value) {
+                  // Implement metric units selection
+                  Navigator.of(context).pop();
+                },
+              ),
+              RadioListTile<String>(
+                title: Text('Imperial (mph, feet)'),
+                value: 'imperial',
+                groupValue: 'metric',
+                onChanged: (String? value) {
+                  // Implement imperial units selection
+                  Navigator.of(context).pop();
+                },
+              ),
+              RadioListTile<String>(
+                title: Text('Aviation (knots, feet)'),
+                value: 'aviation',
+                groupValue: 'metric',
+                onChanged: (String? value) {
+                  // Implement aviation units selection
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showMapStyleDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Map Style'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<String>(
+                title: Text('Standard'),
+                subtitle: Text('OpenStreetMap standard view'),
+                value: 'standard',
+                groupValue: 'standard', // Default selection
+                onChanged: (String? value) {
+                  // Implement standard map style
+                  Navigator.of(context).pop();
+                },
+              ),
+              RadioListTile<String>(
+                title: Text('Satellite'),
+                subtitle: Text('Satellite imagery'),
+                value: 'satellite',
+                groupValue: 'standard',
+                onChanged: (String? value) {
+                  // Implement satellite map style
+                  Navigator.of(context).pop();
+                },
+              ),
+              RadioListTile<String>(
+                title: Text('Terrain'),
+                subtitle: Text('Topographic view'),
+                value: 'terrain',
+                groupValue: 'standard',
+                onChanged: (String? value) {
+                  // Implement terrain map style
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showNotificationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Notification Settings'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SwitchListTile(
+                title: Text('Flight Alerts'),
+                subtitle: Text('Get notified about flight events'),
+                value: true,
+                onChanged: (bool value) {
+                  // Implement flight alerts toggle
+                },
+              ),
+              SwitchListTile(
+                title: Text('Weather Warnings'),
+                subtitle: Text('Receive weather alerts'),
+                value: true,
+                onChanged: (bool value) {
+                  // Implement weather warnings toggle
+                },
+              ),
+              SwitchListTile(
+                title: Text('Airspace Alerts'),
+                subtitle: Text('Warn about restricted airspace'),
+                value: false,
+                onChanged: (bool value) {
+                  // Implement airspace alerts toggle
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
