@@ -205,10 +205,13 @@ class FlightService with ChangeNotifier {
   void _onPositionChanged(Position position) {
     if (!_isTracking) return;
 
+    // Get the best available altitude measurement
+    final bestAltitude = _getBestAltitude(position.altitude);
+
     final point = FlightPoint(
       latitude: position.latitude,
       longitude: position.longitude,
-      altitude: position.altitude,
+      altitude: bestAltitude,
       speed: position.speed,
       heading: _currentHeading ?? 0.0,
       accuracy: position.accuracy,
@@ -232,8 +235,42 @@ class FlightService with ChangeNotifier {
     _updateFlightStats();
     onFlightPathUpdated?.call();
   }
-  
-  // Update moving segments based on current speed
+
+  /// Get the best available altitude measurement by combining GPS and barometric data
+  double _getBestAltitude(double gpsAltitude) {
+    final barometricAltitude = _barometerService?.altitudeMeters;
+    final altitudeFromService = _altitudeService.currentAltitude;
+
+    // Priority order:
+    // 1. Altitude service (if available and seems reliable)
+    // 2. Barometric altitude (if available and seems reasonable)
+    // 3. GPS altitude (fallback)
+
+    if (altitudeFromService != null && _isAltitudeReasonable(altitudeFromService)) {
+      return altitudeFromService;
+    }
+
+    if (barometricAltitude != null && _isAltitudeReasonable(barometricAltitude)) {
+      // If we have both GPS and barometric, use weighted average favoring barometric
+      // Barometric is typically more accurate for relative changes
+      if (_isAltitudeReasonable(gpsAltitude)) {
+        // Weight: 70% barometric, 30% GPS for better accuracy
+        return (barometricAltitude * 0.7) + (gpsAltitude * 0.3);
+      }
+      return barometricAltitude;
+    }
+
+    // Fallback to GPS altitude
+    return gpsAltitude;
+  }
+
+  /// Check if altitude value seems reasonable (basic sanity check)
+  bool _isAltitudeReasonable(double altitude) {
+    // Basic sanity check: altitude between -500m (Dead Sea level) and 15000m (reasonable aircraft altitude)
+    return altitude >= -500.0 && altitude <= 15000.0;
+  }
+
+  /// Update moving segments based on current speed
   void _updateMovingSegments(FlightPoint point) {
     final isMoving = point.speed > _movingSpeedThreshold;
     final now = DateTime.now().toUtc();
@@ -251,35 +288,31 @@ class FlightService with ChangeNotifier {
       if (_movingStartedZulu == null) {
         _movingStartedZulu = now;
       }
-
-      debugPrint('Aircraft started moving at ${_formatZuluTime(now)}');
-
     } else if (!isMoving && _isCurrentlyMoving) {
       // Stopped moving
       _isCurrentlyMoving = false;
       _movingStoppedZulu = now;
 
-      // Create moving segment with comprehensive data
-      if (_currentMovingSegmentStart != null &&
-          _currentMovingSegmentSpeeds.isNotEmpty &&
-          _currentMovingSegmentStartPoint != null) {
-
-        // Calculate averages
-        final avgSpeed = _currentMovingSegmentSpeeds.reduce((a, b) => a + b) / _currentMovingSegmentSpeeds.length;
+      // Finalize the current moving segment
+      if (_currentMovingSegmentStart != null && _currentMovingSegmentStartPoint != null) {
+        // Calculate averages for the segment
+        final avgSpeed = _currentMovingSegmentSpeeds.isNotEmpty
+            ? _currentMovingSegmentSpeeds.reduce((a, b) => a + b) / _currentMovingSegmentSpeeds.length
+            : 0.0;
         final avgHeading = _currentMovingSegmentHeadings.isNotEmpty
             ? _currentMovingSegmentHeadings.reduce((a, b) => a + b) / _currentMovingSegmentHeadings.length
             : 0.0;
         final avgAltitude = _currentMovingSegmentAltitudes.isNotEmpty
             ? _currentMovingSegmentAltitudes.reduce((a, b) => a + b) / _currentMovingSegmentAltitudes.length
-            : point.altitude;
+            : _currentMovingSegmentStartPoint!.altitude;
 
         // Calculate min/max altitudes
         final maxAlt = _currentMovingSegmentAltitudes.isNotEmpty
             ? _currentMovingSegmentAltitudes.reduce((a, b) => a > b ? a : b)
-            : point.altitude;
+            : _currentMovingSegmentStartPoint!.altitude;
         final minAlt = _currentMovingSegmentAltitudes.isNotEmpty
             ? _currentMovingSegmentAltitudes.reduce((a, b) => a < b ? a : b)
-            : point.altitude;
+            : _currentMovingSegmentStartPoint!.altitude;
 
         final segment = MovingSegment(
           start: _currentMovingSegmentStart!,
@@ -297,33 +330,28 @@ class FlightService with ChangeNotifier {
         _movingSegments.add(segment);
       }
 
-      // Mark pause point
+      // Add pause point
       _pausePoints.add(point);
+    }
 
-      debugPrint('Aircraft stopped moving at ${_formatZuluTime(now)}');
+    if (_isCurrentlyMoving) {
+      // Update current segment data
+      _currentMovingSegmentSpeeds.add(point.speed);
+      _currentMovingSegmentHeadings.add(point.heading);
+      _currentMovingSegmentAltitudes.add(point.altitude);
 
-    } else if (isMoving && _isCurrentlyMoving) {
-      // Continue moving - update current segment
+      // Calculate distance if we have a previous point
       if (_flightPath.length > 1) {
         final prevPoint = _flightPath[_flightPath.length - 2];
         final distance = Geolocator.distanceBetween(
-          prevPoint.latitude, prevPoint.longitude,
-          point.latitude, point.longitude,
+          prevPoint.latitude,
+          prevPoint.longitude,
+          point.latitude,
+          point.longitude,
         );
         _currentMovingSegmentDistance += distance;
-        _currentMovingSegmentSpeeds.add(point.speed);
-        _currentMovingSegmentHeadings.add(point.heading);
-        _currentMovingSegmentAltitudes.add(point.altitude);
       }
     }
-  }
-
-  // Format Zulu time for logging
-  String _formatZuluTime(DateTime dateTime) {
-    final utc = dateTime.toUtc();
-    return '${utc.hour.toString().padLeft(2, '0')}:'
-           '${utc.minute.toString().padLeft(2, '0')}:'
-           '${utc.second.toString().padLeft(2, '0')}Z';
   }
 
   // Stop tracking flight

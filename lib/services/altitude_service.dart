@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
 import 'package:logger/logger.dart';
@@ -202,47 +203,52 @@ class AltitudeService {
   Future<void> stopTracking() async {
     if (!_isTracking) return;
     
+    _isTracking = false;
     _logger.i('Stopping altitude tracking');
+
     await _sensorSubscription?.cancel();
     _sensorSubscription = null;
-    _isTracking = false;
-    
-    try {
-      if (Platform.isIOS || Platform.isAndroid) {
-        await _channel.invokeMethod('stopAltitudeUpdates');
-      }
-    } catch (e) {
-      _logger.e('Error stopping altitude updates: $e');
-    }
   }
 
   /// Calculate altitude from pressure using the barometric formula
-  double _calculateAltitude(double pressure) {
-    if (pressure <= 0) return 0.0;
-    
-    // Barometric formula: h = (T0 / L) * (1 - (P / P0)^(R * L / (g * M)))
+  double _calculateAltitude(double pressureHPa) {
+    // Using the barometric formula for the troposphere (valid up to 11 km)
+    // h = (T0/L) * ((P0/P)^(R*L/(g*M)) - 1)
     // Where:
-    // h = height above sea level (m)
-    // T0 = standard temperature at sea level (K)
+    // h = altitude (m)
+    // T0 = temperature at sea level (K)
     // L = temperature lapse rate (K/m)
-    // P = measured pressure (hPa)
-    // P0 = standard pressure at sea level (hPa)
-    // R = universal gas constant (J/(mol·K))
-    // g = gravitational acceleration (m/s²)
-    // M = molar mass of Earth's air (kg/mol)
-    
-    final exponent = (_gasConstant * _temperatureLapseRate) / (_gravity * _molarMass);
-    final altitude = (_temperatureSeaLevel / _temperatureLapseRate) * 
-                    (1.0 - (pressure / _pressureSeaLevel).pow(exponent));
-    
-    return altitude.isFinite ? altitude : 0.0;
+    // P0 = sea level pressure (hPa)
+    // P = current pressure (hPa)
+    // R = gas constant (J/(mol·K))
+    // g = gravity (m/s²)
+    // M = molar mass of air (kg/mol)
+
+    final double exponent = (_gasConstant * _temperatureLapseRate) / (_gravity * _molarMass);
+    final double pressureRatio = _pressureSeaLevel / pressureHPa;
+    final double altitude = (_temperatureSeaLevel / _temperatureLapseRate) *
+        (math.pow(pressureRatio, exponent) - 1);
+
+    return altitude;
   }
+
+  /// Get current altitude
+  double? get currentAltitude => _altitudeHistory.isNotEmpty ? _altitudeHistory.last : null;
+
+  /// Get current pressure
+  double? get currentPressure => _currentPressure;
+
+  /// Set reference pressure for altitude calculation (QNH setting)
+  void setReferencePressure(double pressureHPa) {
+    _pressureSeaLevel = pressureHPa;
+    _logger.i('Reference pressure set to: ${pressureHPa.toStringAsFixed(2)} hPa');
+  }
+
+  /// Get reference pressure (QNH)
+  double get referencePressure => _pressureSeaLevel;
 
   /// Get the current altitude history
   List<double> getAltitudeHistory() => List.from(_altitudeHistory);
-  
-  /// Get the current pressure in hPa (if available)
-  double? get currentPressure => _currentPressure;
   
   /// Check if barometer is available
   bool get isBarometerAvailable => _isBarometerAvailable;
