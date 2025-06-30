@@ -19,6 +19,7 @@ class OfflineMapService {
   final Logger _logger = Logger();
   Database? _database;
   bool _isInitialized = false;
+  bool _isCancelled = false; // Add cancellation flag
 
   /// Initialize the offline map service
   Future<void> initialize() async {
@@ -75,6 +76,9 @@ class OfflineMapService {
     String tileServerUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   }) async {
     await initialize();
+    
+    // Reset cancellation flag at start of new download
+    _resetCancellation();
 
     if (minZoom < _minZoomLevel) minZoom = _minZoomLevel;
     if (maxZoom > _maxZoomLevel) maxZoom = _maxZoomLevel;
@@ -94,9 +98,21 @@ class OfflineMapService {
 
     // Download tiles for each zoom level
     for (int zoom = minZoom; zoom <= maxZoom; zoom++) {
+      // Check for cancellation at zoom level
+      if (_isCancelled) {
+        _logger.i('🛑 Download cancelled by user at zoom level $zoom');
+        throw Exception('Download cancelled by user');
+      }
+      
       final bounds = _getTileBounds(northEast, southWest, zoom);
 
       for (int x = bounds.minX; x <= bounds.maxX; x++) {
+        // Check for cancellation at row level for more responsive cancellation
+        if (_isCancelled) {
+          _logger.i('🛑 Download cancelled by user');
+          throw Exception('Download cancelled by user');
+        }
+        
         for (int y = bounds.minY; y <= bounds.maxY; y++) {
           try {
             // Check if tile already exists
@@ -285,6 +301,17 @@ class OfflineMapService {
       _logger.w('⚠️ Could not check storage: $e');
       return true; // Assume we have enough storage if we can't check
     }
+  }
+
+  /// Cancel the current download operation
+  void cancelDownload() {
+    _isCancelled = true;
+    _logger.i('📊 Download cancellation requested');
+  }
+
+  /// Reset cancellation flag
+  void _resetCancellation() {
+    _isCancelled = false;
   }
 
   /// Dispose of resources
