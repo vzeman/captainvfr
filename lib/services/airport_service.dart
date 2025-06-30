@@ -102,15 +102,15 @@ class AirportService {
   
   /// Get airports within a bounding box
   Future<List<Airport>> getAirportsInBounds(LatLng southWest, LatLng northEast) async {
-    print('getAirportsInBounds called with bounds: $southWest to $northEast');
-    
+    developer.log('📍 getAirportsInBounds called with bounds: $southWest to $northEast');
+
     if (_airports.isEmpty) {
-      print('No airports in cache, fetching nearby airports...');
+      developer.log('🔄 No airports in cache, fetching nearby airports...');
       // If no airports loaded yet, try to fetch some
       await fetchNearbyAirports();
-      print('Fetched ${_airports.length} airports');
+      developer.log('✅ Fetched ${_airports.length} airports');
     } else {
-      print('Using ${_airports.length} cached airports');
+      developer.log('📦 Using ${_airports.length} cached airports');
     }
     
     // Filter airports within the bounding box (closed airports already excluded at data loading level)
@@ -128,41 +128,41 @@ class AirportService {
   
   // Fetch all airports from OurAirports
   Future<void> fetchNearbyAirports({LatLng? position, bool forceRefresh = false}) async {
-    print('🚀 fetchNearbyAirports called with position: $position, forceRefresh: $forceRefresh');
+    developer.log('🚀 fetchNearbyAirports called with position: $position, forceRefresh: $forceRefresh');
     if (_isLoading) {
-      print('⏳ Already loading airports, skipping...');
+      developer.log('⏳ Already loading airports, skipping...');
       return;
     }
     
     // If we already have airports and not forcing refresh, no need to fetch again
     if (_airports.isNotEmpty && !forceRefresh) {
-      print('✅ Using cached airports (${_airports.length} airports)');
+      developer.log('✅ Using cached airports (${_airports.length} airports)');
       return;
     }
     
     _isLoading = true;
-    print('🌐 Fetching all airports...');
-    
+    developer.log('🌐 Fetching all airports...');
+
     try {
       // First try to fetch from network
       final url = '$_baseUrl/airports.csv';
-      print('🔗 Fetching airports from: $url');
-      
+      developer.log('🔗 Fetching airports from: $url');
+
       final stopwatch = Stopwatch()..start();
       final response = await http.get(Uri.parse(url));
-      print('📡 Airport data response status: ${response.statusCode} (took ${stopwatch.elapsedMilliseconds}ms)');
-      
+      developer.log('📡 Airport data response status: ${response.statusCode} (took ${stopwatch.elapsedMilliseconds}ms)');
+
       if (response.statusCode == 200) {
-        print('📊 Successfully fetched airport data. Parsing...');
+        developer.log('📊 Successfully fetched airport data. Parsing...');
         // Parse CSV response
         final lines = const LineSplitter().convert(response.body);
-        print('📄 Parsed ${lines.length} lines from CSV');
-        
+        developer.log('📄 Parsed ${lines.length} lines from CSV');
+
         if (lines.length > 1) { // Skip header
-          print('🔍 Filtering valid airport entries...');
+          developer.log('🔍 Filtering valid airport entries...');
           final header = lines[0].split(',');
-          print('📋 CSV Header: $header');
-          
+          developer.log('📋 CSV Header: $header');
+
           final filteredAirports = <String>[];
           int invalidCount = 0;
           int closedCount = 0;
@@ -193,9 +193,9 @@ class AirportService {
             }
           }
           
-          print('✅ Found ${filteredAirports.length} valid airport entries in CSV ($invalidCount invalid entries skipped, $closedCount closed airports excluded)');
+          developer.log('✅ Found ${filteredAirports.length} valid airport entries in CSV ($invalidCount invalid entries skipped, $closedCount closed airports excluded)');
 
-          print('🏗  Creating Airport objects...');
+          developer.log('🏗  Creating Airport objects...');
           final parsedAirports = filteredAirports.map((line) {
             final values = line.split(',');
             try {
@@ -220,30 +220,30 @@ class AirportService {
                 type: type,
               );
             } catch (e) {
-              print('❌ Error parsing airport data: $e');
-              print('Problematic line: $line');
+              developer.log('❌ Error parsing airport data: $e');
+              developer.log('Problematic line: $line');
               return null;
             }
           }).whereType<Airport>().toList();
           
           _airports = parsedAirports;
 
-          print('✨ Successfully created ${_airports.length} Airport objects');
-          
+          developer.log('✨ Successfully created ${_airports.length} Airport objects');
+
           // Cache the airports
           await _cacheService.cacheAirports(_airports);
 
           if (_airports.isNotEmpty) {
-            print('🏢 First airport: ${_airports.first.icao} - ${_airports.first.name} (${_airports.first.position})');
-            print('🏢 Last airport: ${_airports.last.icao} - ${_airports.last.name} (${_airports.last.position})');
+            developer.log('🏢 First airport: ${_airports.first.icao} - ${_airports.first.name} (${_airports.first.position})');
+            developer.log('🏢 Last airport: ${_airports.last.icao} - ${_airports.last.name} (${_airports.last.position})');
           }
         }
       } else {
         throw Exception('Failed to load airports: ${response.statusCode}');
       }
     } catch (e, stackTrace) {
-      print('Error fetching nearby airports: $e');
-      print('Stack trace: $stackTrace');
+      developer.log('❌ Error fetching nearby airports: $e');
+      developer.log('Stack trace: $stackTrace');
       // Fall back to cached data if network fails
       if (!forceRefresh) {
         await _loadFromCache();
@@ -317,8 +317,7 @@ class AirportService {
           nearest = airport;
         }
       } catch (e) {
-        // ignore: avoid_print
-        print('Error calculating distance: $e');
+        developer.log('❌ Error calculating distance: $e');
         // Continue to next airport if distance calculation fails
         continue;
       }

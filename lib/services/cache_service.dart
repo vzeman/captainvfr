@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/airport.dart';
@@ -50,9 +52,9 @@ class CacheService {
       _weatherBox = await Hive.openBox<String>(_weatherBoxName);
 
       _isInitialized = true;
-      print('✅ Cache service initialized');
+      developer.log('✅ Cache service initialized');
     } catch (e) {
-      print('❌ Error initializing cache service: $e');
+      developer.log('❌ Error initializing cache service: $e');
       rethrow;
     }
   }
@@ -68,7 +70,7 @@ class CacheService {
     await _ensureInitialized();
 
     try {
-      print('💾 Caching ${airports.length} airports...');
+      developer.log('💾 Caching ${airports.length} airports...');
 
       // Clear existing data
       await _airportsBox.clear();
@@ -96,9 +98,9 @@ class CacheService {
       // Update last fetch timestamp
       await _metadataBox.put(_airportsLastFetchKey, DateTime.now().toIso8601String());
 
-      print('✅ Cached ${airports.length} airports successfully');
+      developer.log('✅ Cached ${airports.length} airports successfully');
     } catch (e) {
-      print('❌ Error caching airports: $e');
+      developer.log('❌ Error caching airports: $e');
       rethrow;
     }
   }
@@ -108,7 +110,7 @@ class CacheService {
     await _ensureInitialized();
 
     try {
-      print('💾 Caching ${runways.length} runways...');
+      developer.log('💾 Caching ${runways.length} runways...');
 
       // Clear existing data
       await _runwaysBox.clear();
@@ -121,9 +123,9 @@ class CacheService {
       // Update last fetch timestamp
       await _metadataBox.put(_runwaysLastFetchKey, DateTime.now().toIso8601String());
 
-      print('✅ Cached ${runways.length} runways successfully');
+      developer.log('✅ Cached ${runways.length} runways successfully');
     } catch (e) {
-      print('❌ Error caching runways: $e');
+      developer.log('❌ Error caching runways: $e');
       rethrow;
     }
   }
@@ -133,7 +135,7 @@ class CacheService {
     await _ensureInitialized();
 
     try {
-      print('💾 Caching ${navaids.length} navaids...');
+      developer.log('💾 Caching ${navaids.length} navaids...');
 
       // Clear existing data
       await _navaidsBox.clear();
@@ -146,9 +148,9 @@ class CacheService {
       // Update last fetch timestamp
       await _metadataBox.put(_navaidsLastFetchKey, DateTime.now().toIso8601String());
 
-      print('✅ Cached ${navaids.length} navaids successfully');
+      developer.log('✅ Cached ${navaids.length} navaids successfully');
     } catch (e) {
-      print('❌ Error caching navaids: $e');
+      developer.log('❌ Error caching navaids: $e');
       rethrow;
     }
   }
@@ -158,7 +160,7 @@ class CacheService {
     await _ensureInitialized();
 
     try {
-      print('💾 Caching ${frequencies.length} frequencies...');
+      developer.log('💾 Caching ${frequencies.length} frequencies...');
 
       // Clear existing data
       await _frequenciesBox.clear();
@@ -171,9 +173,9 @@ class CacheService {
       // Update last fetch timestamp
       await _metadataBox.put(_frequenciesLastFetchKey, DateTime.now().toIso8601String());
 
-      print('✅ Cached ${frequencies.length} frequencies successfully');
+      developer.log('✅ Cached ${frequencies.length} frequencies successfully');
     } catch (e) {
-      print('❌ Error caching frequencies: $e');
+      developer.log('❌ Error caching frequencies: $e');
       rethrow;
     }
   }
@@ -185,7 +187,7 @@ class CacheService {
     try {
       await _weatherBox.put(icao, weatherData);
     } catch (e) {
-      print('❌ Error caching weather data for $icao: $e');
+      developer.log('❌ Error caching weather data for $icao: $e');
       rethrow;
     }
   }
@@ -195,7 +197,7 @@ class CacheService {
     await _ensureInitialized();
 
     try {
-      print('💾 Caching ${metars.length} METARs and ${tafs.length} TAFs...');
+      developer.log('💾 Caching ${metars.length} METARs and ${tafs.length} TAFs...');
 
       // Cache METARs with prefix
       for (final entry in metars.entries) {
@@ -210,9 +212,9 @@ class CacheService {
       // Update last fetch timestamp
       await _metadataBox.put(_weatherLastFetchKey, DateTime.now().toIso8601String());
 
-      print('✅ Cached ${metars.length} METARs and ${tafs.length} TAFs successfully');
+      developer.log('✅ Cached ${metars.length} METARs and ${tafs.length} TAFs successfully');
     } catch (e) {
-      print('❌ Error caching weather data: $e');
+      developer.log('❌ Error caching weather data: $e');
       rethrow;
     }
   }
@@ -224,7 +226,7 @@ class CacheService {
     try {
       return _weatherBox.get('METAR_${icao.toUpperCase()}');
     } catch (e) {
-      print('❌ Error loading cached METAR for $icao: $e');
+      developer.log('❌ Error loading cached METAR for $icao: $e');
       return null;
     }
   }
@@ -236,7 +238,7 @@ class CacheService {
     try {
       return _weatherBox.get('TAF_${icao.toUpperCase()}');
     } catch (e) {
-      print('❌ Error loading cached TAF for $icao: $e');
+      developer.log('❌ Error loading cached TAF for $icao: $e');
       return null;
     }
   }
@@ -258,7 +260,7 @@ class CacheService {
       }
       return metars;
     } catch (e) {
-      print('❌ Error loading cached METARs: $e');
+      developer.log('❌ Error loading cached METARs: $e');
       return {};
     }
   }
@@ -280,7 +282,7 @@ class CacheService {
       }
       return tafs;
     } catch (e) {
-      print('❌ Error loading cached TAFs: $e');
+      developer.log('❌ Error loading cached TAFs: $e');
       return {};
     }
   }
@@ -320,7 +322,7 @@ class CacheService {
 
       return airports;
     } catch (e) {
-      print('❌ Error loading cached airports: $e');
+      developer.log('❌ Error loading cached airports: $e');
       return [];
     }
   }
@@ -342,7 +344,7 @@ class CacheService {
 
       return runways;
     } catch (e) {
-      print('❌ Error loading cached runways: $e');
+      developer.log('❌ Error loading cached runways: $e');
       return [];
     }
   }
@@ -364,7 +366,7 @@ class CacheService {
 
       return navaids;
     } catch (e) {
-      print('❌ Error loading cached navaids: $e');
+      developer.log('❌ Error loading cached navaids: $e');
       return [];
     }
   }
@@ -386,7 +388,7 @@ class CacheService {
 
       return frequencies;
     } catch (e) {
-      print('❌ Error loading cached frequencies: $e');
+      developer.log('❌ Error loading cached frequencies: $e');
       return [];
     }
   }
@@ -398,7 +400,7 @@ class CacheService {
     try {
       return _weatherBox.get(icao);
     } catch (e) {
-      print('❌ Error loading cached weather data for $icao: $e');
+      developer.log('❌ Error loading cached weather data for $icao: $e');
       return null;
     }
   }
@@ -514,7 +516,7 @@ class CacheService {
     await _frequenciesBox.clear();
     await _metadataBox.clear();
     await _weatherBox.clear();
-    print('🗑️ All caches cleared');
+    developer.log('🗑️ All caches cleared');
   }
 
   /// Clear all cached frequencies
@@ -522,9 +524,9 @@ class CacheService {
     try {
       await _frequenciesBox.clear();
       await _metadataBox.delete(_frequenciesLastFetchKey);
-      print('✅ Cleared all cached frequencies');
+      developer.log('✅ Cleared all cached frequencies');
     } catch (e) {
-      print('❌ Error clearing frequencies cache: $e');
+      developer.log('❌ Error clearing frequencies cache: $e');
       rethrow;
     }
   }
