@@ -3,10 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import '../models/flight.dart';
 import '../models/flight_point.dart';
+import '../models/flight_segment.dart';
 import '../models/moving_segment.dart';
 import 'barometer_service.dart';
 import 'altitude_service.dart';
@@ -17,6 +17,7 @@ const double _gravity = 9.80665; // Standard gravity (m/s²)
 
 class FlightService with ChangeNotifier {
   final List<FlightPoint> _flightPath = [];
+  final List<FlightSegment> _flightSegments = [];
   StreamSubscription<Position>? _positionSubscription;
   StreamSubscription? _barometerSubscription;
   bool _isTracking = false;
@@ -42,8 +43,14 @@ class FlightService with ChangeNotifier {
   FlightPoint? _currentMovingSegmentStartPoint;
   final List<FlightPoint> _pausePoints = [];
 
+  // Flight segment tracking
+  FlightPoint? _lastSegmentPoint;
+
   // Constants
   static const double _movingSpeedThreshold = 1.0 / 3.6; // 1 km/h in m/s
+  static const double _minSegmentDistance = 25.0; // Minimum 250m segment length
+  static const double _significantHeadingChange = 10.0; // 15 degrees
+  static const double _significantAltitudeChange = 30.0; // 30 meters
 
   // Services
   final BarometerService? _barometerService;
@@ -57,6 +64,7 @@ class FlightService with ChangeNotifier {
   
   // Getters
   List<FlightPoint> get flightPath => List.unmodifiable(_flightPath);
+  List<FlightSegment> get flightSegments => List.unmodifiable(_flightSegments);
   bool get isTracking => _isTracking;
   
   // Flight history
@@ -180,7 +188,7 @@ class FlightService with ChangeNotifier {
     
     // Listen to barometer updates
     _barometerSubscription = _barometerService?.onBarometerUpdate.listen((_) {
-      _currentBaroAltitude = _barometerService?.altitudeMeters;
+      _currentBaroAltitude = _barometerService.altitudeMeters;
       notifyListeners();
     });
     
@@ -231,6 +239,9 @@ class FlightService with ChangeNotifier {
 
     // Handle moving segment tracking
     _updateMovingSegments(point);
+
+    // Handle flight segment tracking
+    _updateFlightSegments(point);
 
     _updateFlightStats();
     onFlightPathUpdated?.call();
@@ -285,9 +296,7 @@ class FlightService with ChangeNotifier {
       _currentMovingSegmentAltitudes.clear();
       _currentMovingSegmentStartPoint = point;
 
-      if (_movingStartedZulu == null) {
-        _movingStartedZulu = now;
-      }
+      _movingStartedZulu ??= now;
     } else if (!isMoving && _isCurrentlyMoving) {
       // Stopped moving
       _isCurrentlyMoving = false;
@@ -351,6 +360,59 @@ class FlightService with ChangeNotifier {
         );
         _currentMovingSegmentDistance += distance;
       }
+    }
+  }
+
+  /// Update flight segments based on significant changes in direction or altitude
+  void _updateFlightSegments(FlightPoint point) {
+    if (_lastSegmentPoint == null) {
+      // First point, initialize segment
+      _lastSegmentPoint = point;
+      return;
+    }
+
+    final distance = Geolocator.distanceBetween(
+      _lastSegmentPoint!.latitude,
+      _lastSegmentPoint!.longitude,
+      point.latitude,
+      point.longitude,
+    );
+
+    // Check if distance is sufficient to consider a new segment
+    if (distance < _minSegmentDistance) {
+      return; // Not enough distance for a new segment
+    }
+
+    // Check for significant changes
+    final headingChange = (_lastSegmentPoint!.heading - point.heading).abs();
+    final altitudeChange = (_lastSegmentPoint!.altitude - point.altitude).abs();
+
+    if (headingChange > _significantHeadingChange || altitudeChange > _significantAltitudeChange) {
+      // Significant change detected, create a new segment
+      // Create a list of points for this segment (from last segment point to current point)
+      final segmentPoints = <FlightPoint>[];
+
+      // Find all points between the last segment point and current point
+      bool foundStart = false;
+      for (final flightPoint in _flightPath) {
+        if (flightPoint == _lastSegmentPoint) {
+          foundStart = true;
+        }
+        if (foundStart) {
+          segmentPoints.add(flightPoint);
+          if (flightPoint == point) {
+            break;
+          }
+        }
+      }
+
+      // Only create segment if we have enough points
+      if (segmentPoints.length >= 2) {
+        final segment = FlightSegment.fromPoints(segmentPoints);
+        _flightSegments.add(segment);
+      }
+
+      _lastSegmentPoint = point; // Update last segment point
     }
   }
 
@@ -427,6 +489,7 @@ class FlightService with ChangeNotifier {
     _movingStartedZulu = null;
     _movingStoppedZulu = null;
     _movingSegments.clear();
+    _flightSegments.clear();
     _isCurrentlyMoving = false;
     _currentMovingSegmentStart = null;
     _currentMovingSegmentDistance = 0.0;
@@ -545,15 +608,12 @@ class FlightService with ChangeNotifier {
       movingTime: movingTime,
       maxSpeed: maxSpeed,
       averageSpeed: _averageSpeed,
-      recordingStartedZulu: _recordingStartedZulu,
+      recordingStartedZulu: _recordingStartedZulu!,
       recordingStoppedZulu: _recordingStoppedZulu,
       movingStartedZulu: _movingStartedZulu,
       movingStoppedZulu: _movingStoppedZulu,
       movingSegments: List.from(_movingSegments),
-      totalRecordingTime: _recordingStoppedZulu != null && _recordingStartedZulu != null
-          ? _recordingStoppedZulu!.difference(_recordingStartedZulu!)
-          : Duration.zero,
-      pausePoints: List.from(_pausePoints),
+      flightSegments: List.from(_flightSegments),
     );
   }
 

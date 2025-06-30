@@ -70,7 +70,7 @@ class AirportService {
       final filteredCount = cachedAirports.length - _airports.length;
 
       if (_airports.isNotEmpty) {
-        developer.log('✅ Loaded ${_airports.length} airports from cache (${filteredCount} closed airports filtered out)');
+        developer.log('✅ Loaded ${_airports.length} airports from cache ($filteredCount closed airports filtered out)');
       } else {
         developer.log('📱 No valid cached airports found, will fetch from network');
       }
@@ -193,7 +193,7 @@ class AirportService {
             }
           }
           
-          print('✅ Found ${filteredAirports.length} valid airport entries in CSV (${invalidCount} invalid entries skipped, ${closedCount} closed airports excluded)');
+          print('✅ Found ${filteredAirports.length} valid airport entries in CSV ($invalidCount invalid entries skipped, $closedCount closed airports excluded)');
 
           print('🏗  Creating Airport objects...');
           final parsedAirports = filteredAirports.map((line) {

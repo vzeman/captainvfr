@@ -116,8 +116,8 @@ class Airport {
   }
 
   void updateWeather(String metar, {String? taf}) {
-    this.rawMetar = metar;
-    this.rawText = metar; // For backward compatibility
+    rawMetar = metar;
+    rawText = metar; // For backward compatibility
     this.taf = taf;
     lastWeatherUpdate = DateTime.now().toUtc();
   }
@@ -205,15 +205,15 @@ class Airport {
     
     if (direction == 'VRB') {
       if (gust != null) {
-        return 'VRB${speed}G${gust} kt';
+        return 'VRB${speed}G$gust kt';
       }
-      return 'VRB${speed} kt';
+      return 'VRB$speed kt';
     }
     
     if (gust != null) {
-      return '${direction}°${speed}G${gust} kt';
+      return '$direction°${speed}G$gust kt';
     }
-    return '${direction}°${speed} kt';
+    return '$direction°$speed kt';
   }
   
   // Get visibility from raw METAR string
@@ -264,7 +264,7 @@ class Airport {
           cloudList.add('Vertical visibility unknown');
         } else {
           final heightFt = (int.tryParse(height!) ?? 0) * 100;
-          cloudList.add('Vertical visibility ${heightFt} ft');
+          cloudList.add('Vertical visibility $heightFt ft');
         }
         continue;
       }
@@ -299,7 +299,7 @@ class Airport {
     final tempStr = tempMatch.group(1)?.replaceAll('M', '-') ?? '';
     final temp = int.tryParse(tempStr);
     
-    return temp != null ? '${temp}°C' : null;
+    return temp != null ? '$temp°C' : null;
   }
   
   // Get dew point from raw METAR string
@@ -313,7 +313,7 @@ class Airport {
     final dpStr = (dpMatch.group(2) ?? '').replaceAll('M', '-');
     final dp = int.tryParse(dpStr);
     
-    return dp != null ? '${dp}°C' : null;
+    return dp != null ? '$dp°C' : null;
   }
   
   // Get altimeter setting from raw METAR string

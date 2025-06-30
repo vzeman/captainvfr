@@ -70,7 +70,7 @@ class WeatherInterpretationService {
         return 'Unable to interpret weather data';
       }
 
-      return interpretations.join('. ') + '.';
+      return '${interpretations.join('. ')}.';
 
     } catch (e) {
       log('Error interpreting METAR: $e');
@@ -135,7 +135,7 @@ class WeatherInterpretationService {
         return 'Unable to interpret forecast data';
       }
 
-      return interpretations.join('. ') + '.';
+      return '${interpretations.join('. ')}.';
 
     } catch (e) {
       log('Error interpreting TAF: $e');
@@ -147,7 +147,7 @@ class WeatherInterpretationService {
     final day = timeGroup.substring(0, 2);
     final hour = timeGroup.substring(2, 4);
     final minute = timeGroup.substring(4, 6);
-    return 'on day $day at ${hour}:${minute} UTC';
+    return 'on day $day at $hour:$minute UTC';
   }
 
   String _interpretValidityPeriod(String validityGroup) {
@@ -156,7 +156,7 @@ class WeatherInterpretationService {
     final fromHour = parts[0].substring(2, 4);
     final toDay = parts[1].substring(0, 2);
     final toHour = parts[1].substring(2, 4);
-    return 'from day $fromDay at ${fromHour}:00 UTC to day $toDay at ${toHour}:00 UTC';
+    return 'from day $fromDay at $fromHour:00 UTC to day $toDay at $toHour:00 UTC';
   }
 
   ForecastGroup _parseForecastGroup(List<String> parts, int startIndex) {
@@ -287,7 +287,6 @@ class WeatherInterpretationService {
     if (weatherInfo != null) elementInterpretations.add(weatherInfo);
     if (cloudInfos.isNotEmpty) elementInterpretations.add(cloudInfos.join(', '));
     if (temperatureInfo != null) elementInterpretations.add(temperatureInfo);
-    if (pressureInfo != null) elementInterpretations.add(pressureInfo);
 
     if (elementInterpretations.isNotEmpty) {
       groupInterpretations.add(elementInterpretations.join(': '));
@@ -305,7 +304,7 @@ class WeatherInterpretationService {
     final fromMin = parts[0].substring(2, 4);
     final toHour = parts[1].substring(0, 2);
     final toMin = parts[1].substring(2, 4);
-    return 'between ${fromHour}:${fromMin} and ${toHour}:${toMin} UTC';
+    return 'between $fromHour:$fromMin and $toHour:$toMin UTC';
   }
 
   String? _interpretTemperatureForecast(String tempForecast) {
@@ -321,7 +320,7 @@ class WeatherInterpretationService {
       final hour = time.substring(2, 4);
 
       final tempType = isMax ? 'Maximum' : 'Minimum';
-      return '$tempType temperature ${temp}°C on day $day at ${hour}:00 UTC';
+      return '$tempType temperature $temp°C on day $day at $hour:00 UTC';
     }
 
     return null;
@@ -336,7 +335,7 @@ class WeatherInterpretationService {
       final speed = match.group(3)!;
       final gust = match.group(4);
 
-      String windDesc = 'Wind shear at ${altitude} feet: wind from $direction degrees at $speed knots';
+      String windDesc = 'Wind shear at $altitude feet: wind from $direction degrees at $speed knots';
       if (gust != null) {
         final gustSpeed = gust.substring(1); // Remove 'G'
         windDesc += ', gusting to $gustSpeed knots';
@@ -351,7 +350,7 @@ class WeatherInterpretationService {
     final day = timeGroup.substring(0, 2);
     final hour = timeGroup.substring(2, 4);
     final minute = timeGroup.substring(4, 6);
-    return 'Observed on day $day at ${hour}:${minute} UTC';
+    return 'Observed on day $day at $hour:$minute UTC';
   }
 
   String? _interpretWind(String wind) {
@@ -390,7 +389,7 @@ class WeatherInterpretationService {
       if (vis >= 9999) {
         return 'Visibility greater than 10 kilometers';
       } else {
-        return 'Visibility ${vis} meters';
+        return 'Visibility $vis meters';
       }
     }
 
@@ -545,7 +544,7 @@ class WeatherInterpretationService {
         'OVC': 'Overcast',
       };
 
-      return '${coverageTypes[coverage]} at ${altitude} feet';
+      return '${coverageTypes[coverage]} at $altitude feet';
     }
 
     return null;
@@ -557,7 +556,7 @@ class WeatherInterpretationService {
       final temperature = _parseTemperature(parts[0]);
       final dewpoint = _parseTemperature(parts[1]);
 
-      return 'Temperature ${temperature}°C, dewpoint ${dewpoint}°C';
+      return 'Temperature $temperature°C, dewpoint $dewpoint°C';
     }
     return null;
   }
@@ -587,7 +586,7 @@ class WeatherInterpretationService {
       if (time.length >= 4) {
         final hour = time.substring(0, 2);
         final minute = time.substring(2, 4);
-        return 'From ${hour}:${minute} UTC';
+        return 'From $hour:$minute UTC';
       }
     } else if (period.startsWith('TEMPO')) {
       return 'Temporarily';

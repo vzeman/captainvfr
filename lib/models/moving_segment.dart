@@ -1,39 +1,39 @@
 import 'package:hive/hive.dart';
 
-@HiveType(typeId: 1)
+@HiveType(typeId: 3)
 class MovingSegment extends HiveObject {
   @HiveField(0)
-  DateTime start;
+  final DateTime start;
 
   @HiveField(1)
-  DateTime end;
+  final DateTime end;
 
   @HiveField(2)
-  Duration duration;
+  final Duration duration;
 
   @HiveField(3)
-  double distance;
+  final double distance; // in meters
 
   @HiveField(4)
-  double averageSpeed;
+  final double averageSpeed; // in m/s
 
   @HiveField(5)
-  double averageHeading;
+  final double averageHeading; // in degrees
 
   @HiveField(6)
-  double startAltitude;
+  final double startAltitude; // in meters
 
   @HiveField(7)
-  double endAltitude;
+  final double endAltitude; // in meters
 
   @HiveField(8)
-  double averageAltitude;
+  final double averageAltitude; // in meters
 
   @HiveField(9)
-  double maxAltitude;
+  final double maxAltitude; // in meters
 
   @HiveField(10)
-  double minAltitude;
+  final double minAltitude; // in meters
 
   MovingSegment({
     required this.start,
@@ -49,52 +49,59 @@ class MovingSegment extends HiveObject {
     required this.minAltitude,
   });
 
-  // Format Zulu time for display
-  String get startZuluFormatted => _formatZuluTime(start);
-  String get endZuluFormatted => _formatZuluTime(end);
+  // Convert speed from m/s to km/h
+  double get averageSpeedKmh => averageSpeed * 3.6;
 
-  static String _formatZuluTime(DateTime dateTime) {
-    final utc = dateTime.toUtc();
+  // Get formatted duration
+  String get formattedDuration {
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds % 60;
+    return '${minutes}m ${seconds}s';
+  }
+
+  // Get formatted distance
+  String get formattedDistance {
+    if (distance >= 1000) {
+      return '${(distance / 1000).toStringAsFixed(1)} km';
+    } else {
+      return '${distance.toStringAsFixed(0)} m';
+    }
+  }
+
+  // Additional formatting methods for the UI
+  String get formattedAverageSpeed => '${averageSpeedKmh.toStringAsFixed(1)} km/h';
+
+  String get formattedHeading => '${averageHeading.toStringAsFixed(0)}°';
+
+  String get formattedStartAltitude => '${startAltitude.toStringAsFixed(0)} m';
+
+  String get formattedEndAltitude => '${endAltitude.toStringAsFixed(0)} m';
+
+  String get formattedAverageAltitude => '${averageAltitude.toStringAsFixed(0)} m';
+
+  String get formattedMaxAltitude => '${maxAltitude.toStringAsFixed(0)} m';
+
+  String get formattedMinAltitude => '${minAltitude.toStringAsFixed(0)} m';
+
+  double get altitudeChange => endAltitude - startAltitude;
+
+  String get formattedAltitudeChange {
+    final change = altitudeChange;
+    final sign = change >= 0 ? '+' : '';
+    return '$sign${change.toStringAsFixed(0)} m';
+  }
+
+  String get startZuluFormatted {
+    final utc = start.toUtc();
     return '${utc.hour.toString().padLeft(2, '0')}:'
            '${utc.minute.toString().padLeft(2, '0')}:'
            '${utc.second.toString().padLeft(2, '0')}Z';
   }
 
-  // Format duration with seconds if less than 1 minute
-  String get formattedDuration {
-    if (duration.inMinutes < 1) {
-      return '${duration.inSeconds}s';
-    } else {
-      final hours = duration.inHours;
-      final minutes = duration.inMinutes.remainder(60);
-      final seconds = duration.inSeconds.remainder(60);
-
-      if (hours > 0) {
-        return '${hours}h ${minutes}m ${seconds}s';
-      } else {
-        return '${minutes}m ${seconds}s';
-      }
-    }
-  }
-
-  // Format average heading
-  String get formattedHeading => '${averageHeading.toStringAsFixed(0)}°';
-
-  // Format altitude information
-  String get formattedStartAltitude => '${startAltitude.toStringAsFixed(0)} m';
-  String get formattedEndAltitude => '${endAltitude.toStringAsFixed(0)} m';
-  String get formattedAverageAltitude => '${averageAltitude.toStringAsFixed(0)} m';
-  String get formattedMaxAltitude => '${maxAltitude.toStringAsFixed(0)} m';
-  String get formattedMinAltitude => '${minAltitude.toStringAsFixed(0)} m';
-
-  // Format average speed in km/h
-  String get formattedAverageSpeed => '${(averageSpeed * 3.6).toStringAsFixed(1)} km/h';
-
-  // Calculate altitude change
-  double get altitudeChange => endAltitude - startAltitude;
-  String get formattedAltitudeChange {
-    final change = altitudeChange;
-    final sign = change >= 0 ? '+' : '';
-    return '$sign${change.toStringAsFixed(0)} m';
+  String get endZuluFormatted {
+    final utc = end.toUtc();
+    return '${utc.hour.toString().padLeft(2, '0')}:'
+           '${utc.minute.toString().padLeft(2, '0')}:'
+           '${utc.second.toString().padLeft(2, '0')}Z';
   }
 }

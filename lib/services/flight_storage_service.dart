@@ -198,7 +198,32 @@ class FlightAdapter extends TypeAdapter<Flight> {
     final maxSpeed = reader.readDouble();
     final averageSpeed = reader.readDouble();
     
-    // Create a flight with minimal data - points will be loaded separately
+    // Try to read time tracking fields (for backward compatibility with old data)
+    DateTime recordingStartedZulu = startTime.toUtc(); // Default
+    DateTime? recordingStoppedZulu;
+    DateTime? movingStartedZulu;
+    DateTime? movingStoppedZulu;
+
+    try {
+      // Try to read new time tracking fields
+      if (reader.readBool()) { // recordingStartedZulu present
+        recordingStartedZulu = DateTime.fromMillisecondsSinceEpoch(reader.readInt(), isUtc: true);
+      }
+      if (reader.readBool()) { // recordingStoppedZulu present
+        recordingStoppedZulu = DateTime.fromMillisecondsSinceEpoch(reader.readInt(), isUtc: true);
+      }
+      if (reader.readBool()) { // movingStartedZulu present
+        movingStartedZulu = DateTime.fromMillisecondsSinceEpoch(reader.readInt(), isUtc: true);
+      }
+      if (reader.readBool()) { // movingStoppedZulu present
+        movingStoppedZulu = DateTime.fromMillisecondsSinceEpoch(reader.readInt(), isUtc: true);
+      }
+    } catch (e) {
+      // If we can't read these fields, it means we're reading old data format
+      // Use defaults that we already set above
+    }
+
+    // Create a flight with minimal data - points and segments will be loaded separately
     return Flight(
       id: id,
       startTime: startTime,
@@ -209,6 +234,12 @@ class FlightAdapter extends TypeAdapter<Flight> {
       movingTime: movingTime,
       maxSpeed: maxSpeed,
       averageSpeed: averageSpeed,
+      recordingStartedZulu: recordingStartedZulu,
+      recordingStoppedZulu: recordingStoppedZulu,
+      movingStartedZulu: movingStartedZulu,
+      movingStoppedZulu: movingStoppedZulu,
+      movingSegments: const [], // Segments will be loaded separately if needed
+      flightSegments: const [], // Segments will be loaded separately if needed
     );
   }
 
@@ -229,6 +260,22 @@ class FlightAdapter extends TypeAdapter<Flight> {
     writer.writeDouble(obj.maxSpeed);
     writer.writeDouble(obj.averageSpeed);
     
+    // Write time tracking fields
+    writer.writeBool(true); // recordingStartedZulu present
+    writer.writeInt(obj.recordingStartedZulu.millisecondsSinceEpoch);
+    writer.writeBool(obj.recordingStoppedZulu != null);
+    if (obj.recordingStoppedZulu != null) {
+      writer.writeInt(obj.recordingStoppedZulu!.millisecondsSinceEpoch);
+    }
+    writer.writeBool(obj.movingStartedZulu != null);
+    if (obj.movingStartedZulu != null) {
+      writer.writeInt(obj.movingStartedZulu!.millisecondsSinceEpoch);
+    }
+    writer.writeBool(obj.movingStoppedZulu != null);
+    if (obj.movingStoppedZulu != null) {
+      writer.writeInt(obj.movingStoppedZulu!.millisecondsSinceEpoch);
+    }
+
     // Note: We don't serialize the path points here - they are stored separately
     // in the flight_points box with composite keys
   }

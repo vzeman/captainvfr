@@ -22,7 +22,7 @@ class QNHSettingsWidget extends StatefulWidget {
 class _QNHSettingsWidgetState extends State<QNHSettingsWidget> {
   late TextEditingController _qnhController;
   double _currentQNH = 1013.25;
-  bool _isEditing = false;
+  final bool _isEditing = false;
 
   @override
   void initState() {

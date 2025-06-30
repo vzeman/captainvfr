@@ -20,8 +20,8 @@ class WeatherService {
 
   Map<String, String> _metarCache = {};
   Map<String, String> _tafCache = {};
-  Map<String, DateTime> _metarTimestamps = {}; // Track when each METAR was fetched
-  Map<String, DateTime> _tafTimestamps = {}; // Track when each TAF was fetched
+  final Map<String, DateTime> _metarTimestamps = {}; // Track when each METAR was fetched
+  final Map<String, DateTime> _tafTimestamps = {}; // Track when each TAF was fetched
   DateTime? _lastFetch;
   Future<void>? _ongoingFetch;
   bool _isReloading = false; // Prevent multiple simultaneous reloads

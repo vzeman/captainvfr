@@ -187,9 +187,8 @@ class CaptainVFRApp extends StatelessWidget {
           primary: const Color(0xFF90CAF9),
           secondary: const Color(0xFF64B5F6),
           surface: const Color(0xFF121212),
-          background: const Color(0xFF121212),
           onSurface: Colors.white,
-          surfaceVariant: const Color(0xFF121212),
+          surfaceContainerHighest: const Color(0xFF121212),
         ),
         cardTheme: CardThemeData(
           color: Colors.grey[900],

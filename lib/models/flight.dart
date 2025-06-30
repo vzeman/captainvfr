@@ -2,6 +2,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:hive/hive.dart';
 import 'flight_point.dart';
 import 'moving_segment.dart';
+import 'flight_segment.dart';
 
 // Extension to convert FlightPoint to LatLng
 extension FlightPointExtension on FlightPoint {
@@ -12,31 +13,31 @@ extension FlightPointExtension on FlightPoint {
 class Flight extends HiveObject {
   @HiveField(0)
   String id;
-  
+
   @HiveField(1)
   DateTime startTime;
-  
+
   @HiveField(2)
   DateTime? endTime;
-  
+
   @HiveField(3)
   final List<FlightPoint> path;
-  
+
   @HiveField(4)
   double maxAltitude;
-  
+
   @HiveField(5)
   double distanceTraveled;
-  
+
   @HiveField(6)
   Duration movingTime;
-  
+
   @HiveField(7)
   double maxSpeed;
-  
+
   @HiveField(8)
   double averageSpeed;
-  
+
   // New time tracking fields
   @HiveField(9)
   DateTime recordingStartedZulu;
@@ -51,75 +52,83 @@ class Flight extends HiveObject {
   DateTime? movingStoppedZulu;
 
   @HiveField(13)
-  List<MovingSegment> movingSegments;
+  final List<MovingSegment> movingSegments;
 
   @HiveField(14)
-  Duration totalRecordingTime;
+  final List<FlightSegment> flightSegments;
 
-  @HiveField(15)
-  List<FlightPoint> pausePoints; // Points where speed dropped below 1km/h
-
-  // Computed properties instead of stored fields for better data consistency
-  List<DateTime> get timestamps => path.map((p) => p.timestamp).toList();
-  List<double> get speeds => path.map((p) => p.speed).toList();
-  List<double> get altitudes => path.map((p) => p.altitude).toList();
-  List<double> get vibrationData => path.map((p) => p.vibrationMagnitude).toList();
-  
-  // Add default constructor for Hive
   Flight({
     required this.id,
     required this.startTime,
     this.endTime,
-    List<FlightPoint>? path,
-    double? maxAltitude,
-    double? distanceTraveled,
-    Duration? movingTime,
-    double? maxSpeed,
-    double? averageSpeed,
-    DateTime? recordingStartedZulu,
+    required this.path,
+    this.maxAltitude = 0.0,
+    this.distanceTraveled = 0.0,
+    this.movingTime = Duration.zero,
+    this.maxSpeed = 0.0,
+    this.averageSpeed = 0.0,
+    required this.recordingStartedZulu,
     this.recordingStoppedZulu,
     this.movingStartedZulu,
     this.movingStoppedZulu,
     List<MovingSegment>? movingSegments,
-    Duration? totalRecordingTime,
-    List<FlightPoint>? pausePoints,
-  }) :
-    path = path ?? [],
-    maxAltitude = maxAltitude ?? 0.0,
-    distanceTraveled = distanceTraveled ?? 0.0,
-    movingTime = movingTime ?? Duration.zero,
-    maxSpeed = maxSpeed ?? 0.0,
-    averageSpeed = averageSpeed ?? 0.0,
-    recordingStartedZulu = recordingStartedZulu ?? DateTime.now().toUtc(),
-    movingSegments = movingSegments ?? [],
-    totalRecordingTime = totalRecordingTime ?? Duration.zero,
-    pausePoints = pausePoints ?? [];
+    List<FlightSegment>? flightSegments,
+  }) : movingSegments = movingSegments ?? [],
+       flightSegments = flightSegments ?? [];
 
-  // Factory constructor for creating a new flight
-  factory Flight.newFlight() {
-    final now = DateTime.now();
-    return Flight(
-      id: now.millisecondsSinceEpoch.toString(),
-      startTime: now,
-      path: [],
-      maxAltitude: 0.0,
-      distanceTraveled: 0.0,
-      movingTime: Duration.zero,
-      maxSpeed: 0.0,
-      averageSpeed: 0.0,
-      recordingStartedZulu: now.toUtc(),
-      movingSegments: [],
-      totalRecordingTime: Duration.zero,
-      pausePoints: [],
-    );
+  Duration get duration => endTime != null
+      ? endTime!.difference(startTime)
+      : DateTime.now().difference(startTime);
+
+  // Get all positions as LatLng for map display
+  List<LatLng> get positions => path.map((point) => point.toLatLng()).toList();
+
+  // Get altitudes for charts
+  List<double> get altitudes => path.map((point) => point.altitude).toList();
+
+  // Get speeds for charts
+  List<double> get speeds => path.map((point) => point.speed).toList();
+
+  // Get accelerometer data for vibration analysis
+  List<double> get vibrationData {
+    return path.map((point) {
+      final x = point.xAcceleration ?? 0.0;
+      final y = point.yAcceleration ?? 0.0;
+      final z = point.zAcceleration ?? 0.0;
+      return (x * x + y * y + z * z).abs(); // Magnitude of acceleration
+    }).toList();
   }
-  
-  // Get list of all positions as LatLng
-  List<LatLng> get positions {
-    return path.map((point) => LatLng(point.latitude, point.longitude)).toList();
+
+  // Get all segments (both moving and flight segments) for visualization
+  List<dynamic> get allSegments {
+    final List<dynamic> segments = [];
+    segments.addAll(movingSegments);
+    segments.addAll(flightSegments);
+    // Sort by start time
+    segments.sort((a, b) {
+      final aStart = a is MovingSegment ? a.start : (a as FlightSegment).startTime;
+      final bStart = b is MovingSegment ? b.start : (b as FlightSegment).startTime;
+      return aStart.compareTo(bStart);
+    });
+    return segments;
   }
-  
-  // Create a copy of the flight with updated fields
+
+  // Additional computed properties
+  Duration get totalRecordingTime {
+    if (recordingStoppedZulu != null) {
+      return recordingStoppedZulu!.difference(recordingStartedZulu);
+    }
+    return DateTime.now().toUtc().difference(recordingStartedZulu);
+  }
+
+  // Pause points (for tracking stops during flight)
+  List<FlightPoint> get pausePoints {
+    // This would be populated by the flight service
+    // For now, return empty list
+    return [];
+  }
+
+  // Add copyWith method for creating modified copies
   Flight copyWith({
     String? id,
     DateTime? startTime,
@@ -135,8 +144,7 @@ class Flight extends HiveObject {
     DateTime? movingStartedZulu,
     DateTime? movingStoppedZulu,
     List<MovingSegment>? movingSegments,
-    Duration? totalRecordingTime,
-    List<FlightPoint>? pausePoints,
+    List<FlightSegment>? flightSegments,
   }) {
     return Flight(
       id: id ?? this.id,
@@ -153,144 +161,7 @@ class Flight extends HiveObject {
       movingStartedZulu: movingStartedZulu ?? this.movingStartedZulu,
       movingStoppedZulu: movingStoppedZulu ?? this.movingStoppedZulu,
       movingSegments: movingSegments ?? List.from(this.movingSegments),
-      totalRecordingTime: totalRecordingTime ?? this.totalRecordingTime,
-      pausePoints: pausePoints ?? List.from(this.pausePoints),
+      flightSegments: flightSegments ?? List.from(this.flightSegments),
     );
-  }
-
-  // Create Flight from Map
-  factory Flight.fromMap(Map<String, dynamic> map) {
-    final path = map['path'] != null 
-        ? (map['path'] as List<dynamic>).map<FlightPoint>((dynamic point) {
-            final p = point as Map<String, dynamic>;
-            return FlightPoint(
-              latitude: (p['latitude'] ?? p['lat'] ?? 0.0).toDouble(),
-              longitude: (p['longitude'] ?? p['lng'] ?? 0.0).toDouble(),
-              altitude: (p['altitude'] ?? 0.0).toDouble(),
-              speed: (p['speed'] ?? 0.0).toDouble(),
-              heading: (p['heading'] ?? 0.0).toDouble(),
-              timestamp: p['timestamp'] != null 
-                  ? DateTime.parse(p['timestamp'].toString())
-                  : DateTime.now(),
-              // Default values for sensor data
-              accuracy: (p['accuracy'] ?? 0.0).toDouble(),
-              verticalAccuracy: (p['verticalAccuracy'] ?? 0.0).toDouble(),
-              speedAccuracy: (p['speedAccuracy'] ?? 0.0).toDouble(),
-              headingAccuracy: (p['headingAccuracy'] ?? 0.0).toDouble(),
-              xAcceleration: (p['xAcceleration'] ?? 0.0).toDouble(),
-              yAcceleration: (p['yAcceleration'] ?? 0.0).toDouble(),
-              zAcceleration: (p['zAcceleration'] ?? 0.0).toDouble(),
-              xGyro: (p['xGyro'] ?? 0.0).toDouble(),
-              yGyro: (p['yGyro'] ?? 0.0).toDouble(),
-              zGyro: (p['zGyro'] ?? 0.0).toDouble(),
-              pressure: (p['pressure'] ?? 0.0).toDouble(),
-            );
-          }).toList()
-        : <FlightPoint>[];
-
-    return Flight(
-      id: map['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      startTime: map['startTime'] != null 
-          ? DateTime.parse(map['startTime']) 
-          : DateTime.now(),
-      endTime: map['endTime'] != null ? DateTime.parse(map['endTime']) : null,
-      path: path,
-      maxAltitude: map['maxAltitude']?.toDouble() ?? 0.0,
-      distanceTraveled: map['distanceTraveled']?.toDouble() ?? 0.0,
-      movingTime: Duration(milliseconds: (map['movingTime'] ?? 0) as int),
-      maxSpeed: (map['maxSpeed'] ?? 0.0).toDouble(),
-      averageSpeed: (map['averageSpeed'] ?? 0.0).toDouble(),
-      recordingStartedZulu: DateTime.parse(map['recordingStartedZulu']).toUtc(),
-      recordingStoppedZulu: map['recordingStoppedZulu'] != null
-          ? DateTime.parse(map['recordingStoppedZulu']).toUtc()
-          : null,
-      movingStartedZulu: map['movingStartedZulu'] != null
-          ? DateTime.parse(map['movingStartedZulu']).toUtc()
-          : null,
-      movingStoppedZulu: map['movingStoppedZulu'] != null
-          ? DateTime.parse(map['movingStoppedZulu']).toUtc()
-          : null,
-      movingSegments: map['movingSegments'] != null
-          ? (map['movingSegments'] as List<dynamic>).map<MovingSegment>((dynamic segment) {
-              final s = segment as Map<String, dynamic>;
-              return MovingSegment(
-                start: DateTime.parse(s['start']).toUtc(),
-                end: DateTime.parse(s['end']).toUtc(),
-                duration: Duration(milliseconds: (s['duration'] ?? 0) as int),
-                distance: (s['distance']?.toDouble() ?? 0.0),
-                averageSpeed: (s['averageSpeed']?.toDouble() ?? 0.0),
-                averageHeading: (s['averageHeading']?.toDouble() ?? 0.0),
-                startAltitude: (s['startAltitude']?.toDouble() ?? 0.0),
-                endAltitude: (s['endAltitude']?.toDouble() ?? 0.0),
-                averageAltitude: (s['averageAltitude']?.toDouble() ?? 0.0),
-                maxAltitude: (s['maxAltitude']?.toDouble() ?? 0.0),
-                minAltitude: (s['minAltitude']?.toDouble() ?? 0.0),
-              );
-            }).toList()
-          : <MovingSegment>[],
-      totalRecordingTime: Duration(milliseconds: (map['totalRecordingTime'] ?? 0) as int),
-      pausePoints: map['pausePoints'] != null
-          ? (map['pausePoints'] as List<dynamic>).map<FlightPoint>((dynamic point) {
-              final p = point as Map<String, dynamic>;
-              return FlightPoint(
-                latitude: (p['latitude'] ?? p['lat'] ?? 0.0).toDouble(),
-                longitude: (p['longitude'] ?? p['lng'] ?? 0.0).toDouble(),
-                altitude: (p['altitude'] ?? 0.0).toDouble(),
-                speed: (p['speed'] ?? 0.0).toDouble(),
-                heading: (p['heading'] ?? 0.0).toDouble(),
-                timestamp: p['timestamp'] != null
-                    ? DateTime.parse(p['timestamp'].toString())
-                    : DateTime.now(),
-                // Default values for sensor data
-                accuracy: (p['accuracy'] ?? 0.0).toDouble(),
-                verticalAccuracy: (p['verticalAccuracy'] ?? 0.0).toDouble(),
-                speedAccuracy: (p['speedAccuracy'] ?? 0.0).toDouble(),
-                headingAccuracy: (p['headingAccuracy'] ?? 0.0).toDouble(),
-                xAcceleration: (p['xAcceleration'] ?? 0.0).toDouble(),
-                yAcceleration: (p['yAcceleration'] ?? 0.0).toDouble(),
-                zAcceleration: (p['zAcceleration'] ?? 0.0).toDouble(),
-                xGyro: (p['xGyro'] ?? 0.0).toDouble(),
-                yGyro: (p['yGyro'] ?? 0.0).toDouble(),
-                zGyro: (p['zGyro'] ?? 0.0).toDouble(),
-                pressure: (p['pressure'] ?? 0.0).toDouble(),
-              );
-            }).toList()
-          : <FlightPoint>[],
-    );
-  }
-  
-  // Derived properties
-  Duration get duration => endTime != null 
-      ? endTime!.difference(startTime)
-      : DateTime.now().difference(startTime);
-      
-  bool get isComplete => endTime != null;
-  
-  // Calculate time spent moving (speed > 1 m/s)
-  Duration get movingTimeCalculated {
-    if (speeds.isEmpty) return Duration.zero;
-    final movingPoints = speeds.where((speed) => speed > 1.0).length;
-    return Duration(seconds: (duration.inSeconds * (movingPoints / speeds.length)).round());
-  }
-
-  // Format duration as HH:MM:SS
-  static String formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = twoDigits(duration.inHours);
-    final minutes = twoDigits(duration.inMinutes.remainder(60));
-    final seconds = twoDigits(duration.inSeconds.remainder(60));
-    return '$hours:$minutes:$seconds';
-  }
-  
-  // Format distance in meters to kilometers with 1 decimal place
-  static String formatDistance(double meters) {
-    if (meters < 1000) return '${meters.toStringAsFixed(0)} m';
-    return '${(meters / 1000).toStringAsFixed(1)} km';
-  }
-  
-  // Format speed in m/s to km/h with 1 decimal place
-  static String formatSpeed(double speedMps) {
-    final speedKph = speedMps * 3.6;
-    return '${speedKph.toStringAsFixed(1)} km/h';
   }
 }

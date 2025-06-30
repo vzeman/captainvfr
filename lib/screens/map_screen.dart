@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:geolocator/geolocator.dart';
-import 'dart:async' show Timer;
 import 'package:provider/provider.dart';
 import 'flight_log_screen.dart';
 import 'offline_map_screen.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
+import '../models/flight_segment.dart';
 import '../services/airport_service.dart';
 import '../services/navaid_service.dart';
 import '../services/runway_service.dart';
@@ -59,6 +59,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   // Location and map state
   Position? _currentPosition;
   List<LatLng> _flightPathPoints = [];
+  List<FlightSegment> _flightSegments = [];
   List<Airport> _airports = [];
   List<Navaid> _navaids = [];
 
@@ -100,11 +101,35 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
       // Initialize services with caching
       _initializeServices();
+
+      // Listen to flight service updates
+      _setupFlightServiceListener();
+    }
+  }
+
+  // Setup listener for flight service updates
+  void _setupFlightServiceListener() {
+    _flightService.addListener(_onFlightPathUpdated);
+  }
+
+  // Handle flight path updates from the flight service
+  void _onFlightPathUpdated() {
+    if (mounted) {
+      setState(() {
+        // Convert flight points to LatLng for map visualization
+        _flightPathPoints = _flightService.flightPath
+            .map((point) => LatLng(point.latitude, point.longitude))
+            .toList();
+
+        // Update flight segments for visualization
+        _flightSegments = _flightService.flightSegments;
+      });
     }
   }
   
   @override
   void dispose() {
+    _flightService.removeListener(_onFlightPathUpdated);
     _debounceTimer?.cancel();
     _mapController.dispose();
     _flightService.dispose();
@@ -755,6 +780,48 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                     ),
                   ],
                 ),
+              // Flight segment markers
+              if (_flightSegments.isNotEmpty)
+                MarkerLayer(
+                  markers: _flightSegments.map((segment) => [
+                    // Start marker
+                    Marker(
+                      point: segment.startLatLng,
+                      width: 16,
+                      height: 16,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _getSegmentColor(segment.type),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: Icon(
+                          _getSegmentIcon(segment.type),
+                          size: 8,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    // End marker
+                    Marker(
+                      point: segment.endLatLng,
+                      width: 16,
+                      height: 16,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _getSegmentColor(segment.type).withOpacity(0.7),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: Icon(
+                          Icons.flag,
+                          size: 8,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ]).expand((markers) => markers).toList(),
+                ),
               // Airport markers with tap handling
               AirportMarkersLayer(
                 airports: _airports.where((airport) {
@@ -1057,5 +1124,31 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       tooltip: tooltip,
       onPressed: onPressed,
     );
+  }
+
+  Color _getSegmentColor(String segmentType) {
+    switch (segmentType) {
+      case 'takeoff':
+        return Colors.green;
+      case 'landing':
+        return Colors.red;
+      case 'cruise':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getSegmentIcon(String segmentType) {
+    switch (segmentType) {
+      case 'takeoff':
+        return Icons.arrow_upward;
+      case 'landing':
+        return Icons.arrow_downward;
+      case 'cruise':
+        return Icons.flight;
+      default:
+        return Icons.circle;
+    }
   }
 }
