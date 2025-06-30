@@ -24,6 +24,7 @@ class WeatherService {
   Map<String, DateTime> _tafTimestamps = {}; // Track when each TAF was fetched
   DateTime? _lastFetch;
   Future<void>? _ongoingFetch;
+  bool _isReloading = false; // Prevent multiple simultaneous reloads
 
   WeatherService();
 
@@ -202,16 +203,145 @@ class WeatherService {
     }
   }
 
-  /// Get METAR for ICAO code (loads all if needed)
+  /// Get METAR for ICAO code - returns cached data immediately and triggers reload if needed
   Future<String?> getMetar(String icaoCode) async {
-    await _fetchAllWeatherIfNeeded();
-    return _metarCache[icaoCode.toUpperCase()];
+    final icaoUpper = icaoCode.toUpperCase();
+
+    // First, try to get cached data
+    String? cachedMetar = _metarCache[icaoUpper];
+
+    // If no cached data, try loading from persistent storage
+    if (cachedMetar == null && _metarCache.isEmpty) {
+      await _loadCachedData();
+      cachedMetar = _metarCache[icaoUpper];
+    }
+
+    // Check if we need to reload data in background
+    final shouldReload = _shouldReloadWeatherData(icaoUpper, isMetar: true);
+
+    if (shouldReload && !_isReloading) {
+      // Trigger background reload but don't wait for it
+      _triggerBackgroundReload();
+    }
+
+    // Return cached data immediately (even if invalid/expired)
+    return cachedMetar;
   }
 
-  /// Get TAF for ICAO code (loads all if needed)
+  /// Get TAF for ICAO code - returns cached data immediately and triggers reload if needed
   Future<String?> getTaf(String icaoCode) async {
-    await _fetchAllWeatherIfNeeded();
-    return _tafCache[icaoCode.toUpperCase()];
+    final icaoUpper = icaoCode.toUpperCase();
+
+    // First, try to get cached data
+    String? cachedTaf = _tafCache[icaoUpper];
+
+    // If no cached data, try loading from persistent storage
+    if (cachedTaf == null && _tafCache.isEmpty) {
+      await _loadCachedData();
+      cachedTaf = _tafCache[icaoUpper];
+    }
+
+    // Check if we need to reload data in background
+    final shouldReload = _shouldReloadWeatherData(icaoUpper, isMetar: false);
+
+    if (shouldReload && !_isReloading) {
+      // Trigger background reload but don't wait for it
+      _triggerBackgroundReload();
+    }
+
+    // Return cached data immediately (even if invalid/expired)
+    return cachedTaf;
+  }
+
+  /// Check if weather data should be reloaded
+  bool _shouldReloadWeatherData(String icaoCode, {required bool isMetar}) {
+    final cache = isMetar ? _metarCache : _tafCache;
+    final timestamps = isMetar ? _metarTimestamps : _tafTimestamps;
+
+    // If no data at all, need to reload
+    if (cache[icaoCode] == null) {
+      return true;
+    }
+
+    // If data is invalid, need to reload
+    if (_isWeatherDataInvalid(cache[icaoCode]!)) {
+      _logger.d('🔄 Weather data for $icaoCode is invalid, triggering reload');
+      return true;
+    }
+
+    // If data is expired (older than 15 minutes), need to reload
+    final timestamp = timestamps[icaoCode];
+    if (timestamp != null) {
+      final age = DateTime.now().difference(timestamp);
+      if (age > const Duration(minutes: 15)) {
+        _logger.d('🕒 Weather data for $icaoCode is ${age.inMinutes} minutes old, triggering reload');
+        return true;
+      }
+    } else {
+      // No timestamp means data is from persistent cache, likely old
+      return true;
+    }
+
+    return false;
+  }
+
+  /// Check if weather data is invalid
+  bool _isWeatherDataInvalid(String weatherData) {
+    if (weatherData.trim().isEmpty) return true;
+
+    // Check for common invalid patterns
+    if (weatherData.contains('ERROR') ||
+        weatherData.contains('INVALID') ||
+        weatherData.contains('NO DATA') ||
+        weatherData.contains('TIMEOUT')) {
+      return true;
+    }
+
+    // For METAR: Should start with 4-letter ICAO code followed by date/time
+    if (!RegExp(r'^[A-Z]{4}\s+\d{6}Z?').hasMatch(weatherData.trim())) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /// Trigger background reload of weather data
+  void _triggerBackgroundReload() {
+    if (_isReloading) {
+      _logger.d('🔄 Background reload already in progress, skipping');
+      return;
+    }
+
+    _isReloading = true;
+    _logger.d('🔄 Triggering background weather data reload');
+
+    // Start background reload
+    _backgroundReload().then((_) {
+      _isReloading = false;
+      _logger.d('✅ Background weather data reload completed');
+    }).catchError((error) {
+      _isReloading = false;
+      _logger.e('❌ Background weather data reload failed: $error');
+    });
+  }
+
+  /// Background reload of weather data
+  Future<void> _backgroundReload() async {
+    try {
+      await _fetchAllWeather();
+
+      // Update timestamps for all fetched data
+      final fetchTime = DateTime.now();
+      for (final icao in _metarCache.keys) {
+        _metarTimestamps[icao] = fetchTime;
+      }
+      for (final icao in _tafCache.keys) {
+        _tafTimestamps[icao] = fetchTime;
+      }
+
+    } catch (e, st) {
+      _logger.e('❌ Error in background weather reload', error: e, stackTrace: st);
+    }
   }
 
   /// Get cached METAR without fetching

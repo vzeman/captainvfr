@@ -88,18 +88,46 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
   }
 
   Future<void> _fetchWeather() async {
-    if (widget.airport.rawMetar != null || _isLoadingWeather) return;
+    // Check if this airport type should have weather data
+    if (!_shouldFetchWeatherForAirport(widget.airport)) {
+      setState(() {
+        _weatherTabInitialized = true;
+        _isLoadingWeather = false;
+        _weatherError = null;
+      });
+      return;
+    }
 
-    setState(() {
-      _isLoadingWeather = true;
-      _weatherError = null;
-      _weatherTabInitialized = true;
-    });
+    // Always show cached data first if available
+    final cachedMetar = widget.weatherService.getCachedMetar(widget.airport.icao);
+    final cachedTaf = widget.weatherService.getCachedTaf(widget.airport.icao);
+
+    if (cachedMetar != null || cachedTaf != null) {
+      setState(() {
+        if (cachedMetar != null) {
+          widget.airport.updateWeather(cachedMetar);
+        }
+        if (cachedTaf != null) {
+          widget.airport.taf = cachedTaf;
+          widget.airport.lastWeatherUpdate = DateTime.now().toUtc();
+        }
+        _weatherTabInitialized = true;
+        _isLoadingWeather = false;
+        _weatherError = null;
+      });
+    } else {
+      setState(() {
+        _isLoadingWeather = true;
+        _weatherError = null;
+        _weatherTabInitialized = true;
+      });
+    }
 
     try {
-      final metar = await widget.weatherService.fetchMetar(widget.airport.icao);
-      final taf = await widget.weatherService.fetchTaf(widget.airport.icao);
-      
+      // Fetch weather data (this will return cached data immediately and trigger reload if needed)
+      final metar = await widget.weatherService.getMetar(widget.airport.icao);
+      final taf = await widget.weatherService.getTaf(widget.airport.icao);
+
       if (mounted) {
         setState(() {
           if (metar != null) {
@@ -109,20 +137,40 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
             widget.airport.taf = taf;
             widget.airport.lastWeatherUpdate = DateTime.now().toUtc();
           }
+          _isLoadingWeather = false;
+          _weatherError = null;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _weatherError = 'Failed to load weather data: $e';
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
           _isLoadingWeather = false;
+          // Only show error if we don't have any cached data to display
+          if (widget.airport.rawMetar == null && widget.airport.taf == null) {
+            _weatherError = 'Failed to load weather data: $e';
+          }
         });
       }
+    }
+  }
+
+  /// Check if weather data should be fetched for this airport type
+  bool _shouldFetchWeatherForAirport(Airport airport) {
+    // Only fetch weather for medium and large airports
+    // Small airports, heliports, seaplane bases typically don't have weather stations
+    switch (airport.type.toLowerCase()) {
+      case 'large_airport':
+      case 'medium_airport':
+        return true;
+      case 'small_airport':
+      case 'heliport':
+      case 'seaplane_base':
+      case 'closed':
+        return false;
+      default:
+        // For unknown types, check if it has an ICAO code
+        // Airports with proper ICAO codes are more likely to have weather data
+        return airport.icao.length == 4 && RegExp(r'^[A-Z]{4}$').hasMatch(airport.icao);
     }
   }
 
