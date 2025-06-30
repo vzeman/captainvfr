@@ -146,6 +146,13 @@ class FlightService with ChangeNotifier {
     notifyListeners();
   }
   
+  // Delete a specific flight from the history
+  Future<void> deleteFlight(Flight flight) async {
+    _flights.remove(flight);
+    await FlightStorageService.deleteFlight(flight.id);
+    notifyListeners();
+  }
+
   // Clear all flight history
   Future<void> clearFlights() async {
     // Delete all flights from storage
