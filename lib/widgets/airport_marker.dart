@@ -113,68 +113,6 @@ class AirportMarker extends StatelessWidget {
     );
   }
 
-  void _showWeatherTooltip(BuildContext context, Airport airport) {
-    if (airport.rawMetar == null && airport.taf == null) {
-      debugPrint('No weather data available for ${airport.icao}');
-      return;
-    }
-    
-    final windInfo = airport.windInfo ?? 'Unknown';
-    final visibility = airport.visibilityInfo ?? 'Unknown';
-
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('${airport.icao} - ${airport.name}'),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (airport.flightCategory != null) ...[
-                  Text(
-                    'Conditions: ${airport.flightCategory}',
-                    style: TextStyle(
-                      color: _getAirportColor(airport.type),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                if (airport.rawMetar != null) ...[
-                  const Text('METAR:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text(airport.rawMetar!),
-                  const SizedBox(height: 8),
-                ],
-                if (airport.taf != null) ...[
-                  const Text('TAF:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text(airport.taf!),
-                  const SizedBox(height: 8),
-                ],
-                const SizedBox(height: 4),
-                Text('Wind: $windInfo'),
-                const SizedBox(height: 4),
-                Text('Visibility: $visibility'),
-                if (airport.lastWeatherUpdate != null) ...[
-                  const SizedBox(height: 4),
-                  Text('Updated: ${airport.lastWeatherUpdate!.toLocal().toString().substring(0, 16)}'),
-                ],
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   // Get appropriate icon based on airport type
   IconData _getAirportIcon(String type) {
     switch (type) {

@@ -282,8 +282,3 @@ class AltitudeService {
     _altitudeHistoryController.close();
   }
 }
-
-extension on double {
-  double pow(double exponent) => 
-      (this * 1e6).round() / 1e6 * (exponent * 1e6).round() / 1e6;
-}

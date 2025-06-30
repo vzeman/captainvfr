@@ -23,7 +23,6 @@ class FlightService with ChangeNotifier {
   bool _isTracking = false;
   double? _currentHeading;
   double? _currentBaroAltitude;
-  Position? _lastPosition;
   DateTime? _startTime;
   double _totalDistance = 0.0;
   double _averageSpeed = 0.0;
@@ -170,7 +169,6 @@ class FlightService with ChangeNotifier {
     _flightPath.clear();
     _altitudeHistory.clear();
     _startTime = DateTime.now();
-    _lastPosition = null;
     _totalDistance = 0.0;
     _averageSpeed = 0.0;
     
@@ -488,7 +486,6 @@ class FlightService with ChangeNotifier {
   // Reset all tracking state
   void _resetTrackingState() {
     _flightPath.clear();
-    _lastPosition = null;
     _totalDistance = 0.0;
     _averageSpeed = 0.0;
     _recordingStartedZulu = null;
@@ -656,19 +653,6 @@ class FlightService with ChangeNotifier {
       }
     }
     
-    _lastPosition = Position(
-      latitude: _flightPath.last.position.latitude,
-      longitude: _flightPath.last.position.longitude,
-      timestamp: _flightPath.last.timestamp,
-      accuracy: _flightPath.last.accuracy,
-      altitude: _flightPath.last.altitude,
-      heading: _flightPath.last.heading,
-      speed: _flightPath.last.speed,
-      speedAccuracy: _flightPath.last.speedAccuracy,
-      headingAccuracy: _flightPath.last.headingAccuracy,
-      altitudeAccuracy: _flightPath.last.verticalAccuracy,
-    );
-    
     // Notify listeners
     notifyListeners();
   }
@@ -717,15 +701,7 @@ class FlightService with ChangeNotifier {
     }
     return distance;
   }
-  
-  // Initialize compass
-  void _initCompass() {
-    _compassSubscription = FlutterCompass.events?.listen((event) {
-      _currentHeading = event.heading;
-      notifyListeners();
-    });
-  }
-  
+
   // Get the total moving time of the current flight
   Duration get movingTime {
     if (_startTime == null) return Duration.zero;

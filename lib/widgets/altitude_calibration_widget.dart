@@ -24,7 +24,6 @@ class _AltitudeCalibrationWidgetState extends State<AltitudeCalibrationWidget> {
   late TextEditingController _groundAltController;
   double? _currentPressure;
   double? _currentBarometricAltitude;
-  double _knownGroundAltitude = 0.0;
   bool _isCalibrating = false;
 
   @override
@@ -71,7 +70,6 @@ class _AltitudeCalibrationWidgetState extends State<AltitudeCalibrationWidget> {
 
     setState(() {
       _isCalibrating = true;
-      _knownGroundAltitude = groundAlt;
     });
 
     try {
