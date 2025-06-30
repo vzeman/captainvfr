@@ -6,6 +6,7 @@ import '../models/airport.dart';
 import '../models/runway.dart';
 import '../models/frequency.dart';
 import '../services/weather_service.dart';
+import '../services/weather_interpretation_service.dart';
 import '../services/runway_service.dart';
 import '../services/frequency_service.dart';
 
@@ -47,6 +48,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
   // Get services from Provider instead of creating new instances
   late final RunwayService _runwayService;
   late final FrequencyService _frequencyService;
+  late final WeatherInterpretationService _weatherInterpretationService;
 
   @override
   void initState() {
@@ -61,6 +63,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
     // Get services from Provider
     _runwayService = Provider.of<RunwayService>(context, listen: false);
     _frequencyService = Provider.of<FrequencyService>(context, listen: false);
+    _weatherInterpretationService = WeatherInterpretationService();
 
     log('✅ Services obtained from Provider - Runway: ${_runwayService.runways.length}, Frequency: ${_frequencyService.frequencies.length}');
   }
@@ -760,7 +763,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
     );
   }
 
-  // Build the weather tab content (existing weather implementation)
+  // Build the weather tab content with human-readable interpretations
   Widget _buildWeatherTab() {
     if (_isLoadingWeather) {
       return const Center(
@@ -824,6 +827,45 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
               ),
             ),
             const SizedBox(height: 8),
+
+            // Human-readable interpretation
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.blue.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 16, color: Colors.blue),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Interpretation',
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _weatherInterpretationService.interpretMetar(widget.airport.rawMetar!),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Raw METAR data
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -834,12 +876,25 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
                   color: Theme.of(context).dividerColor,
                 ),
               ),
-              child: Text(
-                widget.airport.rawMetar!,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontFamily: 'monospace',
-                  fontSize: 13,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Raw METAR',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).hintColor,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.airport.rawMetar!,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontFamily: 'monospace',
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
@@ -855,6 +910,45 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
               ),
             ),
             const SizedBox(height: 8),
+
+            // Human-readable interpretation
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.green.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 16, color: Colors.green),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Interpretation',
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _weatherInterpretationService.interpretTaf(widget.airport.taf!),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Raw TAF data
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -865,12 +959,25 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
                   color: Theme.of(context).dividerColor,
                 ),
               ),
-              child: Text(
-                widget.airport.taf!,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontFamily: 'monospace',
-                  fontSize: 13,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Raw TAF',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).hintColor,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.airport.taf!,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontFamily: 'monospace',
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
