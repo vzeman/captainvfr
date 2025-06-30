@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'dart:async' show Timer;
 import 'package:provider/provider.dart';
 import 'flight_log_screen.dart';
+import 'offline_map_screen.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
 import '../services/airport_service.dart';
@@ -15,6 +16,8 @@ import '../services/frequency_service.dart';
 import '../services/flight_service.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
+import '../services/offline_map_service.dart';
+import '../services/offline_tile_provider.dart';
 import '../widgets/airport_marker.dart';
 import '../widgets/navaid_marker.dart';
 import '../widgets/airport_info_sheet.dart';
@@ -38,6 +41,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   late final FrequencyService _frequencyService;
   late final LocationService _locationService;
   late final WeatherService _weatherService;
+  late final OfflineMapService _offlineMapService;
   late final MapController _mapController;
   
   // State variables
@@ -564,6 +568,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     try {
       await _airportService.initialize();
       await _navaidService.initialize();
+
+      // Initialize offline map service
+      _offlineMapService = OfflineMapService();
+      await _offlineMapService.initialize();
+
       debugPrint('✅ Services initialized with cached data');
     } catch (e) {
       debugPrint('❌ Error initializing services: $e');
@@ -723,10 +732,17 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               },
             ),
             children: [
-              // Tile layer
+              // Tile layer with offline support
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.captainvfr',
+                tileProvider: _servicesInitialized
+                    ? OfflineTileProvider(
+                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        offlineMapService: _offlineMapService,
+                        userAgentPackageName: 'com.example.captainvfr',
+                      )
+                    : null,
               ),
               // Flight path layer
               if (_flightPathPoints.isNotEmpty)
@@ -930,6 +946,13 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         );
                       } else if (value == 'refresh_data') {
                         _refreshAllData();
+                      } else if (value == 'offline_maps') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const OfflineMapScreen(),
+                          ),
+                        );
                       }
                     },
                     itemBuilder: (BuildContext context) => [
@@ -950,6 +973,16 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                             Icon(Icons.refresh, size: 20),
                             SizedBox(width: 8),
                             Text('Refresh Data'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'offline_maps',
+                        child: Row(
+                          children: [
+                            Icon(Icons.map, size: 20),
+                            SizedBox(width: 8),
+                            Text('Offline Maps'),
                           ],
                         ),
                       ),
