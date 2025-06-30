@@ -179,7 +179,7 @@ class AirportMarker extends StatelessWidget {
   IconData _getAirportIcon(String type) {
     switch (type) {
       case 'heliport':
-        return Icons.air;
+        return Icons.adjust; // Circular target-like icon representing helipad
       case 'seaplane_base':
         return Icons.airplanemode_active;
       case 'large_airport':

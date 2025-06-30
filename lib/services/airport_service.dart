@@ -105,15 +105,21 @@ class AirportService {
       print('Using ${_airports.length} cached airports');
     }
     
-    // Filter airports within the bounding box
+    // Filter airports within the bounding box and exclude CLOSED airports
     return _airports.where((airport) {
       final lat = airport.position.latitude;
       final lng = airport.position.longitude;
       
-      return lat >= southWest.latitude && 
-             lat <= northEast.latitude &&
-             lng >= southWest.longitude && 
-             lng <= northEast.longitude;
+      // Check if airport is within bounds
+      final withinBounds = lat >= southWest.latitude &&
+                          lat <= northEast.latitude &&
+                          lng >= southWest.longitude &&
+                          lng <= northEast.longitude;
+
+      // Exclude closed airports (case-insensitive check for "closed" type)
+      final isNotClosed = airport.type.toLowerCase() != 'closed';
+
+      return withinBounds && isNotClosed;
     }).toList();
   }
   
