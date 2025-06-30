@@ -19,8 +19,8 @@ class FlightLogScreen extends StatelessWidget {
       ),
       body: Consumer<FlightService>(
         builder: (context, flightService, child) {
-          final flights = flightService.flights;
-          
+          final flights = flightService.flights.reversed.toList(); // Reverse to show newest first
+
           if (flights.isEmpty) {
             return const Center(
               child: Text('No flights recorded yet.'),
