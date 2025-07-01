@@ -588,6 +588,15 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   // Handle navaid selection
   Future<void> _onNavaidSelected(Navaid navaid) async {
     debugPrint('_onNavaidSelected called for ${navaid.ident} - ${navaid.name}');
+
+    // If in flight planning mode, add navaid as waypoint instead of showing details
+    if (_flightPlanService.isPlanning) {
+      debugPrint('Flight planning mode active - adding navaid as waypoint');
+      _flightPlanService.addNavaidWaypoint(navaid);
+      debugPrint('Added navaid waypoint: ${navaid.ident} - ${navaid.name}');
+      return;
+    }
+
     if (!mounted) {
       debugPrint('Context not mounted, returning early');
       return;
