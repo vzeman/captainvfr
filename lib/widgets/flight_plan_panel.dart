@@ -661,30 +661,6 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
                     // Custom distance calculation for better touch detection
                     return (touchPoint - spotPixelCoordinates).distance;
                   },
-                  touchTooltipData: LineTouchTooltipData(
-                    tooltipBgColor: Colors.blue.withOpacity(0.8),
-                    tooltipRoundedRadius: 8,
-                    getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
-                      return touchedBarSpots.map((barSpot) {
-                        final waypointIndex = _findWaypointIndexFromDistance(
-                          cumulativeDistances,
-                          barSpot.x,
-                        );
-                        final waypointName = waypointIndex != -1
-                            ? waypoints[waypointIndex].name ?? 'WP${waypointIndex + 1}'
-                            : 'Point';
-
-                        return LineTooltipItem(
-                          '$waypointName\n${barSpot.y.toStringAsFixed(0)} ft\n${barSpot.x.toStringAsFixed(1)} NM',
-                          const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        );
-                      }).toList();
-                    },
-                  ),
                 ),
               ),
             ),
