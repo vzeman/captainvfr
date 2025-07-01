@@ -18,12 +18,16 @@ import '../services/location_service.dart';
 import '../services/weather_service.dart';
 import '../services/offline_map_service.dart';
 import '../services/offline_tile_provider.dart';
+import '../services/flight_plan_service.dart';
 import '../widgets/airport_marker.dart';
 import '../widgets/navaid_marker.dart';
 import '../widgets/airport_info_sheet.dart';
 import '../widgets/flight_dashboard.dart';
 import '../widgets/airport_search_delegate.dart';
 import '../widgets/metar_overlay.dart';
+import '../widgets/flight_plan_panel.dart';
+import '../widgets/altitude_profile_panel.dart';
+import '../widgets/flight_plan_overlay.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -42,6 +46,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   late final LocationService _locationService;
   late final WeatherService _weatherService;
   late final OfflineMapService _offlineMapService;
+  late final FlightPlanService _flightPlanService;
   late final MapController _mapController;
   
   // State variables
@@ -97,6 +102,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       _runwayService = Provider.of<RunwayService>(context, listen: false);
       _frequencyService = Provider.of<FrequencyService>(context, listen: false);
       _weatherService = Provider.of<WeatherService>(context, listen: false);
+      _flightPlanService = Provider.of<FlightPlanService>(context, listen: false);
       _servicesInitialized = true;
 
       // Initialize services with caching
@@ -477,10 +483,18 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     });
   }
 
-  // Handle map tap
-  void _onMapTapped() {
-    debugPrint('Map tapped');
-    // Close any open dialogs or menus when tapping the map
+  // Handle map tap - updated to support flight planning
+  void _onMapTapped(TapPosition tapPosition, LatLng point) {
+    debugPrint('Map tapped at: ${point.latitude}, ${point.longitude}');
+
+    // If in flight planning mode, add waypoint
+    if (_flightPlanService.isPlanning) {
+      _flightPlanService.addWaypoint(point);
+      debugPrint('Added waypoint at: ${point.latitude}, ${point.longitude}');
+      return;
+    }
+
+    // Otherwise, close any open dialogs or menus
     if (mounted) {
       debugPrint('Popping all routes until first');
       Navigator.of(context).popUntil((route) => route.isFirst);
@@ -488,7 +502,14 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       debugPrint('Context not mounted, cannot pop routes');
     }
   }
-  
+
+  // Handle waypoint tap for editing
+  void _onWaypointTapped(int index) {
+    debugPrint('Waypoint $index tapped');
+    // For now, we'll handle waypoint editing in the flight plan panel
+    // This could be expanded to show an edit dialog
+  }
+
   // Handle airport selection
   Future<void> _onAirportSelected(Airport airport) async {
     debugPrint('_onAirportSelected called for ${airport.icao} - ${airport.name}');
@@ -741,7 +762,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               interactionOptions: InteractionOptions(
                 flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
               ),
-              onTap: (_, _) => _onMapTapped(),
+              onTap: (tapPosition, point) => _onMapTapped(tapPosition, point),
               onPositionChanged: (position, hasGesture) {
                 if (hasGesture) {
                   _loadAirports();
@@ -851,6 +872,39 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   showMetarLayer: _showMetar,
                   onAirportTap: _onAirportSelected,
                 ),
+              // Flight plan overlays - add before current position marker
+              Consumer<FlightPlanService>(
+                builder: (context, flightPlanService, child) {
+                  final flightPlan = flightPlanService.currentFlightPlan;
+                  if (flightPlan == null || flightPlan.waypoints.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return Stack(
+                    children: [
+                      // Flight plan route lines
+                      PolylineLayer(
+                        polylines: FlightPlanOverlay.buildFlightPath(flightPlan),
+                      ),
+                      // Waypoint markers
+                      MarkerLayer(
+                        markers: FlightPlanOverlay.buildWaypointMarkers(
+                          flightPlan,
+                          _onWaypointTapped,
+                        ),
+                      ),
+                      // Waypoint labels
+                      MarkerLayer(
+                        markers: FlightPlanOverlay.buildWaypointLabels(flightPlan),
+                      ),
+                      // Segment labels (distance, heading, time)
+                      MarkerLayer(
+                        markers: FlightPlanOverlay.buildSegmentLabels(flightPlan),
+                      ),
+                    ],
+                  );
+                },
+              ),
               // Current position marker
               if (_currentPosition != null)
                 MarkerLayer(
@@ -1108,6 +1162,33 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 ),
               ),
             ),
+
+          // Flight planning UI panels
+          Consumer<FlightPlanService>(
+            builder: (context, flightPlanService, child) {
+              return Stack(
+                children: [
+                  // Flight plan panel at the top
+                  if (flightPlanService.currentFlightPlan != null || flightPlanService.isPlanning)
+                    const Positioned(
+                      top: 120,
+                      left: 16,
+                      right: 16,
+                      child: FlightPlanPanel(),
+                    ),
+                  // Altitude profile panel
+                  if (flightPlanService.currentFlightPlan != null &&
+                      flightPlanService.currentFlightPlan!.waypoints.length >= 2)
+                    const Positioned(
+                      bottom: 220,
+                      left: 16,
+                      right: 16,
+                      child: AltitudeProfilePanel(),
+                    ),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );

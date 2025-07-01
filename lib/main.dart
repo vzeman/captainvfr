@@ -10,6 +10,7 @@ import 'services/runway_service.dart';
 import 'services/navaid_service.dart';
 import 'services/weather_service.dart';
 import 'services/frequency_service.dart';
+import 'services/flight_plan_service.dart';
 
 void main() async {
   // Ensure Flutter binding is initialized
@@ -29,6 +30,7 @@ void main() async {
     final navaidService = NavaidService();
     final weatherService = WeatherService();
     final frequencyService = FrequencyService();
+    final flightPlanService = FlightPlanService();
     final flightService = FlightService(
       barometerService: barometerService,
     );
@@ -44,6 +46,9 @@ void main() async {
           Provider<BarometerService>.value(value: barometerService),
           ChangeNotifierProvider<FlightService>.value(
             value: flightService,
+          ),
+          ChangeNotifierProvider<FlightPlanService>.value(
+            value: flightPlanService,
           ),
           Provider<AirportService>.value(value: airportService),
           Provider<CacheService>.value(value: cacheService),

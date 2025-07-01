@@ -24,7 +24,7 @@ class WeatherInterpretationService {
 
     for (String key in intensityKeys) {
       if (code.startsWith(key)) {
-        intensity = WeatherPhenomena.intensities[key]! + ' ';
+        intensity = '${WeatherPhenomena.intensities[key]!} ';
         remaining = code.substring(key.length);
         break;
       }
@@ -37,7 +37,7 @@ class WeatherInterpretationService {
 
     for (String key in descriptorKeys) {
       if (remaining.startsWith(key)) {
-        descriptor = WeatherPhenomena.descriptors[key]! + ' ';
+        descriptor = '${WeatherPhenomena.descriptors[key]!} ';
         remaining = remaining.substring(key.length);
         break;
       }
@@ -156,7 +156,7 @@ class WeatherInterpretationService {
       String day = component.substring(0, 2);
       String hour = component.substring(2, 4);
       String minute = component.substring(4, 6);
-      return 'Observed on day $day at ${hour}:${minute} UTC';
+      return 'Observed on day $day at $hour:$minute UTC';
     }
 
     // Wind (e.g., 12008KT, 00000KT, VRB05KT)
@@ -226,7 +226,7 @@ class WeatherInterpretationService {
       String day = component.substring(0, 2);
       String hour = component.substring(2, 4);
       String minute = component.substring(4, 6);
-      return 'Issued on day $day at ${hour}:${minute} UTC';
+      return 'Issued on day $day at $hour:$minute UTC';
     }
 
     // Valid period (e.g., 1218/1324)
@@ -236,7 +236,7 @@ class WeatherInterpretationService {
       String fromHour = period[0].substring(2, 4);
       String toDay = period[1].substring(0, 2);
       String toHour = period[1].substring(2, 4);
-      return 'Valid from day $fromDay ${fromHour}:00 to day $toDay ${toHour}:00 UTC';
+      return 'Valid from day $fromDay $fromHour:00 to day $toDay $toHour:00 UTC';
     }
 
     // Time periods (e.g., FM1200, TL1800)
@@ -246,7 +246,7 @@ class WeatherInterpretationService {
       String hour = time.substring(0, 2);
       String minute = time.substring(2);
       String meaning = prefix == 'FM' ? 'From' : 'Until';
-      return '$meaning ${hour}:${minute} UTC';
+      return '$meaning $hour:$minute UTC';
     }
 
     // Probability (e.g., PROB30, PROB40)
@@ -273,7 +273,7 @@ class WeatherInterpretationService {
       String speed = match.group(2)!;
       String? gust = match.group(4);
 
-      String directionText = direction == 'VRB' ? 'variable' : '${direction}°';
+      String directionText = direction == 'VRB' ? 'variable' : '$direction°';
       String speedText = '${int.parse(speed)} knots';
 
       if (gust != null) {
@@ -369,7 +369,7 @@ class WeatherInterpretationService {
     }
 
     // Parse remaining phenomena
-    Map<String, String> phenomena_map = {
+    Map<String, String> phenomenaMap = {
       'DZ': 'drizzle',
       'RA': 'rain',
       'SN': 'snow',
@@ -396,10 +396,10 @@ class WeatherInterpretationService {
 
     // Parse all remaining phenomena codes
     String phenomenaText = '';
-    for (String code in phenomena_map.keys) {
+    for (String code in phenomenaMap.keys) {
       if (remaining.contains(code)) {
         if (phenomenaText.isNotEmpty) phenomenaText += ' and ';
-        phenomenaText += phenomena_map[code]!;
+        phenomenaText += phenomenaMap[code]!;
         remaining = remaining.replaceAll(code, '');
       }
     }
@@ -434,7 +434,7 @@ class WeatherInterpretationService {
 
       if (height != null) {
         int heightFt = int.parse(height) * 100;
-        result += ' at ${heightFt} feet';
+        result += ' at $heightFt feet';
       }
 
       if (type != null) {
@@ -454,7 +454,7 @@ class WeatherInterpretationService {
     if (parts.length == 2) {
       String temp = parts[0].replaceAll('M', '-');
       String dewpoint = parts[1].replaceAll('M', '-');
-      return 'Temperature ${temp}°C, dewpoint ${dewpoint}°C';
+      return 'Temperature $temp°C, dewpoint $dewpoint°C';
     }
     return tempDew;
   }
@@ -467,7 +467,7 @@ class WeatherInterpretationService {
       return 'Altimeter ${inHg.toStringAsFixed(2)} inches Hg';
     } else if (altimeter.startsWith('Q')) {
       String value = altimeter.substring(1);
-      return 'QNH ${value} hectopascals';
+      return 'QNH $value hectopascals';
     }
     return altimeter;
   }
