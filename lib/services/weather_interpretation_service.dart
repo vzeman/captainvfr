@@ -1,610 +1,614 @@
-import 'dart:developer' show log;
+import 'weather_interpretation/weather_phenomena_constants.dart';
+import 'weather_interpretation/cloud_type_constants.dart';
+import 'weather_interpretation/aviation_abbreviations_constants.dart';
+import 'weather_interpretation/special_conditions_constants.dart';
+import 'weather_interpretation/uvwxyz_abbreviations_constants.dart';
 
 /// Service for interpreting METAR and TAF weather codes into human-readable descriptions
 class WeatherInterpretationService {
 
-  /// Interpret a METAR string into human-readable format
-  String interpretMetar(String metar) {
-    try {
-      final parts = metar.split(' ');
-      final List<String> interpretations = [];
-
-      // Extract basic information
-      String? timeGroup;
-      String? windInfo;
-      String? visibilityInfo;
-      String? weatherInfo;
-      String? cloudInfo;
-      String? temperatureInfo;
-      String? pressureInfo;
-
-      for (int i = 0; i < parts.length; i++) {
-        final part = parts[i].trim();
-        if (part.isEmpty) continue;
-
-        // Time group (6 digits followed by Z)
-        if (RegExp(r'^\d{6}Z$').hasMatch(part)) {
-          timeGroup = _interpretTimeGroup(part);
-        }
-        // Wind information
-        else if (RegExp(r'^\d{3}\d{2,3}(G\d{2,3})?KT$').hasMatch(part) ||
-                 RegExp(r'^\d{3}V\d{3}$').hasMatch(part) ||
-                 part == 'VRB' || part.startsWith('VRB')) {
-          windInfo = _interpretWind(part);
-        }
-        // Visibility
-        else if (RegExp(r'^\d{4}$').hasMatch(part) ||
-                 RegExp(r'^\d+SM$').hasMatch(part) ||
-                 RegExp(r'^\d+/\d+SM$').hasMatch(part)) {
-          visibilityInfo = _interpretVisibility(part);
-        }
-        // Weather phenomena
-        else if (_isWeatherPhenomena(part)) {
-          weatherInfo = _interpretWeatherPhenomena(part);
-        }
-        // Cloud information
-        else if (RegExp(r'^(SKC|CLR|FEW|SCT|BKN|OVC)\d{3}$').hasMatch(part) ||
-                 part == 'SKC' || part == 'CLR') {
-          cloudInfo = _interpretClouds(part);
-        }
-        // Temperature and dewpoint
-        else if (RegExp(r'^M?\d{2}/M?\d{2}$').hasMatch(part)) {
-          temperatureInfo = _interpretTemperature(part);
-        }
-        // Pressure
-        else if (RegExp(r'^A\d{4}$').hasMatch(part) || RegExp(r'^Q\d{4}$').hasMatch(part)) {
-          pressureInfo = _interpretPressure(part);
-        }
-      }
-
-      // Build interpretation
-      if (timeGroup != null) interpretations.add(timeGroup);
-      if (windInfo != null) interpretations.add(windInfo);
-      if (visibilityInfo != null) interpretations.add(visibilityInfo);
-      if (weatherInfo != null) interpretations.add(weatherInfo);
-      if (cloudInfo != null) interpretations.add(cloudInfo);
-      if (temperatureInfo != null) interpretations.add(temperatureInfo);
-      if (pressureInfo != null) interpretations.add(pressureInfo);
-
-      if (interpretations.isEmpty) {
-        return 'Unable to interpret weather data';
-      }
-
-      return '${interpretations.join('. ')}.';
-
-    } catch (e) {
-      log('Error interpreting METAR: $e');
-      return 'Unable to interpret weather data';
-    }
-  }
-
-  /// Interpret a TAF string into human-readable format
-  String interpretTaf(String taf) {
-    try {
-      // Clean and normalize the TAF string
-      final cleanTaf = taf.replaceAll('\n', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
-      final parts = cleanTaf.split(' ');
-      final List<String> interpretations = [];
-
-      int i = 0;
-
-      // Handle TAF header
-      if (i < parts.length && parts[i] == 'TAF') {
-        interpretations.add('Terminal Aerodrome Forecast');
-        i++;
-      }
-
-      // Handle AMD (amendment) if present
-      if (i < parts.length && parts[i] == 'AMD') {
-        interpretations.add('Amendment');
-        i++;
-      }
-
-      // Handle ICAO code
-      String? icaoCode;
-      if (i < parts.length && RegExp(r'^[A-Z]{4}$').hasMatch(parts[i])) {
-        icaoCode = parts[i];
-        interpretations.add('for $icaoCode');
-        i++;
-      }
-
-      // Handle issue time (DDHHMM format followed by Z)
-      if (i < parts.length && RegExp(r'^\d{6}Z$').hasMatch(parts[i])) {
-        final issueTime = _interpretTafIssueTime(parts[i]);
-        interpretations.add('issued $issueTime');
-        i++;
-      }
-
-      // Handle validity period (DDHH/DDHH format)
-      if (i < parts.length && RegExp(r'^\d{4}/\d{4}$').hasMatch(parts[i])) {
-        final validityPeriod = _interpretValidityPeriod(parts[i]);
-        interpretations.add('valid $validityPeriod');
-        i++;
-      }
-
-      // Parse main forecast and conditional periods
-      while (i < parts.length) {
-        final forecastGroup = _parseForecastGroup(parts, i);
-        if (forecastGroup.interpretation.isNotEmpty) {
-          interpretations.add(forecastGroup.interpretation);
-        }
-        i = forecastGroup.nextIndex;
-      }
-
-      if (interpretations.isEmpty) {
-        return 'Unable to interpret forecast data';
-      }
-
-      return '${interpretations.join('. ')}.';
-
-    } catch (e) {
-      log('Error interpreting TAF: $e');
-      return 'Unable to interpret forecast data';
-    }
-  }
-
-  String _interpretTafIssueTime(String timeGroup) {
-    final day = timeGroup.substring(0, 2);
-    final hour = timeGroup.substring(2, 4);
-    final minute = timeGroup.substring(4, 6);
-    return 'on day $day at $hour:$minute UTC';
-  }
-
-  String _interpretValidityPeriod(String validityGroup) {
-    final parts = validityGroup.split('/');
-    final fromDay = parts[0].substring(0, 2);
-    final fromHour = parts[0].substring(2, 4);
-    final toDay = parts[1].substring(0, 2);
-    final toHour = parts[1].substring(2, 4);
-    return 'from day $fromDay at $fromHour:00 UTC to day $toDay at $toHour:00 UTC';
-  }
-
-  ForecastGroup _parseForecastGroup(List<String> parts, int startIndex) {
-    int i = startIndex;
-    final List<String> groupInterpretations = [];
-
-    // Handle forecast period indicators
-    if (i < parts.length) {
-      String? periodInfo;
-
-      if (parts[i].startsWith('FM')) {
-        periodInfo = _interpretForecastPeriod(parts[i]);
-        i++;
-      } else if (parts[i].startsWith('TEMPO')) {
-        if (i + 1 < parts.length && RegExp(r'^\d{4}/\d{4}$').hasMatch(parts[i + 1])) {
-          final timeRange = _interpretTempoBecmgTime(parts[i + 1]);
-          periodInfo = 'Temporarily $timeRange';
-          i += 2;
-        } else {
-          periodInfo = 'Temporarily';
-          i++;
-        }
-      } else if (parts[i].startsWith('BECMG')) {
-        if (i + 1 < parts.length && RegExp(r'^\d{4}/\d{4}$').hasMatch(parts[i + 1])) {
-          final timeRange = _interpretTempoBecmgTime(parts[i + 1]);
-          periodInfo = 'Becoming $timeRange';
-          i += 2;
-        } else {
-          periodInfo = 'Becoming';
-          i++;
-        }
-      } else if (parts[i].startsWith('PROB')) {
-        final prob = parts[i].substring(4);
-        if (i + 1 < parts.length && RegExp(r'^\d{4}/\d{4}$').hasMatch(parts[i + 1])) {
-          final timeRange = _interpretTempoBecmgTime(parts[i + 1]);
-          periodInfo = '$prob% probability $timeRange';
-          i += 2;
-        } else {
-          periodInfo = '$prob% probability';
-          i++;
-        }
-      }
-
-      if (periodInfo != null) {
-        groupInterpretations.add(periodInfo);
-      }
+  /// Interprets weather phenomena codes from METAR/TAF
+  static String interpretWeatherPhenomena(String code) {
+    // Check for special combined cases first (like +FC)
+    if (WeatherPhenomena.phenomena.containsKey(code)) {
+      return WeatherPhenomena.phenomena[code]!;
     }
 
-    // Parse weather elements for this group
-    String? windInfo;
-    String? visibilityInfo;
-    String? weatherInfo;
-    final List<String> cloudInfos = [];
-    String? temperatureInfo;
-    final List<String> weatherPhenomena = [];
+    // Check for intensity modifiers and temporal indicators
+    String intensity = '';
+    String remaining = code;
 
-    while (i < parts.length) {
-      final part = parts[i];
+    // Sort keys by length (longest first) to match longer patterns first
+    List<String> intensityKeys = WeatherPhenomena.intensities.keys.toList()
+      ..sort((a, b) => b.length.compareTo(a.length));
 
-      // Stop if we hit another forecast period
-      if (part.startsWith('FM') || part.startsWith('TEMPO') ||
-          part.startsWith('BECMG') || part.startsWith('PROB')) {
+    for (String key in intensityKeys) {
+      if (code.startsWith(key)) {
+        intensity = WeatherPhenomena.intensities[key]! + ' ';
+        remaining = code.substring(key.length);
         break;
       }
-
-      // Wind information
-      if (RegExp(r'^\d{3}\d{2,3}(G\d{2,3})?KT$').hasMatch(part) ||
-          RegExp(r'^\d{3}V\d{3}$').hasMatch(part) ||
-          part == 'VRB' || part.startsWith('VRB')) {
-        windInfo = _interpretWind(part);
-      }
-      // Visibility
-      else if (RegExp(r'^\d{4}$').hasMatch(part) ||
-               RegExp(r'^\d+SM$').hasMatch(part) ||
-               RegExp(r'^\d+/\d+SM$').hasMatch(part) ||
-               part == 'CAVOK') {
-        if (part == 'CAVOK') {
-          visibilityInfo = 'Ceiling and visibility OK (visibility >10km, no clouds below 5000ft, no significant weather)';
-        } else {
-          visibilityInfo = _interpretVisibility(part);
-        }
-      }
-      // Weather phenomena
-      else if (_isWeatherPhenomena(part)) {
-        final phenomenon = _interpretWeatherPhenomena(part);
-        if (phenomenon != null) {
-          weatherPhenomena.add(phenomenon);
-        }
-      }
-      // Cloud information
-      else if (RegExp(r'^(SKC|CLR|FEW|SCT|BKN|OVC)\d{3}$').hasMatch(part) ||
-               part == 'SKC' || part == 'CLR' || part == 'NSC') {
-        if (part == 'NSC') {
-          cloudInfos.add('No significant cloud');
-        } else {
-          final cloudInfo = _interpretClouds(part);
-          if (cloudInfo != null) {
-            cloudInfos.add(cloudInfo);
-          }
-        }
-      }
-      // Temperature forecast (TX/TN format)
-      else if (RegExp(r'^T[XN]M?\d{2}/\d{4}Z$').hasMatch(part)) {
-        temperatureInfo = _interpretTemperatureForecast(part);
-      }
-      // Wind shear
-      else if (part == 'WS' && i + 1 < parts.length) {
-        final wsInfo = _interpretWindShear(parts[i + 1]);
-        if (wsInfo != null) {
-          groupInterpretations.add(wsInfo);
-          i++; // Skip the next part as we consumed it
-        }
-      }
-
-      i++;
     }
 
-    // Combine weather phenomena
-    if (weatherPhenomena.isNotEmpty) {
-      weatherInfo = weatherPhenomena.join(', ');
+    // Check for descriptors
+    String descriptor = '';
+    List<String> descriptorKeys = WeatherPhenomena.descriptors.keys.toList()
+      ..sort((a, b) => b.length.compareTo(a.length));
+
+    for (String key in descriptorKeys) {
+      if (remaining.startsWith(key)) {
+        descriptor = WeatherPhenomena.descriptors[key]! + ' ';
+        remaining = remaining.substring(key.length);
+        break;
+      }
     }
 
-    // Build interpretation for this group
-    final elementInterpretations = <String>[];
-    if (windInfo != null) elementInterpretations.add(windInfo);
-    if (visibilityInfo != null) elementInterpretations.add(visibilityInfo);
-    if (weatherInfo != null) elementInterpretations.add(weatherInfo);
-    if (cloudInfos.isNotEmpty) elementInterpretations.add(cloudInfos.join(', '));
-    if (temperatureInfo != null) elementInterpretations.add(temperatureInfo);
+    // Check for phenomena
+    String phenomenon = WeatherPhenomena.phenomena[remaining] ?? remaining;
 
-    if (elementInterpretations.isNotEmpty) {
-      groupInterpretations.add(elementInterpretations.join(': '));
-    }
-
-    return ForecastGroup(
-      interpretation: groupInterpretations.join(': '),
-      nextIndex: i,
-    );
+    return '$intensity$descriptor$phenomenon'.trim();
   }
 
-  String _interpretTempoBecmgTime(String timeRange) {
-    final parts = timeRange.split('/');
-    final fromHour = parts[0].substring(0, 2);
-    final fromMin = parts[0].substring(2, 4);
-    final toHour = parts[1].substring(0, 2);
-    final toMin = parts[1].substring(2, 4);
-    return 'between $fromHour:$fromMin and $toHour:$toMin UTC';
+  /// Interprets cloud type codes from METAR/TAF
+  static String interpretCloudType(String code) {
+    return CloudTypeConstants.cloudTypes[code] ?? code;
   }
 
-  String? _interpretTemperatureForecast(String tempForecast) {
-    // Format: TX25/1214Z or TNM02/0506Z
-    final isMax = tempForecast.startsWith('TX');
-    final tempPart = tempForecast.substring(2);
-    final parts = tempPart.split('/');
+  /// Interprets aviation abbreviations
+  static String interpretAviationAbbreviation(String code) {
+    return AviationAbbreviations.abbreviations[code] ?? code;
+  }
 
-    if (parts.length == 2) {
-      final temp = _parseTemperature(parts[0]);
-      final time = parts[1].substring(0, 4); // Remove Z
-      final day = time.substring(0, 2);
-      final hour = time.substring(2, 4);
+  /// Interprets U-Z aviation abbreviations
+  static String interpretUVWXYZAbbreviation(String code) {
+    return UVWXYZAbbreviations.abbreviations[code] ?? code;
+  }
 
-      final tempType = isMax ? 'Maximum' : 'Minimum';
-      return '$tempType temperature $temp°C on day $day at $hour:00 UTC';
+  /// Interprets special weather conditions
+  static String interpretSpecialCondition(String code) {
+    return SpecialConditions.conditions[code] ?? code;
+  }
+
+  /// Interprets a complete weather code by trying different interpretation methods
+  static String interpretWeatherCode(String code) {
+    // Try special conditions first
+    String specialResult = interpretSpecialCondition(code);
+    if (specialResult != code) return specialResult;
+
+    // Try cloud types
+    String cloudResult = interpretCloudType(code);
+    if (cloudResult != code) return cloudResult;
+
+    // Try weather phenomena
+    String weatherResult = interpretWeatherPhenomena(code);
+    if (weatherResult != code) return weatherResult;
+
+    // Try aviation abbreviations
+    String aviationResult = interpretAviationAbbreviation(code);
+    if (aviationResult != code) return aviationResult;
+
+    // Try U-Z aviation abbreviations
+    String uvwxyzResult = interpretUVWXYZAbbreviation(code);
+    if (uvwxyzResult != code) return uvwxyzResult;
+
+    // Return original code if no interpretation found
+    return code;
+  }
+
+  /// Interprets multiple weather codes separated by spaces
+  static String interpretWeatherCodes(String codes) {
+    return codes.split(' ')
+        .map((code) => interpretWeatherCode(code.trim()))
+        .where((result) => result.isNotEmpty)
+        .join(' ');
+  }
+
+  /// Legacy method for backward compatibility - interprets any weather-related term
+  static String interpret(String code) {
+    return interpretWeatherCode(code);
+  }
+
+  /// Interprets a complete METAR report into human-readable format
+  String interpretMetar(String metar) {
+    if (metar.isEmpty) return 'No METAR data available';
+
+    List<String> parts = metar.trim().split(RegExp(r'\s+'));
+    List<String> interpretedParts = [];
+
+    for (int i = 0; i < parts.length; i++) {
+      String part = parts[i];
+      String interpretation = _parseMetarComponent(part, i, parts);
+      if (interpretation.isNotEmpty && interpretation != part) {
+        interpretedParts.add(interpretation);
+      }
     }
 
-    return null;
+    return interpretedParts.isEmpty ? 'Weather conditions normal' : interpretedParts.join('. ');
   }
 
-  String? _interpretWindShear(String windShearInfo) {
-    // Format: WS020/24045KT (wind shear at 2000ft, wind 240/45KT)
-    final match = RegExp(r'^(\d{3})/(\d{3})(\d{2,3})(G\d{2,3})?KT$').firstMatch(windShearInfo);
+  /// Interprets a complete TAF report into human-readable format
+  String interpretTaf(String taf) {
+    if (taf.isEmpty) return 'No TAF data available';
+
+    List<String> parts = taf.trim().split(RegExp(r'\s+'));
+    List<String> interpretedParts = [];
+
+    for (int i = 0; i < parts.length; i++) {
+      String part = parts[i];
+      String interpretation = _parseTafComponent(part, i, parts);
+      if (interpretation.isNotEmpty && interpretation != part) {
+        interpretedParts.add(interpretation);
+      }
+    }
+
+    return interpretedParts.isEmpty ? 'Forecast conditions normal' : interpretedParts.join('. ');
+  }
+
+  /// Parses individual METAR components
+  String _parseMetarComponent(String component, int index, List<String> allParts) {
+    // Skip station identifier (first component)
+    if (index == 0 && RegExp(r'^[A-Z]{4}$').hasMatch(component)) {
+      return 'Station: $component';
+    }
+
+    // Date/time (e.g., 121853Z)
+    if (RegExp(r'^\d{6}Z$').hasMatch(component)) {
+      String day = component.substring(0, 2);
+      String hour = component.substring(2, 4);
+      String minute = component.substring(4, 6);
+      return 'Observed on day $day at ${hour}:${minute} UTC';
+    }
+
+    // Wind (e.g., 12008KT, 00000KT, VRB05KT)
+    if (RegExp(r'^(\d{3}|VRB)\d{2,3}(G\d{2,3})?KT$').hasMatch(component)) {
+      return _parseWind(component);
+    }
+
+    // Variable wind direction (e.g., 280V350)
+    if (RegExp(r'^\d{3}V\d{3}$').hasMatch(component)) {
+      List<String> directions = component.split('V');
+      return 'Wind direction variable between ${directions[0]}° and ${directions[1]}°';
+    }
+
+    // Visibility (e.g., 10SM, 1/2SM, M1/4SM)
+    if (RegExp(r'^(M)?(\d+|\d+/\d+|\d+\s+\d+/\d+)?SM$').hasMatch(component)) {
+      return _parseVisibility(component);
+    }
+
+    // Runway visual range (e.g., R06/2400FT)
+    if (RegExp(r'^R\d{2}[LCR]?/\d{4}(V\d{4})?FT$').hasMatch(component)) {
+      return _parseRunwayVisualRange(component);
+    }
+
+    // Weather phenomena (e.g., -RA, +TSRA, VCSH)
+    if (RegExp(r'^(\+|-|VC|RE)?(MI|PR|BC|DR|BL|SH|TS|FZ)?(DZ|RA|SN|SG|IC|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PY|PO|SQ|FC|SS|DS)+$').hasMatch(component)) {
+      return _parseWeatherPhenomena(component);
+    }
+
+    // Sky condition (e.g., SKC, CLR, FEW015, SCT025, BKN040, OVC100)
+    if (RegExp(r'^(SKC|CLR|FEW|SCT|BKN|OVC|VV)(\d{3})?(CB|TCU)?$').hasMatch(component)) {
+      return _parseSkyCondition(component);
+    }
+
+    // Temperature and dewpoint (e.g., 25/18, M05/M12)
+    if (RegExp(r'^M?\d{2}/M?\d{2}$').hasMatch(component)) {
+      return _parseTemperatureDewpoint(component);
+    }
+
+    // Altimeter setting (e.g., A3012, Q1013)
+    if (RegExp(r'^[AQ]\d{4}$').hasMatch(component)) {
+      return _parseAltimeter(component);
+    }
+
+    // Remarks section
+    if (component == 'RMK') {
+      return 'Remarks';
+    }
+
+    // Try other interpretation methods
+    return interpretWeatherCode(component);
+  }
+
+  /// Parses individual TAF components
+  String _parseTafComponent(String component, int index, List<String> allParts) {
+    // TAF header
+    if (component == 'TAF') {
+      return 'Terminal Aerodrome Forecast';
+    }
+
+    // Station identifier (e.g., KJFK)
+    if (index == 1 && RegExp(r'^[A-Z]{4}$').hasMatch(component)) {
+      return 'Station: $component';
+    }
+
+    // Issue time (e.g., 121740Z)
+    if (RegExp(r'^\d{6}Z$').hasMatch(component)) {
+      String day = component.substring(0, 2);
+      String hour = component.substring(2, 4);
+      String minute = component.substring(4, 6);
+      return 'Issued on day $day at ${hour}:${minute} UTC';
+    }
+
+    // Valid period (e.g., 1218/1324)
+    if (RegExp(r'^\d{4}/\d{4}$').hasMatch(component)) {
+      List<String> period = component.split('/');
+      String fromDay = period[0].substring(0, 2);
+      String fromHour = period[0].substring(2, 4);
+      String toDay = period[1].substring(0, 2);
+      String toHour = period[1].substring(2, 4);
+      return 'Valid from day $fromDay ${fromHour}:00 to day $toDay ${toHour}:00 UTC';
+    }
+
+    // Time periods (e.g., FM1200, TL1800)
+    if (RegExp(r'^(FM|TL)\d{4}$').hasMatch(component)) {
+      String prefix = component.substring(0, 2);
+      String time = component.substring(2);
+      String hour = time.substring(0, 2);
+      String minute = time.substring(2);
+      String meaning = prefix == 'FM' ? 'From' : 'Until';
+      return '$meaning ${hour}:${minute} UTC';
+    }
+
+    // Probability (e.g., PROB30, PROB40)
+    if (RegExp(r'^PROB\d{2}$').hasMatch(component)) {
+      String prob = component.substring(4);
+      return '$prob% probability';
+    }
+
+    // Use METAR parsing for weather elements
+    return _parseMetarComponent(component, index, allParts);
+  }
+
+  /// Parses wind information
+  String _parseWind(String wind) {
+    if (wind == '00000KT') {
+      return 'Calm winds';
+    }
+
+    RegExp windRegex = RegExp(r'^(\d{3}|VRB)(\d{2,3})(G(\d{2,3}))?KT$');
+    Match? match = windRegex.firstMatch(wind);
+
     if (match != null) {
-      final altitude = int.parse(match.group(1)!) * 100;
-      final direction = match.group(2)!;
-      final speed = match.group(3)!;
-      final gust = match.group(4);
+      String direction = match.group(1)!;
+      String speed = match.group(2)!;
+      String? gust = match.group(4);
 
-      String windDesc = 'Wind shear at $altitude feet: wind from $direction degrees at $speed knots';
+      String directionText = direction == 'VRB' ? 'variable' : '${direction}°';
+      String speedText = '${int.parse(speed)} knots';
+
       if (gust != null) {
-        final gustSpeed = gust.substring(1); // Remove 'G'
-        windDesc += ', gusting to $gustSpeed knots';
+        speedText += ' gusting to ${int.parse(gust)} knots';
       }
-      return windDesc;
+
+      return 'Wind from $directionText at $speedText';
     }
 
-    return null;
+    return wind;
   }
 
-  String _interpretTimeGroup(String timeGroup) {
-    final day = timeGroup.substring(0, 2);
-    final hour = timeGroup.substring(2, 4);
-    final minute = timeGroup.substring(4, 6);
-    return 'Observed on day $day at $hour:$minute UTC';
-  }
-
-  String? _interpretWind(String wind) {
-    if (wind.startsWith('VRB')) {
-      final speedMatch = RegExp(r'VRB(\d+)KT').firstMatch(wind);
-      if (speedMatch != null) {
-        return 'Variable wind at ${speedMatch.group(1)} knots';
-      }
-      return 'Variable wind';
+  /// Parses visibility information
+  String _parseVisibility(String visibility) {
+    if (visibility == '10SM' || visibility == '9999') {
+      return 'Visibility 10+ statute miles';
     }
 
-    final windMatch = RegExp(r'^(\d{3})(\d{2,3})(G(\d{2,3}))?KT$').firstMatch(wind);
-    if (windMatch != null) {
-      final direction = windMatch.group(1)!;
-      final speed = windMatch.group(2)!;
-      final gust = windMatch.group(4);
-
-      String windDesc = 'Wind from $direction degrees at $speed knots';
-      if (gust != null) {
-        windDesc += ', gusting to $gust knots';
-      }
-      return windDesc;
-    }
-
-    if (RegExp(r'^\d{3}V\d{3}$').hasMatch(wind)) {
-      final parts = wind.split('V');
-      return 'Wind direction variable between ${parts[0]} and ${parts[1]} degrees';
-    }
-
-    return null;
-  }
-
-  String? _interpretVisibility(String visibility) {
-    if (RegExp(r'^\d{4}$').hasMatch(visibility)) {
-      final vis = int.parse(visibility);
-      if (vis >= 9999) {
-        return 'Visibility greater than 10 kilometers';
-      } else {
-        return 'Visibility $vis meters';
-      }
+    if (visibility.startsWith('M')) {
+      String value = visibility.substring(1, visibility.length - 2);
+      return 'Visibility less than $value statute miles';
     }
 
     if (visibility.endsWith('SM')) {
-      final visValue = visibility.substring(0, visibility.length - 2);
-      if (visValue.contains('/')) {
-        return 'Visibility $visValue statute miles';
+      String value = visibility.substring(0, visibility.length - 2);
+      return 'Visibility $value statute miles';
+    }
+
+    return visibility;
+  }
+
+  /// Parses runway visual range
+  String _parseRunwayVisualRange(String rvr) {
+    RegExp rvrRegex = RegExp(r'^R(\d{2}[LCR]?)/(\d{4})(V(\d{4}))?FT$');
+    Match? match = rvrRegex.firstMatch(rvr);
+
+    if (match != null) {
+      String runway = match.group(1)!;
+      String vis1 = match.group(2)!;
+      String? vis2 = match.group(4);
+
+      if (vis2 != null) {
+        return 'Runway $runway visual range variable from $vis1 to $vis2 feet';
       } else {
-        return 'Visibility $visValue statute miles';
+        return 'Runway $runway visual range $vis1 feet';
       }
     }
 
-    return null;
+    return rvr;
   }
 
-  bool _isWeatherPhenomena(String code) {
-    final phenomena = [
-      'RA', 'SN', 'DZ', 'FG', 'BR', 'HZ', 'FU', 'VA', 'DU', 'SA', 'PY',
-      'SQ', 'FC', 'SS', 'DS', 'PO', 'GR', 'GS', 'UP', 'IC', 'PL', 'SG'
-    ];
+  /// Enhanced weather phenomena parsing
+  String _parseWeatherPhenomena(String phenomena) {
+    String result = '';
+    String remaining = phenomena;
 
-    final intensities = ['+', '-', 'VC'];
-    final descriptors = ['MI', 'PR', 'BC', 'DR', 'BL', 'SH', 'TS', 'FZ'];
+    // Check for intensity first
+    if (remaining.startsWith('+')) {
+      result += 'Heavy ';
+      remaining = remaining.substring(1);
+    } else if (remaining.startsWith('-')) {
+      result += 'Light ';
+      remaining = remaining.substring(1);
+    }
 
-    String workingCode = code;
+    // Check for proximity/recent
+    if (remaining.startsWith('VC')) {
+      result += 'In vicinity ';
+      remaining = remaining.substring(2);
+    } else if (remaining.startsWith('RE')) {
+      result += 'Recent ';
+      remaining = remaining.substring(2);
+    }
 
-    // Remove intensity
-    for (final intensity in intensities) {
-      if (workingCode.startsWith(intensity)) {
-        workingCode = workingCode.substring(intensity.length);
+    // Check for descriptors
+    Map<String, String> descriptors = {
+      'MI': 'shallow',
+      'PR': 'partial',
+      'BC': 'patches of',
+      'DR': 'low drifting',
+      'BL': 'blowing',
+      'SH': 'showers of',
+      'TS': 'thunderstorm with',
+      'FZ': 'freezing',
+    };
+
+    for (String desc in descriptors.keys) {
+      if (remaining.startsWith(desc)) {
+        result += '${descriptors[desc]} ';
+        remaining = remaining.substring(desc.length);
         break;
       }
     }
 
-    // Remove descriptor
-    for (final descriptor in descriptors) {
-      if (workingCode.startsWith(descriptor)) {
-        workingCode = workingCode.substring(descriptor.length);
-        break;
-      }
-    }
-
-    // Check if remaining code contains weather phenomena
-    for (final phenomenon in phenomena) {
-      if (workingCode.contains(phenomenon)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  String? _interpretWeatherPhenomena(String code) {
-    final Map<String, String> intensities = {
-      '+': 'Heavy',
-      '-': 'Light',
-      'VC': 'In the vicinity',
-    };
-
-    final Map<String, String> descriptors = {
-      'MI': 'Shallow',
-      'PR': 'Partial',
-      'BC': 'Patches',
-      'DR': 'Drifting',
-      'BL': 'Blowing',
-      'SH': 'Showers',
-      'TS': 'Thunderstorm',
-      'FZ': 'Freezing',
-    };
-
-    final Map<String, String> phenomena = {
+    // Parse remaining phenomena
+    Map<String, String> phenomena_map = {
+      'DZ': 'drizzle',
       'RA': 'rain',
       'SN': 'snow',
-      'DZ': 'drizzle',
-      'FG': 'fog',
+      'SG': 'snow grains',
+      'IC': 'ice crystals',
+      'PL': 'ice pellets',
+      'GR': 'hail',
+      'GS': 'small hail',
+      'UP': 'unknown precipitation',
       'BR': 'mist',
-      'HZ': 'haze',
+      'FG': 'fog',
       'FU': 'smoke',
       'VA': 'volcanic ash',
       'DU': 'dust',
       'SA': 'sand',
+      'HZ': 'haze',
       'PY': 'spray',
+      'PO': 'dust whirls',
       'SQ': 'squalls',
       'FC': 'funnel cloud',
       'SS': 'sandstorm',
       'DS': 'duststorm',
-      'PO': 'dust/sand whirls',
-      'GR': 'hail',
-      'GS': 'small hail',
-      'UP': 'unknown precipitation',
-      'IC': 'ice crystals',
-      'PL': 'ice pellets',
-      'SG': 'snow grains',
     };
 
-    String workingCode = code;
-    final List<String> parts = [];
-
-    // Extract intensity
-    for (final entry in intensities.entries) {
-      if (workingCode.startsWith(entry.key)) {
-        parts.add(entry.value.toLowerCase());
-        workingCode = workingCode.substring(entry.key.length);
-        break;
+    // Parse all remaining phenomena codes
+    String phenomenaText = '';
+    for (String code in phenomena_map.keys) {
+      if (remaining.contains(code)) {
+        if (phenomenaText.isNotEmpty) phenomenaText += ' and ';
+        phenomenaText += phenomena_map[code]!;
+        remaining = remaining.replaceAll(code, '');
       }
     }
 
-    // Extract descriptor
-    for (final entry in descriptors.entries) {
-      if (workingCode.startsWith(entry.key)) {
-        parts.add(entry.value.toLowerCase());
-        workingCode = workingCode.substring(entry.key.length);
-        break;
-      }
-    }
-
-    // Extract phenomena
-    final foundPhenomena = <String>[];
-    String remaining = workingCode;
-    for (final entry in phenomena.entries) {
-      if (remaining.contains(entry.key)) {
-        foundPhenomena.add(entry.value);
-        remaining = remaining.replaceAll(entry.key, '');
-      }
-    }
-
-    if (foundPhenomena.isNotEmpty) {
-      parts.addAll(foundPhenomena);
-    }
-
-    if (parts.isNotEmpty) {
-      return parts.join(' ').trim();
-    }
-
-    return null;
+    result += phenomenaText;
+    return result.trim();
   }
 
-  String? _interpretClouds(String cloud) {
-    if (cloud == 'SKC' || cloud == 'CLR') {
-      return 'Clear skies';
+  /// Parses sky condition
+  String _parseSkyCondition(String sky) {
+    if (sky == 'SKC' || sky == 'CLR') {
+      return sky == 'SKC' ? 'Sky clear' : 'Clear skies';
     }
 
-    final cloudMatch = RegExp(r'^(FEW|SCT|BKN|OVC)(\d{3})$').firstMatch(cloud);
-    if (cloudMatch != null) {
-      final coverage = cloudMatch.group(1)!;
-      final altitude = int.parse(cloudMatch.group(2)!) * 100;
+    RegExp skyRegex = RegExp(r'^(FEW|SCT|BKN|OVC|VV)(\d{3})?(CB|TCU)?$');
+    Match? match = skyRegex.firstMatch(sky);
 
-      final Map<String, String> coverageTypes = {
+    if (match != null) {
+      String coverage = match.group(1)!;
+      String? height = match.group(2);
+      String? type = match.group(3);
+
+      Map<String, String> coverageMap = {
         'FEW': 'Few clouds',
         'SCT': 'Scattered clouds',
         'BKN': 'Broken clouds',
         'OVC': 'Overcast',
+        'VV': 'Vertical visibility',
       };
 
-      return '${coverageTypes[coverage]} at $altitude feet';
-    }
+      String result = coverageMap[coverage] ?? coverage;
 
-    return null;
-  }
-
-  String? _interpretTemperature(String temp) {
-    final parts = temp.split('/');
-    if (parts.length == 2) {
-      final temperature = _parseTemperature(parts[0]);
-      final dewpoint = _parseTemperature(parts[1]);
-
-      return 'Temperature $temperature°C, dewpoint $dewpoint°C';
-    }
-    return null;
-  }
-
-  String _parseTemperature(String temp) {
-    if (temp.startsWith('M')) {
-      return '-${temp.substring(1)}';
-    }
-    return temp;
-  }
-
-  String? _interpretPressure(String pressure) {
-    if (pressure.startsWith('A')) {
-      final value = pressure.substring(1);
-      final inHg = double.parse(value) / 100;
-      return 'Barometric pressure ${inHg.toStringAsFixed(2)} inHg';
-    } else if (pressure.startsWith('Q')) {
-      final value = pressure.substring(1);
-      return 'Barometric pressure $value hPa';
-    }
-    return null;
-  }
-
-  String? _interpretForecastPeriod(String period) {
-    if (period.startsWith('FM')) {
-      final time = period.substring(2);
-      if (time.length >= 4) {
-        final hour = time.substring(0, 2);
-        final minute = time.substring(2, 4);
-        return 'From $hour:$minute UTC';
+      if (height != null) {
+        int heightFt = int.parse(height) * 100;
+        result += ' at ${heightFt} feet';
       }
-    } else if (period.startsWith('TEMPO')) {
-      return 'Temporarily';
-    } else if (period.startsWith('BECMG')) {
-      return 'Becoming';
-    } else if (period.startsWith('PROB')) {
-      final prob = period.substring(4);
-      return '$prob% probability';
+
+      if (type != null) {
+        if (type == 'CB') result += ' (cumulonimbus)';
+        if (type == 'TCU') result += ' (towering cumulus)';
+      }
+
+      return result;
     }
-    return null;
+
+    return sky;
   }
-}
 
-class ForecastGroup {
-  final String interpretation;
-  final int nextIndex;
+  /// Parses temperature and dewpoint
+  String _parseTemperatureDewpoint(String tempDew) {
+    List<String> parts = tempDew.split('/');
+    if (parts.length == 2) {
+      String temp = parts[0].replaceAll('M', '-');
+      String dewpoint = parts[1].replaceAll('M', '-');
+      return 'Temperature ${temp}°C, dewpoint ${dewpoint}°C';
+    }
+    return tempDew;
+  }
 
-  ForecastGroup({
-    required this.interpretation,
-    required this.nextIndex,
-  });
+  /// Parses altimeter setting
+  String _parseAltimeter(String altimeter) {
+    if (altimeter.startsWith('A')) {
+      String value = altimeter.substring(1);
+      double inHg = double.parse(value) / 100;
+      return 'Altimeter ${inHg.toStringAsFixed(2)} inches Hg';
+    } else if (altimeter.startsWith('Q')) {
+      String value = altimeter.substring(1);
+      return 'QNH ${value} hectopascals';
+    }
+    return altimeter;
+  }
+
+  /// Checks if METAR contains dangerous weather conditions
+  bool hasDangerousWeatherInMetar(String metar) {
+    if (metar.isEmpty) return false;
+
+    // Check for dangerous weather indicators
+    List<String> dangerousPatterns = [
+      'TS', 'TSRA', 'TSGR', // Thunderstorms
+      'SQ', // Squalls
+      'FC', // Funnel cloud/tornado
+      'SS', 'DS', // Sandstorm/Duststorm
+      '+', // Heavy intensity
+      'FZ', // Freezing
+      'IC', // Ice crystals
+      'PL', // Ice pellets
+      'GR', // Hail
+      'UP', // Unknown precipitation
+    ];
+
+    String upperMetar = metar.toUpperCase();
+    return dangerousPatterns.any((pattern) => upperMetar.contains(pattern));
+  }
+
+  /// Checks if TAF contains dangerous weather conditions
+  bool hasDangerousWeatherInTaf(String taf) {
+    if (taf.isEmpty) return false;
+
+    // Check for dangerous weather indicators in forecast
+    List<String> dangerousPatterns = [
+      'TS', 'TSRA', 'TSGR', // Thunderstorms
+      'SQ', // Squalls
+      'FC', // Funnel cloud/tornado
+      'SS', 'DS', // Sandstorm/Duststorm
+      '+', // Heavy intensity
+      'FZ', // Freezing
+      'IC', // Ice crystals
+      'PL', // Ice pellets
+      'GR', // Hail
+      'UP', // Unknown precipitation
+    ];
+
+    String upperTaf = taf.toUpperCase();
+    return dangerousPatterns.any((pattern) => upperTaf.contains(pattern));
+  }
+
+  /// Gets list of dangerous weather conditions detected in METAR
+  List<String> getDangerousWeatherInMetar(String metar) {
+    if (metar.isEmpty) return [];
+
+    List<String> dangerousConditions = [];
+    String upperMetar = metar.toUpperCase();
+
+    // Check for specific dangerous conditions
+    if (upperMetar.contains('TS')) {
+      dangerousConditions.add('Thunderstorms present - avoid flight operations');
+    }
+    if (upperMetar.contains('TSRA')) {
+      dangerousConditions.add('Thunderstorms with rain - severe weather conditions');
+    }
+    if (upperMetar.contains('TSGR')) {
+      dangerousConditions.add('Thunderstorms with hail - extremely dangerous');
+    }
+    if (upperMetar.contains('SQ')) {
+      dangerousConditions.add('Squalls - sudden wind changes possible');
+    }
+    if (upperMetar.contains('FC')) {
+      dangerousConditions.add('Funnel cloud/tornado - extreme danger');
+    }
+    if (upperMetar.contains('SS') || upperMetar.contains('DS')) {
+      dangerousConditions.add('Sandstorm/duststorm - visibility severely reduced');
+    }
+    if (upperMetar.contains('+')) {
+      dangerousConditions.add('Heavy precipitation - reduced visibility and turbulence');
+    }
+    if (upperMetar.contains('FZ')) {
+      dangerousConditions.add('Freezing conditions - icing hazard');
+    }
+    if (upperMetar.contains('IC')) {
+      dangerousConditions.add('Ice crystals - potential icing');
+    }
+    if (upperMetar.contains('PL')) {
+      dangerousConditions.add('Ice pellets - icing and visibility hazard');
+    }
+    if (upperMetar.contains('GR')) {
+      dangerousConditions.add('Hail - aircraft damage risk');
+    }
+    if (upperMetar.contains('UP')) {
+      dangerousConditions.add('Unknown precipitation - unpredictable conditions');
+    }
+
+    return dangerousConditions;
+  }
+
+  /// Gets list of dangerous weather conditions forecasted in TAF
+  List<String> getDangerousWeatherInTaf(String taf) {
+    if (taf.isEmpty) return [];
+
+    List<String> dangerousConditions = [];
+    String upperTaf = taf.toUpperCase();
+
+    // Check for specific dangerous conditions in forecast
+    if (upperTaf.contains('TS')) {
+      dangerousConditions.add('Thunderstorms forecasted - plan alternate routes');
+    }
+    if (upperTaf.contains('TSRA')) {
+      dangerousConditions.add('Thunderstorms with rain forecasted - severe conditions expected');
+    }
+    if (upperTaf.contains('TSGR')) {
+      dangerousConditions.add('Thunderstorms with hail forecasted - extremely dangerous conditions');
+    }
+    if (upperTaf.contains('SQ')) {
+      dangerousConditions.add('Squalls forecasted - expect sudden wind changes');
+    }
+    if (upperTaf.contains('FC')) {
+      dangerousConditions.add('Funnel cloud/tornado forecasted - extreme danger expected');
+    }
+    if (upperTaf.contains('SS') || upperTaf.contains('DS')) {
+      dangerousConditions.add('Sandstorm/duststorm forecasted - visibility will be severely reduced');
+    }
+    if (upperTaf.contains('+')) {
+      dangerousConditions.add('Heavy precipitation forecasted - expect reduced visibility and turbulence');
+    }
+    if (upperTaf.contains('FZ')) {
+      dangerousConditions.add('Freezing conditions forecasted - icing hazard expected');
+    }
+    if (upperTaf.contains('IC')) {
+      dangerousConditions.add('Ice crystals forecasted - potential icing conditions');
+    }
+    if (upperTaf.contains('PL')) {
+      dangerousConditions.add('Ice pellets forecasted - icing and visibility hazard expected');
+    }
+    if (upperTaf.contains('GR')) {
+      dangerousConditions.add('Hail forecasted - aircraft damage risk');
+    }
+    if (upperTaf.contains('UP')) {
+      dangerousConditions.add('Unknown precipitation forecasted - unpredictable conditions expected');
+    }
+
+    return dangerousConditions;
+  }
 }
