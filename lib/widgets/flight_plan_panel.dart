@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../models/flight_plan.dart';
 import '../services/flight_plan_service.dart';
 
@@ -112,6 +113,9 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
           _buildCruiseSpeedInput(flightPlanService),
           if (flightPlan != null && flightPlan.waypoints.isNotEmpty)
             _buildWaypointsList(flightPlanService),
+          // Add altitude profile chart here
+          if (flightPlan != null && flightPlan.waypoints.length >= 2)
+            _buildAltitudeProfileChart(flightPlanService),
           _buildActionButtons(flightPlanService),
         ],
       ),
@@ -296,28 +300,155 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
   Widget _buildActionButtons(FlightPlanService flightPlanService) {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () => flightPlanService.togglePlanningMode(),
-              icon: Icon(flightPlanService.isPlanning ? Icons.stop : Icons.add_location),
-              label: Text(flightPlanService.isPlanning ? 'Stop Planning' : 'Plan Flight'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: flightPlanService.isPlanning ? Colors.red : Colors.blue,
-                foregroundColor: Colors.white,
+          // Primary action buttons row
+          Row(
+            children: [
+              // Start new flight plan button
+              if (flightPlanService.currentFlightPlan == null)
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => flightPlanService.startNewFlightPlan(),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Start Planning'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+
+              // Save flight plan button
+              if (flightPlanService.currentFlightPlan != null)
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showSaveDialog(context, flightPlanService),
+                    icon: const Icon(Icons.save),
+                    label: const Text('Save'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+
+              if (flightPlanService.currentFlightPlan != null) ...[
+                const SizedBox(width: 8),
+                // Clear flight plan button
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showClearDialog(context, flightPlanService),
+                    icon: const Icon(Icons.clear),
+                    label: const Text('Clear'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+
+          // Toggle planning mode button
+          if (flightPlanService.currentFlightPlan != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => flightPlanService.togglePlanningMode(),
+                  icon: Icon(flightPlanService.isPlanning ? Icons.done : Icons.edit),
+                  label: Text(flightPlanService.isPlanning ? 'Finish Planning' : 'Edit Plan'),
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton.icon(
-            onPressed: () => _showClearConfirmation(context, flightPlanService),
-            icon: const Icon(Icons.clear),
-            label: const Text('Clear'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.grey,
-              foregroundColor: Colors.white,
+        ],
+      ),
+    );
+  }
+
+  void _showSaveDialog(BuildContext context, FlightPlanService flightPlanService) {
+    final controller = TextEditingController(
+      text: flightPlanService.currentFlightPlan?.name ?? '',
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Save Flight Plan'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Flight Plan Name',
+                hintText: 'Enter a name for your flight plan',
+              ),
+              autofocus: true,
             ),
+            const SizedBox(height: 16),
+            Text(
+              'This will save your flight plan for future use.',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final name = controller.text.trim();
+              if (name.isNotEmpty) {
+                await flightPlanService.saveCurrentFlightPlan(customName: name);
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Flight plan "$name" saved!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showClearDialog(BuildContext context, FlightPlanService flightPlanService) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear Flight Plan'),
+        content: const Text('Are you sure you want to clear the current flight plan? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              flightPlanService.clearFlightPlan();
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Flight plan cleared'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Clear', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -347,26 +478,228 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
     );
   }
 
-  void _showClearConfirmation(BuildContext context, FlightPlanService flightPlanService) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear Flight Plan'),
-        content: const Text('Are you sure you want to clear the current flight plan?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+  Widget _buildAltitudeProfileChart(FlightPlanService flightPlanService) {
+    final waypoints = flightPlanService.waypoints;
+    final segments = flightPlanService.currentFlightPlan?.segments ?? [];
+
+    // Calculate cumulative distances for x-axis
+    List<double> cumulativeDistances = [0];
+    for (int i = 0; i < segments.length; i++) {
+      cumulativeDistances.add(cumulativeDistances.last + segments[i].distance);
+    }
+
+    // Create chart spots
+    List<FlSpot> spots = [];
+    for (int i = 0; i < waypoints.length; i++) {
+      spots.add(FlSpot(cumulativeDistances[i], waypoints[i].altitude));
+    }
+
+    // Find min/max altitudes for chart scaling
+    final altitudes = waypoints.map((w) => w.altitude).toList();
+    final minAlt = altitudes.reduce((a, b) => a < b ? a : b);
+    final maxAlt = altitudes.reduce((a, b) => a > b ? a : b);
+    final altRange = maxAlt - minAlt;
+    final padding = altRange * 0.1; // 10% padding
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      height: 180,
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.trending_up, color: Colors.blue, size: 18),
+              const SizedBox(width: 8),
+              const Text(
+                'Altitude Profile',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const Spacer(),
+              Flexible(
+                child: Text(
+                  'Drag points to adjust altitude',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 11,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              flightPlanService.clearFlightPlan();
-              Navigator.of(context).pop();
-            },
-            child: const Text('Clear'),
+          const SizedBox(height: 12),
+          Expanded(
+            child: LineChart(
+              LineChartData(
+                minX: 0,
+                maxX: cumulativeDistances.last,
+                minY: minAlt - padding,
+                maxY: maxAlt + padding,
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    curveSmoothness: 0.3,
+                    color: Colors.blue,
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) {
+                        return FlDotCirclePainter(
+                          radius: 6,
+                          color: Colors.blue,
+                          strokeWidth: 2,
+                          strokeColor: Colors.white,
+                        );
+                      },
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: Colors.blue.withValues(alpha: 0.1),
+                    ),
+                  ),
+                ],
+                titlesData: FlTitlesData(
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 22,
+                      getTitlesWidget: (value, meta) {
+                        return Text(
+                          '${value.toStringAsFixed(0)} NM',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 10,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      getTitlesWidget: (value, meta) {
+                        return Text(
+                          '${value.toStringAsFixed(0)} ft',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 10,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: true,
+                  drawHorizontalLine: true,
+                  horizontalInterval: altRange > 0 ? altRange / 4 : 1000, // Use 1000ft intervals when altRange is 0
+                  verticalInterval: cumulativeDistances.last / 4,
+                  getDrawingHorizontalLine: (value) {
+                    return FlLine(
+                      color: Colors.grey[300]!,
+                      strokeWidth: 1,
+                    );
+                  },
+                  getDrawingVerticalLine: (value) {
+                    return FlLine(
+                      color: Colors.grey[300]!,
+                      strokeWidth: 1,
+                    );
+                  },
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border.all(color: Colors.grey[400]!, width: 1),
+                ),
+                lineTouchData: LineTouchData(
+                  enabled: true,
+                  touchCallback: (FlTouchEvent event, LineTouchResponse? touchResponse) {
+                    // Handle both tap and drag events for better interaction
+                    if ((event is FlTapUpEvent || event is FlPanUpdateEvent || event is FlPanEndEvent) &&
+                        touchResponse != null && touchResponse.lineBarSpots != null) {
+                      final spot = touchResponse.lineBarSpots!.first;
+                      final waypointIndex = _findWaypointIndexFromDistance(
+                        cumulativeDistances,
+                        spot.x,
+                      );
+                      if (waypointIndex != -1) {
+                        // Convert chart Y coordinate to altitude, ensuring it's within reasonable bounds
+                        final chartHeight = maxAlt + padding - (minAlt - padding);
+                        final normalizedY = (spot.y - (minAlt - padding)) / chartHeight;
+                        final targetAltitude = ((1 - normalizedY) * chartHeight + (minAlt - padding))
+                            .clamp(0.0, 20000.0);
+
+                        // Only update if the altitude actually changed significantly
+                        final currentAltitude = waypoints[waypointIndex].altitude;
+                        if ((targetAltitude - currentAltitude).abs() > 50) { // 50ft threshold
+                          flightPlanService.updateWaypointAltitude(waypointIndex, targetAltitude);
+                        }
+                      }
+                    }
+                  },
+                  touchSpotThreshold: 50, // Increase touch sensitivity
+                  distanceCalculator: (Offset touchPoint, Offset spotPixelCoordinates) {
+                    // Custom distance calculation for better touch detection
+                    return (touchPoint - spotPixelCoordinates).distance;
+                  },
+                  touchTooltipData: LineTouchTooltipData(
+                    tooltipBgColor: Colors.blue.withOpacity(0.8),
+                    tooltipRoundedRadius: 8,
+                    getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+                      return touchedBarSpots.map((barSpot) {
+                        final waypointIndex = _findWaypointIndexFromDistance(
+                          cumulativeDistances,
+                          barSpot.x,
+                        );
+                        final waypointName = waypointIndex != -1
+                            ? waypoints[waypointIndex].name ?? 'WP${waypointIndex + 1}'
+                            : 'Point';
+
+                        return LineTooltipItem(
+                          '$waypointName\n${barSpot.y.toStringAsFixed(0)} ft\n${barSpot.x.toStringAsFixed(1)} NM',
+                          const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  int _findWaypointIndexFromDistance(List<double> distances, double targetDistance) {
+    for (int i = 0; i < distances.length; i++) {
+      if ((distances[i] - targetDistance).abs() < 0.5) { // 0.5 NM tolerance
+        return i;
+      }
+    }
+    return -1;
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'screens/map_screen.dart';
 import 'services/location_service.dart';
 import 'services/barometer_service.dart';
@@ -11,12 +12,21 @@ import 'services/navaid_service.dart';
 import 'services/weather_service.dart';
 import 'services/frequency_service.dart';
 import 'services/flight_plan_service.dart';
+import 'adapters/flight_plan_adapters.dart';
+import 'adapters/latlng_adapter.dart';
 
 void main() async {
   // Ensure Flutter binding is initialized
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
+    // Initialize Hive and register adapters
+    await Hive.initFlutter();
+    Hive.registerAdapter(FlightPlanAdapter());
+    Hive.registerAdapter(WaypointAdapter());
+    Hive.registerAdapter(WaypointTypeAdapter());
+    Hive.registerAdapter(LatLngAdapter());
+
     // Initialize cache service first
     final cacheService = CacheService();
     await cacheService.initialize();
@@ -31,6 +41,7 @@ void main() async {
     final weatherService = WeatherService();
     final frequencyService = FrequencyService();
     final flightPlanService = FlightPlanService();
+    await flightPlanService.initialize(); // Initialize flight plan service
     final flightService = FlightService(
       barometerService: barometerService,
     );

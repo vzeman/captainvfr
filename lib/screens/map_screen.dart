@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'flight_log_screen.dart';
 import 'offline_map_screen.dart';
+import 'flight_plans_screen.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
 import '../models/flight_segment.dart';
@@ -26,7 +27,6 @@ import '../widgets/flight_dashboard.dart';
 import '../widgets/airport_search_delegate.dart';
 import '../widgets/metar_overlay.dart';
 import '../widgets/flight_plan_panel.dart';
-import '../widgets/altitude_profile_panel.dart';
 import '../widgets/flight_plan_overlay.dart';
 
 class MapScreen extends StatefulWidget {
@@ -513,6 +513,15 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   // Handle airport selection
   Future<void> _onAirportSelected(Airport airport) async {
     debugPrint('_onAirportSelected called for ${airport.icao} - ${airport.name}');
+
+    // If in flight planning mode, add airport as waypoint instead of showing details
+    if (_flightPlanService.isPlanning) {
+      debugPrint('Flight planning mode active - adding airport as waypoint');
+      _flightPlanService.addAirportWaypoint(airport);
+      debugPrint('Added airport waypoint: ${airport.icao} - ${airport.name}');
+      return;
+    }
+
     if (!mounted) {
       debugPrint('Context not mounted, returning early');
       return;
@@ -1074,9 +1083,26 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                             builder: (context) => const OfflineMapScreen(),
                           ),
                         );
+                      } else if (value == 'flight_plans') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FlightPlansScreen(),
+                          ),
+                        );
                       }
                     },
                     itemBuilder: (BuildContext context) => [
+                      const PopupMenuItem(
+                        value: 'flight_plans',
+                        child: Row(
+                          children: [
+                            Icon(Icons.flight_takeoff, size: 20),
+                            SizedBox(width: 8),
+                            Text('Flight Plans'),
+                          ],
+                        ),
+                      ),
                       const PopupMenuItem(
                         value: 'flight_log',
                         child: Row(
@@ -1168,22 +1194,13 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             builder: (context, flightPlanService, child) {
               return Stack(
                 children: [
-                  // Flight plan panel at the top
+                  // Flight plan panel at the top (now includes altitude profile)
                   if (flightPlanService.currentFlightPlan != null || flightPlanService.isPlanning)
                     const Positioned(
                       top: 120,
                       left: 16,
                       right: 16,
                       child: FlightPlanPanel(),
-                    ),
-                  // Altitude profile panel
-                  if (flightPlanService.currentFlightPlan != null &&
-                      flightPlanService.currentFlightPlan!.waypoints.length >= 2)
-                    const Positioned(
-                      bottom: 220,
-                      left: 16,
-                      right: 16,
-                      child: AltitudeProfilePanel(),
                     ),
                 ],
               );

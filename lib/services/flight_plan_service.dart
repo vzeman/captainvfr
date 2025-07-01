@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:hive/hive.dart';
 import '../models/flight_plan.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
@@ -8,10 +9,118 @@ class FlightPlanService extends ChangeNotifier {
   FlightPlan? _currentFlightPlan;
   bool _isPlanning = false;
   int _waypointCounter = 1;
+  List<FlightPlan> _savedFlightPlans = [];
+  Box<FlightPlan>? _flightPlanBox;
 
   FlightPlan? get currentFlightPlan => _currentFlightPlan;
   bool get isPlanning => _isPlanning;
   List<Waypoint> get waypoints => _currentFlightPlan?.waypoints ?? [];
+  List<FlightPlan> get savedFlightPlans => _savedFlightPlans;
+
+  // Initialize Hive box for flight plans
+  Future<void> initialize() async {
+    try {
+      _flightPlanBox = await Hive.openBox<FlightPlan>('flight_plans');
+      _loadSavedFlightPlans();
+    } catch (e) {
+      debugPrint('Error initializing flight plan service: $e');
+    }
+  }
+
+  // Load saved flight plans from storage
+  void _loadSavedFlightPlans() {
+    if (_flightPlanBox != null) {
+      _savedFlightPlans = _flightPlanBox!.values.toList();
+      _savedFlightPlans.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      notifyListeners();
+    }
+  }
+
+  // Save current flight plan to storage
+  Future<void> saveCurrentFlightPlan({String? customName}) async {
+    if (_currentFlightPlan == null || _flightPlanBox == null) return;
+
+    if (customName != null && customName.isNotEmpty) {
+      _currentFlightPlan!.name = customName;
+    }
+
+    _currentFlightPlan!.modifiedAt = DateTime.now();
+
+    try {
+      await _flightPlanBox!.put(_currentFlightPlan!.id, _currentFlightPlan!);
+      _loadSavedFlightPlans();
+      debugPrint('Flight plan saved: ${_currentFlightPlan!.name}');
+    } catch (e) {
+      debugPrint('Error saving flight plan: $e');
+    }
+  }
+
+  // Load a flight plan from storage
+  void loadFlightPlan(String flightPlanId) {
+    final flightPlan = _savedFlightPlans.firstWhere(
+      (fp) => fp.id == flightPlanId,
+      orElse: () => throw Exception('Flight plan not found'),
+    );
+
+    _currentFlightPlan = flightPlan;
+    _isPlanning = true;
+    _waypointCounter = flightPlan.waypoints.length + 1;
+    notifyListeners();
+  }
+
+  // Delete a flight plan from storage
+  Future<void> deleteFlightPlan(String flightPlanId) async {
+    if (_flightPlanBox == null) return;
+
+    try {
+      await _flightPlanBox!.delete(flightPlanId);
+      _loadSavedFlightPlans();
+
+      // If the deleted flight plan is currently loaded, clear it
+      if (_currentFlightPlan?.id == flightPlanId) {
+        clearFlightPlan();
+      }
+
+      debugPrint('Flight plan deleted: $flightPlanId');
+    } catch (e) {
+      debugPrint('Error deleting flight plan: $e');
+    }
+  }
+
+  // Duplicate a flight plan
+  Future<void> duplicateFlightPlan(String flightPlanId) async {
+    final originalPlan = _savedFlightPlans.firstWhere(
+      (fp) => fp.id == flightPlanId,
+      orElse: () => throw Exception('Flight plan not found'),
+    );
+
+    final duplicatedPlan = FlightPlan(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: '${originalPlan.name} (Copy)',
+      createdAt: DateTime.now(),
+      waypoints: originalPlan.waypoints.map((wp) => Waypoint(
+        id: DateTime.now().millisecondsSinceEpoch.toString() + wp.id,
+        latitude: wp.latitude,
+        longitude: wp.longitude,
+        altitude: wp.altitude,
+        name: wp.name,
+        notes: wp.notes,
+        type: wp.type,
+      )).toList(),
+      aircraftId: originalPlan.aircraftId,
+      cruiseSpeed: originalPlan.cruiseSpeed,
+    );
+
+    if (_flightPlanBox != null) {
+      try {
+        await _flightPlanBox!.put(duplicatedPlan.id, duplicatedPlan);
+        _loadSavedFlightPlans();
+        debugPrint('Flight plan duplicated: ${duplicatedPlan.name}');
+      } catch (e) {
+        debugPrint('Error duplicating flight plan: $e');
+      }
+    }
+  }
 
   // Start creating a new flight plan
   void startNewFlightPlan({String? name}) {
