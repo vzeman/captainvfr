@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'flight_log_screen.dart';
 import 'offline_map_screen.dart';
 import 'flight_plans_screen.dart';
+import 'airplane_settings_screen.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
 import '../models/flight_segment.dart';
@@ -59,6 +60,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   bool _showHeliports = false; // Toggle for heliport display (default hidden)
   bool _showSmallAirports = true; // Toggle for small airport display (default visible)
   bool _servicesInitialized = false;
+  bool _isInitializing = false; // Guard against concurrent initialization
   bool _showFlightPlanning = false; // Toggle for integrated flight planning
   String _errorMessage = '';
   Timer? _debounceTimer;
@@ -105,7 +107,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       _frequencyService = Provider.of<FrequencyService>(context, listen: false);
       _weatherService = Provider.of<WeatherService>(context, listen: false);
       _flightPlanService = Provider.of<FlightPlanService>(context, listen: false);
-      _servicesInitialized = true;
 
       // Initialize services with caching
       _initializeServices();
@@ -642,6 +643,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
   /// Initialize services with cached data
   Future<void> _initializeServices() async {
+    // Guard against concurrent initialization
+    if (_isInitializing) return;
+
+    _isInitializing = true; // Set the guard flag
+
     try {
       await _airportService.initialize();
       await _navaidService.initialize();
@@ -650,9 +656,19 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       _offlineMapService = OfflineMapService();
       await _offlineMapService!.initialize(); // Use ! since we just assigned it
 
+      // Only set servicesInitialized to true after all async initialization completes
+      if (mounted) {
+        setState(() {
+          _servicesInitialized = true;
+        });
+      }
+
       debugPrint('✅ Services initialized with cached data');
     } catch (e) {
-      debugPrint('��� Error initializing services: $e');
+      debugPrint('⚠️ Error initializing services: $e');
+      // Don't set _servicesInitialized = true if initialization failed
+    } finally {
+      _isInitializing = false; // Reset the guard flag
     }
   }
 
@@ -1128,6 +1144,13 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                           debugPrint('Stopped flight planning mode');
                         }
                         debugPrint('Flight planning toggled: $_showFlightPlanning');
+                      } else if (value == 'airplane_settings') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AirplaneSettingsScreen(),
+                          ),
+                        );
                       }
                     },
                     itemBuilder: (BuildContext context) => [
@@ -1182,6 +1205,16 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                             Icon(Icons.map, size: 20),
                             SizedBox(width: 8),
                             Text('Offline Maps'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'airplane_settings',
+                        child: Row(
+                          children: [
+                            Icon(Icons.flight, size: 20),
+                            SizedBox(width: 8),
+                            Text('Airplane Settings'),
                           ],
                         ),
                       ),

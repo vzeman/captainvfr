@@ -1,5 +1,7 @@
 import 'package:hive/hive.dart';
 
+part 'moving_segment.g.dart';
+
 @HiveType(typeId: 3)
 class MovingSegment extends HiveObject {
   @HiveField(0)

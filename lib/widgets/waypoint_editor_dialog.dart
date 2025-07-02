@@ -152,7 +152,7 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: _getWaypointTypeColor(widget.waypoint.type).withOpacity(0.2),
+                color: _getWaypointTypeColor(widget.waypoint.type).withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(color: _getWaypointTypeColor(widget.waypoint.type)),
               ),
