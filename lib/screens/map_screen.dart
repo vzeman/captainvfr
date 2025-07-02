@@ -26,8 +26,9 @@ import '../widgets/airport_info_sheet.dart';
 import '../widgets/flight_dashboard.dart';
 import '../widgets/airport_search_delegate.dart';
 import '../widgets/metar_overlay.dart';
-import '../widgets/flight_plan_panel.dart';
 import '../widgets/flight_plan_overlay.dart';
+import '../widgets/compact_flight_plan_widget.dart';
+import '../widgets/waypoint_editor_dialog.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -45,7 +46,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   late final FrequencyService _frequencyService;
   late final LocationService _locationService;
   late final WeatherService _weatherService;
-  late final OfflineMapService _offlineMapService;
+  OfflineMapService? _offlineMapService; // Make nullable to prevent LateInitializationError
   late final FlightPlanService _flightPlanService;
   late final MapController _mapController;
   
@@ -58,6 +59,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   bool _showHeliports = false; // Toggle for heliport display (default hidden)
   bool _showSmallAirports = true; // Toggle for small airport display (default visible)
   bool _servicesInitialized = false;
+  bool _showFlightPlanning = false; // Toggle for integrated flight planning
   String _errorMessage = '';
   Timer? _debounceTimer;
   
@@ -506,8 +508,19 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   // Handle waypoint tap for editing
   void _onWaypointTapped(int index) {
     debugPrint('Waypoint $index tapped');
-    // For now, we'll handle waypoint editing in the flight plan panel
-    // This could be expanded to show an edit dialog
+
+    final flightPlan = _flightPlanService.currentFlightPlan;
+    if (flightPlan != null && index >= 0 && index < flightPlan.waypoints.length) {
+      final waypoint = flightPlan.waypoints[index];
+
+      showDialog(
+        context: context,
+        builder: (context) => WaypointEditorDialog(
+          waypointIndex: index,
+          waypoint: waypoint,
+        ),
+      );
+    }
   }
 
   // Handle airport selection
@@ -635,11 +648,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
       // Initialize offline map service
       _offlineMapService = OfflineMapService();
-      await _offlineMapService.initialize();
+      await _offlineMapService!.initialize(); // Use ! since we just assigned it
 
       debugPrint('✅ Services initialized with cached data');
     } catch (e) {
-      debugPrint('❌ Error initializing services: $e');
+      debugPrint('��� Error initializing services: $e');
     }
   }
 
@@ -803,7 +816,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 tileProvider: _servicesInitialized
                     ? OfflineTileProvider(
                         urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        offlineMapService: _offlineMapService,
+                        offlineMapService: _offlineMapService!,
                         userAgentPackageName: 'com.example.captainvfr',
                       )
                     : null,
@@ -910,10 +923,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                           flightPlan,
                           _onWaypointTapped,
                         ),
-                      ),
-                      // Waypoint labels
-                      MarkerLayer(
-                        markers: FlightPlanOverlay.buildWaypointLabels(flightPlan),
                       ),
                       // Segment labels (distance, heading, time)
                       MarkerLayer(
@@ -1099,6 +1108,26 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                             builder: (context) => const FlightPlansScreen(),
                           ),
                         );
+                      } else if (value == 'toggle_flight_planning') {
+                        setState(() {
+                          _showFlightPlanning = !_showFlightPlanning;
+                        });
+
+                        // Toggle flight planning mode in the service
+                        if (_showFlightPlanning) {
+                          // Start planning mode - check if we need to toggle
+                          if (!_flightPlanService.isPlanning) {
+                            _flightPlanService.togglePlanningMode();
+                          }
+                          debugPrint('Started flight planning mode');
+                        } else {
+                          // Stop planning mode - check if we need to toggle
+                          if (_flightPlanService.isPlanning) {
+                            _flightPlanService.togglePlanningMode();
+                          }
+                          debugPrint('Stopped flight planning mode');
+                        }
+                        debugPrint('Flight planning toggled: $_showFlightPlanning');
                       }
                     },
                     itemBuilder: (BuildContext context) => [
@@ -1109,6 +1138,20 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                             Icon(Icons.flight_takeoff, size: 20),
                             SizedBox(width: 8),
                             Text('Flight Plans'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'toggle_flight_planning',
+                        child: Row(
+                          children: [
+                            Icon(
+                              _showFlightPlanning ? Icons.close : Icons.add_location_alt,
+                              size: 20,
+                              color: _showFlightPlanning ? Colors.red : null,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(_showFlightPlanning ? 'Stop Planning' : 'Start Flight Planning'),
                           ],
                         ),
                       ),
@@ -1203,14 +1246,20 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             builder: (context, flightPlanService, child) {
               return Stack(
                 children: [
-                  // Flight plan panel at the top (now includes altitude profile)
-                  if (flightPlanService.currentFlightPlan != null || flightPlanService.isPlanning)
-                    const Positioned(
-                      top: 120,
-                      left: 16,
-                      right: 16,
-                      child: FlightPlanPanel(),
-                    ),
+                  // Compact Flight Planning Widget - replaces the large floating panel
+                  CompactFlightPlanWidget(
+                    isVisible: _showFlightPlanning,
+                    onClose: () {
+                      setState(() {
+                        _showFlightPlanning = false;
+                      });
+                      // Stop planning mode - check if we need to toggle
+                      if (_flightPlanService.isPlanning) {
+                        _flightPlanService.togglePlanningMode();
+                      }
+                      debugPrint('Flight planning closed from compact widget');
+                    },
+                  ),
                 ],
               );
             },

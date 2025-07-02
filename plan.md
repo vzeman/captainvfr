@@ -2,7 +2,8 @@
 - [x] Develop flight planning feature
 - [ ] Develop settings section where will be possible to define airplanes pilot is using with all possible parameters about specific airplane, in the flight plan will be possible to select airplane in use
 - [ ] Every fligh will use airplane information, user will be able to track based on it number of flights in each airplane, if it is single engine, multiengine flight, etc.
-
+- [ ] Weight and balance calculation based on the airplane parameters, user will be able to define weight of pilot, passengers, baggage, fuel, etc. in the flight plan
+- [ ] Checklists definition for each airplane, user will be able to define checklists for each airplane, and use them when flight plan is loaded and airplane is selected or choose them directly from menu
 
 ## Flight planning feature
 - [x] User will be able to select on the map points where he wants to fly, these points will form segments of flight stored in the flight plan 
@@ -15,14 +16,27 @@
 - [x] in main menu should be option to see list of all flight plans
 - [x] user should be able to store fligh plan to the list of flight plans, delete flight plan from the list, edit flight plan, duplicate flight plan, and load flight to the map
 - [x] flight plan should have name, contiains information about airplane, which will be used in the flight.
+- [ ] drag and drop editing of waypoints in the flight plan, so user will be able to change order of waypoints by dragging them
+- [ ] for selected waypoint should be possible to define the elevation, when I add new waypoint, it should copy previouse elevation, but user should be able to change it
+- [ ] if airplane is selected, we will be able to calculate fuel consumption for each segment and total fuel consumption for the flight plan
+- [ ] if airplane is selected, we will be able to calculate estimated time of flight for each segment and total time of flight for the flight plan
+- [ ] if airplane is selected, we will be able to calculate estimated distance for each segment and total distance for the flight plan
+- [ ] if airplane is selected, we will be able to calculate altitude changes based on the max climb rate and max descent rate of the airplane
+- [ ] if airplane is selected, we will be able to cap maximum altitude based on the maximum altitude of the airplane
+- [ ] flight plan and flight recording should have option to select flight rules (VFR, IFR)
 
-### Implementation Details Completed:
-- **FlightPlanService**: Enhanced with Hive storage for persistent flight plans
-- **FlightPlansScreen**: Complete flight plan management interface
-- **Map Integration**: Click to add waypoints, visual overlays with route lines and markers
-- **Flight Plan Panel**: Save/load/clear functionality with confirmation dialogs
-- **Altitude Profile Panel**: Visual representation of altitude changes (existing)
-- **Waypoint Management**: Add, delete, reorder waypoints with distance/time calculations
-- **Navigation**: Flight Plans accessible from main menu
+
+
+## Airplane settings
+- [ ] part of airplane settings is list of manufacturers, user will be able to add new manufacturer, edit existing manufacturer, delete manufacturer
+- [ ] User will be able to add new airplane, edit existing airplane, delete airplane
+- [ ] Airplane will have name, type (single engine, multiengine), manufacturer, cruise speed, fuel consumption, maximum altitude, maximum climb rate, maximum descent rate, max takeoff weight, max landing weight, fuel capacity, and other parameters
+- [ ] airplane will have data used for calculation of center of gravity (CG)
+
+## Checklists
+- [ ] User will be able to add new checklist, edit existing checklist, delete checklist
+- [ ] Checklist will have name, description, and list of items
+- [ ] Checklist items will have name, description, target value and status (done, not done)
+- [ ] should be possible to search checklists by name, manufacturer, airplane type, etc.
 
 ALWAYS UPDATE plan.md if any task is finished (this file)

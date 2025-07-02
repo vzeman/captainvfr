@@ -271,7 +271,9 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
                 flightPlan.modifiedAt = DateTime.now();
                 await flightPlanService.saveCurrentFlightPlan();
               }
-              Navigator.of(context).pop();
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
             },
             child: const Text('Save'),
           ),

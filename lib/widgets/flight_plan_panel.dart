@@ -166,9 +166,12 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
 
     return Container(
       constraints: const BoxConstraints(maxHeight: 200),
-      child: ListView.builder(
+      child: ReorderableListView.builder(
         shrinkWrap: true,
         itemCount: waypoints.length,
+        onReorder: (oldIndex, newIndex) {
+          flightPlanService.reorderWaypoints(oldIndex, newIndex);
+        },
         itemBuilder: (context, index) {
           final waypoint = waypoints[index];
           final isLast = index == waypoints.length - 1;
@@ -178,6 +181,7 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
             waypoint,
             index,
             isLast,
+            key: ValueKey(waypoint.id), // Add key for reordering
           );
         },
       ),
@@ -188,15 +192,24 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
     FlightPlanService flightPlanService,
     Waypoint waypoint,
     int index,
-    bool isLast,
-  ) {
+    bool isLast, {
+    Key? key, // Add key parameter for reorderable list
+  }) {
     final segments = flightPlanService.currentFlightPlan?.segments ?? [];
     final segment = index < segments.length ? segments[index] : null;
 
     return Container(
+      key: key, // Use the provided key
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
+          // Drag handle icon for visual feedback
+          Icon(
+            Icons.drag_handle,
+            color: Colors.grey[400],
+            size: 20,
+          ),
+          const SizedBox(width: 8),
           // Waypoint number and line
           SizedBox(
             width: 30,
@@ -409,13 +422,15 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
               final name = controller.text.trim();
               if (name.isNotEmpty) {
                 await flightPlanService.saveCurrentFlightPlan(customName: name);
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Flight plan "$name" saved!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Flight plan "$name" saved!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
               }
             },
             child: const Text('Save'),

@@ -2,6 +2,8 @@ import 'dart:math' as math;
 import 'package:latlong2/latlong.dart';
 import 'package:hive/hive.dart';
 
+part 'flight_point.g.dart';
+
 @HiveType(typeId: 1)
 class FlightPoint extends HiveObject {
   @HiveField(0)
