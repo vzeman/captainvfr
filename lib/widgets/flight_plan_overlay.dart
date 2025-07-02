@@ -4,36 +4,47 @@ import 'package:latlong2/latlong.dart';
 import '../models/flight_plan.dart';
 
 class FlightPlanOverlay {
+  // Build flight path polylines
+  static List<Polyline> buildFlightPath(FlightPlan flightPlan) {
+    if (flightPlan.waypoints.length < 2) return [];
+
+    List<LatLng> points = flightPlan.waypoints.map((wp) => wp.latLng).toList();
+
+    return [
+      Polyline(
+        points: points,
+        strokeWidth: 3.0,
+        color: Colors.blue,
+        pattern: const StrokePattern.solid(),
+      ),
+    ];
+  }
+
+  // Build interactive waypoint markers
   static List<Marker> buildWaypointMarkers(
     FlightPlan flightPlan,
-    Function(int) onWaypointTap,
+    Function(int index) onWaypointTapped,
   ) {
-    final markers = <Marker>[];
+    List<Marker> markers = [];
 
     for (int i = 0; i < flightPlan.waypoints.length; i++) {
       final waypoint = flightPlan.waypoints[i];
-      final isFirst = i == 0;
-      final isLast = i == flightPlan.waypoints.length - 1;
-
+      
       markers.add(
         Marker(
           point: waypoint.latLng,
           width: 20,
           height: 20,
           child: GestureDetector(
-            onTap: () => onWaypointTap(i),
+            onTap: () => onWaypointTapped(i),
             child: Container(
               decoration: BoxDecoration(
-                color: isFirst
-                    ? Colors.green
-                    : isLast
-                        ? Colors.red
-                        : Colors.blue,
+                color: _getWaypointColor(waypoint.type),
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
+                    color: Colors.black.withOpacity(0.3),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -58,27 +69,111 @@ class FlightPlanOverlay {
     return markers;
   }
 
+  // Build waypoint name labels
   static List<Marker> buildWaypointLabels(FlightPlan flightPlan) {
-    // Labels removed during flight planning - information is available in flight plan details
-    return [];
+    List<Marker> markers = [];
+
+    for (int i = 0; i < flightPlan.waypoints.length; i++) {
+      final waypoint = flightPlan.waypoints[i];
+      
+      markers.add(
+        Marker(
+          point: waypoint.latLng,
+          width: 100,
+          height: 25,
+          child: Transform.translate(
+            offset: const Offset(0, -35),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                waypoint.name ?? 'WP${i + 1}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return markers;
   }
 
-  static List<Polyline> buildFlightPath(FlightPlan flightPlan) {
-    if (flightPlan.waypoints.length < 2) return [];
-
-    final points = flightPlan.waypoints.map((w) => w.latLng).toList();
-
-    return [
-      Polyline(
-        points: points,
-        strokeWidth: 3.0,
-        color: Colors.blue,
-      ),
-    ];
-  }
-
+  // Build segment information labels (distance, heading, time)
   static List<Marker> buildSegmentLabels(FlightPlan flightPlan) {
-    // Segment labels removed during flight planning - information is available in flight plan details
-    return [];
+    List<Marker> markers = [];
+
+    if (flightPlan.waypoints.length < 2) return markers;
+
+    for (int i = 0; i < flightPlan.waypoints.length - 1; i++) {
+      final from = flightPlan.waypoints[i];
+      final to = flightPlan.waypoints[i + 1];
+      
+      // Calculate midpoint
+      final lat = (from.latitude + to.latitude) / 2;
+      final lng = (from.longitude + to.longitude) / 2;
+      final midpoint = LatLng(lat, lng);
+
+      // Calculate segment info
+      final distance = from.distanceTo(to);
+      final bearing = from.bearingTo(to);
+      final segment = flightPlan.segments[i];
+      
+      String labelText = '${distance.toStringAsFixed(1)} NM\n${bearing.toStringAsFixed(0)}°';
+      if (segment.flightTime > 0) {
+        final minutes = segment.flightTime.round();
+        labelText += '\n${minutes}min';
+      }
+
+      markers.add(
+        Marker(
+          point: midpoint,
+          width: 80,
+          height: 60,
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.blue, width: 1),
+            ),
+            child: Text(
+              labelText,
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 9,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return markers;
+  }
+
+  // Get waypoint color based on type
+  static Color _getWaypointColor(WaypointType type) {
+    switch (type) {
+      case WaypointType.airport:
+        return Colors.green;
+      case WaypointType.navaid:
+        return Colors.purple;
+      case WaypointType.fix:
+        return Colors.orange;
+      default:
+        return Colors.blue;
+    }
   }
 }

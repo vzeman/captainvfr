@@ -136,16 +136,22 @@ class FlightPlanService extends ChangeNotifier {
   }
 
   // Add a waypoint by clicking on the map
-  void addWaypoint(LatLng position, {double altitude = 3000.0}) {
+  void addWaypoint(LatLng position, {double? altitude}) {
     if (_currentFlightPlan == null) {
       startNewFlightPlan();
     }
+
+    // If altitude not specified, use previous waypoint's altitude or default
+    double waypointAltitude = altitude ??
+        (_currentFlightPlan!.waypoints.isNotEmpty
+            ? _currentFlightPlan!.waypoints.last.altitude
+            : 3000.0);
 
     final waypoint = Waypoint(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       latitude: position.latitude,
       longitude: position.longitude,
-      altitude: altitude,
+      altitude: waypointAltitude,
       name: 'WP${_waypointCounter++}',
       type: WaypointType.user,
     );
@@ -208,12 +214,55 @@ class FlightPlanService extends ChangeNotifier {
     }
   }
 
+  // Remove the last waypoint from the current flight plan
+  void removeLastWaypoint() {
+    if (_currentFlightPlan != null && _currentFlightPlan!.waypoints.isNotEmpty) {
+      _currentFlightPlan!.waypoints.removeLast();
+      _currentFlightPlan!.modifiedAt = DateTime.now();
+      notifyListeners();
+    }
+  }
+
   // Update waypoint altitude
   void updateWaypointAltitude(int index, double altitude) {
     if (_currentFlightPlan != null &&
         index >= 0 &&
         index < _currentFlightPlan!.waypoints.length) {
       _currentFlightPlan!.waypoints[index].altitude = altitude;
+      _currentFlightPlan!.modifiedAt = DateTime.now();
+      notifyListeners();
+    }
+  }
+
+  // Update waypoint name
+  void updateWaypointName(int index, String? name) {
+    if (_currentFlightPlan != null &&
+        index >= 0 &&
+        index < _currentFlightPlan!.waypoints.length) {
+      _currentFlightPlan!.waypoints[index].name = name;
+      _currentFlightPlan!.modifiedAt = DateTime.now();
+      notifyListeners();
+    }
+  }
+
+  // Update waypoint notes
+  void updateWaypointNotes(int index, String? notes) {
+    if (_currentFlightPlan != null &&
+        index >= 0 &&
+        index < _currentFlightPlan!.waypoints.length) {
+      _currentFlightPlan!.waypoints[index].notes = notes;
+      _currentFlightPlan!.modifiedAt = DateTime.now();
+      notifyListeners();
+    }
+  }
+
+  // Update waypoint position (for drag and drop on map)
+  void updateWaypointPosition(int index, LatLng newPosition) {
+    if (_currentFlightPlan != null &&
+        index >= 0 &&
+        index < _currentFlightPlan!.waypoints.length) {
+      _currentFlightPlan!.waypoints[index].latitude = newPosition.latitude;
+      _currentFlightPlan!.waypoints[index].longitude = newPosition.longitude;
       _currentFlightPlan!.modifiedAt = DateTime.now();
       notifyListeners();
     }
@@ -269,8 +318,16 @@ class FlightPlanService extends ChangeNotifier {
   // Reorder waypoints (for drag and drop functionality)
   void reorderWaypoints(int oldIndex, int newIndex) {
     if (_currentFlightPlan != null &&
-        oldIndex >= 0 && oldIndex < _currentFlightPlan!.waypoints.length &&
-        newIndex >= 0 && newIndex < _currentFlightPlan!.waypoints.length) {
+        oldIndex >= 0 &&
+        oldIndex < _currentFlightPlan!.waypoints.length &&
+        newIndex >= 0 &&
+        newIndex < _currentFlightPlan!.waypoints.length) {
+
+      // Adjust newIndex if moving down the list
+      if (oldIndex < newIndex) {
+        newIndex -= 1;
+      }
+
       final waypoint = _currentFlightPlan!.waypoints.removeAt(oldIndex);
       _currentFlightPlan!.waypoints.insert(newIndex, waypoint);
       _currentFlightPlan!.modifiedAt = DateTime.now();

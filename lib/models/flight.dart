@@ -4,6 +4,8 @@ import 'flight_point.dart';
 import 'moving_segment.dart';
 import 'flight_segment.dart';
 
+part 'flight.g.dart';
+
 // Extension to convert FlightPoint to LatLng
 extension FlightPointExtension on FlightPoint {
   LatLng toLatLng() => LatLng(latitude, longitude);
