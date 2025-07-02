@@ -62,6 +62,41 @@ class CacheService {
   Future<void> _ensureInitialized() async {
     if (!_isInitialized) {
       await initialize();
+      return;
+    }
+
+    // Check if boxes are still open, and reopen them if they've been closed
+    try {
+      // Test if boxes are accessible by checking if they're open
+      if (!_airportsBox.isOpen) {
+        developer.log('🔄 Airports box was closed, reopening...');
+        _airportsBox = await Hive.openBox<Map>(_airportsBoxName);
+      }
+      if (!_navaidsBox.isOpen) {
+        developer.log('🔄 Navaids box was closed, reopening...');
+        _navaidsBox = await Hive.openBox<Map>(_navaidsBoxName);
+      }
+      if (!_runwaysBox.isOpen) {
+        developer.log('🔄 Runways box was closed, reopening...');
+        _runwaysBox = await Hive.openBox<Map>(_runwaysBoxName);
+      }
+      if (!_frequenciesBox.isOpen) {
+        developer.log('🔄 Frequencies box was closed, reopening...');
+        _frequenciesBox = await Hive.openBox<Map>(_frequenciesBoxName);
+      }
+      if (!_metadataBox.isOpen) {
+        developer.log('🔄 Metadata box was closed, reopening...');
+        _metadataBox = await Hive.openBox(_metadataBoxName);
+      }
+      if (!_weatherBox.isOpen) {
+        developer.log('🔄 Weather box was closed, reopening...');
+        _weatherBox = await Hive.openBox<String>(_weatherBoxName);
+      }
+    } catch (e) {
+      developer.log('❌ Error checking/reopening boxes: $e');
+      // If there's an error, reinitialize completely
+      _isInitialized = false;
+      await initialize();
     }
   }
 
