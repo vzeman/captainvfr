@@ -17,9 +17,46 @@ class ManufacturerService with ChangeNotifier {
 
   Future<void> _loadManufacturers() async {
     if (_box == null) return;
-    _manufacturers = _box!.values.toList();
+
+    final List<Manufacturer> validManufacturers = [];
+    final List<String> corruptedKeys = [];
+
+    // Load manufacturers one by one to handle corrupted data
+    for (final key in _box!.keys) {
+      try {
+        final manufacturer = _box!.get(key);
+        if (manufacturer != null) {
+          // Check if this is a corrupted manufacturer with placeholder data
+          if (manufacturer.id.startsWith('corrupted-') || manufacturer.name == 'Unknown Manufacturer') {
+            debugPrint('Found corrupted manufacturer data for key $key: ${manufacturer.name}');
+            corruptedKeys.add(key.toString());
+          } else {
+            validManufacturers.add(manufacturer);
+          }
+        }
+      } catch (e) {
+        debugPrint('Corrupted manufacturer data found for key $key: $e');
+        corruptedKeys.add(key.toString());
+      }
+    }
+
+    // Remove corrupted entries
+    for (final key in corruptedKeys) {
+      try {
+        await _box!.delete(key);
+        debugPrint('Removed corrupted manufacturer data for key $key');
+      } catch (e) {
+        debugPrint('Failed to remove corrupted manufacturer data for key $key: $e');
+      }
+    }
+
+    _manufacturers = validManufacturers;
     _manufacturers.sort((a, b) => a.name.compareTo(b.name));
     notifyListeners();
+
+    if (corruptedKeys.isNotEmpty) {
+      debugPrint('Cleaned up ${corruptedKeys.length} corrupted manufacturer records');
+    }
   }
 
   Future<void> addManufacturer(Manufacturer manufacturer) async {

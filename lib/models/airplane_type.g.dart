@@ -8,7 +8,7 @@ part of 'airplane_type.dart';
 
 class AirplaneTypeAdapter extends TypeAdapter<AirplaneType> {
   @override
-  final int typeId = 22;
+  final int typeId = 24;
 
   @override
   AirplaneType read(BinaryReader reader) {
@@ -28,13 +28,19 @@ class AirplaneTypeAdapter extends TypeAdapter<AirplaneType> {
       description: fields[8] as String?,
       createdAt: fields[9] as DateTime,
       updatedAt: fields[10] as DateTime,
+      fuelConsumption: fields[11] as double?,
+      maximumClimbRate: fields[12] as double?,
+      maximumDescentRate: fields[13] as double?,
+      maxTakeoffWeight: fields[14] as double?,
+      maxLandingWeight: fields[15] as double?,
+      fuelCapacity: fields[16] as double?,
     );
   }
 
   @override
   void write(BinaryWriter writer, AirplaneType obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(17)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -56,7 +62,19 @@ class AirplaneTypeAdapter extends TypeAdapter<AirplaneType> {
       ..writeByte(9)
       ..write(obj.createdAt)
       ..writeByte(10)
-      ..write(obj.updatedAt);
+      ..write(obj.updatedAt)
+      ..writeByte(11)
+      ..write(obj.fuelConsumption)
+      ..writeByte(12)
+      ..write(obj.maximumClimbRate)
+      ..writeByte(13)
+      ..write(obj.maximumDescentRate)
+      ..writeByte(14)
+      ..write(obj.maxTakeoffWeight)
+      ..writeByte(15)
+      ..write(obj.maxLandingWeight)
+      ..writeByte(16)
+      ..write(obj.fuelCapacity);
   }
 
   @override
@@ -72,7 +90,7 @@ class AirplaneTypeAdapter extends TypeAdapter<AirplaneType> {
 
 class AirplaneCategoryAdapter extends TypeAdapter<AirplaneCategory> {
   @override
-  final int typeId = 24;
+  final int typeId = 22;
 
   @override
   AirplaneCategory read(BinaryReader reader) {

@@ -3,10 +3,9 @@ import 'package:provider/provider.dart';
 import '../services/airplane_settings_service.dart';
 import '../models/airplane.dart';
 import '../models/manufacturer.dart';
-import '../models/airplane_type.dart';
 import '../widgets/airplane_form_dialog.dart';
 import '../widgets/manufacturer_form_dialog.dart';
-import '../widgets/airplane_type_form_dialog.dart';
+import 'manufacturer_detail_screen.dart';
 
 class AirplaneSettingsScreen extends StatefulWidget {
   const AirplaneSettingsScreen({super.key});
@@ -22,7 +21,7 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _airplaneService = Provider.of<AirplaneSettingsService>(context, listen: false);
   }
 
@@ -42,7 +41,6 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
           tabs: const [
             Tab(icon: Icon(Icons.airplanemode_active), text: 'Airplanes'),
             Tab(icon: Icon(Icons.business), text: 'Manufacturers'),
-            Tab(icon: Icon(Icons.category), text: 'Types'),
           ],
         ),
       ),
@@ -51,7 +49,6 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
         children: [
           _buildAirplanesTab(),
           _buildManufacturersTab(),
-          _buildAirplaneTypesTab(),
         ],
       ),
     );
@@ -255,122 +252,7 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
                           ),
                         ],
                       ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildAirplaneTypesTab() {
-    return Consumer<AirplaneSettingsService>(
-      builder: (context, service, child) {
-        final allTypes = service.manufacturers
-            .expand((manufacturer) => manufacturer.airplaneTypes.map((typeId) =>
-                service.airplaneTypes.firstWhere((type) => type.id == typeId)))
-            .toList();
-
-        if (allTypes.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.category, size: 64, color: Colors.grey),
-                const SizedBox(height: 16),
-                const Text('No airplane types configured', style: TextStyle(fontSize: 18, color: Colors.grey)),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () => _showAirplaneTypeForm(),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add First Type'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${allTypes.length} airplane type(s) configured',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () => _showAirplaneTypeForm(),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Type'),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: allTypes.length,
-                itemBuilder: (context, index) {
-                  final type = allTypes[index];
-                  final manufacturer = service.manufacturers.firstWhere(
-                    (m) => m.airplaneTypes.contains(type.id),
-                  );
-
-                  return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Theme.of(context).primaryColor,
-                        child: Text(
-                          type.name.isNotEmpty ? type.name[0].toUpperCase() : 'T',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      title: Text(type.name),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('${manufacturer.name} • ${type.category.name}'),
-                          Text('${type.engineCount} engine(s)'),
-                        ],
-                      ),
-                      trailing: PopupMenuButton<String>(
-                        onSelected: (value) {
-                          if (value == 'edit') {
-                            _showAirplaneTypeForm(type: type, manufacturer: manufacturer);
-                          } else if (value == 'delete') {
-                            _confirmDeleteAirplaneType(type, manufacturer);
-                          }
-                        },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit, size: 20),
-                                SizedBox(width: 8),
-                                Text('Edit'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete, size: 20, color: Colors.red),
-                                SizedBox(width: 8),
-                                Text('Delete', style: TextStyle(color: Colors.red)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                      onTap: () => _showManufacturerDetails(manufacturer),
                     ),
                   );
                 },
@@ -393,16 +275,6 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
     showDialog(
       context: context,
       builder: (context) => ManufacturerFormDialog(manufacturer: manufacturer),
-    );
-  }
-
-  void _showAirplaneTypeForm({AirplaneType? type, Manufacturer? manufacturer}) {
-    showDialog(
-      context: context,
-      builder: (context) => AirplaneTypeFormDialog(
-        airplaneType: type,
-        manufacturer: manufacturer,
-      ),
     );
   }
 
@@ -467,29 +339,11 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
     );
   }
 
-  void _confirmDeleteAirplaneType(AirplaneType type, Manufacturer manufacturer) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Airplane Type'),
-        content: Text('Are you sure you want to delete "${type.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              _airplaneService.deleteAirplaneType(type.id);
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Deleted "${type.name}"')),
-              );
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
+  void _showManufacturerDetails(Manufacturer manufacturer) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ManufacturerDetailScreen(manufacturer: manufacturer),
       ),
     );
   }

@@ -17,9 +17,46 @@ class AirplaneTypeService with ChangeNotifier {
 
   Future<void> _loadAirplaneTypes() async {
     if (_box == null) return;
-    _airplaneTypes = _box!.values.toList();
+
+    final List<AirplaneType> validAirplaneTypes = [];
+    final List<String> corruptedKeys = [];
+
+    // Load airplane types one by one to handle corrupted data
+    for (final key in _box!.keys) {
+      try {
+        final airplaneType = _box!.get(key);
+        if (airplaneType != null) {
+          // Check if this is a corrupted airplane type with placeholder data
+          if (airplaneType.id.startsWith('corrupted-') || airplaneType.name == 'Unknown Airplane Type') {
+            debugPrint('Found corrupted airplane type data for key $key: ${airplaneType.name}');
+            corruptedKeys.add(key.toString());
+          } else {
+            validAirplaneTypes.add(airplaneType);
+          }
+        }
+      } catch (e) {
+        debugPrint('Corrupted airplane type data found for key $key: $e');
+        corruptedKeys.add(key.toString());
+      }
+    }
+
+    // Remove corrupted entries
+    for (final key in corruptedKeys) {
+      try {
+        await _box!.delete(key);
+        debugPrint('Removed corrupted airplane type data for key $key');
+      } catch (e) {
+        debugPrint('Failed to remove corrupted airplane type data for key $key: $e');
+      }
+    }
+
+    _airplaneTypes = validAirplaneTypes;
     _airplaneTypes.sort((a, b) => a.name.compareTo(b.name));
     notifyListeners();
+
+    if (corruptedKeys.isNotEmpty) {
+      debugPrint('Cleaned up ${corruptedKeys.length} corrupted airplane type records');
+    }
   }
 
   Future<void> addAirplaneType(AirplaneType airplaneType) async {

@@ -78,13 +78,11 @@ void main() async {
 
     // Initialize airplane settings service with comprehensive error handling
     final airplaneSettingsService = AirplaneSettingsService();
-    bool airplaneSettingsInitialized = false;
 
     try {
       await airplaneSettingsService.initialize();
-      airplaneSettingsInitialized = true;
       debugPrint('✅ Airplane settings service initialized');
-    } catch (e, stackTrace) {
+    } catch (e) {
       debugPrint('❌ Error initializing airplane settings service: $e');
       debugPrint('Error type: ${e.runtimeType}');
 
@@ -105,7 +103,6 @@ void main() async {
           debugPrint('✅ Hive boxes cleared, retrying initialization...');
           // Try initializing again after clearing boxes
           await airplaneSettingsService.initialize();
-          airplaneSettingsInitialized = true;
           debugPrint('✅ Airplane settings service initialized after clearing boxes');
         } catch (retryError) {
           debugPrint('❌ Failed to initialize after clearing boxes: $retryError');

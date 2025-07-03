@@ -18,7 +18,6 @@ class AirplaneFormDialog extends StatefulWidget {
 class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _callSignController = TextEditingController();
   final _registrationController = TextEditingController();
   final _cruiseSpeedController = TextEditingController();
   final _fuelConsumptionController = TextEditingController();
@@ -31,7 +30,6 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
 
   Manufacturer? _selectedManufacturer;
   AirplaneType? _selectedType;
-  AirplaneCategory _selectedCategory = AirplaneCategory.singleEngine;
 
   bool _isLoading = false;
 
@@ -46,7 +44,6 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
   void _populateFields() {
     final airplane = widget.airplane!;
     _nameController.text = airplane.name;
-    _callSignController.text = airplane.callSign ?? '';
     _registrationController.text = airplane.registration ?? '';
     _cruiseSpeedController.text = airplane.cruiseSpeed.toString();
     _fuelConsumptionController.text = airplane.fuelConsumption.toString();
@@ -56,7 +53,6 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
     _maxTakeoffWeightController.text = airplane.maxTakeoffWeight.toString();
     _maxLandingWeightController.text = airplane.maxLandingWeight.toString();
     _fuelCapacityController.text = airplane.fuelCapacity.toString();
-    _selectedCategory = airplane.category ?? AirplaneCategory.singleEngine;
 
     // Find manufacturer and type from the service using IDs
     final service = Provider.of<AirplaneSettingsService>(context, listen: false);
@@ -80,10 +76,37 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
     }
   }
 
+  void _copyPerformanceFromType(AirplaneType type) {
+    // Copy performance specifications from airplane type if they exist
+    if (type.typicalCruiseSpeed > 0) {
+      _cruiseSpeedController.text = type.typicalCruiseSpeed.toString();
+    }
+    if (type.typicalServiceCeiling > 0) {
+      _maxAltitudeController.text = type.typicalServiceCeiling.toString();
+    }
+    if (type.fuelConsumption != null && type.fuelConsumption! > 0) {
+      _fuelConsumptionController.text = type.fuelConsumption.toString();
+    }
+    if (type.maximumClimbRate != null && type.maximumClimbRate! > 0) {
+      _maxClimbRateController.text = type.maximumClimbRate.toString();
+    }
+    if (type.maximumDescentRate != null && type.maximumDescentRate! > 0) {
+      _maxDescentRateController.text = type.maximumDescentRate.toString();
+    }
+    if (type.maxTakeoffWeight != null && type.maxTakeoffWeight! > 0) {
+      _maxTakeoffWeightController.text = type.maxTakeoffWeight.toString();
+    }
+    if (type.maxLandingWeight != null && type.maxLandingWeight! > 0) {
+      _maxLandingWeightController.text = type.maxLandingWeight.toString();
+    }
+    if (type.fuelCapacity != null && type.fuelCapacity! > 0) {
+      _fuelCapacityController.text = type.fuelCapacity.toString();
+    }
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
-    _callSignController.dispose();
     _registrationController.dispose();
     _cruiseSpeedController.dispose();
     _fuelConsumptionController.dispose();
@@ -130,16 +153,6 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
                         }
                         return null;
                       },
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextFormField(
-                      controller: _callSignController,
-                      decoration: const InputDecoration(
-                        labelText: 'Call Sign',
-                        hintText: 'e.g., N123AB',
-                        border: OutlineInputBorder(),
-                      ),
                     ),
                     const SizedBox(height: 16),
 
@@ -199,9 +212,9 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
                       onChanged: (type) {
                         setState(() {
                           _selectedType = type;
-                          // Auto-set category based on type
+                          // Auto-set performance specifications based on type
                           if (type != null) {
-                            _selectedCategory = type.category;
+                            _copyPerformanceFromType(type);
                           }
                         });
                       },
@@ -210,27 +223,6 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
                           return 'Please select an airplane type';
                         }
                         return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Category Selection
-                    DropdownButtonFormField<AirplaneCategory>(
-                      value: _selectedCategory,
-                      decoration: const InputDecoration(
-                        labelText: 'Category *',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: AirplaneCategory.values.map((category) {
-                        return DropdownMenuItem(
-                          value: category,
-                          child: Text(category.name),
-                        );
-                      }).toList(),
-                      onChanged: (category) {
-                        setState(() {
-                          _selectedCategory = category!;
-                        });
                       },
                     ),
                     const SizedBox(height: 24),
@@ -486,11 +478,10 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
         fuelCapacity: double.parse(_fuelCapacityController.text),
         createdAt: widget.airplane?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
-        callSign: _callSignController.text.trim().isEmpty ? null : _callSignController.text.trim(),
         registration: _registrationController.text.trim().isEmpty ? null : _registrationController.text.trim(),
         manufacturer: _selectedManufacturer!.name,
         model: _selectedType!.name,
-        category: _selectedCategory,
+        category: _selectedType!.category, // Use category from airplane type
       );
 
       if (widget.airplane == null) {

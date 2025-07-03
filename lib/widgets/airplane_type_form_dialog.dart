@@ -23,6 +23,12 @@ class _AirplaneTypeFormDialogState extends State<AirplaneTypeFormDialog> {
   final _maxSeatsController = TextEditingController();
   final _typicalCruiseSpeedController = TextEditingController();
   final _typicalServiceCeilingController = TextEditingController();
+  final _fuelConsumptionController = TextEditingController();
+  final _maxClimbRateController = TextEditingController();
+  final _maxDescentRateController = TextEditingController();
+  final _maxTakeoffWeightController = TextEditingController();
+  final _maxLandingWeightController = TextEditingController();
+  final _fuelCapacityController = TextEditingController();
 
   Manufacturer? _selectedManufacturer;
   AirplaneCategory _selectedCategory = AirplaneCategory.singleEngine;
@@ -46,6 +52,14 @@ class _AirplaneTypeFormDialogState extends State<AirplaneTypeFormDialog> {
     _typicalCruiseSpeedController.text = type.typicalCruiseSpeed.toString();
     _typicalServiceCeilingController.text = type.typicalServiceCeiling.toString();
     _selectedCategory = type.category;
+
+    // Populate new performance fields
+    _fuelConsumptionController.text = type.fuelConsumption?.toString() ?? '';
+    _maxClimbRateController.text = type.maximumClimbRate?.toString() ?? '';
+    _maxDescentRateController.text = type.maximumDescentRate?.toString() ?? '';
+    _maxTakeoffWeightController.text = type.maxTakeoffWeight?.toString() ?? '';
+    _maxLandingWeightController.text = type.maxLandingWeight?.toString() ?? '';
+    _fuelCapacityController.text = type.fuelCapacity?.toString() ?? '';
   }
 
   @override
@@ -56,6 +70,12 @@ class _AirplaneTypeFormDialogState extends State<AirplaneTypeFormDialog> {
     _maxSeatsController.dispose();
     _typicalCruiseSpeedController.dispose();
     _typicalServiceCeilingController.dispose();
+    _fuelConsumptionController.dispose();
+    _maxClimbRateController.dispose();
+    _maxDescentRateController.dispose();
+    _maxTakeoffWeightController.dispose();
+    _maxLandingWeightController.dispose();
+    _fuelCapacityController.dispose();
     super.dispose();
   }
 
@@ -254,11 +274,151 @@ class _AirplaneTypeFormDialogState extends State<AirplaneTypeFormDialog> {
                     ),
                     const SizedBox(height: 16),
 
+                    // New performance fields
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _fuelConsumptionController,
+                            decoration: const InputDecoration(
+                              labelText: 'Fuel Consumption (GPH)',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            validator: (value) {
+                              if (value != null && value.isNotEmpty) {
+                                final consumption = double.tryParse(value);
+                                if (consumption == null || consumption <= 0) {
+                                  return 'Invalid consumption';
+                                }
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _maxClimbRateController,
+                            decoration: const InputDecoration(
+                              labelText: 'Max Climb Rate (fpm)',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            validator: (value) {
+                              if (value != null && value.isNotEmpty) {
+                                final rate = double.tryParse(value);
+                                if (rate == null || rate <= 0) {
+                                  return 'Invalid rate';
+                                }
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _maxDescentRateController,
+                            decoration: const InputDecoration(
+                              labelText: 'Max Descent Rate (fpm)',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            validator: (value) {
+                              if (value != null && value.isNotEmpty) {
+                                final rate = double.tryParse(value);
+                                if (rate == null || rate <= 0) {
+                                  return 'Invalid rate';
+                                }
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _maxTakeoffWeightController,
+                            decoration: const InputDecoration(
+                              labelText: 'Max Takeoff Weight (lbs)',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            validator: (value) {
+                              if (value != null && value.isNotEmpty) {
+                                final weight = double.tryParse(value);
+                                if (weight == null || weight <= 0) {
+                                  return 'Invalid weight';
+                                }
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _maxLandingWeightController,
+                            decoration: const InputDecoration(
+                              labelText: 'Max Landing Weight (lbs)',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            validator: (value) {
+                              if (value != null && value.isNotEmpty) {
+                                final weight = double.tryParse(value);
+                                if (weight == null || weight <= 0) {
+                                  return 'Invalid weight';
+                                }
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _fuelCapacityController,
+                            decoration: const InputDecoration(
+                              labelText: 'Fuel Capacity (gal)',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            validator: (value) {
+                              if (value != null && value.isNotEmpty) {
+                                final capacity = double.tryParse(value);
+                                if (capacity == null || capacity <= 0) {
+                                  return 'Invalid capacity';
+                                }
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
                     TextFormField(
                       controller: _descriptionController,
                       decoration: const InputDecoration(
                         labelText: 'Description',
-                        hintText: 'Brief description of the airplane type',
+                        hintText: 'Optional description',
                         border: OutlineInputBorder(),
                       ),
                       maxLines: 3,
@@ -300,32 +460,46 @@ class _AirplaneTypeFormDialogState extends State<AirplaneTypeFormDialog> {
     try {
       final service = Provider.of<AirplaneSettingsService>(context, listen: false);
 
-      final airplaneType = AirplaneType(
-        id: widget.airplaneType?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        name: _nameController.text.trim(),
-        manufacturerId: _selectedManufacturer!.id,
-        category: _selectedCategory,
-        engineCount: int.parse(_engineCountController.text),
-        maxSeats: _maxSeatsController.text.isEmpty ? 2 : int.parse(_maxSeatsController.text),
-        typicalCruiseSpeed: _typicalCruiseSpeedController.text.isEmpty ? 100.0 : double.parse(_typicalCruiseSpeedController.text),
-        typicalServiceCeiling: _typicalServiceCeilingController.text.isEmpty ? 10000.0 : double.parse(_typicalServiceCeilingController.text),
-        description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
-        createdAt: widget.airplaneType?.createdAt ?? DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-
       if (widget.airplaneType == null) {
+        // Adding a new airplane type - use the method with individual parameters
         await service.addAirplaneType(
           _nameController.text.trim(),
           _selectedManufacturer!.id,
           _selectedCategory,
-          engineCount: int.parse(_engineCountController.text),
-          maxSeats: _maxSeatsController.text.isEmpty ? 2 : int.parse(_maxSeatsController.text),
-          typicalCruiseSpeed: _typicalCruiseSpeedController.text.isEmpty ? 100.0 : double.parse(_typicalCruiseSpeedController.text),
-          typicalServiceCeiling: _typicalServiceCeilingController.text.isEmpty ? 10000.0 : double.parse(_typicalServiceCeilingController.text),
+          engineCount: int.tryParse(_engineCountController.text) ?? 1,
+          maxSeats: int.tryParse(_maxSeatsController.text) ?? 2,
+          typicalCruiseSpeed: double.tryParse(_typicalCruiseSpeedController.text) ?? 0,
+          typicalServiceCeiling: double.tryParse(_typicalServiceCeilingController.text) ?? 0,
           description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+          fuelConsumption: _fuelConsumptionController.text.trim().isEmpty ? null : double.tryParse(_fuelConsumptionController.text),
+          maximumClimbRate: _maxClimbRateController.text.trim().isEmpty ? null : double.tryParse(_maxClimbRateController.text),
+          maximumDescentRate: _maxDescentRateController.text.trim().isEmpty ? null : double.tryParse(_maxDescentRateController.text),
+          maxTakeoffWeight: _maxTakeoffWeightController.text.trim().isEmpty ? null : double.tryParse(_maxTakeoffWeightController.text),
+          maxLandingWeight: _maxLandingWeightController.text.trim().isEmpty ? null : double.tryParse(_maxLandingWeightController.text),
+          fuelCapacity: _fuelCapacityController.text.trim().isEmpty ? null : double.tryParse(_fuelCapacityController.text),
         );
       } else {
+        // Updating existing airplane type - create AirplaneType object
+        final airplaneType = AirplaneType(
+          id: widget.airplaneType!.id,
+          name: _nameController.text.trim(),
+          manufacturerId: _selectedManufacturer!.id,
+          category: _selectedCategory,
+          engineCount: int.tryParse(_engineCountController.text) ?? 1,
+          maxSeats: int.tryParse(_maxSeatsController.text) ?? 2,
+          typicalCruiseSpeed: double.tryParse(_typicalCruiseSpeedController.text) ?? 0,
+          typicalServiceCeiling: double.tryParse(_typicalServiceCeilingController.text) ?? 0,
+          description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+          createdAt: widget.airplaneType!.createdAt,
+          updatedAt: DateTime.now(),
+          fuelConsumption: _fuelConsumptionController.text.trim().isEmpty ? null : double.tryParse(_fuelConsumptionController.text),
+          maximumClimbRate: _maxClimbRateController.text.trim().isEmpty ? null : double.tryParse(_maxClimbRateController.text),
+          maximumDescentRate: _maxDescentRateController.text.trim().isEmpty ? null : double.tryParse(_maxDescentRateController.text),
+          maxTakeoffWeight: _maxTakeoffWeightController.text.trim().isEmpty ? null : double.tryParse(_maxTakeoffWeightController.text),
+          maxLandingWeight: _maxLandingWeightController.text.trim().isEmpty ? null : double.tryParse(_maxLandingWeightController.text),
+          fuelCapacity: _fuelCapacityController.text.trim().isEmpty ? null : double.tryParse(_fuelCapacityController.text),
+        );
+
         await service.updateAirplaneType(airplaneType);
       }
 
@@ -334,8 +508,8 @@ class _AirplaneTypeFormDialogState extends State<AirplaneTypeFormDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(widget.airplaneType == null
-                ? 'Airplane type "${airplaneType.name}" added successfully'
-                : 'Airplane type "${airplaneType.name}" updated successfully'),
+                ? 'Airplane type "${_nameController.text.trim()}" added successfully'
+                : 'Airplane type "${_nameController.text.trim()}" updated successfully'),
           ),
         );
       }
