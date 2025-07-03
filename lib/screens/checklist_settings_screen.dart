@@ -8,7 +8,7 @@ import '../widgets/checklist_run_dialog.dart';
 
 /// Screen to view and manage checklists.
 class ChecklistSettingsScreen extends StatefulWidget {
-  const ChecklistSettingsScreen({Key? key}) : super(key: key);
+  const ChecklistSettingsScreen({super.key});
 
   @override
   State<ChecklistSettingsScreen> createState() => _ChecklistSettingsScreenState();

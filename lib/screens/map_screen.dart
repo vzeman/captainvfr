@@ -9,6 +9,7 @@ import 'offline_map_screen.dart';
 import 'flight_plans_screen.dart';
 import 'aircraft_settings_screen.dart';
 import 'checklist_settings_screen.dart';
+import '../services/aircraft_settings_service.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
 import '../models/flight_segment.dart';
@@ -425,6 +426,38 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   void _toggleTracking() {
     setState(() => _isTracking = !_isTracking);
     if (_isTracking) {
+      // Before starting tracking with no flight plan, ensure aircraft selected
+      final currentPlan = _flightPlanService.currentFlightPlan;
+      final aircraftSettings = Provider.of<AircraftSettingsService>(context, listen: false);
+      String? selectedAircraftId;
+      if (currentPlan != null) {
+        selectedAircraftId = currentPlan.aircraftId;
+      }
+      if (selectedAircraftId == null) {
+        // Ask user to choose aircraft
+        showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Select Aircraft'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView(
+                shrinkWrap: true,
+                children: aircraftSettings.aircrafts.map((ac) {
+                  return ListTile(
+                    title: Text(ac.name),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      _flightService.setAircraft(ac);
+                      setState(() {});
+                    },
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        );
+      }
       _flightService.startTracking();
       _centerOnLocation();
     } else {

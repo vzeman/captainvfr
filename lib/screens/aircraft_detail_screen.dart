@@ -9,7 +9,7 @@ class AircraftDetailScreen extends StatelessWidget {
   /// The aircraft to display details for.
   final Aircraft aircraft;
 
-  const AircraftDetailScreen({Key? key, required this.aircraft}) : super(key: key);
+  const AircraftDetailScreen({super.key, required this.aircraft});
 
   @override
   Widget build(BuildContext context) {

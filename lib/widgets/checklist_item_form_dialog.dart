@@ -4,7 +4,7 @@ import '../models/checklist_item.dart';
 /// Dialog to add or edit a checklist item.
 class ChecklistItemFormDialog extends StatefulWidget {
   final ChecklistItem? item;
-  const ChecklistItemFormDialog({Key? key, this.item}) : super(key: key);
+  const ChecklistItemFormDialog({super.key, this.item});
 
   @override
   State<ChecklistItemFormDialog> createState() => _ChecklistItemFormDialogState();

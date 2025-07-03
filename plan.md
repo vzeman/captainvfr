@@ -1,9 +1,10 @@
 # Development plan
 
 ## flight tracking tasks
-- [ ] before tracking will be started and no flight plan is loaded in the map, ask user about the aircraft he wants to use for the flight, if no aircraft is selected, tracking should work, we will just not know fuel consumption or similar values during the flight
-- [ ] if aircraft is selected from flight plan or manually before tracking started,we will be able to calculate total fuel consumption during current flight
-
+- [x] before tracking will be started and no flight plan is loaded in the map, ask user about the aircraft he wants to use for the flight, if no aircraft is selected, tracking should work, we will just not know fuel consumption or similar values during the flight
+- [x] if aircraft is selected from flight plan or manually before tracking started, we will be able to calculate total fuel consumption during current flight
+- [ ] lets integrate flight data panel with flight tracking, so user will be able to see the flight data panel during flight tracking, it will show current speed, altitude, distance from start point, estimated time of flight, fuel consumption, if flight plan was selected, it should show also distance and time to next waipoint
+- [ ] in flight data panel should be possible to start/pause/stop tracking, remove this button from top floating panel with action buttons
 
 ## aircraft settings
 - [x] editing is accessible through main menu, there will be section "aircrafts" in the settings
@@ -59,5 +60,6 @@
 
 # General rules
 ALWAYS check if code has no ERRORS, WARNINGS or RECOMMENDATIONS during building to keep the code clean and without issues
-ALWAYS UPDATE plan.md if any task is finished (this file)
+ALWAYS UPDATE plan.md if any task is finished (in this file)
 ALWAYS REFACTOR classes and methods to keep the code clean and readable without duplicated code, split too long classes (more than 800 lines) into smaller classes
+ALWAYS keep the code clean without test or helper files you create during development, remove them after you finish the task

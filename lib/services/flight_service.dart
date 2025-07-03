@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import '../models/flight.dart';
 import '../models/flight_point.dart';
+import '../models/aircraft.dart';
 import '../models/flight_segment.dart';
 import '../models/moving_segment.dart';
 import 'barometer_service.dart';
@@ -61,10 +62,27 @@ class FlightService with ChangeNotifier {
   // Callback for when flight path updates
   final Function()? onFlightPathUpdated;
   
+
+  // Selected aircraft (for fuel consumption)
+  Aircraft? _selectedAircraft;
+
+  /// Set the aircraft used for this flight (for fuel calc).
+  void setAircraft(Aircraft aircraft) {
+    _selectedAircraft = aircraft;
+    notifyListeners();
+  }
+
   // Getters
   List<FlightPoint> get flightPath => List.unmodifiable(_flightPath);
   List<FlightSegment> get flightSegments => List.unmodifiable(_flightSegments);
   bool get isTracking => _isTracking;
+
+  /// Total fuel consumed so far (gal) based on moving time and aircraft rate.
+  double get fuelUsed {
+    if (_selectedAircraft == null) return 0;
+    final hrs = movingTime.inMilliseconds / 3600000.0;
+    return _selectedAircraft!.fuelConsumption * hrs;
+  }
   
   // Flight history
   List<Flight> _flights = [];
