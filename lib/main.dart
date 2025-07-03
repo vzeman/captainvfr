@@ -13,11 +13,14 @@ import 'services/weather_service.dart';
 import 'services/frequency_service.dart';
 import 'services/flight_plan_service.dart';
 import 'services/aircraft_settings_service.dart';
+import 'services/checklist_service.dart';
 import 'adapters/flight_plan_adapters.dart';
 import 'adapters/latlng_adapter.dart';
 import 'models/manufacturer.dart';
 import 'models/model.dart';
 import 'models/aircraft.dart';
+import 'models/checklist_item.dart';
+import 'models/checklist.dart';
 import 'models/flight.dart';
 import 'models/flight_point.dart';
 import 'models/flight_segment.dart';
@@ -48,6 +51,9 @@ void main() async {
     Hive.registerAdapter(ModelAdapter());
     Hive.registerAdapter(AircraftCategoryAdapter());
     Hive.registerAdapter(AircraftAdapter());
+    // Register checklist adapters
+    Hive.registerAdapter(ChecklistItemAdapter());
+    Hive.registerAdapter(ChecklistAdapter());
 
     // Initialize cache service first
     final cacheService = CacheService();
@@ -78,6 +84,9 @@ void main() async {
 
     // Initialize aircraft settings service with comprehensive error handling
     final aircraftSettingsService = AircraftSettingsService();
+
+    // Initialize checklist service
+    final checklistService = ChecklistService();
 
     try {
       await aircraftSettingsService.initialize();
@@ -122,7 +131,8 @@ void main() async {
       // Continue with app initialization
     }
 
-    // Always run the app, even if some services failed to initialize
+    // Initialize checklist service then run the app
+    await checklistService.initialize();
     runApp(
       MultiProvider(
         providers: [
@@ -136,6 +146,9 @@ void main() async {
           ),
           ChangeNotifierProvider<AircraftSettingsService>.value(
             value: aircraftSettingsService,
+          ),
+          ChangeNotifierProvider<ChecklistService>.value(
+            value: checklistService,
           ),
           Provider<AirportService>.value(value: airportService),
           Provider<CacheService>.value(value: cacheService),

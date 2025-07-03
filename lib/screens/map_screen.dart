@@ -8,6 +8,7 @@ import 'flight_log_screen.dart';
 import 'offline_map_screen.dart';
 import 'flight_plans_screen.dart';
 import 'aircraft_settings_screen.dart';
+import 'checklist_settings_screen.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
 import '../models/flight_segment.dart';
@@ -1144,6 +1145,13 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                           debugPrint('Stopped flight planning mode');
                         }
                         debugPrint('Flight planning toggled: $_showFlightPlanning');
+                      } else if (value == 'checklists') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ChecklistSettingsScreen(),
+                          ),
+                        );
                       } else if (value == 'airplane_settings') {
                         Navigator.push(
                           context,
@@ -1209,12 +1217,22 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         ),
                       ),
                       const PopupMenuItem(
+                        value: 'checklists',
+                        child: Row(
+                          children: [
+                            Icon(Icons.list, size: 20),
+                            SizedBox(width: 8),
+                            Text('Checklists'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
                         value: 'airplane_settings',
                         child: Row(
                           children: [
                             Icon(Icons.flight, size: 20),
                             SizedBox(width: 8),
-                            Text('Airplane Settings'),
+                            Text('Aircrafts'),
                           ],
                         ),
                       ),

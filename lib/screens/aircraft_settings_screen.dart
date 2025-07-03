@@ -6,6 +6,7 @@ import '../models/model.dart';
 import '../models/manufacturer.dart';
 import '../widgets/aircraft_form_dialog.dart';
 import '../widgets/manufacturer_form_dialog.dart';
+import 'aircraft_detail_screen.dart';
 import 'manufacturer_detail_screen.dart';
 
 class AircraftSettingsScreen extends StatefulWidget {
@@ -280,9 +281,11 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen> with Si
   }
 
   void _showAircraftDetails(Aircraft aircraft) {
-    // Navigate to aircraft details screen (to be implemented)
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Aircraft details for ${aircraft.name} - Coming soon!')),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AircraftDetailScreen(aircraft: aircraft),
+      ),
     );
   }
 
