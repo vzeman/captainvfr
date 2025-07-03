@@ -313,12 +313,13 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
                               labelText: 'Fuel Capacity (gal) *',
                               border: OutlineInputBorder(),
                             ),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                             validator: (value) {
                               if (value == null || value.isEmpty) {
                                 return 'Required';
                               }
-                              final capacity = double.tryParse(value);
+                              final capacity = int.tryParse(value);
                               if (capacity == null || capacity <= 0) {
                                 return 'Invalid capacity';
                               }
@@ -468,14 +469,14 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
         name: _nameController.text.trim(),
         manufacturerId: _selectedManufacturer!.id,
         airplaneTypeId: _selectedType!.id,
-        cruiseSpeed: double.parse(_cruiseSpeedController.text),
+        cruiseSpeed: int.parse(_cruiseSpeedController.text),
         fuelConsumption: double.parse(_fuelConsumptionController.text),
-        maximumAltitude: double.parse(_maxAltitudeController.text),
-        maximumClimbRate: double.parse(_maxClimbRateController.text),
-        maximumDescentRate: double.parse(_maxDescentRateController.text),
-        maxTakeoffWeight: double.parse(_maxTakeoffWeightController.text),
-        maxLandingWeight: double.parse(_maxLandingWeightController.text),
-        fuelCapacity: double.parse(_fuelCapacityController.text),
+        maximumAltitude: int.parse(_maxAltitudeController.text),
+        maximumClimbRate: int.parse(_maxClimbRateController.text),
+        maximumDescentRate: int.parse(_maxDescentRateController.text),
+        maxTakeoffWeight: int.parse(_maxTakeoffWeightController.text),
+        maxLandingWeight: int.parse(_maxLandingWeightController.text),
+        fuelCapacity: int.parse(_fuelCapacityController.text),
         createdAt: widget.airplane?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
         registration: _registrationController.text.trim().isEmpty ? null : _registrationController.text.trim(),

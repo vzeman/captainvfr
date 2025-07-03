@@ -19,7 +19,6 @@ class ManufacturerAdapter extends TypeAdapter<Manufacturer> {
     return Manufacturer(
       id: fields[0] as String,
       name: fields[1] as String,
-      country: fields[2] as String?,
       website: fields[3] as String?,
       description: fields[5] as String?,
       airplaneTypes: (fields[4] as List?)?.cast<String>(),
@@ -31,13 +30,11 @@ class ManufacturerAdapter extends TypeAdapter<Manufacturer> {
   @override
   void write(BinaryWriter writer, Manufacturer obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
       ..write(obj.name)
-      ..writeByte(2)
-      ..write(obj.country)
       ..writeByte(3)
       ..write(obj.website)
       ..writeByte(4)

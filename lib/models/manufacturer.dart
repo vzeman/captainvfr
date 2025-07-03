@@ -10,9 +10,6 @@ class Manufacturer extends HiveObject {
   @HiveField(1)
   String name;
 
-  @HiveField(2)
-  String? country;
-
   @HiveField(3)
   String? website;
 
@@ -31,7 +28,6 @@ class Manufacturer extends HiveObject {
   Manufacturer({
     required this.id,
     required this.name,
-    this.country,
     this.website,
     this.description, // Add description parameter
     List<String>? airplaneTypes,
@@ -43,7 +39,6 @@ class Manufacturer extends HiveObject {
     return {
       'id': id,
       'name': name,
-      'country': country,
       'website': website,
       'airplane_types': airplaneTypes.join(','),
       'description': description, // Include description in toMap
@@ -56,7 +51,6 @@ class Manufacturer extends HiveObject {
     return Manufacturer(
       id: map['id'] ?? '',
       name: map['name'] ?? '',
-      country: map['country'],
       website: map['website'],
       description: map['description'], // Extract description from map
       airplaneTypes: map['airplane_types']?.split(',') ?? [],
@@ -68,7 +62,6 @@ class Manufacturer extends HiveObject {
   Manufacturer copyWith({
     String? id,
     String? name,
-    String? country,
     String? website,
     String? description, // Add description to copyWith
     List<String>? airplaneTypes,
@@ -78,7 +71,6 @@ class Manufacturer extends HiveObject {
     return Manufacturer(
       id: id ?? this.id,
       name: name ?? this.name,
-      country: country ?? this.country,
       website: website ?? this.website,
       description: description ?? this.description, // Include description in copyWith
       airplaneTypes: airplaneTypes ?? this.airplaneTypes,

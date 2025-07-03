@@ -308,7 +308,7 @@ class _AirplaneTypeFormDialogState extends State<AirplaneTypeFormDialog> {
                             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                             validator: (value) {
                               if (value != null && value.isNotEmpty) {
-                                final rate = double.tryParse(value);
+                                final rate = int.tryParse(value);
                                 if (rate == null || rate <= 0) {
                                   return 'Invalid rate';
                                 }
@@ -334,7 +334,7 @@ class _AirplaneTypeFormDialogState extends State<AirplaneTypeFormDialog> {
                             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                             validator: (value) {
                               if (value != null && value.isNotEmpty) {
-                                final rate = double.tryParse(value);
+                                final rate = int.tryParse(value);
                                 if (rate == null || rate <= 0) {
                                   return 'Invalid rate';
                                 }
@@ -355,7 +355,7 @@ class _AirplaneTypeFormDialogState extends State<AirplaneTypeFormDialog> {
                             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                             validator: (value) {
                               if (value != null && value.isNotEmpty) {
-                                final weight = double.tryParse(value);
+                                final weight = int.tryParse(value);
                                 if (weight == null || weight <= 0) {
                                   return 'Invalid weight';
                                 }
@@ -381,7 +381,7 @@ class _AirplaneTypeFormDialogState extends State<AirplaneTypeFormDialog> {
                             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                             validator: (value) {
                               if (value != null && value.isNotEmpty) {
-                                final weight = double.tryParse(value);
+                                final weight = int.tryParse(value);
                                 if (weight == null || weight <= 0) {
                                   return 'Invalid weight';
                                 }
@@ -398,10 +398,11 @@ class _AirplaneTypeFormDialogState extends State<AirplaneTypeFormDialog> {
                               labelText: 'Fuel Capacity (gal)',
                               border: OutlineInputBorder(),
                             ),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                             validator: (value) {
                               if (value != null && value.isNotEmpty) {
-                                final capacity = double.tryParse(value);
+                                final capacity = int.tryParse(value);
                                 if (capacity == null || capacity <= 0) {
                                   return 'Invalid capacity';
                                 }
@@ -468,15 +469,15 @@ class _AirplaneTypeFormDialogState extends State<AirplaneTypeFormDialog> {
           _selectedCategory,
           engineCount: int.tryParse(_engineCountController.text) ?? 1,
           maxSeats: int.tryParse(_maxSeatsController.text) ?? 2,
-          typicalCruiseSpeed: double.tryParse(_typicalCruiseSpeedController.text) ?? 0,
-          typicalServiceCeiling: double.tryParse(_typicalServiceCeilingController.text) ?? 0,
+          typicalCruiseSpeed: int.tryParse(_typicalCruiseSpeedController.text) ?? 0,
+          typicalServiceCeiling: int.tryParse(_typicalServiceCeilingController.text) ?? 0,
           description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
           fuelConsumption: _fuelConsumptionController.text.trim().isEmpty ? null : double.tryParse(_fuelConsumptionController.text),
-          maximumClimbRate: _maxClimbRateController.text.trim().isEmpty ? null : double.tryParse(_maxClimbRateController.text),
-          maximumDescentRate: _maxDescentRateController.text.trim().isEmpty ? null : double.tryParse(_maxDescentRateController.text),
-          maxTakeoffWeight: _maxTakeoffWeightController.text.trim().isEmpty ? null : double.tryParse(_maxTakeoffWeightController.text),
-          maxLandingWeight: _maxLandingWeightController.text.trim().isEmpty ? null : double.tryParse(_maxLandingWeightController.text),
-          fuelCapacity: _fuelCapacityController.text.trim().isEmpty ? null : double.tryParse(_fuelCapacityController.text),
+          maximumClimbRate: _maxClimbRateController.text.trim().isEmpty ? null : int.tryParse(_maxClimbRateController.text),
+          maximumDescentRate: _maxDescentRateController.text.trim().isEmpty ? null : int.tryParse(_maxDescentRateController.text),
+          maxTakeoffWeight: _maxTakeoffWeightController.text.trim().isEmpty ? null : int.tryParse(_maxTakeoffWeightController.text),
+          maxLandingWeight: _maxLandingWeightController.text.trim().isEmpty ? null : int.tryParse(_maxLandingWeightController.text),
+          fuelCapacity: _fuelCapacityController.text.trim().isEmpty ? null : int.tryParse(_fuelCapacityController.text),
         );
       } else {
         // Updating existing airplane type - create AirplaneType object
@@ -487,17 +488,17 @@ class _AirplaneTypeFormDialogState extends State<AirplaneTypeFormDialog> {
           category: _selectedCategory,
           engineCount: int.tryParse(_engineCountController.text) ?? 1,
           maxSeats: int.tryParse(_maxSeatsController.text) ?? 2,
-          typicalCruiseSpeed: double.tryParse(_typicalCruiseSpeedController.text) ?? 0,
-          typicalServiceCeiling: double.tryParse(_typicalServiceCeilingController.text) ?? 0,
+          typicalCruiseSpeed: int.tryParse(_typicalCruiseSpeedController.text) ?? 0,
+          typicalServiceCeiling: int.tryParse(_typicalServiceCeilingController.text) ?? 0,
           description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
           createdAt: widget.airplaneType!.createdAt,
           updatedAt: DateTime.now(),
           fuelConsumption: _fuelConsumptionController.text.trim().isEmpty ? null : double.tryParse(_fuelConsumptionController.text),
-          maximumClimbRate: _maxClimbRateController.text.trim().isEmpty ? null : double.tryParse(_maxClimbRateController.text),
-          maximumDescentRate: _maxDescentRateController.text.trim().isEmpty ? null : double.tryParse(_maxDescentRateController.text),
-          maxTakeoffWeight: _maxTakeoffWeightController.text.trim().isEmpty ? null : double.tryParse(_maxTakeoffWeightController.text),
-          maxLandingWeight: _maxLandingWeightController.text.trim().isEmpty ? null : double.tryParse(_maxLandingWeightController.text),
-          fuelCapacity: _fuelCapacityController.text.trim().isEmpty ? null : double.tryParse(_fuelCapacityController.text),
+          maximumClimbRate: _maxClimbRateController.text.trim().isEmpty ? null : int.tryParse(_maxClimbRateController.text),
+          maximumDescentRate: _maxDescentRateController.text.trim().isEmpty ? null : int.tryParse(_maxDescentRateController.text),
+          maxTakeoffWeight: _maxTakeoffWeightController.text.trim().isEmpty ? null : int.tryParse(_maxTakeoffWeightController.text),
+          maxLandingWeight: _maxLandingWeightController.text.trim().isEmpty ? null : int.tryParse(_maxLandingWeightController.text),
+          fuelCapacity: _fuelCapacityController.text.trim().isEmpty ? null : int.tryParse(_fuelCapacityController.text),
         );
 
         await service.updateAirplaneType(airplaneType);

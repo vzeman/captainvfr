@@ -15,7 +15,6 @@ class ManufacturerFormDialog extends StatefulWidget {
 class _ManufacturerFormDialogState extends State<ManufacturerFormDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _countryController = TextEditingController();
   final _websiteController = TextEditingController();
   final _descriptionController = TextEditingController();
 
@@ -32,7 +31,6 @@ class _ManufacturerFormDialogState extends State<ManufacturerFormDialog> {
   void _populateFields() {
     final manufacturer = widget.manufacturer!;
     _nameController.text = manufacturer.name;
-    _countryController.text = manufacturer.country ?? '';
     _websiteController.text = manufacturer.website ?? '';
     _descriptionController.text = manufacturer.description ?? '';
   }
@@ -40,7 +38,6 @@ class _ManufacturerFormDialogState extends State<ManufacturerFormDialog> {
   @override
   void dispose() {
     _nameController.dispose();
-    _countryController.dispose();
     _websiteController.dispose();
     _descriptionController.dispose();
     super.dispose();
@@ -68,22 +65,6 @@ class _ManufacturerFormDialogState extends State<ManufacturerFormDialog> {
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Please enter a manufacturer name';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  controller: _countryController,
-                  decoration: const InputDecoration(
-                    labelText: 'Country *',
-                    hintText: 'e.g., United States',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter a country';
                     }
                     return null;
                   },
@@ -155,7 +136,6 @@ class _ManufacturerFormDialogState extends State<ManufacturerFormDialog> {
       final manufacturer = Manufacturer(
         id: widget.manufacturer?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
         name: _nameController.text.trim(),
-        country: _countryController.text.trim(),
         website: _websiteController.text.trim().isEmpty ? null : _websiteController.text.trim(),
         description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
         airplaneTypes: widget.manufacturer?.airplaneTypes ?? [],
@@ -166,7 +146,6 @@ class _ManufacturerFormDialogState extends State<ManufacturerFormDialog> {
       if (widget.manufacturer == null) {
         await service.addManufacturer(
           _nameController.text.trim(),
-          country: _countryController.text.trim().isEmpty ? null : _countryController.text.trim(),
           website: _websiteController.text.trim().isEmpty ? null : _websiteController.text.trim(),
         );
       } else {
