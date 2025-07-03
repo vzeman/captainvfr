@@ -1,10 +1,10 @@
 import 'package:hive/hive.dart';
-import 'airplane_type.dart';
+import 'model.dart';
 
-part 'airplane.g.dart';
+part 'aircraft.g.dart';
 
 @HiveType(typeId: 23)
-class Airplane extends HiveObject {
+class Aircraft extends HiveObject {
   @HiveField(0)
   String id;
 
@@ -15,7 +15,7 @@ class Airplane extends HiveObject {
   String manufacturerId;
 
   @HiveField(3)
-  String airplaneTypeId;
+  String modelId;
 
   @HiveField(4)
   int cruiseSpeed; // in knots
@@ -66,18 +66,18 @@ class Airplane extends HiveObject {
   String? model; // Model name for display
 
   @HiveField(20)
-  AirplaneCategory? category;
+  AircraftCategory? category;
 
   // Convenience getters for backward compatibility
   double get maxAltitude => maximumAltitude.toDouble();
   double get maxClimbRate => maximumClimbRate.toDouble();
   double get maxDescentRate => maximumDescentRate.toDouble();
 
-  Airplane({
+  Aircraft({
     required this.id,
     required this.name,
     required this.manufacturerId,
-    required this.airplaneTypeId,
+    required this.modelId,
     required this.cruiseSpeed,
     required this.fuelConsumption,
     required this.maximumAltitude,
@@ -102,7 +102,7 @@ class Airplane extends HiveObject {
       'id': id,
       'name': name,
       'manufacturer_id': manufacturerId,
-      'airplane_type_id': airplaneTypeId,
+      'model_id': modelId,
       'cruise_speed': cruiseSpeed,
       'fuel_consumption': fuelConsumption,
       'maximum_altitude': maximumAltitude,
@@ -123,12 +123,12 @@ class Airplane extends HiveObject {
     };
   }
 
-  factory Airplane.fromMap(Map<String, dynamic> map) {
-    return Airplane(
+  factory Aircraft.fromMap(Map<String, dynamic> map) {
+    return Aircraft(
       id: map['id'] ?? '',
       name: map['name'] ?? '',
       manufacturerId: map['manufacturer_id'] ?? '',
-      airplaneTypeId: map['airplane_type_id'] ?? '',
+      modelId: map['model_id'] ?? '',
       cruiseSpeed: map['cruise_speed']?.toInt() ?? 0,
       fuelConsumption: (map['fuel_consumption'] ?? 0).toDouble(),
       maximumAltitude: map['maximum_altitude']?.toInt() ?? 0,
@@ -143,17 +143,17 @@ class Airplane extends HiveObject {
       registration: map['registration'],
       manufacturer: map['manufacturer'],
       model: map['model'],
-      category: map['category'] != null ? AirplaneCategory.values[map['category']] : null,
+      category: map['category'] != null ? AircraftCategory.values[map['category']] : null,
       createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
       updatedAt: DateTime.parse(map['updated_at'] ?? DateTime.now().toIso8601String()),
     );
   }
 
-  Airplane copyWith({
+  Aircraft copyWith({
     String? id,
     String? name,
     String? manufacturerId,
-    String? airplaneTypeId,
+    String? modelId,
     int? cruiseSpeed,
     double? fuelConsumption,
     int? maximumAltitude,
@@ -170,13 +170,13 @@ class Airplane extends HiveObject {
     String? registration,
     String? manufacturer,
     String? model,
-    AirplaneCategory? category,
+    AircraftCategory? category,
   }) {
-    return Airplane(
+    return Aircraft(
       id: id ?? this.id,
       name: name ?? this.name,
       manufacturerId: manufacturerId ?? this.manufacturerId,
-      airplaneTypeId: airplaneTypeId ?? this.airplaneTypeId,
+      modelId: modelId ?? this.modelId,
       cruiseSpeed: cruiseSpeed ?? this.cruiseSpeed,
       fuelConsumption: fuelConsumption ?? this.fuelConsumption,
       maximumAltitude: maximumAltitude ?? this.maximumAltitude,

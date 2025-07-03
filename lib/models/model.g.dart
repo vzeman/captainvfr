@@ -1,26 +1,26 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'airplane_type.dart';
+part of 'model.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class AirplaneTypeAdapter extends TypeAdapter<AirplaneType> {
+class ModelAdapter extends TypeAdapter<Model> {
   @override
   final int typeId = 24;
 
   @override
-  AirplaneType read(BinaryReader reader) {
+  Model read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return AirplaneType(
+    return Model(
       id: fields[0] as String,
       name: fields[1] as String,
       manufacturerId: fields[2] as String,
-      category: fields[3] as AirplaneCategory,
+      category: fields[3] as AircraftCategory,
       engineCount: fields[4] as int,
       maxSeats: fields[5] as int,
       typicalCruiseSpeed: fields[6] as int,
@@ -38,7 +38,7 @@ class AirplaneTypeAdapter extends TypeAdapter<AirplaneType> {
   }
 
   @override
-  void write(BinaryWriter writer, AirplaneType obj) {
+  void write(BinaryWriter writer, Model obj) {
     writer
       ..writeByte(17)
       ..writeByte(0)
@@ -83,54 +83,54 @@ class AirplaneTypeAdapter extends TypeAdapter<AirplaneType> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is AirplaneTypeAdapter &&
+      other is ModelAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
 
-class AirplaneCategoryAdapter extends TypeAdapter<AirplaneCategory> {
+class AircraftCategoryAdapter extends TypeAdapter<AircraftCategory> {
   @override
   final int typeId = 22;
 
   @override
-  AirplaneCategory read(BinaryReader reader) {
+  AircraftCategory read(BinaryReader reader) {
     switch (reader.readByte()) {
       case 0:
-        return AirplaneCategory.singleEngine;
+        return AircraftCategory.singleEngine;
       case 1:
-        return AirplaneCategory.multiEngine;
+        return AircraftCategory.multiEngine;
       case 2:
-        return AirplaneCategory.jet;
+        return AircraftCategory.jet;
       case 3:
-        return AirplaneCategory.helicopter;
+        return AircraftCategory.helicopter;
       case 4:
-        return AirplaneCategory.glider;
+        return AircraftCategory.glider;
       case 5:
-        return AirplaneCategory.turboprop;
+        return AircraftCategory.turboprop;
       default:
-        return AirplaneCategory.singleEngine;
+        return AircraftCategory.singleEngine;
     }
   }
 
   @override
-  void write(BinaryWriter writer, AirplaneCategory obj) {
+  void write(BinaryWriter writer, AircraftCategory obj) {
     switch (obj) {
-      case AirplaneCategory.singleEngine:
+      case AircraftCategory.singleEngine:
         writer.writeByte(0);
         break;
-      case AirplaneCategory.multiEngine:
+      case AircraftCategory.multiEngine:
         writer.writeByte(1);
         break;
-      case AirplaneCategory.jet:
+      case AircraftCategory.jet:
         writer.writeByte(2);
         break;
-      case AirplaneCategory.helicopter:
+      case AircraftCategory.helicopter:
         writer.writeByte(3);
         break;
-      case AirplaneCategory.glider:
+      case AircraftCategory.glider:
         writer.writeByte(4);
         break;
-      case AirplaneCategory.turboprop:
+      case AircraftCategory.turboprop:
         writer.writeByte(5);
         break;
     }
@@ -142,7 +142,7 @@ class AirplaneCategoryAdapter extends TypeAdapter<AirplaneCategory> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is AirplaneCategoryAdapter &&
+      other is AircraftCategoryAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

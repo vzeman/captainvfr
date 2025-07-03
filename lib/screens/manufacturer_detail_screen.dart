@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/airplane_settings_service.dart';
+import '../services/aircraft_settings_service.dart';
 import '../models/manufacturer.dart';
-import '../models/airplane_type.dart';
+import '../models/model.dart';
 import '../widgets/manufacturer_form_dialog.dart';
-import '../widgets/airplane_type_form_dialog.dart';
+import '../widgets/model_form_dialog.dart';
 
 class ManufacturerDetailScreen extends StatelessWidget {
   final Manufacturer manufacturer;
@@ -26,15 +26,15 @@ class ManufacturerDetailScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Consumer<AirplaneSettingsService>(
+      body: Consumer<AircraftSettingsService>(
         builder: (context, service, child) {
           // Get the latest manufacturer data
           final currentManufacturer = service.manufacturers
               .firstWhere((m) => m.id == manufacturer.id, orElse: () => manufacturer);
 
-          // Get airplane types for this manufacturer
-          final manufacturerTypes = service.airplaneTypes
-              .where((type) => currentManufacturer.airplaneTypes.contains(type.id))
+          // Get models for this manufacturer
+          final manufacturerModels = service.models
+              .where((model) => currentManufacturer.models.contains(model.id))
               .toList();
 
           return Column(
@@ -90,7 +90,7 @@ class ManufacturerDetailScreen extends StatelessWidget {
                           Icon(Icons.category, color: Colors.grey[600], size: 20),
                           const SizedBox(width: 8),
                           Text(
-                            '${manufacturerTypes.length} airplane type(s)',
+                            '${manufacturerModels.length} model(s)',
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: Colors.grey[600],
                             ),
@@ -102,21 +102,21 @@ class ManufacturerDetailScreen extends StatelessWidget {
                 ),
               ),
 
-              // Airplane Types Section
+              // Models Section
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
                     Expanded(
                       child: Text(
-                        'Airplane Types',
+                        'Models',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                     ),
                     ElevatedButton.icon(
-                      onPressed: () => _showAirplaneTypeForm(context, currentManufacturer),
+                      onPressed: () => _showModelForm(context, currentManufacturer),
                       icon: const Icon(Icons.add),
-                      label: const Text('Add Type'),
+                      label: const Text('Add Model'),
                     ),
                   ],
                 ),
@@ -124,9 +124,9 @@ class ManufacturerDetailScreen extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // Airplane Types List
+              // Models List
               Expanded(
-                child: manufacturerTypes.isEmpty
+                child: manufacturerModels.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -138,7 +138,7 @@ class ManufacturerDetailScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'No airplane types yet',
+                              'No models yet',
                               style: TextStyle(
                                 fontSize: 18,
                                 color: Colors.grey[600],
@@ -146,7 +146,7 @@ class ManufacturerDetailScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Add the first airplane type for ${currentManufacturer.name}',
+                              'Add the first model for ${currentManufacturer.name}',
                               style: TextStyle(
                                 color: Colors.grey[500],
                               ),
@@ -154,45 +154,45 @@ class ManufacturerDetailScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 16),
                             ElevatedButton.icon(
-                              onPressed: () => _showAirplaneTypeForm(context, currentManufacturer),
+                              onPressed: () => _showModelForm(context, currentManufacturer),
                               icon: const Icon(Icons.add),
-                              label: const Text('Add First Type'),
+                              label: const Text('Add First Model'),
                             ),
                           ],
                         ),
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: manufacturerTypes.length,
+                        itemCount: manufacturerModels.length,
                         itemBuilder: (context, index) {
-                          final type = manufacturerTypes[index];
+                          final model = manufacturerModels[index];
                           return Card(
                             margin: const EdgeInsets.only(bottom: 8),
                             child: ListTile(
                               leading: CircleAvatar(
                                 backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                                 child: Text(
-                                  type.name.isNotEmpty ? type.name[0].toUpperCase() : 'T',
+                                  model.name.isNotEmpty ? model.name[0].toUpperCase() : 'M',
                                   style: TextStyle(
                                     color: Theme.of(context).primaryColor,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
-                              title: Text(type.name),
+                              title: Text(model.name),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Category: ${type.category.name}'),
-                                  Text('${type.engineCount} engine(s)'),
+                                  Text('Category: ${_getCategoryDisplayName(model.category)}'),
+                                  Text('${model.engineCount} engine(s)'),
                                 ],
                               ),
                               trailing: PopupMenuButton<String>(
                                 onSelected: (value) {
                                   if (value == 'edit') {
-                                    _showAirplaneTypeForm(context, currentManufacturer, type: type);
+                                    _showModelForm(context, currentManufacturer, model: model);
                                   } else if (value == 'delete') {
-                                    _confirmDeleteAirplaneType(context, type, currentManufacturer);
+                                    _confirmDeleteModel(context, model, currentManufacturer);
                                   }
                                 },
                                 itemBuilder: (context) => [
@@ -237,22 +237,22 @@ class ManufacturerDetailScreen extends StatelessWidget {
     );
   }
 
-  void _showAirplaneTypeForm(BuildContext context, Manufacturer manufacturer, {AirplaneType? type}) {
+  void _showModelForm(BuildContext context, Manufacturer manufacturer, {Model? model}) {
     showDialog(
       context: context,
-      builder: (context) => AirplaneTypeFormDialog(
-        airplaneType: type,
+      builder: (context) => ModelFormDialog(
+        model: model,
         manufacturer: manufacturer,
       ),
     );
   }
 
-  void _confirmDeleteAirplaneType(BuildContext context, AirplaneType type, Manufacturer manufacturer) {
+  void _confirmDeleteModel(BuildContext context, Model model, Manufacturer manufacturer) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Airplane Type'),
-        content: Text('Are you sure you want to delete "${type.name}"?'),
+        title: const Text('Delete Model'),
+        content: Text('Are you sure you want to delete "${model.name}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -260,11 +260,11 @@ class ManufacturerDetailScreen extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              final service = Provider.of<AirplaneSettingsService>(context, listen: false);
-              service.deleteAirplaneType(type.id);
+              final service = Provider.of<AircraftSettingsService>(context, listen: false);
+              service.deleteModel(model.id);
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Deleted "${type.name}"')),
+                SnackBar(content: Text('Deleted "${model.name}"')),
               );
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -273,5 +273,22 @@ class ManufacturerDetailScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _getCategoryDisplayName(AircraftCategory category) {
+    switch (category) {
+      case AircraftCategory.singleEngine:
+        return 'Single Engine';
+      case AircraftCategory.multiEngine:
+        return 'Multi Engine';
+      case AircraftCategory.jet:
+        return 'Jet';
+      case AircraftCategory.helicopter:
+        return 'Helicopter';
+      case AircraftCategory.glider:
+        return 'Glider';
+      case AircraftCategory.turboprop:
+        return 'Turboprop';
+    }
   }
 }

@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../services/airplane_settings_service.dart';
-import '../models/airplane.dart';
+import '../services/aircraft_settings_service.dart';
+import '../models/aircraft.dart';
 import '../models/manufacturer.dart';
-import '../models/airplane_type.dart';
+import '../models/model.dart';
 
-class AirplaneFormDialog extends StatefulWidget {
-  final Airplane? airplane;
+class AircraftFormDialog extends StatefulWidget {
+  final Aircraft? aircraft;
 
-  const AirplaneFormDialog({super.key, this.airplane});
+  const AircraftFormDialog({super.key, this.aircraft});
 
   @override
-  State<AirplaneFormDialog> createState() => _AirplaneFormDialogState();
+  State<AircraftFormDialog> createState() => _AircraftFormDialogState();
 }
 
-class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
+class _AircraftFormDialogState extends State<AircraftFormDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _registrationController = TextEditingController();
@@ -29,78 +29,78 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
   final _fuelCapacityController = TextEditingController();
 
   Manufacturer? _selectedManufacturer;
-  AirplaneType? _selectedType;
+  Model? _selectedModel;
 
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    if (widget.airplane != null) {
+    if (widget.aircraft != null) {
       _populateFields();
     }
   }
 
   void _populateFields() {
-    final airplane = widget.airplane!;
-    _nameController.text = airplane.name;
-    _registrationController.text = airplane.registration ?? '';
-    _cruiseSpeedController.text = airplane.cruiseSpeed.toString();
-    _fuelConsumptionController.text = airplane.fuelConsumption.toString();
-    _maxAltitudeController.text = airplane.maximumAltitude.toString();
-    _maxClimbRateController.text = airplane.maximumClimbRate.toString();
-    _maxDescentRateController.text = airplane.maximumDescentRate.toString();
-    _maxTakeoffWeightController.text = airplane.maxTakeoffWeight.toString();
-    _maxLandingWeightController.text = airplane.maxLandingWeight.toString();
-    _fuelCapacityController.text = airplane.fuelCapacity.toString();
+    final aircraft = widget.aircraft!;
+    _nameController.text = aircraft.name;
+    _registrationController.text = aircraft.registration ?? '';
+    _cruiseSpeedController.text = aircraft.cruiseSpeed.toString();
+    _fuelConsumptionController.text = aircraft.fuelConsumption.toString();
+    _maxAltitudeController.text = aircraft.maximumAltitude.toString();
+    _maxClimbRateController.text = aircraft.maximumClimbRate.toString();
+    _maxDescentRateController.text = aircraft.maximumDescentRate.toString();
+    _maxTakeoffWeightController.text = aircraft.maxTakeoffWeight.toString();
+    _maxLandingWeightController.text = aircraft.maxLandingWeight.toString();
+    _fuelCapacityController.text = aircraft.fuelCapacity.toString();
 
-    // Find manufacturer and type from the service using IDs
-    final service = Provider.of<AirplaneSettingsService>(context, listen: false);
+    // Find manufacturer and model from the service using IDs
+    final service = Provider.of<AircraftSettingsService>(context, listen: false);
     try {
       _selectedManufacturer = service.manufacturers.firstWhere(
-        (m) => m.id == airplane.manufacturerId,
+        (m) => m.id == aircraft.manufacturerId,
       );
     } catch (e) {
       _selectedManufacturer = service.manufacturers.isNotEmpty ? service.manufacturers.first : null;
     }
 
     if (_selectedManufacturer != null) {
-      final airplaneTypes = service.getAirplaneTypesForManufacturer(_selectedManufacturer!.id);
+      final models = service.getModelsForManufacturer(_selectedManufacturer!.id);
       try {
-        _selectedType = airplaneTypes.firstWhere(
-          (t) => t.id == airplane.airplaneTypeId,
+        _selectedModel = models.firstWhere(
+          (m) => m.id == aircraft.modelId,
         );
       } catch (e) {
-        _selectedType = airplaneTypes.isNotEmpty ? airplaneTypes.first : null;
+        _selectedModel = models.isNotEmpty ? models.first : null;
       }
     }
   }
 
-  void _copyPerformanceFromType(AirplaneType type) {
-    // Copy performance specifications from airplane type if they exist
-    if (type.typicalCruiseSpeed > 0) {
-      _cruiseSpeedController.text = type.typicalCruiseSpeed.toString();
+  void _copyPerformanceFromModel(Model model) {
+    // Copy performance specifications from model if they exist
+    if (model.typicalCruiseSpeed > 0) {
+      _cruiseSpeedController.text = model.typicalCruiseSpeed.toString();
     }
-    if (type.typicalServiceCeiling > 0) {
-      _maxAltitudeController.text = type.typicalServiceCeiling.toString();
+    if (model.typicalServiceCeiling > 0) {
+      _maxAltitudeController.text = model.typicalServiceCeiling.toString();
     }
-    if (type.fuelConsumption != null && type.fuelConsumption! > 0) {
-      _fuelConsumptionController.text = type.fuelConsumption.toString();
+    if (model.fuelConsumption != null && model.fuelConsumption! > 0) {
+      _fuelConsumptionController.text = model.fuelConsumption.toString();
     }
-    if (type.maximumClimbRate != null && type.maximumClimbRate! > 0) {
-      _maxClimbRateController.text = type.maximumClimbRate.toString();
+    if (model.maximumClimbRate != null && model.maximumClimbRate! > 0) {
+      _maxClimbRateController.text = model.maximumClimbRate.toString();
     }
-    if (type.maximumDescentRate != null && type.maximumDescentRate! > 0) {
-      _maxDescentRateController.text = type.maximumDescentRate.toString();
+    if (model.maximumDescentRate != null && model.maximumDescentRate! > 0) {
+      _maxDescentRateController.text = model.maximumDescentRate.toString();
     }
-    if (type.maxTakeoffWeight != null && type.maxTakeoffWeight! > 0) {
-      _maxTakeoffWeightController.text = type.maxTakeoffWeight.toString();
+    if (model.maxTakeoffWeight != null && model.maxTakeoffWeight! > 0) {
+      _maxTakeoffWeightController.text = model.maxTakeoffWeight.toString();
     }
-    if (type.maxLandingWeight != null && type.maxLandingWeight! > 0) {
-      _maxLandingWeightController.text = type.maxLandingWeight.toString();
+    if (model.maxLandingWeight != null && model.maxLandingWeight! > 0) {
+      _maxLandingWeightController.text = model.maxLandingWeight.toString();
     }
-    if (type.fuelCapacity != null && type.fuelCapacity! > 0) {
-      _fuelCapacityController.text = type.fuelCapacity.toString();
+    if (model.fuelCapacity != null && model.fuelCapacity! > 0) {
+      _fuelCapacityController.text = model.fuelCapacity.toString();
     }
   }
 
@@ -121,10 +121,10 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AirplaneSettingsService>(
+    return Consumer<AircraftSettingsService>(
       builder: (context, service, child) {
         return AlertDialog(
-          title: Text(widget.airplane == null ? 'Add Airplane' : 'Edit Airplane'),
+          title: Text(widget.aircraft == null ? 'Add Aircraft' : 'Edit Aircraft'),
           content: SizedBox(
             width: MediaQuery.of(context).size.width * 0.9,
             child: SingleChildScrollView(
@@ -143,13 +143,13 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(
-                        labelText: 'Airplane Name *',
+                        labelText: 'Aircraft Name *',
                         hintText: 'e.g., My Cessna 172',
                         border: OutlineInputBorder(),
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return 'Please enter an airplane name';
+                          return 'Please enter an aircraft name';
                         }
                         return null;
                       },
@@ -182,7 +182,7 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
                       onChanged: (manufacturer) {
                         setState(() {
                           _selectedManufacturer = manufacturer;
-                          _selectedType = null; // Reset type selection
+                          _selectedModel = null; // Reset model selection
                         });
                       },
                       validator: (value) {
@@ -194,33 +194,33 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Airplane Type Selection
-                    DropdownButtonFormField<AirplaneType>(
-                      value: _selectedType,
+                    // Model Selection
+                    DropdownButtonFormField<Model>(
+                      value: _selectedModel,
                       decoration: const InputDecoration(
-                        labelText: 'Airplane Type *',
+                        labelText: 'Model *',
                         border: OutlineInputBorder(),
                       ),
-                      items: _selectedManufacturer?.airplaneTypes.map((typeId) {
-                        final type = Provider.of<AirplaneSettingsService>(context, listen: false)
-                            .airplaneTypes.firstWhere((t) => t.id == typeId);
-                        return DropdownMenuItem<AirplaneType>(
-                          value: type,
-                          child: Text(type.name),
+                      items: _selectedManufacturer?.models.map((modelId) {
+                        final model = Provider.of<AircraftSettingsService>(context, listen: false)
+                            .models.firstWhere((m) => m.id == modelId);
+                        return DropdownMenuItem<Model>(
+                          value: model,
+                          child: Text(model.name),
                         );
                       }).toList() ?? [],
-                      onChanged: (type) {
+                      onChanged: (model) {
                         setState(() {
-                          _selectedType = type;
-                          // Auto-set performance specifications based on type
-                          if (type != null) {
-                            _copyPerformanceFromType(type);
+                          _selectedModel = model;
+                          // Auto-set performance specifications based on model
+                          if (model != null) {
+                            _copyPerformanceFromModel(model);
                           }
                         });
                       },
                       validator: (value) {
                         if (value == null) {
-                          return 'Please select an airplane type';
+                          return 'Please select a model';
                         }
                         return null;
                       },
@@ -438,14 +438,14 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: _isLoading ? null : _saveAirplane,
+              onPressed: _isLoading ? null : _saveAircraft,
               child: _isLoading
                   ? const SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text(widget.airplane == null ? 'Add' : 'Save'),
+                  : Text(widget.aircraft == null ? 'Add' : 'Save'),
             ),
           ],
         );
@@ -453,22 +453,22 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
     );
   }
 
-  Future<void> _saveAirplane() async {
+  Future<void> _saveAircraft() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedManufacturer == null || _selectedType == null) return;
+    if (_selectedManufacturer == null || _selectedModel == null) return;
 
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final service = Provider.of<AirplaneSettingsService>(context, listen: false);
+      final service = Provider.of<AircraftSettingsService>(context, listen: false);
 
-      final airplane = Airplane(
-        id: widget.airplane?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      final aircraft = Aircraft(
+        id: widget.aircraft?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
         name: _nameController.text.trim(),
         manufacturerId: _selectedManufacturer!.id,
-        airplaneTypeId: _selectedType!.id,
+        modelId: _selectedModel!.id,
         cruiseSpeed: int.parse(_cruiseSpeedController.text),
         fuelConsumption: double.parse(_fuelConsumptionController.text),
         maximumAltitude: int.parse(_maxAltitudeController.text),
@@ -477,27 +477,27 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
         maxTakeoffWeight: int.parse(_maxTakeoffWeightController.text),
         maxLandingWeight: int.parse(_maxLandingWeightController.text),
         fuelCapacity: int.parse(_fuelCapacityController.text),
-        createdAt: widget.airplane?.createdAt ?? DateTime.now(),
+        createdAt: widget.aircraft?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
         registration: _registrationController.text.trim().isEmpty ? null : _registrationController.text.trim(),
         manufacturer: _selectedManufacturer!.name,
-        model: _selectedType!.name,
-        category: _selectedType!.category, // Use category from airplane type
+        model: _selectedModel!.name,
+        category: _selectedModel!.category, // Use category from model
       );
 
-      if (widget.airplane == null) {
-        await service.addAirplane(airplane);
+      if (widget.aircraft == null) {
+        await service.addAircraft(aircraft);
       } else {
-        await service.updateAirplane(airplane);
+        await service.updateAircraft(aircraft);
       }
 
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.airplane == null
-                ? 'Airplane "${airplane.name}" added successfully'
-                : 'Airplane "${airplane.name}" updated successfully'),
+            content: Text(widget.aircraft == null
+                ? 'Aircraft "${aircraft.name}" added successfully'
+                : 'Aircraft "${aircraft.name}" updated successfully'),
           ),
         );
       }
@@ -505,7 +505,7 @@ class _AirplaneFormDialogState extends State<AirplaneFormDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error saving airplane: $e'),
+            content: Text('Error saving aircraft: $e'),
             backgroundColor: Colors.red,
           ),
         );

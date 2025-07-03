@@ -1,9 +1,9 @@
 import 'package:hive/hive.dart';
 
-part 'airplane_type.g.dart';
+part 'model.g.dart';
 
 @HiveType(typeId: 22)
-enum AirplaneCategory {
+enum AircraftCategory {
   @HiveField(0)
   singleEngine,
   @HiveField(1)
@@ -19,7 +19,7 @@ enum AirplaneCategory {
 }
 
 @HiveType(typeId: 24)
-class AirplaneType extends HiveObject {
+class Model extends HiveObject {
   @HiveField(0)
   String id;
 
@@ -30,7 +30,7 @@ class AirplaneType extends HiveObject {
   String manufacturerId;
 
   @HiveField(3)
-  AirplaneCategory category;
+  AircraftCategory category;
 
   @HiveField(4)
   int engineCount;
@@ -71,7 +71,7 @@ class AirplaneType extends HiveObject {
   @HiveField(16)
   int? fuelCapacity; // in gallons
 
-  AirplaneType({
+  Model({
     required this.id,
     required this.name,
     required this.manufacturerId,
@@ -113,12 +113,12 @@ class AirplaneType extends HiveObject {
     };
   }
 
-  factory AirplaneType.fromMap(Map<String, dynamic> map) {
-    return AirplaneType(
+  factory Model.fromMap(Map<String, dynamic> map) {
+    return Model(
       id: map['id'] ?? '',
       name: map['name'] ?? '',
       manufacturerId: map['manufacturer_id'] ?? '',
-      category: AirplaneCategory.values[map['category'] ?? 0],
+      category: AircraftCategory.values[map['category'] ?? 0],
       engineCount: map['engine_count'] ?? 1,
       maxSeats: map['max_seats'] ?? 2,
       typicalCruiseSpeed: (map['typical_cruise_speed'] ?? 0).toInt(),
@@ -135,11 +135,11 @@ class AirplaneType extends HiveObject {
     );
   }
 
-  AirplaneType copyWith({
+  Model copyWith({
     String? id,
     String? name,
     String? manufacturerId,
-    AirplaneCategory? category,
+    AircraftCategory? category,
     int? engineCount,
     int? maxSeats,
     int? typicalCruiseSpeed,
@@ -154,7 +154,7 @@ class AirplaneType extends HiveObject {
     int? maxLandingWeight,
     int? fuelCapacity,
   }) {
-    return AirplaneType(
+    return Model(
       id: id ?? this.id,
       name: name ?? this.name,
       manufacturerId: manufacturerId ?? this.manufacturerId,
@@ -173,5 +173,10 @@ class AirplaneType extends HiveObject {
       maxLandingWeight: maxLandingWeight ?? this.maxLandingWeight,
       fuelCapacity: fuelCapacity ?? this.fuelCapacity,
     );
+  }
+
+  @override
+  String toString() {
+    return 'Model{id: $id, name: $name, manufacturerId: $manufacturerId, category: $category}';
   }
 }

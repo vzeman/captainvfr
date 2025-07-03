@@ -1,26 +1,26 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'airplane.dart';
+part of 'aircraft.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class AirplaneAdapter extends TypeAdapter<Airplane> {
+class AircraftAdapter extends TypeAdapter<Aircraft> {
   @override
   final int typeId = 23;
 
   @override
-  Airplane read(BinaryReader reader) {
+  Aircraft read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Airplane(
+    return Aircraft(
       id: fields[0] as String,
       name: fields[1] as String,
       manufacturerId: fields[2] as String,
-      airplaneTypeId: fields[3] as String,
+      modelId: fields[3] as String,
       cruiseSpeed: fields[4] as int,
       fuelConsumption: fields[5] as double,
       maximumAltitude: fields[6] as int,
@@ -37,12 +37,12 @@ class AirplaneAdapter extends TypeAdapter<Airplane> {
       registration: fields[17] as String?,
       manufacturer: fields[18] as String?,
       model: fields[19] as String?,
-      category: fields[20] as AirplaneCategory?,
+      category: fields[20] as AircraftCategory?,
     );
   }
 
   @override
-  void write(BinaryWriter writer, Airplane obj) {
+  void write(BinaryWriter writer, Aircraft obj) {
     writer
       ..writeByte(21)
       ..writeByte(0)
@@ -52,7 +52,7 @@ class AirplaneAdapter extends TypeAdapter<Airplane> {
       ..writeByte(2)
       ..write(obj.manufacturerId)
       ..writeByte(3)
-      ..write(obj.airplaneTypeId)
+      ..write(obj.modelId)
       ..writeByte(4)
       ..write(obj.cruiseSpeed)
       ..writeByte(5)
@@ -95,7 +95,7 @@ class AirplaneAdapter extends TypeAdapter<Airplane> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is AirplaneAdapter &&
+      other is AircraftAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
