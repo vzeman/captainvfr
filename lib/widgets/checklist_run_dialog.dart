@@ -8,7 +8,7 @@ class ChecklistRunDialog extends StatefulWidget {
   final Checklist checklist;
   /// Optional display name of the aircraft running this checklist.
   final String? aircraftName;
-  const ChecklistRunDialog({Key? key, required this.checklist, this.aircraftName}) : super(key: key);
+  const ChecklistRunDialog({super.key, required this.checklist, this.aircraftName});
 
   @override
   State<ChecklistRunDialog> createState() => _ChecklistRunDialogState();
