@@ -93,6 +93,12 @@ class AirplaneSettingsService with ChangeNotifier {
     double typicalCruiseSpeed = 100.0,
     double typicalServiceCeiling = 10000.0,
     String? description,
+    double? fuelConsumption,
+    double? maximumClimbRate,
+    double? maximumDescentRate,
+    double? maxTakeoffWeight,
+    double? maxLandingWeight,
+    double? fuelCapacity,
   }) async {
     final airplaneType = AirplaneType(
       id: _uuid.v4(),
@@ -106,8 +112,26 @@ class AirplaneSettingsService with ChangeNotifier {
       description: description,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
+      fuelConsumption: fuelConsumption,
+      maximumClimbRate: maximumClimbRate,
+      maximumDescentRate: maximumDescentRate,
+      maxTakeoffWeight: maxTakeoffWeight,
+      maxLandingWeight: maxLandingWeight,
+      fuelCapacity: fuelCapacity,
     );
+
+    // Add the airplane type to the service
     await _airplaneTypeService.addAirplaneType(airplaneType);
+
+    // Update the manufacturer's airplane types list
+    final manufacturer = _manufacturerService.manufacturers
+        .firstWhere((m) => m.id == manufacturerId);
+
+    if (!manufacturer.airplaneTypes.contains(airplaneType.id)) {
+      manufacturer.airplaneTypes.add(airplaneType.id);
+      await _manufacturerService.updateManufacturer(manufacturer);
+    }
+
     notifyListeners();
   }
 
@@ -167,16 +191,32 @@ class AirplaneSettingsService with ChangeNotifier {
   }
 
   Future<void> _addDefaultAirplaneTypes() async {
-    // Add some default airplane types for common manufacturers
-    final cessnaId = manufacturers.firstWhere((m) => m.name == 'Cessna').id;
-    final piperId = manufacturers.firstWhere((m) => m.name == 'Piper').id;
+    // Make sure we have manufacturers before trying to add airplane types
+    if (manufacturers.isEmpty) {
+      debugPrint('No manufacturers found, skipping default airplane types');
+      return;
+    }
 
-    await addAirplaneType('C172', cessnaId, AirplaneCategory.singleEngine,
-        engineCount: 1, maxSeats: 4, typicalCruiseSpeed: 122, typicalServiceCeiling: 14000);
-    await addAirplaneType('C182', cessnaId, AirplaneCategory.singleEngine,
-        engineCount: 1, maxSeats: 4, typicalCruiseSpeed: 145, typicalServiceCeiling: 18000);
-    await addAirplaneType('PA-28', piperId, AirplaneCategory.singleEngine,
-        engineCount: 1, maxSeats: 4, typicalCruiseSpeed: 125, typicalServiceCeiling: 14000);
+    // Add some default airplane types for common manufacturers
+    final cessna = manufacturers.firstWhere(
+      (m) => m.name == 'Cessna',
+      orElse: () => manufacturers.first, // Fallback to first manufacturer if Cessna not found
+    );
+    final piper = manufacturers.firstWhere(
+      (m) => m.name == 'Piper',
+      orElse: () => manufacturers.first, // Fallback to first manufacturer if Piper not found
+    );
+
+    try {
+      await addAirplaneType('C172', cessna.id, AirplaneCategory.singleEngine,
+          engineCount: 1, maxSeats: 4, typicalCruiseSpeed: 122, typicalServiceCeiling: 14000);
+      await addAirplaneType('C182', cessna.id, AirplaneCategory.singleEngine,
+          engineCount: 1, maxSeats: 4, typicalCruiseSpeed: 145, typicalServiceCeiling: 18000);
+      await addAirplaneType('PA-28', piper.id, AirplaneCategory.singleEngine,
+          engineCount: 1, maxSeats: 4, typicalCruiseSpeed: 125, typicalServiceCeiling: 14000);
+    } catch (e) {
+      debugPrint('Error adding default airplane types: $e');
+    }
   }
 
   @override
