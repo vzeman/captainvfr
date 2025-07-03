@@ -21,7 +21,7 @@ class ManufacturerAdapter extends TypeAdapter<Manufacturer> {
       name: fields[1] as String,
       website: fields[3] as String?,
       description: fields[5] as String?,
-      airplaneTypes: (fields[4] as List?)?.cast<String>(),
+      models: (fields[4] as List?)?.cast<String>(),
       createdAt: fields[6] as DateTime,
       updatedAt: fields[7] as DateTime,
     );
@@ -38,7 +38,7 @@ class ManufacturerAdapter extends TypeAdapter<Manufacturer> {
       ..writeByte(3)
       ..write(obj.website)
       ..writeByte(4)
-      ..write(obj.airplaneTypes)
+      ..write(obj.models)
       ..writeByte(5)
       ..write(obj.description)
       ..writeByte(6)

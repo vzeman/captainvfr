@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/airplane_settings_service.dart';
+import '../services/aircraft_settings_service.dart';
 import '../models/manufacturer.dart';
 
 class ManufacturerFormDialog extends StatefulWidget {
@@ -131,14 +131,14 @@ class _ManufacturerFormDialogState extends State<ManufacturerFormDialog> {
     });
 
     try {
-      final service = Provider.of<AirplaneSettingsService>(context, listen: false);
+      final service = Provider.of<AircraftSettingsService>(context, listen: false);
 
       final manufacturer = Manufacturer(
         id: widget.manufacturer?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
         name: _nameController.text.trim(),
         website: _websiteController.text.trim().isEmpty ? null : _websiteController.text.trim(),
         description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
-        airplaneTypes: widget.manufacturer?.airplaneTypes ?? [],
+        models: widget.manufacturer?.models ?? [],
         createdAt: widget.manufacturer?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
       );

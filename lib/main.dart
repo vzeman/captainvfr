@@ -12,12 +12,12 @@ import 'services/navaid_service.dart';
 import 'services/weather_service.dart';
 import 'services/frequency_service.dart';
 import 'services/flight_plan_service.dart';
-import 'services/airplane_settings_service.dart';
+import 'services/aircraft_settings_service.dart';
 import 'adapters/flight_plan_adapters.dart';
 import 'adapters/latlng_adapter.dart';
 import 'models/manufacturer.dart';
-import 'models/airplane_type.dart';
-import 'models/airplane.dart';
+import 'models/model.dart';
+import 'models/aircraft.dart';
 import 'models/flight.dart';
 import 'models/flight_point.dart';
 import 'models/flight_segment.dart';
@@ -43,11 +43,11 @@ void main() async {
     Hive.registerAdapter(WaypointTypeAdapter());
     Hive.registerAdapter(LatLngAdapter());
 
-    // Register airplane-related adapters
+    // Register aircraft-related adapters
     Hive.registerAdapter(ManufacturerAdapter());
-    Hive.registerAdapter(AirplaneTypeAdapter());
-    Hive.registerAdapter(AirplaneCategoryAdapter());
-    Hive.registerAdapter(AirplaneAdapter());
+    Hive.registerAdapter(ModelAdapter());
+    Hive.registerAdapter(AircraftCategoryAdapter());
+    Hive.registerAdapter(AircraftAdapter());
 
     // Initialize cache service first
     final cacheService = CacheService();
@@ -76,14 +76,14 @@ void main() async {
       barometerService: barometerService,
     );
 
-    // Initialize airplane settings service with comprehensive error handling
-    final airplaneSettingsService = AirplaneSettingsService();
+    // Initialize aircraft settings service with comprehensive error handling
+    final aircraftSettingsService = AircraftSettingsService();
 
     try {
-      await airplaneSettingsService.initialize();
-      debugPrint('✅ Airplane settings service initialized');
+      await aircraftSettingsService.initialize();
+      debugPrint('✅ Aircraft settings service initialized');
     } catch (e) {
-      debugPrint('❌ Error initializing airplane settings service: $e');
+      debugPrint('❌ Error initializing aircraft settings service: $e');
       debugPrint('Error type: ${e.runtimeType}');
 
       // Check for various Hive data corruption issues
@@ -102,8 +102,8 @@ void main() async {
           await _clearHiveBoxes();
           debugPrint('✅ Hive boxes cleared, retrying initialization...');
           // Try initializing again after clearing boxes
-          await airplaneSettingsService.initialize();
-          debugPrint('✅ Airplane settings service initialized after clearing boxes');
+          await aircraftSettingsService.initialize();
+          debugPrint('✅ Aircraft settings service initialized after clearing boxes');
         } catch (retryError) {
           debugPrint('❌ Failed to initialize after clearing boxes: $retryError');
           // Don't rethrow - continue with app initialization
@@ -134,8 +134,8 @@ void main() async {
           ChangeNotifierProvider<FlightPlanService>.value(
             value: flightPlanService,
           ),
-          ChangeNotifierProvider<AirplaneSettingsService>.value(
-            value: airplaneSettingsService,
+          ChangeNotifierProvider<AircraftSettingsService>.value(
+            value: aircraftSettingsService,
           ),
           Provider<AirportService>.value(value: airportService),
           Provider<CacheService>.value(value: cacheService),
@@ -206,7 +206,7 @@ void _runMinimalApp() {
   final weatherService = WeatherService();
   final frequencyService = FrequencyService();
   final flightPlanService = FlightPlanService();
-  final airplaneSettingsService = AirplaneSettingsService();
+  final aircraftSettingsService = AircraftSettingsService();
   final cacheService = CacheService();
   final flightService = FlightService(barometerService: barometerService);
 
@@ -217,7 +217,7 @@ void _runMinimalApp() {
         Provider<BarometerService>.value(value: barometerService),
         ChangeNotifierProvider<FlightService>.value(value: flightService),
         ChangeNotifierProvider<FlightPlanService>.value(value: flightPlanService),
-        ChangeNotifierProvider<AirplaneSettingsService>.value(value: airplaneSettingsService),
+        ChangeNotifierProvider<AircraftSettingsService>.value(value: aircraftSettingsService),
         Provider<AirportService>.value(value: airportService),
         Provider<CacheService>.value(value: cacheService),
         Provider<RunwayService>.value(value: runwayService),

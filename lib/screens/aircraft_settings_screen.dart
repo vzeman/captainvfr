@@ -1,28 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/airplane_settings_service.dart';
-import '../models/airplane.dart';
+import '../services/aircraft_settings_service.dart';
+import '../models/aircraft.dart';
+import '../models/model.dart';
 import '../models/manufacturer.dart';
-import '../widgets/airplane_form_dialog.dart';
+import '../widgets/aircraft_form_dialog.dart';
 import '../widgets/manufacturer_form_dialog.dart';
 import 'manufacturer_detail_screen.dart';
 
-class AirplaneSettingsScreen extends StatefulWidget {
-  const AirplaneSettingsScreen({super.key});
+class AircraftSettingsScreen extends StatefulWidget {
+  const AircraftSettingsScreen({super.key});
 
   @override
-  State<AirplaneSettingsScreen> createState() => _AirplaneSettingsScreenState();
+  State<AircraftSettingsScreen> createState() => _AircraftSettingsScreenState();
 }
 
-class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with SingleTickerProviderStateMixin {
+class _AircraftSettingsScreenState extends State<AircraftSettingsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  late AirplaneSettingsService _airplaneService;
+  late AircraftSettingsService _aircraftService;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _airplaneService = Provider.of<AirplaneSettingsService>(context, listen: false);
+    _aircraftService = Provider.of<AircraftSettingsService>(context, listen: false);
   }
 
   @override
@@ -35,11 +36,11 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Airplane Settings'),
+        title: const Text('Aircraft Settings'),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(icon: Icon(Icons.airplanemode_active), text: 'Airplanes'),
+            Tab(icon: Icon(Icons.airplanemode_active), text: 'Aircraft'),
             Tab(icon: Icon(Icons.business), text: 'Manufacturers'),
           ],
         ),
@@ -47,29 +48,29 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildAirplanesTab(),
+          _buildAircraftTab(),
           _buildManufacturersTab(),
         ],
       ),
     );
   }
 
-  Widget _buildAirplanesTab() {
-    return Consumer<AirplaneSettingsService>(
+  Widget _buildAircraftTab() {
+    return Consumer<AircraftSettingsService>(
       builder: (context, service, child) {
-        if (service.airplanes.isEmpty) {
+        if (service.aircrafts.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.airplanemode_inactive, size: 64, color: Colors.grey),
                 const SizedBox(height: 16),
-                const Text('No airplanes configured', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                const Text('No aircraft configured', style: TextStyle(fontSize: 18, color: Colors.grey)),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
-                  onPressed: () => _showAirplaneForm(),
+                  onPressed: () => _showAircraftForm(),
                   icon: const Icon(Icons.add),
-                  label: const Text('Add First Airplane'),
+                  label: const Text('Add First Aircraft'),
                 ),
               ],
             ),
@@ -84,47 +85,47 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
                 children: [
                   Expanded(
                     child: Text(
-                      '${service.airplanes.length} airplane(s) configured',
+                      '${service.aircrafts.length} aircraft configured',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
                   ElevatedButton.icon(
-                    onPressed: () => _showAirplaneForm(),
+                    onPressed: () => _showAircraftForm(),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add Airplane'),
+                    label: const Text('Add Aircraft'),
                   ),
                 ],
               ),
             ),
             Expanded(
               child: ListView.builder(
-                itemCount: service.airplanes.length,
+                itemCount: service.aircrafts.length,
                 itemBuilder: (context, index) {
-                  final airplane = service.airplanes[index];
+                  final aircraft = service.aircrafts[index];
                   return Card(
                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: ListTile(
                       leading: CircleAvatar(
                         backgroundColor: Theme.of(context).primaryColor,
                         child: Text(
-                          airplane.name.isNotEmpty ? airplane.name[0].toUpperCase() : 'A',
+                          aircraft.name.isNotEmpty ? aircraft.name[0].toUpperCase() : 'A',
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                       ),
-                      title: Text(airplane.name),
+                      title: Text(aircraft.name),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(_getAirplaneDisplayText(airplane, service)),
-                          Text('${airplane.category?.name ?? 'Unknown'} • ${airplane.cruiseSpeed} kts'),
+                          Text(_getAircraftDisplayText(aircraft, service)),
+                          Text('${_getCategoryDisplayName(aircraft.category)} • ${aircraft.cruiseSpeed} kts'),
                         ],
                       ),
                       trailing: PopupMenuButton<String>(
                         onSelected: (value) {
                           if (value == 'edit') {
-                            _showAirplaneForm(airplane: airplane);
+                            _showAircraftForm(aircraft: aircraft);
                           } else if (value == 'delete') {
-                            _confirmDeleteAirplane(airplane);
+                            _confirmDeleteAircraft(aircraft);
                           }
                         },
                         itemBuilder: (context) => [
@@ -150,7 +151,7 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
                           ),
                         ],
                       ),
-                      onTap: () => _showAirplaneDetails(airplane),
+                      onTap: () => _showAircraftDetails(aircraft),
                     ),
                   );
                 },
@@ -163,7 +164,7 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
   }
 
   Widget _buildManufacturersTab() {
-    return Consumer<AirplaneSettingsService>(
+    return Consumer<AircraftSettingsService>(
       builder: (context, service, child) {
         if (service.manufacturers.isEmpty) {
           return Center(
@@ -220,7 +221,7 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
                         ),
                       ),
                       title: Text(manufacturer.name),
-                      subtitle: Text('${manufacturer.airplaneTypes.length} types'),
+                      subtitle: Text('${manufacturer.models.length} models'),
                       trailing: PopupMenuButton<String>(
                         onSelected: (value) {
                           if (value == 'edit') {
@@ -264,10 +265,10 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
     );
   }
 
-  void _showAirplaneForm({Airplane? airplane}) {
+  void _showAircraftForm({Aircraft? aircraft}) {
     showDialog(
       context: context,
-      builder: (context) => AirplaneFormDialog(airplane: airplane),
+      builder: (context) => AircraftFormDialog(aircraft: aircraft),
     );
   }
 
@@ -278,19 +279,19 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
     );
   }
 
-  void _showAirplaneDetails(Airplane airplane) {
-    // Navigate to airplane details screen (to be implemented)
+  void _showAircraftDetails(Aircraft aircraft) {
+    // Navigate to aircraft details screen (to be implemented)
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Airplane details for ${airplane.name} - Coming soon!')),
+      SnackBar(content: Text('Aircraft details for ${aircraft.name} - Coming soon!')),
     );
   }
 
-  void _confirmDeleteAirplane(Airplane airplane) {
+  void _confirmDeleteAircraft(Aircraft aircraft) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Airplane'),
-        content: Text('Are you sure you want to delete "${airplane.name}"?'),
+        title: const Text('Delete Aircraft'),
+        content: Text('Are you sure you want to delete "${aircraft.name}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -298,10 +299,10 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
           ),
           TextButton(
             onPressed: () {
-              _airplaneService.deleteAirplane(airplane.id);
+              _aircraftService.deleteAircraft(aircraft.id);
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Deleted "${airplane.name}"')),
+                SnackBar(content: Text('Deleted "${aircraft.name}"')),
               );
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -317,7 +318,7 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Manufacturer'),
-        content: Text('Are you sure you want to delete "${manufacturer.name}"? This will also delete all associated airplane types.'),
+        content: Text('Are you sure you want to delete "${manufacturer.name}"? This will also delete all associated models.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -325,7 +326,7 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
           ),
           TextButton(
             onPressed: () {
-              _airplaneService.deleteManufacturer(manufacturer.id);
+              _aircraftService.deleteManufacturer(manufacturer.id);
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Deleted "${manufacturer.name}"')),
@@ -348,8 +349,26 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
     );
   }
 
-  String _getAirplaneDisplayText(Airplane airplane, AirplaneSettingsService service) {
-    final manufacturer = service.manufacturers.firstWhere((m) => m.id == airplane.manufacturerId, orElse: () => Manufacturer.empty());
-    return '${manufacturer.name} ${airplane.model}';
+  String _getAircraftDisplayText(Aircraft aircraft, AircraftSettingsService service) {
+    final manufacturer = service.manufacturers.firstWhere((m) => m.id == aircraft.manufacturerId, orElse: () => Manufacturer.empty());
+    return '${manufacturer.name} ${aircraft.model}';
+  }
+
+  String _getCategoryDisplayName(AircraftCategory? category) {
+    if (category == null) return 'Unknown';
+    switch (category) {
+      case AircraftCategory.singleEngine:
+        return 'Single Engine';
+      case AircraftCategory.multiEngine:
+        return 'Multi Engine';
+      case AircraftCategory.jet:
+        return 'Jet';
+      case AircraftCategory.helicopter:
+        return 'Helicopter';
+      case AircraftCategory.glider:
+        return 'Glider';
+      case AircraftCategory.turboprop:
+        return 'Turboprop';
+    }
   }
 }

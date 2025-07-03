@@ -1,35 +1,35 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
-import '../models/airplane.dart';
-import '../models/airplane_type.dart';
+import '../models/aircraft.dart';
+import '../models/model.dart';
 import '../models/manufacturer.dart';
 import 'manufacturer_service.dart';
-import 'airplane_type_service.dart';
-import 'airplane_service.dart';
+import 'model_service.dart';
+import 'aircraft_service.dart';
 
-class AirplaneSettingsService with ChangeNotifier {
-  static final _instance = AirplaneSettingsService._internal();
-  factory AirplaneSettingsService() => _instance;
-  AirplaneSettingsService._internal();
+class AircraftSettingsService with ChangeNotifier {
+  static final _instance = AircraftSettingsService._internal();
+  factory AircraftSettingsService() => _instance;
+  AircraftSettingsService._internal();
 
   final ManufacturerService _manufacturerService = ManufacturerService();
-  final AirplaneTypeService _airplaneTypeService = AirplaneTypeService();
-  final AirplaneService _airplaneService = AirplaneService();
+  final ModelService _modelService = ModelService();
+  final AircraftService _aircraftService = AircraftService();
 
   bool _isInitialized = false;
   final Uuid _uuid = const Uuid();
 
   // Getters for individual services
   ManufacturerService get manufacturerService => _manufacturerService;
-  AirplaneTypeService get airplaneTypeService => _airplaneTypeService;
-  AirplaneService get airplaneService => _airplaneService;
+  ModelService get modelService => _modelService;
+  AircraftService get aircraftService => _aircraftService;
 
   // Combined getters
   List<Manufacturer> get manufacturers => _manufacturerService.manufacturers;
-  List<AirplaneType> get airplaneTypes => _airplaneTypeService.airplaneTypes;
-  List<Airplane> get airplanes => _airplaneService.airplanes;
-  Airplane? get selectedAirplane => _airplaneService.selectedAirplane;
+  List<Model> get models => _modelService.models;
+  List<Aircraft> get aircrafts => _aircraftService.aircrafts;
+  Aircraft? get selectedAircraft => _aircraftService.selectedAircraft;
 
   bool get isInitialized => _isInitialized;
 
@@ -39,22 +39,22 @@ class AirplaneSettingsService with ChangeNotifier {
     try {
       // Initialize all services
       await _manufacturerService.initialize();
-      await _airplaneTypeService.initialize();
-      await _airplaneService.initialize();
+      await _modelService.initialize();
+      await _aircraftService.initialize();
 
       // Add default data if collections are empty
       if (_manufacturerService.manufacturers.isEmpty) {
         await _addDefaultManufacturers();
       }
 
-      if (_airplaneTypeService.airplaneTypes.isEmpty) {
-        await _addDefaultAirplaneTypes();
+      if (_modelService.models.isEmpty) {
+        await _addDefaultModels();
       }
 
       _isInitialized = true;
       notifyListeners();
     } catch (e) {
-      debugPrint('Error initializing airplane settings service: $e');
+      debugPrint('Error initializing aircraft settings service: $e');
       rethrow;
     }
   }
@@ -82,11 +82,11 @@ class AirplaneSettingsService with ChangeNotifier {
     notifyListeners();
   }
 
-  // Airplane Type CRUD methods
-  Future<void> addAirplaneType(
+  // Model CRUD methods
+  Future<void> addModel(
     String name,
     String manufacturerId,
-    AirplaneCategory category, {
+    AircraftCategory category, {
     int engineCount = 1,
     int maxSeats = 2,
     int typicalCruiseSpeed = 100,
@@ -99,7 +99,7 @@ class AirplaneSettingsService with ChangeNotifier {
     int? maxLandingWeight,
     int? fuelCapacity,
   }) async {
-    final airplaneType = AirplaneType(
+    final model = Model(
       id: _uuid.v4(),
       name: name,
       manufacturerId: manufacturerId,
@@ -119,59 +119,59 @@ class AirplaneSettingsService with ChangeNotifier {
       fuelCapacity: fuelCapacity,
     );
 
-    // Add the airplane type to the service
-    await _airplaneTypeService.addAirplaneType(airplaneType);
+    // Add the model to the service
+    await _modelService.addModel(model);
 
-    // Update the manufacturer's airplane types list
+    // Update the manufacturer's models list
     final manufacturer = _manufacturerService.manufacturers
         .firstWhere((m) => m.id == manufacturerId);
 
-    if (!manufacturer.airplaneTypes.contains(airplaneType.id)) {
-      manufacturer.airplaneTypes.add(airplaneType.id);
+    if (!manufacturer.models.contains(model.id)) {
+      manufacturer.models.add(model.id);
       await _manufacturerService.updateManufacturer(manufacturer);
     }
 
     notifyListeners();
   }
 
-  Future<void> updateAirplaneType(AirplaneType airplaneType) async {
-    await _airplaneTypeService.updateAirplaneType(airplaneType);
+  Future<void> updateModel(Model model) async {
+    await _modelService.updateModel(model);
     notifyListeners();
   }
 
-  Future<void> deleteAirplaneType(String id) async {
-    await _airplaneTypeService.deleteAirplaneType(id);
+  Future<void> deleteModel(String id) async {
+    await _modelService.deleteModel(id);
     notifyListeners();
   }
 
-  // Airplane CRUD methods
-  Future<void> addAirplane(Airplane airplane) async {
-    await _airplaneService.addAirplane(airplane);
+  // Aircraft CRUD methods
+  Future<void> addAircraft(Aircraft aircraft) async {
+    await _aircraftService.addAircraft(aircraft);
     notifyListeners();
   }
 
-  Future<void> updateAirplane(Airplane airplane) async {
-    await _airplaneService.updateAirplane(airplane);
+  Future<void> updateAircraft(Aircraft aircraft) async {
+    await _aircraftService.updateAircraft(aircraft);
     notifyListeners();
   }
 
-  Future<void> deleteAirplane(String id) async {
-    await _airplaneService.deleteAirplane(id);
+  Future<void> deleteAircraft(String id) async {
+    await _aircraftService.deleteAircraft(id);
     notifyListeners();
   }
 
   // Helper methods
-  List<AirplaneType> getAirplaneTypesForManufacturer(String manufacturerId) {
-    return _airplaneTypeService.airplaneTypes
-        .where((type) => type.manufacturerId == manufacturerId)
+  List<Model> getModelsForManufacturer(String manufacturerId) {
+    return _modelService.models
+        .where((model) => model.manufacturerId == manufacturerId)
         .toList();
   }
 
-  List<Airplane> getAirplanesForType(String airplaneTypeId) {
-    return _airplanes.where((airplane) => airplane.airplaneTypeId == airplaneTypeId).toList();
+  List<Aircraft> getAircraftsForModel(String modelId) {
+    return _aircrafts.where((aircraft) => aircraft.modelId == modelId).toList();
   }
 
-  List<Airplane> get _airplanes => _airplaneService.airplanes;
+  List<Aircraft> get _aircrafts => _aircraftService.aircrafts;
 
   // Default data methods
   Future<void> _addDefaultManufacturers() async {
@@ -189,14 +189,14 @@ class AirplaneSettingsService with ChangeNotifier {
     }
   }
 
-  Future<void> _addDefaultAirplaneTypes() async {
-    // Make sure we have manufacturers before trying to add airplane types
+  Future<void> _addDefaultModels() async {
+    // Make sure we have manufacturers before trying to add models
     if (manufacturers.isEmpty) {
-      debugPrint('No manufacturers found, skipping default airplane types');
+      debugPrint('No manufacturers found, skipping default models');
       return;
     }
 
-    // Add some default airplane types for common manufacturers
+    // Add some default models for common manufacturers
     final cessna = manufacturers.firstWhere(
       (m) => m.name == 'Cessna',
       orElse: () => manufacturers.first, // Fallback to first manufacturer if Cessna not found
@@ -207,22 +207,22 @@ class AirplaneSettingsService with ChangeNotifier {
     );
 
     try {
-      await addAirplaneType('C172', cessna.id, AirplaneCategory.singleEngine,
+      await addModel('C172', cessna.id, AircraftCategory.singleEngine,
           engineCount: 1, maxSeats: 4, typicalCruiseSpeed: 122, typicalServiceCeiling: 14000);
-      await addAirplaneType('C182', cessna.id, AirplaneCategory.singleEngine,
+      await addModel('C182', cessna.id, AircraftCategory.singleEngine,
           engineCount: 1, maxSeats: 4, typicalCruiseSpeed: 145, typicalServiceCeiling: 18000);
-      await addAirplaneType('PA-28', piper.id, AirplaneCategory.singleEngine,
+      await addModel('PA-28', piper.id, AircraftCategory.singleEngine,
           engineCount: 1, maxSeats: 4, typicalCruiseSpeed: 125, typicalServiceCeiling: 14000);
     } catch (e) {
-      debugPrint('Error adding default airplane types: $e');
+      debugPrint('Error adding default models: $e');
     }
   }
 
   @override
   void dispose() {
     _manufacturerService.dispose();
-    _airplaneTypeService.dispose();
-    _airplaneService.dispose();
+    _modelService.dispose();
+    _aircraftService.dispose();
     super.dispose();
   }
 }

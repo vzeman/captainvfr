@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import 'flight_log_screen.dart';
 import 'offline_map_screen.dart';
 import 'flight_plans_screen.dart';
-import 'airplane_settings_screen.dart';
+import 'aircraft_settings_screen.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
 import '../models/flight_segment.dart';
@@ -1148,7 +1148,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const AirplaneSettingsScreen(),
+                            builder: (context) => const AircraftSettingsScreen(),
                           ),
                         );
                       }

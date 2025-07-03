@@ -14,7 +14,7 @@ class Manufacturer extends HiveObject {
   String? website;
 
   @HiveField(4)
-  List<String> airplaneTypes; // List of airplane type IDs
+  List<String> models; // List of model IDs
 
   @HiveField(5)
   String? description; // Add description field
@@ -30,17 +30,17 @@ class Manufacturer extends HiveObject {
     required this.name,
     this.website,
     this.description, // Add description parameter
-    List<String>? airplaneTypes,
+    List<String>? models,
     required this.createdAt,
     required this.updatedAt,
-  }) : airplaneTypes = airplaneTypes ?? [];
+  }) : models = models ?? [];
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'name': name,
       'website': website,
-      'airplane_types': airplaneTypes.join(','),
+      'models': models.join(','),
       'description': description, // Include description in toMap
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -53,7 +53,7 @@ class Manufacturer extends HiveObject {
       name: map['name'] ?? '',
       website: map['website'],
       description: map['description'], // Extract description from map
-      airplaneTypes: map['airplane_types']?.split(',') ?? [],
+      models: map['models']?.split(',') ?? [],
       createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
       updatedAt: DateTime.parse(map['updated_at'] ?? DateTime.now().toIso8601String()),
     );
@@ -64,7 +64,7 @@ class Manufacturer extends HiveObject {
     String? name,
     String? website,
     String? description, // Add description to copyWith
-    List<String>? airplaneTypes,
+    List<String>? models,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -73,7 +73,7 @@ class Manufacturer extends HiveObject {
       name: name ?? this.name,
       website: website ?? this.website,
       description: description ?? this.description, // Include description in copyWith
-      airplaneTypes: airplaneTypes ?? this.airplaneTypes,
+      models: models ?? this.models,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
