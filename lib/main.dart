@@ -22,6 +22,7 @@ import 'models/aircraft.dart';
 import 'models/checklist_item.dart';
 import 'models/checklist.dart';
 import 'models/flight.dart';
+import 'models/duration_adapter.dart';
 import 'models/flight_point.dart';
 import 'models/flight_segment.dart';
 import 'models/moving_segment.dart';
@@ -51,6 +52,8 @@ void main() async {
     Hive.registerAdapter(ModelAdapter());
     Hive.registerAdapter(AircraftCategoryAdapter());
     Hive.registerAdapter(AircraftAdapter());
+    // Adapter for Duration fields in Flight model
+    Hive.registerAdapter(DurationAdapter());
     // Register checklist adapters
     Hive.registerAdapter(ChecklistItemAdapter());
     Hive.registerAdapter(ChecklistAdapter());

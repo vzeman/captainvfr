@@ -3,8 +3,10 @@
 ## flight tracking tasks
 - [x] before tracking will be started and no flight plan is loaded in the map, ask user about the aircraft he wants to use for the flight, if no aircraft is selected, tracking should work, we will just not know fuel consumption or similar values during the flight
 - [x] if aircraft is selected from flight plan or manually before tracking started, we will be able to calculate total fuel consumption during current flight
-- [ ] lets integrate flight data panel with flight tracking, so user will be able to see the flight data panel during flight tracking, it will show current speed, altitude, distance from start point, estimated time of flight, fuel consumption, if flight plan was selected, it should show also distance and time to next waipoint
-- [ ] in flight data panel should be possible to start/pause/stop tracking, remove this button from top floating panel with action buttons
+- [x] lets integrate flight data panel with flight tracking, so user will be able to see the flight data panel during flight tracking, it will show current speed, altitude, distance from start point, estimated time of flight, fuel consumption, if flight plan was selected, it should show also distance and time to next waipoint
+- [x] in flight data panel should be possible to start/pause/stop tracking, remove this button from top floating panel with action buttons
+- [x] during flight tracking I should see my track on the map as the aircraft moves (history of path which was already flown), it should be possible to see the track on the map even if flight plan is not loaded, but in this case we will not know the distance and time to next waypoint
+- [x] if flight plan is loaded, i want to see the current sugment we are flying selected, and also the next segment, so I will know where I am going to fly next - aircraft doesnt need to copy exactly the flight plan, but it should automatically detect segments based on the flight direction, so I will know where I am going to fly next
 
 ## aircraft settings
 - [x] editing is accessible through main menu, there will be section "aircrafts" in the settings
@@ -14,6 +16,8 @@
 - [x] aircraft will have name (can be call sign), type (single engine, multiengine), manufacturer, cruise speed, fuel consumption, maximum altitude, maximum climb rate, maximum descent rate, max takeoff weight, max landing weight, fuel capacity, and other parameters
 - [x] in the detail of aircraft should be possible to see in "checklists" tab checklists assigned to this aircraft (manufacturer and type of aircraft will be used to filter checklists),
 - [x] in the second tab should be possible to see all flights done in this aircraft
+- [ ] user should be able to add photos to airplane, so he can see the photos in the detail of aircraft, it should be possible to add multiple photos, delete photos, etc
+- [ ] user should be able to attach to aircraft documents and later view them in the aircraft detail, it should be possible to add multiple documents, delete documents, etc (example AFM of aircraft)
 
 ## Checklists Editing
 - [x] User will be able to add new checklist, edit existing checklist, delete checklist
@@ -42,8 +46,9 @@
 - [x] in main menu should be option to see list of all flight plans
 - [x] user should be able to store fligh plan to the list of flight plans, delete flight plan from the list, edit flight plan, duplicate flight plan, and load flight to the map
 - [x] flight plan should have name, contiains information about aircraft, which will be used in the flight.
+- [ ] in the flight plan should be possible to choose aircraft, aircraft can be changed during flight tracking (before starting flight tracking, or during flight tracking), but this information will be used as default from flight plan in flight tracking panel
 - [ ] flight plan panel should contain collapsable list of all waypoints in current flight plan as table, where I will be able to edit name of waypoint and altitude, there will be also computed information about the distance from prev. waypoint, time to this waypoint, fuel consumption (if aircraft selected), 
-- [ ] flight plan panel should have option to hide the flight plan from the map
+- [ ] flight plan panel should have option to hide/show the flight plan from the map
 - [ ] if I select waypoint in the flight plan, it should be highlighted in the table of waypoints of the flight plan (if the table with waypoints is expanded)
 - [ ] drag and drop editing of waypoints in the flight plan, so user will be able to change order of waypoints by dragging them
 - [ ] for selected waypoint should be possible to define the elevation, when I add new waypoint, it should copy previouse elevation, but user should be able to change it
@@ -56,6 +61,12 @@
 - [ ] if I load plan, I should see the plan panel always, it should be collapsable, but it should be always available if flight plan is loaded in the map (even it is not in edit mode)
 - [ ] label on the segment should be displayed just in case rendered size of the segment line is 2 times bigger as the label size, so it will not overlap with the segment line
 
+## pilot licenses and expirations of endorsements
+Each pilot has list of licenses, where are defined validity of the license and endorsements, so user will be able to track expirations of licenses and endorsements
+- [ ] user will be able to add new license, edit existing license, delete license
+- [ ] license will have name, description, date of issue, date of expiration
+- [ ] pilot will see warning if any license is expired, or will be expired in next 30 days, warning will not be visible during the flight tracking, just if tracking is not running
+- [ ] it will be accessible from the main menu, there will be section "Licenses" in the settings
 
 
 # General rules

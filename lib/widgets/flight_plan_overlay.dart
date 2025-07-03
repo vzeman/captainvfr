@@ -4,19 +4,36 @@ import 'package:latlong2/latlong.dart';
 import '../models/flight_plan.dart';
 
 class FlightPlanOverlay {
-  // Build flight path polylines
+  /// Build flight path polylines for the entire plan.
   static List<Polyline> buildFlightPath(FlightPlan flightPlan) {
     if (flightPlan.waypoints.length < 2) return [];
-
-    List<LatLng> points = flightPlan.waypoints.map((wp) => wp.latLng).toList();
-
+    final points = flightPlan.waypoints.map((wp) => wp.latLng).toList();
     return [
       Polyline(
         points: points,
         strokeWidth: 3.0,
-        color: Colors.blue,
-        pattern: const StrokePattern.solid(),
+        color: Colors.grey.shade400,
       ),
+    ];
+  }
+
+  /// Highlight the next segment in the plan based on current position.
+  static List<Polyline> buildNextSegment(
+    FlightPlan flightPlan,
+    LatLng? currentPos,
+  ) {
+    if (currentPos == null || flightPlan.waypoints.length < 2) return [];
+    // Find first waypoint not yet reached (simple distance check)
+    final waypoints = flightPlan.waypoints;
+    int nextIdx = waypoints.indexWhere((wp) {
+      final dist = Distance().as(LengthUnit.Meter, currentPos, wp.latLng);
+      return dist > 100; // threshold of 100m
+    });
+    if (nextIdx <= 0) return [];
+    final a = waypoints[nextIdx - 1].latLng;
+    final b = waypoints[nextIdx].latLng;
+    return [
+      Polyline(points: [a, b], strokeWidth: 4.0, color: Colors.blueAccent),
     ];
   }
 
