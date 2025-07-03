@@ -14,6 +14,7 @@ import 'services/frequency_service.dart';
 import 'services/flight_plan_service.dart';
 import 'services/aircraft_settings_service.dart';
 import 'services/checklist_service.dart';
+import 'services/license_service.dart';
 import 'adapters/flight_plan_adapters.dart';
 import 'adapters/latlng_adapter.dart';
 import 'models/manufacturer.dart';
@@ -90,6 +91,9 @@ void main() async {
 
     // Initialize checklist service
     final checklistService = ChecklistService();
+    
+    // Initialize license service
+    final licenseService = LicenseService();
 
     try {
       await aircraftSettingsService.initialize();
@@ -136,6 +140,9 @@ void main() async {
 
     // Initialize checklist service then run the app
     await checklistService.initialize();
+    
+    // Initialize license service
+    await licenseService.initialize();
     runApp(
       MultiProvider(
         providers: [
@@ -152,6 +159,9 @@ void main() async {
           ),
           ChangeNotifierProvider<ChecklistService>.value(
             value: checklistService,
+          ),
+          ChangeNotifierProvider<LicenseService>.value(
+            value: licenseService,
           ),
           Provider<AirportService>.value(value: airportService),
           Provider<CacheService>.value(value: cacheService),
@@ -223,6 +233,8 @@ void _runMinimalApp() {
   final frequencyService = FrequencyService();
   final flightPlanService = FlightPlanService();
   final aircraftSettingsService = AircraftSettingsService();
+  final checklistService = ChecklistService();
+  final licenseService = LicenseService();
   final cacheService = CacheService();
   final flightService = FlightService(barometerService: barometerService);
 
@@ -234,6 +246,8 @@ void _runMinimalApp() {
         ChangeNotifierProvider<FlightService>.value(value: flightService),
         ChangeNotifierProvider<FlightPlanService>.value(value: flightPlanService),
         ChangeNotifierProvider<AircraftSettingsService>.value(value: aircraftSettingsService),
+        ChangeNotifierProvider<ChecklistService>.value(value: checklistService),
+        ChangeNotifierProvider<LicenseService>.value(value: licenseService),
         Provider<AirportService>.value(value: airportService),
         Provider<CacheService>.value(value: cacheService),
         Provider<RunwayService>.value(value: runwayService),
