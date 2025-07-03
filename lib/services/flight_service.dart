@@ -723,6 +723,10 @@ class FlightService with ChangeNotifier {
   // Get the total moving time of the current flight
   Duration get movingTime {
     if (_startTime == null) return Duration.zero;
+    if (_flightPath.isEmpty) {
+      // If no flight path data, return time since start if tracking, otherwise zero
+      return _isTracking ? DateTime.now().difference(_startTime!) : Duration.zero;
+    }
     final endTime = _isTracking ? DateTime.now() : _flightPath.last.timestamp;
     return endTime.difference(_startTime!);
   }

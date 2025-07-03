@@ -1,4 +1,4 @@
-
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:latlong2/latlong.dart';
@@ -47,6 +47,11 @@ class FlightDashboard extends StatelessWidget {
     
     return Container(
       margin: const EdgeInsets.all(16.0),
+      constraints: const BoxConstraints(
+        minHeight: 120,
+        maxHeight: 200,
+        minWidth: 300,
+      ),
       child: Material(
         color: Colors.transparent,
         child: Container(
@@ -56,26 +61,28 @@ class FlightDashboard extends StatelessWidget {
             borderRadius: BorderRadius.circular(12.0),
             border: Border.all(color: const Color(0x7F448AFF), width: 1.0), // Blue accent with 0.5 opacity
           ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                child: IntrinsicHeight(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeader(context, flightService),
-                      const SizedBox(height: 8),
-                      Flexible(
-                        child: _buildMainIndicators(context, flightService, barometerService),
-                      ),
-                      const SizedBox(height: 6),
-                      _buildSecondaryIndicators(context, flightService, barometerService),
-                    ],
-                  ),
-                ),
-              );
-            },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header with fixed height
+              SizedBox(
+                height: 40,
+                child: _buildHeader(context, flightService),
+              ),
+              const SizedBox(height: 8),
+              // Main indicators with fixed height
+              SizedBox(
+                height: 60,
+                child: _buildMainIndicators(context, flightService, barometerService),
+              ),
+              const SizedBox(height: 8),
+              // Secondary indicators with fixed height
+              SizedBox(
+                height: 30,
+                child: _buildSecondaryIndicators(context, flightService, barometerService),
+              ),
+            ],
           ),
         ),
       ),
@@ -87,31 +94,43 @@ class FlightDashboard extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // Compact aircraft selection at top-left
-        _buildCompactAircraftSelector(context, flightService),
-        const Text(
-          'FLIGHT DATA',
-          style: TextStyle(
-            color: Colors.blueAccent,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
+        Flexible(
+          flex: 2,
+          child: _buildCompactAircraftSelector(context, flightService),
+        ),
+        const Flexible(
+          flex: 3,
+          child: Text(
+            'FLIGHT DATA',
+            style: TextStyle(
+              color: Colors.blueAccent,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
         // Larger tracking button for better visibility
-        IconButton(
-          icon: Icon(
-            flightService.isTracking ? Icons.stop : Icons.play_arrow,
-            color: flightService.isTracking ? Colors.red : Colors.green,
-            size: 28,
+        SizedBox(
+          width: 48,
+          height: 48,
+          child: IconButton(
+            icon: Icon(
+              flightService.isTracking ? Icons.stop : Icons.play_arrow,
+              color: flightService.isTracking ? Colors.red : Colors.green,
+              size: 24,
+            ),
+            onPressed: () {
+              if (flightService.isTracking) {
+                flightService.stopTracking();
+              } else {
+                flightService.startTracking();
+              }
+            },
+            tooltip: flightService.isTracking ? 'Stop Tracking' : 'Start Tracking',
           ),
-          onPressed: () {
-            if (flightService.isTracking) {
-              flightService.stopTracking();
-            } else {
-              flightService.startTracking();
-            }
-          },
-          tooltip: flightService.isTracking ? 'Stop Tracking' : 'Start Tracking',
         ),
       ],
     );
@@ -125,7 +144,7 @@ class FlightDashboard extends StatelessWidget {
         return InkWell(
           onTap: () => _showAircraftSelectionDialog(context, aircraftService, flightService),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.blueAccent.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(6),
@@ -134,18 +153,20 @@ class FlightDashboard extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.flight, color: Colors.blueAccent, size: 14),
+                const Icon(Icons.flight, color: Colors.blueAccent, size: 12),
                 const SizedBox(width: 4),
-                Text(
-                  selectedAircraft?.name ?? 'Select',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
+                Flexible(
+                  child: Text(
+                    selectedAircraft?.name ?? 'Select',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 2),
-                const Icon(Icons.arrow_drop_down, color: Colors.blueAccent, size: 16),
+                const Icon(Icons.arrow_drop_down, color: Colors.blueAccent, size: 14),
               ],
             ),
           ),
@@ -204,148 +225,177 @@ class FlightDashboard extends StatelessWidget {
 
   Widget _buildMainIndicators(BuildContext context, FlightService flightService, BarometerService barometerService) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _buildIndicator(
-          'ALTITUDE',
-          (flightService.barometricAltitude ?? 0).toStringAsFixed(0),
-          'm',
-          FlightIcons.altitude,
+        Expanded(
+          child: _buildIndicator(
+            'ALT',
+            (flightService.barometricAltitude ?? 0).toStringAsFixed(0),
+            'm',
+            FlightIcons.altitude,
+          ),
         ),
-        _buildIndicator(
-          'SPEED',
-          (flightService.currentSpeed * 1.94384).toStringAsFixed(0), // Convert m/s to knots
-          'kt',
-          FlightIcons.speed,
+        Expanded(
+          child: _buildIndicator(
+            'SPEED',
+            (flightService.currentSpeed * 1.94384).toStringAsFixed(0), // Convert m/s to knots
+            'kt',
+            FlightIcons.speed,
+          ),
         ),
-        _buildIndicator(
-          'HEADING',
-          flightService.currentHeading?.toStringAsFixed(0) ?? '---',
-          '°',
-          Icons.explore,
+        Expanded(
+          child: _buildIndicator(
+            'HDG',
+            flightService.currentHeading?.toStringAsFixed(0) ?? '---',
+            '°',
+            Icons.explore,
+          ),
         ),
       ],
     );
   }
 
   Widget _buildSecondaryIndicators(BuildContext context, FlightService flightService, BarometerService barometerService) {
-    // Reduce the number of indicators when space is tight
     final hasFlightPlan = Provider.of<FlightPlanService>(context, listen: false).currentFlightPlan != null;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildSmallIndicator(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        Expanded(
+          child: _buildSmallIndicator(
             'TIME',
             flightService.formattedFlightTime,
             FlightIcons.time,
           ),
-          const SizedBox(width: 8),
-          _buildSmallIndicator(
+        ),
+        Expanded(
+          child: _buildSmallIndicator(
             'DIST',
-            '${(flightService.totalDistance / 1000).toStringAsFixed(1)} km',
+            '${(flightService.totalDistance / 1000).toStringAsFixed(1)}km',
             FlightIcons.distance,
           ),
-          const SizedBox(width: 8),
-          _buildSmallIndicator(
-            'V/SPD',
+        ),
+        Expanded(
+          child: _buildSmallIndicator(
+            'V/S',
             '${flightService.verticalSpeed.toStringAsFixed(1)}',
             FlightIcons.verticalSpeed,
           ),
-          const SizedBox(width: 8),
-          _buildSmallIndicator(
+        ),
+        Expanded(
+          child: _buildSmallIndicator(
             'FUEL',
             '${flightService.fuelUsed.toStringAsFixed(1)}',
             Icons.local_gas_station,
           ),
-          if (hasFlightPlan) ...[
-            const SizedBox(width: 8),
-            _buildSmallIndicator(
+        ),
+        if (hasFlightPlan)
+          Expanded(
+            child: _buildSmallIndicator(
               'NEXT',
               _buildNextWaypointInfo(flightService, context),
               Icons.flag,
             ),
-          ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildIndicator(String label, String value, String unit, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Icon(icon, color: Colors.blueAccent, size: 14),
+              const SizedBox(width: 2),
+              Flexible(
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 1),
+              Text(
+                unit,
+                style: const TextStyle(
+                  color: Colors.blueAccent,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 9,
+              letterSpacing: 0.5,
+            ),
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildIndicator(String label, String value, String unit, IconData icon) {
-    return Column(
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Icon(icon, color: Colors.blueAccent, size: 16),
-            const SizedBox(width: 4),
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
-            const SizedBox(width: 2),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4.0),
-              child: Text(
-                unit,
-                style: const TextStyle(
-                  color: Colors.blueAccent,
-                  fontSize: 12,
+  Widget _buildSmallIndicator(String label, String value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.blueAccent, size: 8),
+              const SizedBox(width: 1),
+              Flexible(
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 10,
-            letterSpacing: 0.5,
+            ],
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSmallIndicator(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: Colors.blueAccent, size: 12),
-            const SizedBox(width: 4),
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 7,
+              letterSpacing: 0.2,
             ),
-          ],
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 10,
-            letterSpacing: 0.5,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -353,14 +403,23 @@ class FlightDashboard extends StatelessWidget {
   String _buildNextWaypointInfo(FlightService flightService, BuildContext context) {
     final planSvc = Provider.of<FlightPlanService>(context, listen: false);
     final plan = planSvc.currentFlightPlan;
-    if (plan == null || flightService.flightPath.isEmpty) return '--';
-    final currentPos = flightService.flightPath.last.toLatLng();
-    final wp = plan.waypoints.first;
-    final dest = LatLng(wp.latitude, wp.longitude);
-    final meterDist = const Distance().as(LengthUnit.Meter, currentPos, dest);
-    final km = meterDist / 1000;
-    final speedKmh = flightService.currentSpeed * 3.6;
-    final etaMin = speedKmh > 0 ? (km / speedKmh) * 60 : 0;
-    return '${km.toStringAsFixed(1)} km / ${etaMin.toStringAsFixed(0)} min';
+    // Check for all required conditions: plan exists, has waypoints, and flight path has data
+    if (plan == null || plan.waypoints.isEmpty || flightService.flightPath.isEmpty) {
+      return '--';
+    }
+
+    try {
+      final currentPos = flightService.flightPath.last.toLatLng();
+      final wp = plan.waypoints.first;
+      final dest = LatLng(wp.latitude, wp.longitude);
+      final meterDist = const Distance().as(LengthUnit.Meter, currentPos, dest);
+      final km = meterDist / 1000;
+      final speedKmh = flightService.currentSpeed * 3.6;
+      final etaMin = speedKmh > 0 ? (km / speedKmh) * 60 : 0;
+      return '${km.toStringAsFixed(1)}km/${etaMin.toStringAsFixed(0)}min';
+    } catch (e) {
+      // Fallback in case of any unexpected errors
+      return '--';
+    }
   }
 }
