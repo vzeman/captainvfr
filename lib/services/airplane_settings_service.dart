@@ -60,11 +60,10 @@ class AirplaneSettingsService with ChangeNotifier {
   }
 
   // Manufacturer CRUD methods
-  Future<void> addManufacturer(String name, {String? country, String? website}) async {
+  Future<void> addManufacturer(String name, {String? website}) async {
     final manufacturer = Manufacturer(
       id: _uuid.v4(),
       name: name,
-      country: country,
       website: website,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
@@ -90,15 +89,15 @@ class AirplaneSettingsService with ChangeNotifier {
     AirplaneCategory category, {
     int engineCount = 1,
     int maxSeats = 2,
-    double typicalCruiseSpeed = 100.0,
-    double typicalServiceCeiling = 10000.0,
+    int typicalCruiseSpeed = 100,
+    int typicalServiceCeiling = 10000,
     String? description,
     double? fuelConsumption,
-    double? maximumClimbRate,
-    double? maximumDescentRate,
-    double? maxTakeoffWeight,
-    double? maxLandingWeight,
-    double? fuelCapacity,
+    int? maximumClimbRate,
+    int? maximumDescentRate,
+    int? maxTakeoffWeight,
+    int? maxLandingWeight,
+    int? fuelCapacity,
   }) async {
     final airplaneType = AirplaneType(
       id: _uuid.v4(),
@@ -177,16 +176,16 @@ class AirplaneSettingsService with ChangeNotifier {
   // Default data methods
   Future<void> _addDefaultManufacturers() async {
     final defaultManufacturers = [
-      {'name': 'Cessna', 'country': 'USA'},
-      {'name': 'Piper', 'country': 'USA'},
-      {'name': 'Beechcraft', 'country': 'USA'},
-      {'name': 'Cirrus', 'country': 'USA'},
-      {'name': 'Diamond', 'country': 'Austria'},
-      {'name': 'Mooney', 'country': 'USA'},
+      'Cessna',
+      'Piper',
+      'Beechcraft',
+      'Cirrus',
+      'Diamond',
+      'Mooney',
     ];
 
-    for (final mfg in defaultManufacturers) {
-      await addManufacturer(mfg['name']!, country: mfg['country']);
+    for (final name in defaultManufacturers) {
+      await addManufacturer(name);
     }
   }
 

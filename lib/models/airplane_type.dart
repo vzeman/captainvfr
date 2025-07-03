@@ -39,10 +39,10 @@ class AirplaneType extends HiveObject {
   int maxSeats;
 
   @HiveField(6)
-  double typicalCruiseSpeed; // in knots
+  int typicalCruiseSpeed; // in knots
 
   @HiveField(7)
-  double typicalServiceCeiling; // in feet
+  int typicalServiceCeiling; // in feet
 
   @HiveField(8)
   String? description;
@@ -57,19 +57,19 @@ class AirplaneType extends HiveObject {
   double? fuelConsumption; // gallons per hour
 
   @HiveField(12)
-  double? maximumClimbRate; // feet per minute
+  int? maximumClimbRate; // feet per minute
 
   @HiveField(13)
-  double? maximumDescentRate; // feet per minute
+  int? maximumDescentRate; // feet per minute
 
   @HiveField(14)
-  double? maxTakeoffWeight; // in pounds
+  int? maxTakeoffWeight; // in pounds
 
   @HiveField(15)
-  double? maxLandingWeight; // in pounds
+  int? maxLandingWeight; // in pounds
 
   @HiveField(16)
-  double? fuelCapacity; // in gallons
+  int? fuelCapacity; // in gallons
 
   AirplaneType({
     required this.id,
@@ -121,17 +121,17 @@ class AirplaneType extends HiveObject {
       category: AirplaneCategory.values[map['category'] ?? 0],
       engineCount: map['engine_count'] ?? 1,
       maxSeats: map['max_seats'] ?? 2,
-      typicalCruiseSpeed: (map['typical_cruise_speed'] ?? 0).toDouble(),
-      typicalServiceCeiling: (map['typical_service_ceiling'] ?? 0).toDouble(),
+      typicalCruiseSpeed: (map['typical_cruise_speed'] ?? 0).toInt(),
+      typicalServiceCeiling: (map['typical_service_ceiling'] ?? 0).toInt(),
       description: map['description'],
       createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
       updatedAt: DateTime.parse(map['updated_at'] ?? DateTime.now().toIso8601String()),
       fuelConsumption: map['fuel_consumption']?.toDouble(),
-      maximumClimbRate: map['maximum_climb_rate']?.toDouble(),
-      maximumDescentRate: map['maximum_descent_rate']?.toDouble(),
-      maxTakeoffWeight: map['max_takeoff_weight']?.toDouble(),
-      maxLandingWeight: map['max_landing_weight']?.toDouble(),
-      fuelCapacity: map['fuel_capacity']?.toDouble(),
+      maximumClimbRate: map['maximum_climb_rate']?.toInt(),
+      maximumDescentRate: map['maximum_descent_rate']?.toInt(),
+      maxTakeoffWeight: map['max_takeoff_weight']?.toInt(),
+      maxLandingWeight: map['max_landing_weight']?.toInt(),
+      fuelCapacity: map['fuel_capacity']?.toInt(),
     );
   }
 
@@ -142,17 +142,17 @@ class AirplaneType extends HiveObject {
     AirplaneCategory? category,
     int? engineCount,
     int? maxSeats,
-    double? typicalCruiseSpeed,
-    double? typicalServiceCeiling,
+    int? typicalCruiseSpeed,
+    int? typicalServiceCeiling,
     String? description,
     DateTime? createdAt,
     DateTime? updatedAt,
     double? fuelConsumption,
-    double? maximumClimbRate,
-    double? maximumDescentRate,
-    double? maxTakeoffWeight,
-    double? maxLandingWeight,
-    double? fuelCapacity,
+    int? maximumClimbRate,
+    int? maximumDescentRate,
+    int? maxTakeoffWeight,
+    int? maxLandingWeight,
+    int? fuelCapacity,
   }) {
     return AirplaneType(
       id: id ?? this.id,

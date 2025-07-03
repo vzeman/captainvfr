@@ -72,13 +72,6 @@ class ManufacturerDetailScreen extends StatelessWidget {
                                   currentManufacturer.name,
                                   style: Theme.of(context).textTheme.headlineSmall,
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  currentManufacturer.country ?? '',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
                               ],
                             ),
                           ),

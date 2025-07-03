@@ -220,7 +220,7 @@ class _AirplaneSettingsScreenState extends State<AirplaneSettingsScreen> with Si
                         ),
                       ),
                       title: Text(manufacturer.name),
-                      subtitle: Text('${manufacturer.country} • ${manufacturer.airplaneTypes.length} types'),
+                      subtitle: Text('${manufacturer.airplaneTypes.length} types'),
                       trailing: PopupMenuButton<String>(
                         onSelected: (value) {
                           if (value == 'edit') {

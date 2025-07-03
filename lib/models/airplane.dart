@@ -18,28 +18,28 @@ class Airplane extends HiveObject {
   String airplaneTypeId;
 
   @HiveField(4)
-  double cruiseSpeed; // in knots
+  int cruiseSpeed; // in knots
 
   @HiveField(5)
   double fuelConsumption; // gallons per hour
 
   @HiveField(6)
-  double maximumAltitude; // in feet
+  int maximumAltitude; // in feet
 
   @HiveField(7)
-  double maximumClimbRate; // feet per minute
+  int maximumClimbRate; // feet per minute
 
   @HiveField(8)
-  double maximumDescentRate; // feet per minute
+  int maximumDescentRate; // feet per minute
 
   @HiveField(9)
-  double maxTakeoffWeight; // in pounds
+  int maxTakeoffWeight; // in pounds
 
   @HiveField(10)
-  double maxLandingWeight; // in pounds
+  int maxLandingWeight; // in pounds
 
   @HiveField(11)
-  double fuelCapacity; // in gallons
+  int fuelCapacity; // in gallons
 
   @HiveField(12)
   String? registrationNumber; // N-number or other registration
@@ -69,9 +69,9 @@ class Airplane extends HiveObject {
   AirplaneCategory? category;
 
   // Convenience getters for backward compatibility
-  double get maxAltitude => maximumAltitude;
-  double get maxClimbRate => maximumClimbRate;
-  double get maxDescentRate => maximumDescentRate;
+  double get maxAltitude => maximumAltitude.toDouble();
+  double get maxClimbRate => maximumClimbRate.toDouble();
+  double get maxDescentRate => maximumDescentRate.toDouble();
 
   Airplane({
     required this.id,
@@ -129,14 +129,14 @@ class Airplane extends HiveObject {
       name: map['name'] ?? '',
       manufacturerId: map['manufacturer_id'] ?? '',
       airplaneTypeId: map['airplane_type_id'] ?? '',
-      cruiseSpeed: (map['cruise_speed'] ?? 0).toDouble(),
+      cruiseSpeed: map['cruise_speed']?.toInt() ?? 0,
       fuelConsumption: (map['fuel_consumption'] ?? 0).toDouble(),
-      maximumAltitude: (map['maximum_altitude'] ?? 0).toDouble(),
-      maximumClimbRate: (map['maximum_climb_rate'] ?? 0).toDouble(),
-      maximumDescentRate: (map['maximum_descent_rate'] ?? 0).toDouble(),
-      maxTakeoffWeight: (map['max_takeoff_weight'] ?? 0).toDouble(),
-      maxLandingWeight: (map['max_landing_weight'] ?? 0).toDouble(),
-      fuelCapacity: (map['fuel_capacity'] ?? 0).toDouble(),
+      maximumAltitude: map['maximum_altitude']?.toInt() ?? 0,
+      maximumClimbRate: map['maximum_climb_rate']?.toInt() ?? 0,
+      maximumDescentRate: map['maximum_descent_rate']?.toInt() ?? 0,
+      maxTakeoffWeight: map['max_takeoff_weight']?.toInt() ?? 0,
+      maxLandingWeight: map['max_landing_weight']?.toInt() ?? 0,
+      fuelCapacity: map['fuel_capacity']?.toInt() ?? 0,
       registrationNumber: map['registration_number'],
       description: map['description'],
       callSign: map['call_sign'],
@@ -154,14 +154,14 @@ class Airplane extends HiveObject {
     String? name,
     String? manufacturerId,
     String? airplaneTypeId,
-    double? cruiseSpeed,
+    int? cruiseSpeed,
     double? fuelConsumption,
-    double? maximumAltitude,
-    double? maximumClimbRate,
-    double? maximumDescentRate,
-    double? maxTakeoffWeight,
-    double? maxLandingWeight,
-    double? fuelCapacity,
+    int? maximumAltitude,
+    int? maximumClimbRate,
+    int? maximumDescentRate,
+    int? maxTakeoffWeight,
+    int? maxLandingWeight,
+    int? fuelCapacity,
     String? registrationNumber,
     String? description,
     DateTime? createdAt,
