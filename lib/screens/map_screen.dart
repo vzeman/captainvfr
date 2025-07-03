@@ -9,6 +9,7 @@ import 'offline_map_screen.dart';
 import 'flight_plans_screen.dart';
 import 'aircraft_settings_screen.dart';
 import 'checklist_settings_screen.dart';
+import 'licenses_screen.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
 import '../models/flight_segment.dart';
@@ -31,6 +32,7 @@ import '../widgets/metar_overlay.dart';
 import '../widgets/flight_plan_overlay.dart';
 import '../widgets/compact_flight_plan_widget.dart';
 import '../widgets/waypoint_editor_dialog.dart';
+import '../widgets/license_warning_widget.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -946,8 +948,12 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         ),
                       ),
                       // Segment labels (distance, heading, time)
-                      MarkerLayer(
-                        markers: FlightPlanOverlay.buildSegmentLabels(flightPlan),
+                      Builder(
+                        builder: (context) {
+                          return MarkerLayer(
+                            markers: FlightPlanOverlay.buildSegmentLabels(flightPlan, context),
+                          );
+                        },
                       ),
                     ],
                   );
@@ -1192,6 +1198,13 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                             builder: (context) => const AircraftSettingsScreen(),
                           ),
                         );
+                      } else if (value == 'licenses') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LicensesScreen(),
+                          ),
+                        );
                       }
                     },
                     itemBuilder: (BuildContext context) => [
@@ -1269,6 +1282,16 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                           ],
                         ),
                       ),
+                      const PopupMenuItem(
+                        value: 'licenses',
+                        child: Row(
+                          children: [
+                            Icon(Icons.card_membership, size: 20),
+                            SizedBox(width: 8),
+                            Text('Licenses'),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                   IconButton(
@@ -1318,6 +1341,15 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   textAlign: TextAlign.center,
                 ),
               ),
+            ),
+
+          // License warning widget - only show when not tracking
+          if (!_isTracking)
+            const Positioned(
+              top: 100,
+              left: 16,
+              right: 16,
+              child: LicenseWarningWidget(),
             ),
 
           // Flight planning UI panels

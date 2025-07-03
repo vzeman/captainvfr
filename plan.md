@@ -59,18 +59,11 @@
 - [ ] if aircraft is selected, we will be able to cap maximum altitude based on the maximum altitude of the aircraft
 - [ ] flight plan and flight recording should have option to select flight rules (VFR, IFR)
 - [ ] if I load plan, I should see the plan panel always, it should be collapsable, but it should be always available if flight plan is loaded in the map (even it is not in edit mode)
-- [ ] label on the segment should be displayed just in case rendered size of the segment line is 2 times bigger as the label size, so it will not overlap with the segment line
+- [x] label on the segment should be displayed just in case rendered size of the segment line is 2 times bigger as the label size, so it will not overlap with the segment line
 
-## pilot licenses and expirations of endorsements
+## pilot licenses and expirations of licenses
 Each pilot has list of licenses, where are defined validity of the license and endorsements, so user will be able to track expirations of licenses and endorsements
-- [ ] user will be able to add new license, edit existing license, delete license
-- [ ] license will have name, description, date of issue, date of expiration
-- [ ] pilot will see warning if any license is expired, or will be expired in next 30 days, warning will not be visible during the flight tracking, just if tracking is not running
-- [ ] it will be accessible from the main menu, there will be section "Licenses" in the settings
-
-
-# General rules
-ALWAYS check if code has no ERRORS, WARNINGS or RECOMMENDATIONS during building to keep the code clean and without issues
-ALWAYS UPDATE plan.md if any task is finished (in this file)
-ALWAYS REFACTOR classes and methods to keep the code clean and readable without duplicated code, split too long classes (more than 800 lines) into smaller classes
-ALWAYS keep the code clean without test or helper files you create during development, remove them after you finish the task
+- [x] user will be able to add new license, edit existing license, delete license
+- [x] license will have name, description, date of issue, date of expiration
+- [x] pilot will see warning if any license is expired, or will be expired in next 30 days, warning will not be visible during the flight tracking, just if tracking is not running
+- [x] it will be accessible from the main menu, there will be section "Licenses" in the settings
