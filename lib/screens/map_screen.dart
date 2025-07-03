@@ -9,7 +9,6 @@ import 'offline_map_screen.dart';
 import 'flight_plans_screen.dart';
 import 'aircraft_settings_screen.dart';
 import 'checklist_settings_screen.dart';
-import '../services/aircraft_settings_service.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
 import '../models/flight_segment.dart';
@@ -67,6 +66,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   String _errorMessage = '';
   Timer? _debounceTimer;
   
+  // Flight data panel position state
+  Offset _flightDataPanelPosition = const Offset(16, 220); // Default to bottom with positive margin
+
   // Location and map state
   Position? _currentPosition;
   List<LatLng> _flightPathPoints = [];
@@ -422,49 +424,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     }
   }
   
-  // Toggle flight tracking
-  void _toggleTracking() {
-    setState(() => _isTracking = !_isTracking);
-    if (_isTracking) {
-      // Before starting tracking with no flight plan, ensure aircraft selected
-      final currentPlan = _flightPlanService.currentFlightPlan;
-      final aircraftSettings = Provider.of<AircraftSettingsService>(context, listen: false);
-      String? selectedAircraftId;
-      if (currentPlan != null) {
-        selectedAircraftId = currentPlan.aircraftId;
-      }
-      if (selectedAircraftId == null) {
-        // Ask user to choose aircraft
-        showDialog<void>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Select Aircraft'),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: ListView(
-                shrinkWrap: true,
-                children: aircraftSettings.aircrafts.map((ac) {
-                  return ListTile(
-                    title: Text(ac.name),
-                    onTap: () {
-                      Navigator.of(ctx).pop();
-                      _flightService.setAircraft(ac);
-                      setState(() {});
-                    },
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-        );
-      }
-      _flightService.startTracking();
-      _centerOnLocation();
-    } else {
-      _flightService.stopTracking();
-    }
-  }
-  
+
   // Toggle flight dashboard visibility
   void _toggleStats() {
     setState(() {
@@ -967,6 +927,17 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                       PolylineLayer(
                         polylines: FlightPlanOverlay.buildFlightPath(flightPlan),
                       ),
+                      // Highlight next segment when tracking
+                      if (_isTracking && _currentPosition != null)
+                        PolylineLayer(
+                          polylines: FlightPlanOverlay.buildNextSegment(
+                            flightPlan,
+                            LatLng(
+                              _currentPosition!.latitude,
+                              _currentPosition!.longitude,
+                            ),
+                          ),
+                        ),
                       // Waypoint markers
                       MarkerLayer(
                         markers: FlightPlanOverlay.buildWaypointMarkers(
@@ -1056,39 +1027,68 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             ),
           ),
 
-          // Zoom controls
-          Positioned(
-            bottom: 100,
-            right: 16,
-            child: Column(
-              children: [
-                FloatingActionButton.small(
-                  heroTag: 'zoomIn',
-                  onPressed: () {
-                    _mapController.move(
-                      _mapController.camera.center,
-                      _mapController.camera.zoom + 1,
-                    );
-                  },
-                  child: const Icon(Icons.add),
-                ),
-                const SizedBox(height: 8),
-                FloatingActionButton.small(
-                  heroTag: 'zoomOut',
-                  onPressed: () {
-                    _mapController.move(
-                      _mapController.camera.center,
-                      _mapController.camera.zoom - 1,
-                    );
-                  },
-                  child: const Icon(Icons.remove),
-                ),
-              ],
-            ),
-          ),
-          
-          // Flight dashboard overlay
+          // Flight dashboard overlay - show when toggle is active
           if (_showStats)
+            Positioned(
+              left: _flightDataPanelPosition.dx,
+              bottom: _flightDataPanelPosition.dy, // Use positive value for bottom positioning
+              child: Draggable<String>(
+                data: 'flight_panel',
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    width: MediaQuery.of(context).size.width - 32,
+                    child: const FlightDashboard(),
+                  ),
+                ),
+                childWhenDragging: Container(), // Empty container when dragging
+                onDragEnd: (details) {
+                  setState(() {
+                    // Calculate new position based on drag end position
+                    final screenSize = MediaQuery.of(context).size;
+                    double newX = details.offset.dx;
+                    double newY = details.offset.dy;
+
+                    // Convert screen coordinates to bottom-relative positioning
+                    double bottomDistance = screenSize.height - newY - 200; // 200 is panel height
+
+                    // Constrain to screen bounds with margins
+                    newX = newX.clamp(16.0, screenSize.width - (screenSize.width - 32)); // Keep within screen width
+                    bottomDistance = bottomDistance.clamp(16.0, screenSize.height - 250); // Keep within screen height
+
+                    _flightDataPanelPosition = Offset(newX, bottomDistance);
+                  });
+                },
+                child: Container(
+                  width: MediaQuery.of(context).size.width - 32,
+                  child: Stack(
+                    children: [
+                      const FlightDashboard(),
+                      // Drag handle at the top of the panel
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.blueAccent.withValues(alpha: 0.7),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Icon(
+                            Icons.drag_handle,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // Flight dashboard overlay
+          if (_isTracking)
             Positioned(
               bottom: 0,
               left: 0,
@@ -1096,7 +1096,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
-                height: _showStats ? 200 : 0,
+                height: _isTracking ? 200 : 0,
                 child: const FlightDashboard(),
               ),
             ),
@@ -1283,14 +1283,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   ),
                   IconButton(
                     icon: Icon(
-                      _isTracking ? Icons.stop : Icons.flight,
-                      color: _isTracking ? Colors.red : Colors.black,
+                      _showStats ? Icons.dashboard : Icons.dashboard_outlined,
+                      color: _showStats ? Colors.blue : Colors.black,
                     ),
-                    onPressed: _toggleTracking,
-                    tooltip: _isTracking ? 'Stop tracking' : 'Start tracking',
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.analytics, color: Colors.black),
                     onPressed: _toggleStats,
                     tooltip: 'Toggle flight dashboard',
                   ),

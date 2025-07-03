@@ -81,7 +81,7 @@ class SpeedChart extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 50,
-                interval: (maxY - minY) / 4,
+                interval: ((maxY - minY) / 4).clamp(1.0, double.infinity),
                 getTitlesWidget: (value, meta) {
                   return Text('${value.toInt()}');
                 },
