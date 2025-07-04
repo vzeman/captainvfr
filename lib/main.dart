@@ -15,7 +15,8 @@ import 'services/flight_plan_service.dart';
 import 'services/aircraft_settings_service.dart';
 import 'services/checklist_service.dart';
 import 'services/license_service.dart';
-import 'adapters/flight_plan_adapters.dart';
+import 'services/connectivity_service.dart';
+import 'widgets/connectivity_banner.dart';
 import 'adapters/latlng_adapter.dart';
 import 'models/manufacturer.dart';
 import 'models/model.dart';
@@ -27,6 +28,7 @@ import 'models/duration_adapter.dart';
 import 'models/flight_point.dart';
 import 'models/flight_segment.dart';
 import 'models/moving_segment.dart';
+import 'models/flight_plan.dart';
 
 void main() async {
   // Ensure Flutter binding is initialized
@@ -46,6 +48,7 @@ void main() async {
     Hive.registerAdapter(FlightPlanAdapter());
     Hive.registerAdapter(WaypointAdapter());
     Hive.registerAdapter(WaypointTypeAdapter());
+    Hive.registerAdapter(FlightRulesAdapter());
     Hive.registerAdapter(LatLngAdapter());
 
     // Register aircraft-related adapters
@@ -63,6 +66,12 @@ void main() async {
     final cacheService = CacheService();
     await cacheService.initialize();
     debugPrint('✅ Cache service initialized');
+
+    // Initialize connectivity service first
+    final connectivityService = ConnectivityService();
+    await connectivityService.initialize();
+    connectivityService.startPeriodicChecks();
+    debugPrint('✅ Connectivity service initialized');
 
     // Initialize services with error handling
     final locationService = LocationService();
@@ -146,6 +155,9 @@ void main() async {
     runApp(
       MultiProvider(
         providers: [
+          ChangeNotifierProvider<ConnectivityService>.value(
+            value: connectivityService,
+          ),
           Provider<LocationService>.value(value: locationService),
           Provider<BarometerService>.value(value: barometerService),
           ChangeNotifierProvider<FlightService>.value(
@@ -224,6 +236,7 @@ void _runMinimalApp() {
   debugPrint('🚀 Starting app with minimal functionality...');
 
   // Create minimal services
+  final connectivityService = ConnectivityService();
   final locationService = LocationService();
   final barometerService = BarometerService();
   final airportService = AirportService();
@@ -237,10 +250,16 @@ void _runMinimalApp() {
   final licenseService = LicenseService();
   final cacheService = CacheService();
   final flightService = FlightService(barometerService: barometerService);
+  
+  // Initialize connectivity service even in minimal mode
+  connectivityService.initialize().then((_) {
+    connectivityService.startPeriodicChecks();
+  });
 
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider<ConnectivityService>.value(value: connectivityService),
         Provider<LocationService>.value(value: locationService),
         Provider<BarometerService>.value(value: barometerService),
         ChangeNotifierProvider<FlightService>.value(value: flightService),
@@ -446,7 +465,9 @@ class CaptainVFRApp extends StatelessWidget {
         ),
       ),
       themeMode: ThemeMode.system,
-      home: const MapScreen(),
+      home: const ConnectivityBanner(
+        child: MapScreen(),
+      ),
     );
   }
 }

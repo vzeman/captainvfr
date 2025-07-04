@@ -31,14 +31,15 @@ class FlightAdapter extends TypeAdapter<Flight> {
       movingStartedZulu: fields[11] as DateTime?,
       movingStoppedZulu: fields[12] as DateTime?,
       movingSegments: (fields[13] as List?)?.cast<MovingSegment>(),
-      flightSegments: (fields[14] as List?)?.cast<FlightSegment>(),
+      flightSegments: (fields[14] as List?)?.cast<fs.FlightSegment>(),
+      flightRules: fields[15] as FlightRules?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Flight obj) {
     writer
-      ..writeByte(15)
+      ..writeByte(16)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -68,7 +69,9 @@ class FlightAdapter extends TypeAdapter<Flight> {
       ..writeByte(13)
       ..write(obj.movingSegments)
       ..writeByte(14)
-      ..write(obj.flightSegments);
+      ..write(obj.flightSegments)
+      ..writeByte(15)
+      ..write(obj.flightRules);
   }
 
   @override

@@ -199,6 +199,9 @@ class _LicensesScreenState extends State<LicensesScreen> {
   }
 
   Future<void> _confirmDelete(BuildContext context, License license) async {
+    // Get the service reference before any async operations
+    final licenseService = context.read<LicenseService>();
+    
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -218,23 +221,23 @@ class _LicensesScreenState extends State<LicensesScreen> {
       ),
     );
 
-    if (confirmed == true && mounted) {
+    if (confirmed == true) {
+      if (!mounted) return;
+      
       try {
-        await context.read<LicenseService>().deleteLicense(license.id);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${license.name} deleted')),
-          );
-        }
+        await licenseService.deleteLicense(license.id);
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${license.name} deleted')),
+        );
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error deleting license: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting license: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }

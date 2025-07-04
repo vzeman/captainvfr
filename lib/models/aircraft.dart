@@ -67,6 +67,12 @@ class Aircraft extends HiveObject {
 
   @HiveField(20)
   AircraftCategory? category;
+  
+  @HiveField(21)
+  List<String>? photosPaths; // Paths to stored photos
+  
+  @HiveField(22)
+  List<String>? documentsPaths; // Paths to stored documents
 
   // Convenience getters for backward compatibility
   double get maxAltitude => maximumAltitude.toDouble();
@@ -95,6 +101,8 @@ class Aircraft extends HiveObject {
     this.manufacturer,
     this.model,
     this.category,
+    this.photosPaths,
+    this.documentsPaths,
   });
 
   Map<String, dynamic> toMap() {
@@ -118,6 +126,8 @@ class Aircraft extends HiveObject {
       'manufacturer': manufacturer,
       'model': model,
       'category': category?.index,
+      'photos_paths': photosPaths,
+      'documents_paths': documentsPaths,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -144,6 +154,8 @@ class Aircraft extends HiveObject {
       manufacturer: map['manufacturer'],
       model: map['model'],
       category: map['category'] != null ? AircraftCategory.values[map['category']] : null,
+      photosPaths: (map['photos_paths'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
+      documentsPaths: (map['documents_paths'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
       createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
       updatedAt: DateTime.parse(map['updated_at'] ?? DateTime.now().toIso8601String()),
     );
@@ -171,6 +183,8 @@ class Aircraft extends HiveObject {
     String? manufacturer,
     String? model,
     AircraftCategory? category,
+    List<String>? photosPaths,
+    List<String>? documentsPaths,
   }) {
     return Aircraft(
       id: id ?? this.id,
@@ -194,6 +208,8 @@ class Aircraft extends HiveObject {
       manufacturer: manufacturer ?? this.manufacturer,
       model: model ?? this.model,
       category: category ?? this.category,
+      photosPaths: photosPaths ?? this.photosPaths,
+      documentsPaths: documentsPaths ?? this.documentsPaths,
     );
   }
 }

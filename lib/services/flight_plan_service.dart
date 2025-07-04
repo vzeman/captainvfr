@@ -4,18 +4,26 @@ import 'package:hive/hive.dart';
 import '../models/flight_plan.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
+import '../models/aircraft.dart';
+import '../services/aircraft_service.dart';
 
 class FlightPlanService extends ChangeNotifier {
   FlightPlan? _currentFlightPlan;
   bool _isPlanning = false;
+  bool _isFlightPlanVisible = true;
   int _waypointCounter = 1;
   List<FlightPlan> _savedFlightPlans = [];
   Box<FlightPlan>? _flightPlanBox;
+  final AircraftService? _aircraftService;
 
   FlightPlan? get currentFlightPlan => _currentFlightPlan;
   bool get isPlanning => _isPlanning;
+  bool get isFlightPlanVisible => _isFlightPlanVisible;
   List<Waypoint> get waypoints => _currentFlightPlan?.waypoints ?? [];
   List<FlightPlan> get savedFlightPlans => _savedFlightPlans;
+
+  FlightPlanService({AircraftService? aircraftService}) 
+    : _aircraftService = aircraftService;
 
   // Initialize Hive box for flight plans
   Future<void> initialize() async {
@@ -109,6 +117,8 @@ class FlightPlanService extends ChangeNotifier {
       )).toList(),
       aircraftId: originalPlan.aircraftId,
       cruiseSpeed: originalPlan.cruiseSpeed,
+      flightRules: originalPlan.flightRules,
+      fuelConsumptionRate: originalPlan.fuelConsumptionRate,
     );
 
     if (_flightPlanBox != null) {
@@ -223,7 +233,7 @@ class FlightPlanService extends ChangeNotifier {
     }
   }
 
-  // Update waypoint altitude
+  // Update waypoint altitude (without validation - use updateWaypointAltitudeWithValidation for validated updates)
   void updateWaypointAltitude(int index, double altitude) {
     if (_currentFlightPlan != null &&
         index >= 0 &&
@@ -277,6 +287,35 @@ class FlightPlanService extends ChangeNotifier {
     }
   }
 
+  // Update fuel consumption rate
+  void updateFuelConsumptionRate(double rate) {
+    if (_currentFlightPlan != null) {
+      _currentFlightPlan!.fuelConsumptionRate = rate;
+      _currentFlightPlan!.modifiedAt = DateTime.now();
+      notifyListeners();
+    }
+  }
+
+  // Update aircraft and automatically set cruise speed and fuel consumption
+  void updateAircraft(String? aircraftId) {
+    final currentPlan = _currentFlightPlan;
+    if (currentPlan != null) {
+      currentPlan.aircraftId = aircraftId;
+      
+      // If we have an aircraft service and a valid aircraft ID, update the flight plan parameters
+      if (_aircraftService != null && aircraftId != null) {
+        final aircraft = _aircraftService.getAircraftById(aircraftId);
+        if (aircraft != null) {
+          currentPlan.cruiseSpeed = aircraft.cruiseSpeed.toDouble();
+          currentPlan.fuelConsumptionRate = aircraft.fuelConsumption;
+        }
+      }
+      
+      currentPlan.modifiedAt = DateTime.now();
+      notifyListeners();
+    }
+  }
+
   // Clear current flight plan
   void clearFlightPlan() {
     _currentFlightPlan = null;
@@ -291,6 +330,12 @@ class FlightPlanService extends ChangeNotifier {
     if (!_isPlanning && (_currentFlightPlan?.waypoints.isEmpty ?? true)) {
       clearFlightPlan();
     }
+    notifyListeners();
+  }
+  
+  // Toggle flight plan visibility on map
+  void toggleFlightPlanVisibility() {
+    _isFlightPlanVisible = !_isFlightPlanVisible;
     notifyListeners();
   }
 
@@ -310,6 +355,11 @@ class FlightPlanService extends ChangeNotifier {
       final hours = (time / 60).floor();
       final minutes = (time % 60).round();
       summary += ', ${hours}h ${minutes}m';
+    }
+
+    final fuelConsumption = _currentFlightPlan!.totalFuelConsumption;
+    if (fuelConsumption > 0) {
+      summary += ', ${fuelConsumption.toStringAsFixed(1)} gal';
     }
 
     return summary;
@@ -333,5 +383,183 @@ class FlightPlanService extends ChangeNotifier {
       _currentFlightPlan!.modifiedAt = DateTime.now();
       notifyListeners();
     }
+  }
+
+  // Get the current aircraft for the flight plan
+  Aircraft? _getCurrentAircraft() {
+    final aircraftId = _currentFlightPlan?.aircraftId;
+    if (aircraftId == null || _aircraftService == null) {
+      return null;
+    }
+    return _aircraftService.getAircraftById(aircraftId);
+  }
+
+  // Calculate altitude change required between two waypoints based on aircraft climb/descent rates
+  // Returns the altitude at the end waypoint considering the time to climb/descend
+  double calculateAltitudeChange({
+    required double startAltitude,
+    required double targetAltitude,
+    required double distanceNM,
+    required double cruiseSpeedKnots,
+    double? maxClimbRate,
+    double? maxDescentRate,
+  }) {
+    // Calculate time available for altitude change (in minutes)
+    final timeAvailableMinutes = (distanceNM / cruiseSpeedKnots) * 60;
+    
+    // Calculate altitude difference
+    final altitudeDifference = targetAltitude - startAltitude;
+    
+    if (altitudeDifference > 0) {
+      // Climbing
+      if (maxClimbRate == null || maxClimbRate <= 0) {
+        return targetAltitude; // No climb rate limit
+      }
+      
+      // Calculate maximum altitude gain possible in available time
+      final maxAltitudeGain = maxClimbRate * timeAvailableMinutes;
+      
+      // Return the achievable altitude
+      return startAltitude + (altitudeDifference > maxAltitudeGain ? maxAltitudeGain : altitudeDifference);
+    } else if (altitudeDifference < 0) {
+      // Descending
+      if (maxDescentRate == null || maxDescentRate <= 0) {
+        return targetAltitude; // No descent rate limit
+      }
+      
+      // Calculate maximum altitude loss possible in available time
+      final maxAltitudeLoss = maxDescentRate * timeAvailableMinutes;
+      
+      // Return the achievable altitude (remember altitudeDifference is negative)
+      return startAltitude - ((-altitudeDifference) > maxAltitudeLoss ? maxAltitudeLoss : (-altitudeDifference));
+    }
+    
+    return targetAltitude; // No altitude change needed
+  }
+
+  // Cap altitude based on aircraft maximum altitude (service ceiling)
+  double capAltitudeToServiceCeiling(double requestedAltitude, {double? serviceCeiling}) {
+    if (serviceCeiling == null || serviceCeiling <= 0) {
+      return requestedAltitude; // No ceiling restriction
+    }
+    
+    return requestedAltitude > serviceCeiling ? serviceCeiling : requestedAltitude;
+  }
+
+  // Validate and update waypoint altitude with aircraft performance constraints
+  void updateWaypointAltitudeWithValidation(int index, double requestedAltitude) {
+    if (_currentFlightPlan == null ||
+        index < 0 ||
+        index >= _currentFlightPlan!.waypoints.length) {
+      return;
+    }
+
+    final aircraft = _getCurrentAircraft();
+    double validatedAltitude = requestedAltitude;
+
+    // First, cap the altitude to the service ceiling
+    if (aircraft != null) {
+      validatedAltitude = capAltitudeToServiceCeiling(
+        requestedAltitude,
+        serviceCeiling: aircraft.maximumAltitude.toDouble(),
+      );
+    }
+
+    // If not the first waypoint, check if altitude change is achievable
+    if (index > 0 && aircraft != null) {
+      final previousWaypoint = _currentFlightPlan!.waypoints[index - 1];
+      final currentWaypoint = _currentFlightPlan!.waypoints[index];
+      
+      // Calculate distance between waypoints
+      final distance = previousWaypoint.distanceTo(currentWaypoint);
+      
+      // Use flight plan cruise speed or aircraft cruise speed
+      final cruiseSpeed = _currentFlightPlan!.cruiseSpeed ?? aircraft.cruiseSpeed.toDouble();
+      
+      if (cruiseSpeed > 0 && distance > 0) {
+        validatedAltitude = calculateAltitudeChange(
+          startAltitude: previousWaypoint.altitude,
+          targetAltitude: validatedAltitude,
+          distanceNM: distance,
+          cruiseSpeedKnots: cruiseSpeed,
+          maxClimbRate: aircraft.maximumClimbRate.toDouble(),
+          maxDescentRate: aircraft.maximumDescentRate.toDouble(),
+        );
+      }
+    }
+
+    // Update the waypoint altitude
+    _currentFlightPlan!.waypoints[index].altitude = validatedAltitude;
+    _currentFlightPlan!.modifiedAt = DateTime.now();
+    notifyListeners();
+  }
+
+  // Calculate achievable altitudes for all waypoints based on aircraft performance
+  void recalculateAllWaypointAltitudes() {
+    if (_currentFlightPlan == null || _currentFlightPlan!.waypoints.isEmpty) {
+      return;
+    }
+
+    final aircraft = _getCurrentAircraft();
+    if (aircraft == null) {
+      return; // Can't validate without aircraft data
+    }
+
+    final cruiseSpeed = _currentFlightPlan!.cruiseSpeed ?? aircraft.cruiseSpeed.toDouble();
+    if (cruiseSpeed <= 0) {
+      return; // Need valid cruise speed
+    }
+
+    // Process each waypoint after the first one
+    for (int i = 1; i < _currentFlightPlan!.waypoints.length; i++) {
+      final previousWaypoint = _currentFlightPlan!.waypoints[i - 1];
+      final currentWaypoint = _currentFlightPlan!.waypoints[i];
+      
+      // Calculate distance between waypoints
+      final distance = previousWaypoint.distanceTo(currentWaypoint);
+      
+      if (distance > 0) {
+        // First cap to service ceiling
+        var targetAltitude = capAltitudeToServiceCeiling(
+          currentWaypoint.altitude,
+          serviceCeiling: aircraft.maximumAltitude.toDouble(),
+        );
+        
+        // Then calculate achievable altitude based on climb/descent rates
+        targetAltitude = calculateAltitudeChange(
+          startAltitude: previousWaypoint.altitude,
+          targetAltitude: targetAltitude,
+          distanceNM: distance,
+          cruiseSpeedKnots: cruiseSpeed,
+          maxClimbRate: aircraft.maximumClimbRate.toDouble(),
+          maxDescentRate: aircraft.maximumDescentRate.toDouble(),
+        );
+        
+        currentWaypoint.altitude = targetAltitude;
+      }
+    }
+
+    _currentFlightPlan!.modifiedAt = DateTime.now();
+    notifyListeners();
+  }
+
+  // Set aircraft for the flight plan
+  void setAircraftForFlightPlan(String aircraftId) {
+    if (_currentFlightPlan == null) return;
+    
+    _currentFlightPlan!.aircraftId = aircraftId;
+    
+    // Update cruise speed from aircraft if not already set
+    final aircraft = _getCurrentAircraft();
+    if (aircraft != null && (_currentFlightPlan!.cruiseSpeed == null || _currentFlightPlan!.cruiseSpeed == 0)) {
+      _currentFlightPlan!.cruiseSpeed = aircraft.cruiseSpeed.toDouble();
+    }
+    
+    _currentFlightPlan!.modifiedAt = DateTime.now();
+    
+    // Recalculate altitudes with new aircraft performance data
+    recalculateAllWaypointAltitudes();
+    
+    notifyListeners();
   }
 }

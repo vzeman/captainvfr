@@ -31,4 +31,30 @@ class Checklist extends HiveObject {
     required this.modelId,
     List<ChecklistItem>? items,
   }) : items = items ?? [];
+  
+  // Convert to JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'manufacturerId': manufacturerId,
+      'modelId': modelId,
+      'items': items.map((item) => item.toJson()).toList(),
+    };
+  }
+  
+  // Create from JSON
+  factory Checklist.fromJson(Map<String, dynamic> json) {
+    return Checklist(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      description: json['description'],
+      manufacturerId: json['manufacturerId'] ?? '',
+      modelId: json['modelId'] ?? '',
+      items: (json['items'] as List<dynamic>?)
+          ?.map((item) => ChecklistItem.fromJson(item))
+          .toList() ?? [],
+    );
+  }
 }

@@ -38,13 +38,15 @@ class AircraftAdapter extends TypeAdapter<Aircraft> {
       manufacturer: fields[18] as String?,
       model: fields[19] as String?,
       category: fields[20] as AircraftCategory?,
+      photosPaths: (fields[21] as List?)?.cast<String>(),
+      documentsPaths: (fields[22] as List?)?.cast<String>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Aircraft obj) {
     writer
-      ..writeByte(21)
+      ..writeByte(23)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -86,7 +88,11 @@ class AircraftAdapter extends TypeAdapter<Aircraft> {
       ..writeByte(19)
       ..write(obj.model)
       ..writeByte(20)
-      ..write(obj.category);
+      ..write(obj.category)
+      ..writeByte(21)
+      ..write(obj.photosPaths)
+      ..writeByte(22)
+      ..write(obj.documentsPaths);
   }
 
   @override

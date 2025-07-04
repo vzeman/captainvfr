@@ -1,5 +1,10 @@
-import 'package:hive/hive.dart';
-import '../models/flight_plan.dart';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'flight_plan.dart';
+
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
 
 class FlightPlanAdapter extends TypeAdapter<FlightPlan> {
   @override
@@ -19,13 +24,15 @@ class FlightPlanAdapter extends TypeAdapter<FlightPlan> {
       waypoints: (fields[4] as List).cast<Waypoint>(),
       aircraftId: fields[5] as String?,
       cruiseSpeed: fields[6] as double?,
+      flightRules: fields[7] as FlightRules?,
+      fuelConsumptionRate: fields[8] as double?,
     );
   }
 
   @override
   void write(BinaryWriter writer, FlightPlan obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -39,7 +46,11 @@ class FlightPlanAdapter extends TypeAdapter<FlightPlan> {
       ..writeByte(5)
       ..write(obj.aircraftId)
       ..writeByte(6)
-      ..write(obj.cruiseSpeed);
+      ..write(obj.cruiseSpeed)
+      ..writeByte(7)
+      ..write(obj.flightRules)
+      ..writeByte(8)
+      ..write(obj.fuelConsumptionRate);
   }
 
   @override
@@ -150,6 +161,45 @@ class WaypointTypeAdapter extends TypeAdapter<WaypointType> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is WaypointTypeAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class FlightRulesAdapter extends TypeAdapter<FlightRules> {
+  @override
+  final int typeId = 13;
+
+  @override
+  FlightRules read(BinaryReader reader) {
+    switch (reader.readByte()) {
+      case 0:
+        return FlightRules.vfr;
+      case 1:
+        return FlightRules.ifr;
+      default:
+        return FlightRules.vfr;
+    }
+  }
+
+  @override
+  void write(BinaryWriter writer, FlightRules obj) {
+    switch (obj) {
+      case FlightRules.vfr:
+        writer.writeByte(0);
+        break;
+      case FlightRules.ifr:
+        writer.writeByte(1);
+        break;
+    }
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FlightRulesAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

@@ -514,6 +514,13 @@ class CacheService {
     await _metadataBox.put(_weatherLastFetchKey, timestamp.toIso8601String());
   }
 
+  /// Clear airports cache
+  Future<void> clearAirportsCache() async {
+    await _ensureInitialized();
+    await _airportsBox.clear();
+    await _metadataBox.delete(_airportsLastFetchKey);
+  }
+
   /// Clear runways cache
   Future<void> clearRunwaysCache() async {
     await _ensureInitialized();

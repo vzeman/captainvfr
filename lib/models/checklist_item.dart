@@ -22,4 +22,24 @@ class ChecklistItem extends HiveObject {
     this.description,
     this.targetValue,
   });
+  
+  // Convert to JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'targetValue': targetValue,
+    };
+  }
+  
+  // Create from JSON
+  factory ChecklistItem.fromJson(Map<String, dynamic> json) {
+    return ChecklistItem(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      description: json['description'],
+      targetValue: json['targetValue'],
+    );
+  }
 }

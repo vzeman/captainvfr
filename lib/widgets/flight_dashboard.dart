@@ -277,14 +277,14 @@ class FlightDashboard extends StatelessWidget {
         Expanded(
           child: _buildSmallIndicator(
             'V/S',
-            '${flightService.verticalSpeed.toStringAsFixed(1)}',
+            flightService.verticalSpeed.toStringAsFixed(1),
             FlightIcons.verticalSpeed,
           ),
         ),
         Expanded(
           child: _buildSmallIndicator(
             'FUEL',
-            '${flightService.fuelUsed.toStringAsFixed(1)}',
+            flightService.fuelUsed.toStringAsFixed(1),
             Icons.local_gas_station,
           ),
         ),
