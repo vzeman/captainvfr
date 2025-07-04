@@ -26,22 +26,22 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
   final FrequencyService _frequencyService = FrequencyService();
   final WeatherService _weatherService = WeatherService();
   
+  // Scroll controller to preserve position
+  final ScrollController _scrollController = ScrollController();
+  
   bool _isLoading = true;
   bool _isRefreshing = false;
   bool _isDownloading = false;
   double _downloadProgress = 0.0;
   int _currentTiles = 0;
   int _totalTiles = 0;
+  int _skippedTiles = 0;
+  int _downloadedTiles = 0;
   
   // Cache statistics
   Map<String, dynamic>? _mapCacheStats;
   Map<String, dynamic> _cacheStats = {};
   
-  // Download area controllers
-  final TextEditingController _northController = TextEditingController();
-  final TextEditingController _southController = TextEditingController();
-  final TextEditingController _eastController = TextEditingController();
-  final TextEditingController _westController = TextEditingController();
   int _minZoom = 8;
   int _maxZoom = 14;
 
@@ -51,10 +51,19 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
     _loadAllCacheStats();
   }
 
-  Future<void> _loadAllCacheStats() async {
-    setState(() {
-      _isLoading = true;
-    });
+  Future<void> _loadAllCacheStats({bool preserveScroll = false}) async {
+    // Save current scroll position if requested
+    double? scrollPosition;
+    if (preserveScroll && _scrollController.hasClients) {
+      scrollPosition = _scrollController.offset;
+    }
+    
+    // Don't show loading indicator if we're preserving scroll
+    if (!preserveScroll) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
 
     try {
       // Initialize services if needed
@@ -72,6 +81,17 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         _cacheStats = stats;
         _isLoading = false;
       });
+      
+      // Restore scroll position after rebuild
+      if (scrollPosition != null && _scrollController.hasClients) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollController.animateTo(
+            scrollPosition!,
+            duration: const Duration(milliseconds: 100),
+            curve: Curves.easeOut,
+          );
+        });
+      }
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -467,33 +487,6 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
     );
   }
 
-  Future<void> _downloadCustomArea() async {
-    if (_northController.text.isEmpty || _southController.text.isEmpty ||
-        _eastController.text.isEmpty || _westController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all coordinates')),
-      );
-      return;
-    }
-
-    try {
-      final north = double.parse(_northController.text);
-      final south = double.parse(_southController.text);
-      final east = double.parse(_eastController.text);
-      final west = double.parse(_westController.text);
-
-      await _downloadArea(
-        northEast: LatLng(north, east),
-        southWest: LatLng(south, west),
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invalid coordinates: $e')),
-        );
-      }
-    }
-  }
 
   Future<void> _downloadArea({
     required LatLng northEast,
@@ -504,6 +497,8 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       _downloadProgress = 0.0;
       _currentTiles = 0;
       _totalTiles = 0;
+      _skippedTiles = 0;
+      _downloadedTiles = 0;
     });
 
     try {
@@ -512,25 +507,31 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         southWest: southWest,
         minZoom: _minZoom,
         maxZoom: _maxZoom,
-        onProgress: (current, total) {
+        onProgress: (current, total, skipped, downloaded) {
           setState(() {
             _currentTiles = current;
             _totalTiles = total;
+            _skippedTiles = skipped;
+            _downloadedTiles = downloaded;
             _downloadProgress = total > 0 ? current / total : 0.0;
           });
 
-          // Update cache statistics periodically
+          // Update cache statistics periodically, preserving scroll position
           if (current % 50 == 0 || (total > 0 && (current / total * 100).round() % 5 == 0)) {
-            _loadAllCacheStats();
+            _loadAllCacheStats(preserveScroll: true);
           }
         },
       );
 
       if (mounted) {
+        final message = _skippedTiles > 0 
+            ? 'Downloaded $_downloadedTiles new tiles, skipped $_skippedTiles cached tiles'
+            : 'Downloaded $_downloadedTiles tiles successfully!';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Map tiles downloaded successfully!'),
+          SnackBar(
+            content: Text(message),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -548,7 +549,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       setState(() {
         _isDownloading = false;
       });
-      await _loadAllCacheStats();
+      await _loadAllCacheStats(preserveScroll: true);
     }
   }
 
@@ -579,8 +580,9 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _loadAllCacheStats,
+              onRefresh: () => _loadAllCacheStats(),
               child: SingleChildScrollView(
+                controller: _scrollController,
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -790,7 +792,12 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                               const SizedBox(height: 8),
                               LinearProgressIndicator(value: _downloadProgress),
                               const SizedBox(height: 8),
-                              Text('$_currentTiles / $_totalTiles tiles'),
+                              Text('Progress: $_currentTiles / $_totalTiles tiles'),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Downloaded: $_downloadedTiles | Skipped (cached): $_skippedTiles',
+                                style: const TextStyle(fontSize: 13),
+                              ),
                               const SizedBox(height: 16),
                               ElevatedButton(
                                 onPressed: _stopDownload,
@@ -820,7 +827,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Quick Download',
+                              'Download Map Tiles',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -829,91 +836,21 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                             const SizedBox(height: 8),
                             const Text('Download tiles for current map area'),
                             const SizedBox(height: 16),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: _isDownloading ? null : _downloadCurrentArea,
-                                child: const Text('Download Current Area'),
+                            
+                            // Zoom level info
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.blue[50],
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Custom Area Download Card
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Custom Area Download',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                              child: const Text(
+                                'Higher zoom levels provide more detail but require more storage space. Level 8-10 is good for general navigation, 11-14 for detailed airport views.',
+                                style: TextStyle(fontSize: 13),
                               ),
                             ),
                             const SizedBox(height: 16),
-
-                            // Coordinate inputs
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _northController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'North Latitude',
-                                      hintText: '50.0',
-                                    ),
-                                    keyboardType: TextInputType.number,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _eastController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'East Longitude',
-                                      hintText: '15.0',
-                                    ),
-                                    keyboardType: TextInputType.number,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _southController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'South Latitude',
-                                      hintText: '48.0',
-                                    ),
-                                    keyboardType: TextInputType.number,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _westController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'West Longitude',
-                                      hintText: '12.0',
-                                    ),
-                                    keyboardType: TextInputType.number,
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 16),
-
+                            
                             // Zoom level sliders
                             Text('Min Zoom Level: $_minZoom'),
                             Slider(
@@ -941,20 +878,21 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                                 });
                               },
                             ),
-
+                            
                             const SizedBox(height: 16),
-
+                            
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
-                                onPressed: _isDownloading ? null : _downloadCustomArea,
-                                child: const Text('Download Custom Area'),
+                                onPressed: _isDownloading ? null : _downloadCurrentArea,
+                                child: const Text('Download Current Area'),
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
+
 
                     const SizedBox(height: 16),
 
@@ -994,10 +932,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
 
   @override
   void dispose() {
-    _northController.dispose();
-    _southController.dispose();
-    _eastController.dispose();
-    _westController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 }

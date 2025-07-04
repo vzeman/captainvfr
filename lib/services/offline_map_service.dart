@@ -66,12 +66,12 @@ class OfflineMapService {
   }
 
   /// Download and cache map tiles for a specific area
-  Future<void> downloadAreaTiles({
+  Future<Map<String, int>> downloadAreaTiles({
     required LatLng northEast,
     required LatLng southWest,
     required int minZoom,
     required int maxZoom,
-    required Function(int current, int total) onProgress,
+    required Function(int current, int total, int skipped, int downloaded) onProgress,
     String tileServerUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   }) async {
     await initialize();
@@ -85,6 +85,8 @@ class OfflineMapService {
     _logger.i('🔄 Starting tile download for area: $southWest to $northEast, zoom: $minZoom-$maxZoom');
 
     int totalTiles = 0;
+    int processedTiles = 0;
+    int skippedTiles = 0;
     int downloadedTiles = 0;
 
     // Calculate total number of tiles to download
@@ -93,7 +95,7 @@ class OfflineMapService {
       totalTiles += (bounds.maxX - bounds.minX + 1) * (bounds.maxY - bounds.minY + 1);
     }
 
-    _logger.i('📊 Total tiles to download: $totalTiles');
+    _logger.i('📊 Total tiles to process: $totalTiles');
 
     // Download tiles for each zoom level
     for (int zoom = minZoom; zoom <= maxZoom; zoom++) {
@@ -116,29 +118,39 @@ class OfflineMapService {
           try {
             // Check if tile already exists
             if (await _tileExists(zoom, x, y)) {
-              downloadedTiles++;
-              onProgress(downloadedTiles, totalTiles);
+              processedTiles++;
+              skippedTiles++;
+              onProgress(processedTiles, totalTiles, skippedTiles, downloadedTiles);
+              // No delay needed for skipped tiles
               continue;
             }
 
             // Download and store tile
             await _downloadAndStoreTile(zoom, x, y, tileServerUrl);
+            processedTiles++;
             downloadedTiles++;
-            onProgress(downloadedTiles, totalTiles);
+            onProgress(processedTiles, totalTiles, skippedTiles, downloadedTiles);
 
-            // Add small delay to avoid overwhelming the server
+            // Add small delay to avoid overwhelming the server (only for actual downloads)
             await Future.delayed(const Duration(milliseconds: 50));
 
           } catch (e) {
             _logger.w('⚠️ Failed to download tile $zoom/$x/$y: $e');
-            downloadedTiles++;
-            onProgress(downloadedTiles, totalTiles);
+            processedTiles++;
+            onProgress(processedTiles, totalTiles, skippedTiles, downloadedTiles);
           }
         }
       }
     }
 
-    _logger.i('✅ Tile download completed: $downloadedTiles/$totalTiles');
+    _logger.i('✅ Tile download completed: Downloaded $downloadedTiles, Skipped $skippedTiles (already cached), Total $processedTiles/$totalTiles');
+    
+    return {
+      'total': totalTiles,
+      'downloaded': downloadedTiles,
+      'skipped': skippedTiles,
+      'processed': processedTiles,
+    };
   }
 
   /// Get tile bounds for a geographic area at a specific zoom level

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'dart:math' as math;
 import '../models/flight_plan.dart';
 
 class DraggableWaypointMarker extends StatefulWidget {
@@ -10,6 +9,8 @@ class DraggableWaypointMarker extends StatefulWidget {
   final Function(int) onWaypointTapped;
   final Function(int, LatLng) onWaypointMoved;
   final bool isSelected;
+  final Function(bool)? onDraggingChanged;
+  final GlobalKey mapKey;
 
   const DraggableWaypointMarker({
     super.key,
@@ -18,6 +19,8 @@ class DraggableWaypointMarker extends StatefulWidget {
     required this.onWaypointTapped,
     required this.onWaypointMoved,
     required this.isSelected,
+    this.onDraggingChanged,
+    required this.mapKey,
   });
 
   @override
@@ -26,8 +29,7 @@ class DraggableWaypointMarker extends StatefulWidget {
 
 class _DraggableWaypointMarkerState extends State<DraggableWaypointMarker> {
   bool _isDragging = false;
-  Offset _dragOffset = Offset.zero;
-  LatLng? _initialPosition;
+  Offset? _lastPosition;
 
   Color _getWaypointColor(WaypointType type) {
     switch (type) {
@@ -42,77 +44,56 @@ class _DraggableWaypointMarkerState extends State<DraggableWaypointMarker> {
     }
   }
 
-  void _fallbackCoordinateCalculation(MapCamera mapCamera) {
-    if (_initialPosition == null) return;
-    
-    try {
-      // Calculate the scale factor based on zoom level
-      // At zoom level 10, 1 degree ≈ 69 miles ≈ 60 nautical miles
-      final metersPerPixel = 40075016.686 / (256 * math.pow(2, mapCamera.zoom));
-      final degreesPerPixel = metersPerPixel / 111320.0; // meters per degree at equator
-      
-      // Adjust for latitude (longitude degrees get smaller as you move away from equator)
-      final lngDegreesPerPixel = degreesPerPixel / math.cos(_initialPosition!.latitude * math.pi / 180);
-      
-      final latChange = -_dragOffset.dy * degreesPerPixel;
-      final lngChange = _dragOffset.dx * lngDegreesPerPixel;
-      
-      final newLatLng = LatLng(
-        _initialPosition!.latitude + latChange,
-        _initialPosition!.longitude + lngChange,
-      );
-      
-      widget.onWaypointMoved(widget.waypointIndex, newLatLng);
-    } catch (e) {
-      debugPrint('Fallback coordinate calculation failed: $e');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        if (!_isDragging) {
-          widget.onWaypointTapped(widget.waypointIndex);
-        }
-      },
-      onPanStart: (details) {
-        // Only allow dragging if the waypoint is selected
+    return Listener(
+      onPointerDown: (event) {
         if (widget.isSelected) {
           setState(() {
             _isDragging = true;
-            _dragOffset = Offset.zero;
-            _initialPosition = widget.waypoint.latLng;
+            _lastPosition = event.position;
           });
+          widget.onDraggingChanged?.call(true);
+        } else {
+          widget.onWaypointTapped(widget.waypointIndex);
         }
       },
-      onPanUpdate: (details) {
-        if (_isDragging) {
+      onPointerMove: (event) {
+        if (_isDragging && _lastPosition != null) {
+          // Update position during drag (visual feedback only)
           setState(() {
-            _dragOffset += details.delta;
+            _lastPosition = event.position;
           });
         }
       },
-      onPanEnd: (details) {
-        if (_isDragging && _initialPosition != null) {
-          // Get the map camera to convert coordinates
-          final mapCamera = MapCamera.maybeOf(context);
-          if (mapCamera != null) {
-            // Use the fallback calculation method directly for flutter_map 8.x
-            _fallbackCoordinateCalculation(mapCamera);
-          }
-          
+      onPointerUp: (event) {
+        if (_isDragging) {
+          // Calculate and apply the new position
+          _applyNewPosition(event.position);
           setState(() {
             _isDragging = false;
-            _dragOffset = Offset.zero;
-            _initialPosition = null;
+            _lastPosition = null;
           });
+          widget.onDraggingChanged?.call(false);
         }
       },
-      child: Transform.translate(
-        offset: _dragOffset,
+      onPointerCancel: (event) {
+        if (_isDragging) {
+          setState(() {
+            _isDragging = false;
+            _lastPosition = null;
+          });
+          widget.onDraggingChanged?.call(false);
+        }
+      },
+      child: MouseRegion(
+        cursor: widget.isSelected 
+            ? (_isDragging ? SystemMouseCursors.grabbing : SystemMouseCursors.grab)
+            : SystemMouseCursors.click,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
+          width: 30,
+          height: 30,
           decoration: BoxDecoration(
             color: _getWaypointColor(widget.waypoint.type),
             shape: BoxShape.circle,
@@ -128,23 +109,55 @@ class _DraggableWaypointMarkerState extends State<DraggableWaypointMarker> {
               ),
             ],
           ),
-          child: MouseRegion(
-            cursor: widget.isSelected 
-                ? (_isDragging ? SystemMouseCursors.grabbing : SystemMouseCursors.grab)
-                : SystemMouseCursors.click,
-            child: Center(
-              child: Text(
-                '${widget.waypointIndex + 1}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
+          child: Center(
+            child: Text(
+              '${widget.waypointIndex + 1}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
               ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  void _applyNewPosition(Offset globalPosition) {
+    try {
+      // Get the map's render box
+      final RenderBox? mapBox = widget.mapKey.currentContext?.findRenderObject() as RenderBox?;
+      if (mapBox == null) return;
+
+      // Convert global position to local position relative to the map
+      final localPosition = mapBox.globalToLocal(globalPosition);
+
+      // Get the map camera to convert coordinates
+      final mapCamera = MapCamera.maybeOf(context);
+      if (mapCamera == null) return;
+
+      // Get map dimensions
+      final mapWidth = mapCamera.nonRotatedSize.width;
+      final mapHeight = mapCamera.nonRotatedSize.height;
+      
+      // Calculate the relative position (0-1)
+      final relativeX = localPosition.dx / mapWidth;
+      final relativeY = localPosition.dy / mapHeight;
+      
+      // Get the current map bounds
+      final bounds = mapCamera.visibleBounds;
+      
+      // Calculate the new latitude and longitude
+      final lng = bounds.west + (bounds.east - bounds.west) * relativeX;
+      final lat = bounds.north - (bounds.north - bounds.south) * relativeY;
+      
+      final newPosition = LatLng(lat, lng);
+      
+      // Call the callback with the new position
+      widget.onWaypointMoved(widget.waypointIndex, newPosition);
+    } catch (e) {
+      debugPrint('Error calculating new position: $e');
+    }
   }
 }

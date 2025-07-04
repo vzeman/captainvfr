@@ -4,6 +4,7 @@ import '../models/aircraft.dart';
 import '../services/media_service.dart';
 import '../services/aircraft_settings_service.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class AircraftPhotosWidget extends StatefulWidget {
   final Aircraft aircraft;
@@ -219,12 +220,7 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error picking image: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _handleError(e);
       }
     } finally {
       if (mounted) {
@@ -243,12 +239,7 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error taking photo: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _handleError(e);
       }
     } finally {
       if (mounted) {
@@ -350,6 +341,34 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
       ),
     );
   }
+  
+  void _handleError(dynamic error) {
+    String message;
+    SnackBarAction? action;
+    
+    if (error is PermissionException) {
+      message = error.message;
+      if (error.isPermanentlyDenied) {
+        action = SnackBarAction(
+          label: 'SETTINGS',
+          onPressed: () {
+            openAppSettings();
+          },
+        );
+      }
+    } else {
+      message = 'An error occurred: ${error.toString()}';
+    }
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 5),
+        action: action,
+      ),
+    );
+  }
 }
 
 class PhotoViewScreen extends StatelessWidget {
@@ -404,5 +423,4 @@ class PhotoViewScreen extends StatelessWidget {
       ),
     );
   }
-  
 }
