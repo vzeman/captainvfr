@@ -1,6 +1,8 @@
 import 'package:latlong2/latlong.dart';
 import 'package:hive/hive.dart';
 
+part 'flight_plan.g.dart';
+
 @HiveType(typeId: 10)
 class FlightPlan extends HiveObject {
   @HiveField(0)
@@ -24,6 +26,12 @@ class FlightPlan extends HiveObject {
   @HiveField(6)
   double? cruiseSpeed; // Knots - from aircraft or manual input
 
+  @HiveField(7)
+  FlightRules? flightRules;
+
+  @HiveField(8)
+  double? fuelConsumptionRate; // Gallons per hour - from aircraft or manual input
+
   FlightPlan({
     required this.id,
     required this.name,
@@ -32,6 +40,8 @@ class FlightPlan extends HiveObject {
     required this.waypoints,
     this.aircraftId,
     this.cruiseSpeed,
+    this.flightRules,
+    this.fuelConsumptionRate,
   });
 
   // Calculate total distance in nautical miles
@@ -61,9 +71,16 @@ class FlightPlan extends HiveObject {
         from: waypoints[i],
         to: waypoints[i + 1],
         cruiseSpeed: cruiseSpeed,
+        fuelConsumptionRate: fuelConsumptionRate,
       ));
     }
     return segments;
+  }
+
+  // Calculate total fuel consumption in gallons
+  double get totalFuelConsumption {
+    if (fuelConsumptionRate == null || fuelConsumptionRate! <= 0) return 0.0;
+    return (totalFlightTime / 60) * fuelConsumptionRate!; // Convert minutes to hours
   }
 }
 
@@ -127,15 +144,25 @@ enum WaypointType {
   fix,
 }
 
+@HiveType(typeId: 13)
+enum FlightRules {
+  @HiveField(0)
+  vfr,
+  @HiveField(1)
+  ifr,
+}
+
 class FlightSegment {
   final Waypoint from;
   final Waypoint to;
   final double? cruiseSpeed;
+  final double? fuelConsumptionRate;
 
   FlightSegment({
     required this.from,
     required this.to,
     this.cruiseSpeed,
+    this.fuelConsumptionRate,
   });
 
   double get distance => from.distanceTo(to);
@@ -149,4 +176,10 @@ class FlightSegment {
 
   // Altitude change
   double get altitudeChange => to.altitude - from.altitude;
+
+  // Fuel consumption in gallons for this segment
+  double get fuelConsumption {
+    if (fuelConsumptionRate == null || fuelConsumptionRate! <= 0) return 0.0;
+    return (flightTime / 60) * fuelConsumptionRate!; // Convert minutes to hours
+  }
 }

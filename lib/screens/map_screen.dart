@@ -5,7 +5,7 @@ import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'flight_log_screen.dart';
-import 'offline_map_screen.dart';
+import 'offline_data_screen.dart';
 import 'flight_plans_screen.dart';
 import 'aircraft_settings_screen.dart';
 import 'checklist_settings_screen.dart';
@@ -56,7 +56,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   
   // State variables
   bool _isLoading = true;
-  bool _isTracking = false;
   bool _showStats = false;
   bool _showNavaids = true; // Toggle for navaid display
   bool _showMetar = false; // Toggle for METAR overlay
@@ -125,6 +124,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   // Setup listener for flight service updates
   void _setupFlightServiceListener() {
     _flightService.addListener(_onFlightPathUpdated);
+    _flightPlanService.addListener(_onFlightPlanUpdated);
   }
 
   // Handle flight path updates from the flight service
@@ -142,9 +142,22 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     }
   }
   
+  // Handle flight plan updates from the flight plan service
+  void _onFlightPlanUpdated() {
+    if (mounted) {
+      setState(() {
+        // Show flight plan panel when a plan is loaded
+        if (_flightPlanService.currentFlightPlan != null) {
+          _showFlightPlanning = true;
+        }
+      });
+    }
+  }
+  
   @override
   void dispose() {
     _flightService.removeListener(_onFlightPathUpdated);
+    _flightPlanService.removeListener(_onFlightPlanUpdated);
     _debounceTimer?.cancel();
     _mapController.dispose();
     _flightService.dispose();
@@ -919,7 +932,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               Consumer<FlightPlanService>(
                 builder: (context, flightPlanService, child) {
                   final flightPlan = flightPlanService.currentFlightPlan;
-                  if (flightPlan == null || flightPlan.waypoints.isEmpty) {
+                  if (flightPlan == null || flightPlan.waypoints.isEmpty || !flightPlanService.isFlightPlanVisible) {
                     return const SizedBox.shrink();
                   }
 
@@ -930,7 +943,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         polylines: FlightPlanOverlay.buildFlightPath(flightPlan),
                       ),
                       // Highlight next segment when tracking
-                      if (_isTracking && _currentPosition != null)
+                      if (_flightService.isTracking && _currentPosition != null)
                         PolylineLayer(
                           polylines: FlightPlanOverlay.buildNextSegment(
                             flightPlan,
@@ -1042,7 +1055,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 data: 'flight_panel',
                 feedback: Material(
                   color: Colors.transparent,
-                  child: Container(
+                  child: SizedBox(
                     width: MediaQuery.of(context).size.width - 32,
                     child: const FlightDashboard(),
                   ),
@@ -1065,7 +1078,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                     _flightDataPanelPosition = Offset(newX, bottomDistance);
                   });
                 },
-                child: Container(
+                child: SizedBox(
                   width: MediaQuery.of(context).size.width - 32,
                   child: Stack(
                     children: [
@@ -1094,7 +1107,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             ),
 
           // Flight dashboard overlay
-          if (_isTracking)
+          if (_flightService.isTracking)
             Positioned(
               bottom: 0,
               left: 0,
@@ -1102,7 +1115,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
-                height: _isTracking ? 200 : 0,
+                height: _flightService.isTracking ? 200 : 0,
                 child: const FlightDashboard(),
               ),
             ),
@@ -1148,13 +1161,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                             builder: (context) => const FlightLogScreen(),
                           ),
                         );
-                      } else if (value == 'refresh_data') {
-                        _refreshAllData();
                       } else if (value == 'offline_maps') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const OfflineMapScreen(),
+                            builder: (context) => const OfflineDataScreen(),
                           ),
                         );
                       } else if (value == 'flight_plans') {
@@ -1218,20 +1229,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                           ],
                         ),
                       ),
-                      PopupMenuItem(
-                        value: 'toggle_flight_planning',
-                        child: Row(
-                          children: [
-                            Icon(
-                              _showFlightPlanning ? Icons.close : Icons.add_location_alt,
-                              size: 20,
-                              color: _showFlightPlanning ? Colors.red : null,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(_showFlightPlanning ? 'Stop Planning' : 'Start Flight Planning'),
-                          ],
-                        ),
-                      ),
                       const PopupMenuItem(
                         value: 'flight_log',
                         child: Row(
@@ -1243,22 +1240,12 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         ),
                       ),
                       const PopupMenuItem(
-                        value: 'refresh_data',
-                        child: Row(
-                          children: [
-                            Icon(Icons.refresh, size: 20),
-                            SizedBox(width: 8),
-                            Text('Refresh Data'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
                         value: 'offline_maps',
                         child: Row(
                           children: [
                             Icon(Icons.map, size: 20),
                             SizedBox(width: 8),
-                            Text('Offline Maps'),
+                            Text('Offline Data'),
                           ],
                         ),
                       ),
@@ -1344,7 +1331,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             ),
 
           // License warning widget - only show when not tracking
-          if (!_isTracking)
+          if (!_flightService.isTracking)
             const Positioned(
               top: 100,
               left: 16,

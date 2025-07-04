@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/flight_plan_service.dart';
+import '../services/aircraft_settings_service.dart';
+import '../services/checklist_service.dart';
+import '../models/aircraft.dart';
+import '../models/checklist.dart';
+import 'waypoint_table_widget.dart';
 
 class CompactFlightPlanWidget extends StatefulWidget {
   final bool isVisible;
@@ -18,6 +23,23 @@ class CompactFlightPlanWidget extends StatefulWidget {
 
 class _CompactFlightPlanWidgetState extends State<CompactFlightPlanWidget> {
   final TextEditingController _cruiseSpeedController = TextEditingController();
+  String? _selectedAircraftId;
+  bool _isFlightPlanVisible = true;
+  int? _selectedWaypointIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final flightPlan = context.read<FlightPlanService>().currentFlightPlan;
+      if (flightPlan != null) {
+        _selectedAircraftId = flightPlan.aircraftId;
+        if (flightPlan.cruiseSpeed != null) {
+          _cruiseSpeedController.text = flightPlan.cruiseSpeed!.toStringAsFixed(0);
+        }
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -33,6 +55,18 @@ class _CompactFlightPlanWidgetState extends State<CompactFlightPlanWidget> {
       builder: (context, flightPlanService, child) {
         final flightPlan = flightPlanService.currentFlightPlan;
         final isPlanning = flightPlanService.isPlanning;
+        
+        // Sync selected aircraft when flight plan changes
+        if (flightPlan != null && flightPlan.aircraftId != _selectedAircraftId) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            setState(() {
+              _selectedAircraftId = flightPlan.aircraftId;
+              if (flightPlan.cruiseSpeed != null) {
+                _cruiseSpeedController.text = flightPlan.cruiseSpeed!.toStringAsFixed(0);
+              }
+            });
+          });
+        }
 
         return Positioned(
           top: MediaQuery.of(context).padding.top + 60,
@@ -141,73 +175,167 @@ class _CompactFlightPlanWidgetState extends State<CompactFlightPlanWidget> {
 
           const SizedBox(height: 8),
 
-          // Action buttons row
-          Row(
-            children: [
-              // Cruise speed input
-              Expanded(
-                flex: 2,
-                child: Row(
-                  children: [
-                    const Icon(Icons.speed, size: 16, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    const Text('Speed:', style: TextStyle(fontSize: 12)),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: TextField(
-                        controller: _cruiseSpeedController,
-                        keyboardType: TextInputType.number,
-                        style: const TextStyle(fontSize: 12),
-                        decoration: const InputDecoration(
-                          hintText: '120',
-                          suffix: Text('kts', style: TextStyle(fontSize: 10)),
-                          isDense: true,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                          border: OutlineInputBorder(),
+          // Aircraft selection and cruise speed row
+          Consumer<AircraftSettingsService>(
+            builder: (context, aircraftService, child) {
+              final aircrafts = aircraftService.aircrafts;
+              
+              return Column(
+                children: [
+                  // Aircraft selection
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.airplanemode_active, size: 16, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        const Text('Aircraft:', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: DropdownButton<String>(
+                            value: _selectedAircraftId,
+                            isExpanded: true,
+                            isDense: true,
+                            hint: const Text('Select Aircraft', style: TextStyle(fontSize: 12)),
+                            style: const TextStyle(fontSize: 12, color: Colors.black87),
+                            underline: const SizedBox(),
+                            onChanged: (String? aircraftId) {
+                              setState(() {
+                                _selectedAircraftId = aircraftId;
+                              });
+                              if (aircraftId != null) {
+                                _updateAircraft(flightPlanService, aircraftService, aircraftId);
+                              }
+                            },
+                            items: aircrafts.map((aircraft) {
+                              final model = aircraftService.models.firstWhere(
+                                (m) => m.id == aircraft.modelId,
+                                orElse: () => aircraftService.models.first,
+                              );
+                              final manufacturer = aircraftService.manufacturers.firstWhere(
+                                (m) => m.id == model.manufacturerId,
+                                orElse: () => aircraftService.manufacturers.first,
+                              );
+                              return DropdownMenuItem<String>(
+                                value: aircraft.id,
+                                child: Text(
+                                  '${aircraft.registration} - ${manufacturer.name} ${model.name}',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
+                          ),
                         ),
-                        onChanged: (value) {
-                          final speed = double.tryParse(value);
-                          if (speed != null && speed > 0) {
-                            flightPlanService.updateCruiseSpeed(speed);
-                          }
-                        },
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Action buttons row
+                  Row(
+                    children: [
+                      // Cruise speed input
+                      Expanded(
+                        flex: 2,
+                        child: Row(
+                          children: [
+                            const Icon(Icons.speed, size: 16, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            const Text('Speed:', style: TextStyle(fontSize: 12)),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: TextField(
+                                controller: _cruiseSpeedController,
+                                keyboardType: TextInputType.number,
+                                style: const TextStyle(fontSize: 12),
+                                decoration: const InputDecoration(
+                                  hintText: '120',
+                                  suffix: Text('kts', style: TextStyle(fontSize: 10)),
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: (value) {
+                                  final speed = double.tryParse(value);
+                                  if (speed != null && speed > 0) {
+                                    flightPlanService.updateCruiseSpeed(speed);
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
 
-              const SizedBox(width: 8),
+                      const SizedBox(width: 8),
 
-              // Action buttons
-              Expanded(
-                flex: 3,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildCompactButton(
-                      icon: Icons.save,
-                      label: 'Save',
-                      onPressed: flightPlan != null ? () => _saveFlightPlan(flightPlanService) : null,
-                    ),
-                    _buildCompactButton(
-                      icon: Icons.clear_all,
-                      label: 'Clear',
-                      onPressed: () => _clearFlightPlan(flightPlanService),
-                    ),
-                    if (flightPlanService.isPlanning)
-                      _buildCompactButton(
-                        icon: Icons.undo,
-                        label: 'Undo',
-                        onPressed: flightPlan != null && flightPlan.waypoints.isNotEmpty
-                          ? () => flightPlanService.removeLastWaypoint()
-                          : null,
+                      // Action buttons
+                      Expanded(
+                        flex: 3,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _buildCompactButton(
+                              icon: Icons.save,
+                              label: 'Save',
+                              onPressed: flightPlan != null ? () => _saveFlightPlan(flightPlanService) : null,
+                            ),
+                            _buildCompactButton(
+                              icon: _isFlightPlanVisible ? Icons.visibility_off : Icons.visibility,
+                              label: _isFlightPlanVisible ? 'Hide' : 'Show',
+                              onPressed: () => _toggleFlightPlanVisibility(flightPlanService),
+                            ),
+                            _buildCompactButton(
+                              icon: Icons.clear_all,
+                              label: 'Clear',
+                              onPressed: () => _clearFlightPlan(flightPlanService),
+                            ),
+                            if (flightPlanService.isPlanning)
+                              _buildCompactButton(
+                                icon: Icons.undo,
+                                label: 'Undo',
+                                onPressed: flightPlan != null && flightPlan.waypoints.isNotEmpty
+                                  ? () => flightPlanService.removeLastWaypoint()
+                                  : null,
+                              ),
+                          ],
+                        ),
                       ),
-                  ],
-                ),
-              ),
-            ],
+                    ],
+                  ),
+                ],
+              );
+            },
           ),
+          
+          // Waypoint table (collapsible)
+          if (flightPlan != null && flightPlan.waypoints.isNotEmpty)
+            Consumer<AircraftSettingsService>(
+              builder: (context, aircraftService, child) {
+                final selectedAircraft = _selectedAircraftId != null
+                    ? aircraftService.aircrafts.firstWhere(
+                        (a) => a.id == _selectedAircraftId,
+                        orElse: () => aircraftService.aircrafts.first,
+                      )
+                    : null;
+                return Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  child: WaypointTableWidget(
+                    flightPlan: flightPlan,
+                    selectedAircraft: selectedAircraft,
+                    selectedWaypointIndex: _selectedWaypointIndex,
+                    onWaypointSelected: (index) {
+                      setState(() {
+                        _selectedWaypointIndex = index;
+                      });
+                    },
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -312,6 +440,16 @@ class _CompactFlightPlanWidgetState extends State<CompactFlightPlanWidget> {
   void _clearFlightPlan(FlightPlanService flightPlanService) {
     flightPlanService.clearFlightPlan();
     _cruiseSpeedController.clear();
+    setState(() {
+      _selectedWaypointIndex = null;
+    });
+  }
+  
+  void _toggleFlightPlanVisibility(FlightPlanService flightPlanService) {
+    setState(() {
+      _isFlightPlanVisible = !_isFlightPlanVisible;
+    });
+    flightPlanService.toggleFlightPlanVisibility();
   }
 
   Future<String?> _showNameInputDialog() async {
@@ -341,5 +479,88 @@ class _CompactFlightPlanWidgetState extends State<CompactFlightPlanWidget> {
         ],
       ),
     );
+  }
+
+  void _updateAircraft(FlightPlanService flightPlanService, AircraftSettingsService aircraftService, String aircraftId) {
+    final aircraft = aircraftService.aircrafts.firstWhere(
+      (a) => a.id == aircraftId,
+      orElse: () => aircraftService.aircrafts.first,
+    );
+    
+    final model = aircraftService.models.firstWhere(
+      (m) => m.id == aircraft.modelId,
+      orElse: () => aircraftService.models.first,
+    );
+    
+    // Update flight plan with aircraft
+    if (flightPlanService.currentFlightPlan != null) {
+      flightPlanService.currentFlightPlan!.aircraftId = aircraftId;
+      
+      // Update cruise speed from aircraft/model if available
+      double cruiseSpeed = aircraft.cruiseSpeed > 0 ? aircraft.cruiseSpeed.toDouble() : model.typicalCruiseSpeed.toDouble();
+      if (cruiseSpeed > 0) {
+        _cruiseSpeedController.text = cruiseSpeed.toStringAsFixed(0);
+        flightPlanService.updateCruiseSpeed(cruiseSpeed);
+      }
+      
+      // Check for available checklists
+      _checkForChecklists(aircraft, model);
+    }
+  }
+  
+  void _checkForChecklists(Aircraft aircraft, dynamic model) async {
+    final checklistService = context.read<ChecklistService>();
+    final checklists = checklistService.getChecklistsForModel(model.id);
+    
+    if (checklists.isNotEmpty && mounted) {
+      // Show checklist selection dialog
+      final selectedChecklist = await showDialog<Checklist>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Select Checklist'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Found ${checklists.length} checklist(s) for ${model.name}'),
+                const SizedBox(height: 16),
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: checklists.length,
+                    itemBuilder: (context, index) {
+                      final checklist = checklists[index];
+                      return ListTile(
+                        title: Text(checklist.name),
+                        subtitle: Text('${checklist.items.length} items'),
+                        onTap: () => Navigator.of(context).pop(checklist),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Skip'),
+            ),
+          ],
+        ),
+      );
+      
+      if (selectedChecklist != null && mounted) {
+        // Store selected checklist for later use
+        // For now, just show a message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Selected checklist: ${selectedChecklist.name}'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 }

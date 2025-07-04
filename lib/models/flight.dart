@@ -2,7 +2,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:hive/hive.dart';
 import 'flight_point.dart';
 import 'moving_segment.dart';
-import 'flight_segment.dart';
+import 'flight_segment.dart' as fs;
+import 'flight_plan.dart';
 
 part 'flight.g.dart';
 
@@ -57,7 +58,10 @@ class Flight extends HiveObject {
   final List<MovingSegment> movingSegments;
 
   @HiveField(14)
-  final List<FlightSegment> flightSegments;
+  final List<fs.FlightSegment> flightSegments;
+
+  @HiveField(15)
+  FlightRules? flightRules;
 
   Flight({
     required this.id,
@@ -74,7 +78,8 @@ class Flight extends HiveObject {
     this.movingStartedZulu,
     this.movingStoppedZulu,
     List<MovingSegment>? movingSegments,
-    List<FlightSegment>? flightSegments,
+    List<fs.FlightSegment>? flightSegments,
+    this.flightRules,
   }) : movingSegments = movingSegments ?? [],
        flightSegments = flightSegments ?? [];
 
@@ -108,8 +113,8 @@ class Flight extends HiveObject {
     segments.addAll(flightSegments);
     // Sort by start time
     segments.sort((a, b) {
-      final aStart = a is MovingSegment ? a.start : (a as FlightSegment).startTime;
-      final bStart = b is MovingSegment ? b.start : (b as FlightSegment).startTime;
+      final aStart = a is MovingSegment ? a.start : (a as fs.FlightSegment).startTime;
+      final bStart = b is MovingSegment ? b.start : (b as fs.FlightSegment).startTime;
       return aStart.compareTo(bStart);
     });
     return segments;
@@ -146,7 +151,8 @@ class Flight extends HiveObject {
     DateTime? movingStartedZulu,
     DateTime? movingStoppedZulu,
     List<MovingSegment>? movingSegments,
-    List<FlightSegment>? flightSegments,
+    List<fs.FlightSegment>? flightSegments,
+    FlightRules? flightRules,
   }) {
     return Flight(
       id: id ?? this.id,
@@ -164,6 +170,7 @@ class Flight extends HiveObject {
       movingStoppedZulu: movingStoppedZulu ?? this.movingStoppedZulu,
       movingSegments: movingSegments ?? List.from(this.movingSegments),
       flightSegments: flightSegments ?? List.from(this.flightSegments),
+      flightRules: flightRules ?? this.flightRules,
     );
   }
 }
