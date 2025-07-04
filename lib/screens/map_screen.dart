@@ -49,6 +49,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   OfflineMapService? _offlineMapService; // Make nullable to prevent LateInitializationError
   late final FlightPlanService _flightPlanService;
   late final MapController _mapController;
+  final GlobalKey _mapKey = GlobalKey();
   
   // State variables
   bool _isLoading = true;
@@ -68,6 +69,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
   // Waypoint selection state
   int? _selectedWaypointIndex;
+  bool _isDraggingWaypoint = false;
 
   // Location and map state
   Position? _currentPosition;
@@ -748,6 +750,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         children: [
           // Map layer
           FlutterMap(
+            key: _mapKey,
             mapController: _mapController,
             options: MapOptions(
               initialCenter: _currentPosition != null
@@ -757,7 +760,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               minZoom: _minZoom,
               maxZoom: _maxZoom,
               interactionOptions: InteractionOptions(
-                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+                flags: _isDraggingWaypoint 
+                    ? InteractiveFlag.none  // Disable all map interactions when dragging waypoint
+                    : InteractiveFlag.all & ~InteractiveFlag.rotate,
               ),
               onTap: (tapPosition, point) => _onMapTapped(tapPosition, point),
               onPositionChanged: (position, hasGesture) {
@@ -901,6 +906,12 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                           _onWaypointTapped,
                           _onWaypointMoved,
                           _selectedWaypointIndex,
+                          (isDragging) {
+                            setState(() {
+                              _isDraggingWaypoint = isDragging;
+                            });
+                          },
+                          _mapKey,
                         ),
                       ),
                       // Waypoint name labels

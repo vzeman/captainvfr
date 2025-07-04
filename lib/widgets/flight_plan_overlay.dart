@@ -45,6 +45,8 @@ class FlightPlanOverlay {
     Function(int index) onWaypointTapped,
     Function(int index, LatLng newPosition) onWaypointMoved,
     int? selectedWaypointIndex,
+    Function(bool isDragging)? onDraggingChanged,
+    GlobalKey mapKey,
   ) {
     List<Marker> markers = [];
 
@@ -62,6 +64,8 @@ class FlightPlanOverlay {
             onWaypointTapped: onWaypointTapped,
             onWaypointMoved: onWaypointMoved,
             isSelected: selectedWaypointIndex == i,
+            onDraggingChanged: onDraggingChanged,
+            mapKey: mapKey,
           ),
         ),
       );
