@@ -112,6 +112,17 @@ class _LicensesScreenState extends State<LicensesScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(license.description),
+            if (license.licenseNumber != null && license.licenseNumber!.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                'License #: ${license.licenseNumber}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
             const SizedBox(height: 4),
             Row(
               children: [
@@ -159,6 +170,15 @@ class _LicensesScreenState extends State<LicensesScreen> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (license.imagePaths != null && license.imagePaths!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: Icon(
+                  Icons.photo,
+                  color: Colors.grey.shade600,
+                  size: 20,
+                ),
+              ),
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: () => _navigateToEditLicense(context, license),

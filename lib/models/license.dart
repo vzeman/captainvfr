@@ -4,6 +4,8 @@ class License {
   final String id;
   final String name;
   final String description;
+  final String? licenseNumber;
+  final List<String>? imagePaths;
   final DateTime issueDate;
   final DateTime expirationDate;
   final DateTime createdAt;
@@ -13,6 +15,8 @@ class License {
     String? id,
     required this.name,
     required this.description,
+    this.licenseNumber,
+    this.imagePaths,
     required this.issueDate,
     required this.expirationDate,
     DateTime? createdAt,
@@ -51,6 +55,8 @@ class License {
   License copyWith({
     String? name,
     String? description,
+    String? licenseNumber,
+    List<String>? imagePaths,
     DateTime? issueDate,
     DateTime? expirationDate,
   }) {
@@ -58,6 +64,8 @@ class License {
       id: id,
       name: name ?? this.name,
       description: description ?? this.description,
+      licenseNumber: licenseNumber ?? this.licenseNumber,
+      imagePaths: imagePaths ?? this.imagePaths,
       issueDate: issueDate ?? this.issueDate,
       expirationDate: expirationDate ?? this.expirationDate,
       createdAt: createdAt,
@@ -71,6 +79,8 @@ class License {
       'id': id,
       'name': name,
       'description': description,
+      'licenseNumber': licenseNumber,
+      'imagePaths': imagePaths,
       'issueDate': issueDate.toIso8601String(),
       'expirationDate': expirationDate.toIso8601String(),
       'createdAt': createdAt.toIso8601String(),
@@ -84,6 +94,8 @@ class License {
       id: json['id'],
       name: json['name'],
       description: json['description'],
+      licenseNumber: json['licenseNumber'],
+      imagePaths: json['imagePaths'] != null ? List<String>.from(json['imagePaths']) : null,
       issueDate: DateTime.parse(json['issueDate']),
       expirationDate: DateTime.parse(json['expirationDate']),
       createdAt: DateTime.parse(json['createdAt']),

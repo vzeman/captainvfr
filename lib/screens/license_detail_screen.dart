@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/license.dart';
 import '../services/license_service.dart';
+import '../widgets/license_photos_widget.dart';
 
 class LicenseDetailScreen extends StatefulWidget {
   final License? license;
@@ -16,6 +17,7 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
+  late TextEditingController _licenseNumberController;
   late DateTime _issueDate;
   late DateTime _expirationDate;
   bool _isSaving = false;
@@ -25,6 +27,7 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
     super.initState();
     _nameController = TextEditingController(text: widget.license?.name ?? '');
     _descriptionController = TextEditingController(text: widget.license?.description ?? '');
+    _licenseNumberController = TextEditingController(text: widget.license?.licenseNumber ?? '');
     _issueDate = widget.license?.issueDate ?? DateTime.now();
     _expirationDate = widget.license?.expirationDate ?? DateTime.now().add(const Duration(days: 365));
   }
@@ -33,6 +36,7 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
+    _licenseNumberController.dispose();
     super.dispose();
   }
 
@@ -79,6 +83,15 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
                 return null;
               },
             ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _licenseNumberController,
+              decoration: const InputDecoration(
+                labelText: 'License Number (Optional)',
+                hintText: 'e.g., UK.FCL.PPL.12345',
+                prefixIcon: Icon(Icons.confirmation_number),
+              ),
+            ),
             const SizedBox(height: 24),
             _buildDateField(
               context,
@@ -87,7 +100,7 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
               icon: Icons.calendar_today,
               onChanged: (date) => setState(() => _issueDate = date),
               firstDate: DateTime(1900),
-              lastDate: DateTime.now(),
+              lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
             ),
             const SizedBox(height: 16),
             _buildDateField(
@@ -96,11 +109,17 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
               value: _expirationDate,
               icon: Icons.event_busy,
               onChanged: (date) => setState(() => _expirationDate = date),
-              firstDate: DateTime.now(),
+              firstDate: DateTime(1900),
               lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
             ),
             const SizedBox(height: 24),
             _buildExpirationPreview(),
+            if (widget.license != null) ...[
+              const SizedBox(height: 32),
+              const Divider(),
+              LicensePhotosWidget(license: widget.license!),
+              const Divider(),
+            ],
             const SizedBox(height: 32),
             Row(
               children: [
@@ -238,6 +257,7 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
         final updatedLicense = widget.license!.copyWith(
           name: _nameController.text.trim(),
           description: _descriptionController.text.trim(),
+          licenseNumber: _licenseNumberController.text.trim().isEmpty ? null : _licenseNumberController.text.trim(),
           issueDate: _issueDate,
           expirationDate: _expirationDate,
         );
@@ -247,6 +267,7 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
         final newLicense = License(
           name: _nameController.text.trim(),
           description: _descriptionController.text.trim(),
+          licenseNumber: _licenseNumberController.text.trim().isEmpty ? null : _licenseNumberController.text.trim(),
           issueDate: _issueDate,
           expirationDate: _expirationDate,
         );

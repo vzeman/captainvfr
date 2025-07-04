@@ -15,8 +15,6 @@ import '../models/navaid.dart';
 import '../models/flight_segment.dart';
 import '../services/airport_service.dart';
 import '../services/navaid_service.dart';
-import '../services/runway_service.dart';
-import '../services/frequency_service.dart';
 import '../services/flight_service.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
@@ -31,8 +29,8 @@ import '../widgets/airport_search_delegate.dart';
 import '../widgets/metar_overlay.dart';
 import '../widgets/flight_plan_overlay.dart';
 import '../widgets/compact_flight_plan_widget.dart';
-import '../widgets/waypoint_editor_dialog.dart';
 import '../widgets/license_warning_widget.dart';
+import '../widgets/floating_waypoint_panel.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -46,8 +44,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   late final FlightService _flightService;
   late final AirportService _airportService;
   late final NavaidService _navaidService;
-  late final RunwayService _runwayService;
-  late final FrequencyService _frequencyService;
   late final LocationService _locationService;
   late final WeatherService _weatherService;
   OfflineMapService? _offlineMapService; // Make nullable to prevent LateInitializationError
@@ -69,6 +65,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   
   // Flight data panel position state
   Offset _flightDataPanelPosition = const Offset(16, 220); // Default to bottom with positive margin
+
+  // Waypoint selection state
+  int? _selectedWaypointIndex;
 
   // Location and map state
   Position? _currentPosition;
@@ -108,8 +107,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       _locationService = Provider.of<LocationService>(context, listen: false);
       _airportService = Provider.of<AirportService>(context, listen: false);
       _navaidService = Provider.of<NavaidService>(context, listen: false);
-      _runwayService = Provider.of<RunwayService>(context, listen: false);
-      _frequencyService = Provider.of<FrequencyService>(context, listen: false);
       _weatherService = Provider.of<WeatherService>(context, listen: false);
       _flightPlanService = Provider.of<FlightPlanService>(context, listen: false);
 
@@ -515,21 +512,26 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     }
   }
 
-  // Handle waypoint tap for editing
+  // Handle waypoint tap for selection
   void _onWaypointTapped(int index) {
     debugPrint('Waypoint $index tapped');
 
     final flightPlan = _flightPlanService.currentFlightPlan;
     if (flightPlan != null && index >= 0 && index < flightPlan.waypoints.length) {
-      final waypoint = flightPlan.waypoints[index];
+      setState(() {
+        _selectedWaypointIndex = _selectedWaypointIndex == index ? null : index;
+      });
+    }
+  }
 
-      showDialog(
-        context: context,
-        builder: (context) => WaypointEditorDialog(
-          waypointIndex: index,
-          waypoint: waypoint,
-        ),
-      );
+  // Handle waypoint move via drag and drop
+  void _onWaypointMoved(int index, LatLng newPosition) {
+    debugPrint('Waypoint $index moved to ${newPosition.latitude}, ${newPosition.longitude}');
+    
+    final flightPlan = _flightPlanService.currentFlightPlan;
+    if (flightPlan != null && index >= 0 && index < flightPlan.waypoints.length) {
+      // Update waypoint position
+      _flightPlanService.updateWaypointPosition(index, newPosition);
     }
   }
 
@@ -681,67 +683,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     }
   }
 
-  /// Refresh all data from network
-  Future<void> _refreshAllData() async {
-    try {
-      debugPrint('🔄 Refreshing all data...');
-
-      // Show loading indicator
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                SizedBox(width: 16),
-                Text('Refreshing all aviation data...'),
-              ],
-            ),
-            duration: Duration(seconds: 5),
-          ),
-        );
-      }
-
-      // Refresh all data services
-      await Future.wait([
-        _airportService.refreshData(),
-        _navaidService.refreshData(),
-        _runwayService.fetchRunways(forceRefresh: true),
-        _frequencyService.fetchFrequencies(forceRefresh: true),
-      ]);
-
-      // Reload current view
-      await _loadAirports();
-      if (_showNavaids) {
-        await _loadNavaids();
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('�� All data refreshed successfully'),
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-
-      debugPrint('✅ All data refreshed successfully');
-    } catch (e) {
-      debugPrint('❌ Error refreshing data: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error refreshing data: $e'),
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-    }
-  }
 
   // Load weather data for airports currently visible on the map
   Future<void> _loadWeatherForVisibleAirports() async {
@@ -958,6 +899,15 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         markers: FlightPlanOverlay.buildWaypointMarkers(
                           flightPlan,
                           _onWaypointTapped,
+                          _onWaypointMoved,
+                          _selectedWaypointIndex,
+                        ),
+                      ),
+                      // Waypoint name labels
+                      MarkerLayer(
+                        markers: FlightPlanOverlay.buildWaypointLabels(
+                          flightPlan,
+                          _selectedWaypointIndex,
                         ),
                       ),
                       // Segment labels (distance, heading, time)
@@ -1358,6 +1308,18 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                       debugPrint('Flight planning closed from compact widget');
                     },
                   ),
+                  // Floating waypoint panel for selected waypoint
+                  if (_selectedWaypointIndex != null && 
+                      flightPlanService.currentFlightPlan != null &&
+                      _selectedWaypointIndex! < flightPlanService.currentFlightPlan!.waypoints.length)
+                    FloatingWaypointPanel(
+                      waypointIndex: _selectedWaypointIndex!,
+                      onClose: () {
+                        setState(() {
+                          _selectedWaypointIndex = null;
+                        });
+                      },
+                    ),
                 ],
               );
             },

@@ -59,6 +59,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
     try {
       // Initialize services if needed
       await _cacheService.initialize();
+      await _weatherService.initialize();
       
       // Get map cache statistics
       final mapStats = await _offlineMapService.getCacheStatistics();
@@ -92,7 +93,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       final navaidsBox = await Hive.openBox<Map>('navaids_cache');
       final runwaysBox = await Hive.openBox<Map>('runways_cache');
       final frequenciesBox = await Hive.openBox<Map>('frequencies_cache');
-      final weatherBox = await Hive.openBox<String>('weather_cache');
+      // Weather stats are now retrieved directly from WeatherService
       final metadataBox = await Hive.openBox('cache_metadata');
       
       // Get counts
@@ -116,10 +117,12 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         'lastFetch': metadataBox.get('frequencies_last_fetch'),
       };
       
+      // Get weather statistics from WeatherService
+      final weatherStats = _weatherService.getCacheStatistics();
       stats['weather'] = {
-        'metars': weatherBox.values.where((v) => v.contains('METAR')).length,
-        'tafs': weatherBox.values.where((v) => v.contains('TAF')).length,
-        'lastFetch': metadataBox.get('weather_last_fetch'),
+        'metars': weatherStats['metars'] ?? 0,
+        'tafs': weatherStats['tafs'] ?? 0,
+        'lastFetch': weatherStats['lastFetch']?.toIso8601String(),
       };
       
     } catch (e) {
@@ -186,6 +189,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         _navaidService.refreshData(),
         _runwayService.fetchRunways(forceRefresh: true),
         _frequencyService.fetchFrequencies(forceRefresh: true),
+        _weatherService.forceReload(),
       ]);
 
       // Reload cache statistics
@@ -210,6 +214,68 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
             content: Text('Error refreshing data: $e'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isRefreshing = false;
+      });
+    }
+  }
+
+  Future<void> _refreshWeatherData() async {
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    try {
+      debugPrint('Refreshing weather data...');
+
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 16),
+                Text('Refreshing weather data...'),
+              ],
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+
+      // Refresh weather data
+      await _weatherService.forceReload();
+
+      // Reload cache statistics
+      await _loadAllCacheStats();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Weather data refreshed successfully'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      debugPrint('Weather data refreshed successfully');
+    } catch (e) {
+      debugPrint('Error refreshing weather data: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error refreshing weather data: $e'),
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -597,6 +663,11 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.refresh, color: Colors.blue),
+                                  onPressed: _isRefreshing ? null : () => _refreshWeatherData(),
+                                  tooltip: 'Refresh weather data',
                                 ),
                                 IconButton(
                                   icon: const Icon(Icons.delete_outline, color: Colors.red),
