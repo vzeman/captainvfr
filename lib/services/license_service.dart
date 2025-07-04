@@ -2,11 +2,13 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/license.dart';
+import './media_service.dart';
 
 class LicenseService extends ChangeNotifier {
   static const String _storageKey = 'pilot_licenses';
   List<License> _licenses = [];
   bool _isLoading = false;
+  final MediaService _mediaService = MediaService();
 
   List<License> get licenses => List.unmodifiable(_licenses);
   bool get isLoading => _isLoading;
@@ -99,6 +101,20 @@ class LicenseService extends ChangeNotifier {
 
   // Delete a license
   Future<void> deleteLicense(String id) async {
+    // Find the license to delete
+    final licenseToDelete = _licenses.firstWhere((license) => license.id == id);
+    
+    // Delete associated images
+    if (licenseToDelete.imagePaths != null) {
+      for (final imagePath in licenseToDelete.imagePaths!) {
+        try {
+          await _mediaService.deleteLicensePhoto(imagePath);
+        } catch (e) {
+          debugPrint('Error deleting license photo: $e');
+        }
+      }
+    }
+    
     _licenses.removeWhere((license) => license.id == id);
     await _saveLicenses();
     notifyListeners();

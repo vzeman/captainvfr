@@ -368,6 +368,15 @@ class WeatherService {
   }
 
   DateTime? get lastFetch => _lastFetch;
+  
+  /// Get cache statistics
+  Map<String, dynamic> getCacheStatistics() {
+    return {
+      'metars': _metarCache.length,
+      'tafs': _tafCache.length,
+      'lastFetch': _lastFetch,
+    };
+  }
 
   /// Legacy method for backward compatibility
   Future<String?> fetchMetar(String icaoCode) async {

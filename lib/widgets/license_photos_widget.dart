@@ -1,29 +1,30 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../models/aircraft.dart';
+import '../models/license.dart';
 import '../services/media_service.dart';
-import '../services/aircraft_settings_service.dart';
+import '../services/license_service.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
-class AircraftPhotosWidget extends StatefulWidget {
-  final Aircraft aircraft;
+class LicensePhotosWidget extends StatefulWidget {
+  final License license;
   
-  const AircraftPhotosWidget({
+  const LicensePhotosWidget({
     super.key,
-    required this.aircraft,
+    required this.license,
   });
 
   @override
-  State<AircraftPhotosWidget> createState() => _AircraftPhotosWidgetState();
+  State<LicensePhotosWidget> createState() => _LicensePhotosWidgetState();
 }
 
-class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
+class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
   final MediaService _mediaService = MediaService();
   bool _isLoading = false;
   
   @override
   Widget build(BuildContext context) {
-    final photos = widget.aircraft.photosPaths ?? [];
+    final photos = widget.license.imagePaths ?? [];
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -34,7 +35,7 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Photos',
+                'License Images',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -79,7 +80,7 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'No photos yet',
+                    'No images yet',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.grey,
@@ -87,7 +88,7 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Add photos from gallery or take new ones',
+                    'Add photos of your license',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey,
@@ -213,15 +214,19 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
     setState(() => _isLoading = true);
     
     try {
-      final photoPath = await _mediaService.pickImageFromGallery();
+      final photoPath = await _mediaService.pickLicenseImageFromGallery();
       if (photoPath != null) {
-        await _addPhotoToAircraft(photoPath);
+        await _addPhotoToLicense(photoPath);
+      }
+    } on PermissionException catch (e) {
+      if (mounted) {
+        _showPermissionError(e);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error picking image: $e'),
+            content: Text('Error picking image: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -237,15 +242,19 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
     setState(() => _isLoading = true);
     
     try {
-      final photoPath = await _mediaService.takePhoto();
+      final photoPath = await _mediaService.takeLicensePhoto();
       if (photoPath != null) {
-        await _addPhotoToAircraft(photoPath);
+        await _addPhotoToLicense(photoPath);
+      }
+    } on PermissionException catch (e) {
+      if (mounted) {
+        _showPermissionError(e);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error taking photo: $e'),
+            content: Text('Error taking photo: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -257,17 +266,16 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
     }
   }
   
-  Future<void> _addPhotoToAircraft(String photoPath) async {
-    final aircraftService = context.read<AircraftSettingsService>();
-    final updatedPhotos = List<String>.from(widget.aircraft.photosPaths ?? []);
+  Future<void> _addPhotoToLicense(String photoPath) async {
+    final licenseService = context.read<LicenseService>();
+    final updatedPhotos = List<String>.from(widget.license.imagePaths ?? []);
     updatedPhotos.add(photoPath);
     
-    final updatedAircraft = widget.aircraft.copyWith(
-      photosPaths: updatedPhotos,
-      updatedAt: DateTime.now(),
+    final updatedLicense = widget.license.copyWith(
+      imagePaths: updatedPhotos,
     );
     
-    await aircraftService.updateAircraft(updatedAircraft);
+    await licenseService.updateLicense(widget.license.id, updatedLicense);
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -301,20 +309,19 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
       
       try {
         // Delete from storage
-        await _mediaService.deletePhoto(photoPath);
+        await _mediaService.deleteLicensePhoto(photoPath);
         
-        // Update aircraft
+        // Update license
         if (!mounted) return;
-        final aircraftService = context.read<AircraftSettingsService>();
-        final updatedPhotos = List<String>.from(widget.aircraft.photosPaths ?? []);
+        final licenseService = context.read<LicenseService>();
+        final updatedPhotos = List<String>.from(widget.license.imagePaths ?? []);
         updatedPhotos.remove(photoPath);
         
-        final updatedAircraft = widget.aircraft.copyWith(
-          photosPaths: updatedPhotos,
-          updatedAt: DateTime.now(),
+        final updatedLicense = widget.license.copyWith(
+          imagePaths: updatedPhotos,
         );
         
-        await aircraftService.updateAircraft(updatedAircraft);
+        await licenseService.updateLicense(widget.license.id, updatedLicense);
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -342,22 +349,46 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PhotoViewScreen(
-          photos: widget.aircraft.photosPaths ?? [],
+        builder: (context) => LicensePhotoViewScreen(
+          photos: widget.license.imagePaths ?? [],
           initialIndex: index,
           mediaService: _mediaService,
         ),
       ),
     );
   }
+  
+  void _showPermissionError(PermissionException e) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(e.title),
+        content: Text(e.message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          if (e.isPermanentlyDenied)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                openAppSettings();
+              },
+              child: const Text('Open Settings'),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
-class PhotoViewScreen extends StatelessWidget {
+class LicensePhotoViewScreen extends StatelessWidget {
   final List<String> photos;
   final int initialIndex;
   final MediaService mediaService;
   
-  const PhotoViewScreen({
+  const LicensePhotoViewScreen({
     super.key,
     required this.photos,
     required this.initialIndex,
@@ -404,5 +435,4 @@ class PhotoViewScreen extends StatelessWidget {
       ),
     );
   }
-  
 }

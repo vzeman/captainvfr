@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:math' as math;
 import '../models/flight_plan.dart';
+import 'draggable_waypoint_marker.dart';
 
 class FlightPlanOverlay {
   /// Build flight path polylines for the entire plan.
@@ -12,8 +13,8 @@ class FlightPlanOverlay {
     return [
       Polyline(
         points: points,
-        strokeWidth: 3.0,
-        color: Colors.grey.shade400,
+        strokeWidth: 5.0,
+        color: Colors.green.shade600,
       ),
     ];
   }
@@ -34,14 +35,16 @@ class FlightPlanOverlay {
     final a = waypoints[nextIdx - 1].latLng;
     final b = waypoints[nextIdx].latLng;
     return [
-      Polyline(points: [a, b], strokeWidth: 4.0, color: Colors.blueAccent),
+      Polyline(points: [a, b], strokeWidth: 6.0, color: Colors.blue),
     ];
   }
 
-  // Build interactive waypoint markers
+  // Build interactive waypoint markers with drag support
   static List<Marker> buildWaypointMarkers(
     FlightPlan flightPlan,
     Function(int index) onWaypointTapped,
+    Function(int index, LatLng newPosition) onWaypointMoved,
+    int? selectedWaypointIndex,
   ) {
     List<Marker> markers = [];
 
@@ -51,34 +54,14 @@ class FlightPlanOverlay {
       markers.add(
         Marker(
           point: waypoint.latLng,
-          width: 20,
-          height: 20,
-          child: GestureDetector(
-            onTap: () => onWaypointTapped(i),
-            child: Container(
-              decoration: BoxDecoration(
-                color: _getWaypointColor(waypoint.type),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Text(
-                  '${i + 1}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ),
+          width: 30,
+          height: 30,
+          child: DraggableWaypointMarker(
+            waypointIndex: i,
+            waypoint: waypoint,
+            onWaypointTapped: onWaypointTapped,
+            onWaypointMoved: onWaypointMoved,
+            isSelected: selectedWaypointIndex == i,
           ),
         ),
       );
@@ -88,11 +71,12 @@ class FlightPlanOverlay {
   }
 
   // Build waypoint name labels
-  static List<Marker> buildWaypointLabels(FlightPlan flightPlan) {
+  static List<Marker> buildWaypointLabels(FlightPlan flightPlan, int? selectedWaypointIndex) {
     List<Marker> markers = [];
 
     for (int i = 0; i < flightPlan.waypoints.length; i++) {
       final waypoint = flightPlan.waypoints[i];
+      final isSelected = selectedWaypointIndex == i;
       
       markers.add(
         Marker(
@@ -104,14 +88,19 @@ class FlightPlanOverlay {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.7),
+                color: isSelected 
+                    ? Colors.yellow.withValues(alpha: 0.9)
+                    : Colors.black.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(4),
+                border: isSelected 
+                    ? Border.all(color: Colors.orange, width: 1)
+                    : null,
               ),
               child: Text(
                 waypoint.name ?? 'WP${i + 1}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
+                style: TextStyle(
+                  color: isSelected ? Colors.black : Colors.white,
+                  fontSize: isSelected ? 11 : 10,
                   fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
@@ -189,19 +178,6 @@ class FlightPlanOverlay {
     return markers;
   }
 
-  // Get waypoint color based on type
-  static Color _getWaypointColor(WaypointType type) {
-    switch (type) {
-      case WaypointType.airport:
-        return Colors.green;
-      case WaypointType.navaid:
-        return Colors.purple;
-      case WaypointType.fix:
-        return Colors.orange;
-      default:
-        return Colors.blue;
-    }
-  }
 }
 
 // Widget that shows/hides label based on rendered segment length

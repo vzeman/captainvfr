@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.captainvfr.captainvfr"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 34  // Android 14 for latest compatibility
     ndkVersion = "26.3.11579264"
 
     compileOptions {
@@ -24,8 +24,8 @@ android {
         applicationId = "com.captainvfr.captainvfr"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        minSdk = 21  // Android 5.0 minimum
+        targetSdk = 34  // Android 14 target for latest features
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

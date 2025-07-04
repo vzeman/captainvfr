@@ -16,7 +16,10 @@ import 'services/aircraft_settings_service.dart';
 import 'services/checklist_service.dart';
 import 'services/license_service.dart';
 import 'services/connectivity_service.dart';
+import 'services/platform_services.dart';
+import 'services/vibration_alert_service.dart';
 import 'widgets/connectivity_banner.dart';
+import 'widgets/loading_screen.dart';
 import 'adapters/latlng_adapter.dart';
 import 'models/manufacturer.dart';
 import 'models/model.dart';
@@ -33,6 +36,12 @@ import 'models/flight_plan.dart';
 void main() async {
   // Ensure Flutter binding is initialized
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Show loading screen immediately
+  runApp(const MaterialApp(
+    debugShowCheckedModeBanner: false,
+    home: LoadingScreen(),
+  ));
   
   try {
     // Initialize Hive and register adapters
@@ -72,6 +81,12 @@ void main() async {
     await connectivityService.initialize();
     connectivityService.startPeriodicChecks();
     debugPrint('✅ Connectivity service initialized');
+    
+    // Log network diagnostics for Android 12+ debugging
+    await PlatformServices.logNetworkState();
+    
+    // Initialize vibration alert service
+    await VibrationAlertService.initialize();
 
     // Initialize services with error handling
     final locationService = LocationService();
@@ -234,6 +249,12 @@ void main() async {
 /// Run the app with minimal functionality when full initialization fails
 void _runMinimalApp() {
   debugPrint('🚀 Starting app with minimal functionality...');
+
+  // Show loading screen first
+  runApp(const MaterialApp(
+    debugShowCheckedModeBanner: false,
+    home: LoadingScreen(),
+  ));
 
   // Create minimal services
   final connectivityService = ConnectivityService();
@@ -417,12 +438,42 @@ Future<void> _clearHiveBoxes() async {
   }
 }
 
-class CaptainVFRApp extends StatelessWidget {
+class CaptainVFRApp extends StatefulWidget {
   const CaptainVFRApp({super.key});
+
+  @override
+  State<CaptainVFRApp> createState() => _CaptainVFRAppState();
+}
+
+class _CaptainVFRAppState extends State<CaptainVFRApp> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Navigate to main screen after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _navigatorKey.currentState?.pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => const ConnectivityBanner(
+            child: MapScreen(),
+          ),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 500),
+        ),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'CaptainVFR',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -465,9 +516,7 @@ class CaptainVFRApp extends StatelessWidget {
         ),
       ),
       themeMode: ThemeMode.system,
-      home: const ConnectivityBanner(
-        child: MapScreen(),
-      ),
+      home: const LoadingScreen(),
     );
   }
 }
