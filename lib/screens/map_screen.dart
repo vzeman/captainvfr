@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' show LatLng;
@@ -504,7 +505,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     }
 
     debugPrint('🌍 _loadAirspaces: Loading airspaces from cache...');
-    debugPrint('🌍 API key length: ${apiKey.length}');
 
     try {
       // Always load from cache only - never from API during map usage
@@ -512,7 +512,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       
       if (airspaces.isEmpty) {
         debugPrint('🌍 No cached airspaces available');
-        debugPrint('🌍 Consider refreshing airspaces in Offline Data settings');
         
         // Show a helpful message to the user
         if (mounted) {
@@ -552,6 +551,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     }
 
     debugPrint('📍 _loadReportingPoints: Loading reporting points from cache...');
+    
+    // Add iOS-specific debugging
+    if (Platform.isIOS) {
+      debugPrint('🍎 iOS: Loading reporting points on ${Platform.operatingSystem} ${Platform.operatingSystemVersion}');
+    }
 
     try {
       // Always load from cache only - never from API during map usage
@@ -559,17 +563,32 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       
       if (reportingPoints.isEmpty) {
         debugPrint('📍 No cached reporting points available');
+        if (Platform.isIOS) {
+          debugPrint('🍎 iOS: Cache returned empty list - checking if service is initialized...');
+          if (!openAIPService.hasApiKey) {
+            debugPrint('🍎 iOS: No API key set - this might be why points are not loading');
+          }
+        }
       } else {
         debugPrint('📍 Loaded ${reportingPoints.length} reporting points from cache');
+        if (Platform.isIOS && reportingPoints.isNotEmpty) {
+          debugPrint('🍎 iOS: First point - ${reportingPoints.first.name} at ${reportingPoints.first.position}');
+        }
       }
 
       if (mounted) {
         setState(() {
           _reportingPoints = reportingPoints;
+          if (Platform.isIOS) {
+            debugPrint('🍎 iOS: setState completed - _reportingPoints now has ${_reportingPoints.length} items');
+          }
         });
       }
     } catch (e) {
       debugPrint('❌ Error loading reporting points: $e');
+      if (Platform.isIOS) {
+        debugPrint('🍎 iOS: Stack trace: ${StackTrace.current}');
+      }
     }
   }
 

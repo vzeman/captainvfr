@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
+import 'dart:io' show Platform;
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -44,15 +45,59 @@ class OpenAIPService {
   
   Future<void> _initializeReportingPoints() async {
     try {
+      // Add iOS-specific debugging
+      if (Platform.isIOS) {
+        developer.log('🍎 iOS: Starting reporting points initialization...');
+      }
+      
       final cachedPoints = await getCachedReportingPoints();
+      developer.log('📍 Initial cache check: ${cachedPoints.length} reporting points found');
+      
       if (cachedPoints.isEmpty) {
         developer.log('📍 No cached reporting points found, loading all from API...');
         await fetchAllReportingPoints();
+        
+        // Verify data was actually saved on iOS
+        if (Platform.isIOS) {
+          // Wait a moment for iOS file system
+          await Future.delayed(const Duration(milliseconds: 500));
+          
+          final verifyPoints = await getCachedReportingPoints();
+          developer.log('🍎 iOS: Verification after fetch - ${verifyPoints.length} points in cache');
+          if (verifyPoints.isEmpty) {
+            developer.log('🍎 iOS: WARNING - Data not persisted after fetch!');
+            developer.log('🍎 iOS: Attempting to diagnose issue...');
+            
+            // Try to fetch a small batch to test
+            try {
+              final testPoints = await _fetchReportingPointsRaw(
+                bbox: [0, 0, 10, 10],
+                limit: 10,
+              );
+              developer.log('🍎 iOS: Test fetch returned ${testPoints.length} points');
+              if (testPoints.isNotEmpty) {
+                await _cacheReportingPoints(testPoints);
+                final testVerify = await getCachedReportingPoints();
+                developer.log('🍎 iOS: After test cache: ${testVerify.length} points');
+              }
+            } catch (testError) {
+              developer.log('🍎 iOS: Test fetch error: $testError');
+            }
+          }
+        }
       } else {
         developer.log('✅ Found ${cachedPoints.length} cached reporting points, skipping API load');
+        
+        // On iOS, log additional info about the cached data
+        if (Platform.isIOS && cachedPoints.isNotEmpty) {
+          developer.log('🍎 iOS: Sample point - ID: ${cachedPoints.first.id}, Name: ${cachedPoints.first.name}');
+        }
       }
     } catch (e) {
       developer.log('❌ Error initializing reporting points: $e');
+      if (Platform.isIOS) {
+        developer.log('🍎 iOS: Stack trace: ${StackTrace.current}');
+      }
     }
   }
   
@@ -494,6 +539,16 @@ class OpenAIPService {
         final data = json.decode(response.body);
         final List<dynamic> items = data['items'] ?? data['data'] ?? data ?? [];
         
+        // Log pagination info if available
+        if (data is Map) {
+          final total = data['total'] ?? data['totalCount'] ?? data['count'];
+          final currentPage = data['page'] ?? data['currentPage'];
+          final totalPages = data['pages'] ?? data['totalPages'];
+          if (total != null) {
+            developer.log('📊 API Response - Total: $total, Page: $currentPage/$totalPages');
+          }
+        }
+        
         final reportingPoints = items
             .map((json) => ReportingPoint.fromJson(json))
             .toList();
@@ -599,14 +654,22 @@ class OpenAIPService {
             
             if (points.isEmpty) {
               hasMore = false;
+              developer.log('🔍 Tile ${completedTiles + 1}: No more pages after page ${page - 1}');
             } else {
               allPoints.addAll(points);
               tilePointsList.addAll(points);
               tilePoints += points.length;
-              page++;
+              developer.log('📊 Tile ${completedTiles + 1}, Page $page: Got ${points.length} points');
               
-              // Small delay between pages
-              await Future.delayed(const Duration(milliseconds: 200));
+              // Check if we got less than limit, indicating last page
+              if (points.length < 1000) {
+                hasMore = false;
+                developer.log('🏁 Tile ${completedTiles + 1}: Last page reached (got ${points.length} < 1000)');
+              } else {
+                page++;
+                // Small delay between pages
+                await Future.delayed(const Duration(milliseconds: 200));
+              }
             }
           }
           
@@ -632,6 +695,16 @@ class OpenAIPService {
     }
     
     developer.log('✅ Completed fetching reporting points: ${allPoints.length} total from $completedTiles tiles');
+    
+    // Final cache verification
+    final cachedCount = await getCachedReportingPoints();
+    developer.log('📊 Final verification - Points fetched: ${allPoints.length}, Points in cache: ${cachedCount.length}');
+    
+    // Check for duplicates
+    final uniqueIds = allPoints.map((p) => p.id).toSet();
+    if (uniqueIds.length != allPoints.length) {
+      developer.log('⚠️ Found ${allPoints.length - uniqueIds.length} duplicate IDs in fetched data!');
+    }
     
     return allPoints;
   }
