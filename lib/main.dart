@@ -52,15 +52,32 @@ void main() async {
     // Initialize Hive and register adapters
     await Hive.initFlutter();
     
-    // Migration: Clear airspaces and reporting points caches due to typeId change
+    // Migration: One-time clear of old cache format
     try {
-      if (await Hive.boxExists('airspaces')) {
-        await Hive.deleteBoxFromDisk('airspaces');
-        debugPrint('🗑️ Cleared airspaces cache for migration');
-      }
-      if (await Hive.boxExists('reportingPoints')) {
-        await Hive.deleteBoxFromDisk('reportingPoints');
-        debugPrint('🗑️ Cleared reporting points cache for migration');
+      // Open or create migrations tracking box
+      final migrationBox = await Hive.openBox('migrations');
+      
+      // Check if we've already done this migration
+      final hasMigratedCaches = migrationBox.get('cache_migration_v1', defaultValue: false);
+      
+      if (!hasMigratedCaches) {
+        debugPrint('🔄 Running one-time cache migration...');
+        
+        // Clear old format boxes if they exist
+        if (await Hive.boxExists('airspaces')) {
+          await Hive.deleteBoxFromDisk('airspaces');
+          debugPrint('🗑️ Cleared old airspaces cache');
+        }
+        if (await Hive.boxExists('reportingPoints')) {
+          await Hive.deleteBoxFromDisk('reportingPoints');
+          debugPrint('🗑️ Cleared old reportingPoints cache');
+        }
+        
+        // Mark migration as complete
+        await migrationBox.put('cache_migration_v1', true);
+        debugPrint('✅ Cache migration completed');
+      } else {
+        debugPrint('✅ Cache migration already completed in previous run');
       }
     } catch (e) {
       debugPrint('⚠️ Error during cache migration: $e');

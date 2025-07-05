@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'dart:io' show Platform;
 
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:latlong2/latlong.dart';
@@ -577,6 +578,13 @@ class CacheService {
 
       // Update last fetch timestamp
       await _metadataBox.put(_reportingPointsLastFetchKey, DateTime.now().toIso8601String());
+      
+      // iOS-specific: Force flush to disk
+      if (Platform.isIOS) {
+        await _reportingPointsBox.flush();
+        await _metadataBox.flush();
+        developer.log('🍎 iOS: Forced flush after caching ${reportingPoints.length} reporting points');
+      }
 
       developer.log('✅ Cached ${reportingPoints.length} reporting points');
     } catch (e) {
@@ -612,6 +620,13 @@ class CacheService {
 
       // Update last fetch timestamp
       await _metadataBox.put(_reportingPointsLastFetchKey, DateTime.now().toIso8601String());
+      
+      // iOS-specific: Force flush to disk
+      if (Platform.isIOS) {
+        await _reportingPointsBox.flush();
+        await _metadataBox.flush();
+        developer.log('🍎 iOS: Forced flush of reporting points to disk');
+      }
 
       developer.log('✅ Added $cached new reporting points, updated $updated existing ones');
       developer.log('📊 Final box status: isOpen=${_reportingPointsBox.isOpen}, length=${_reportingPointsBox.length}');
@@ -627,6 +642,14 @@ class CacheService {
     await _ensureInitialized();
 
     try {
+      // Add iOS-specific debugging
+      if (Platform.isIOS) {
+        developer.log('🍎 iOS: Getting reporting points - Box isOpen: ${_reportingPointsBox.isOpen}, isEmpty: ${_reportingPointsBox.isEmpty}, length: ${_reportingPointsBox.length}');
+        if (_reportingPointsBox.path != null) {
+          developer.log('🍎 iOS: Box path: ${_reportingPointsBox.path}');
+        }
+      }
+      
       final reportingPoints = <ReportingPoint>[];
 
       for (final key in _reportingPointsBox.keys) {
@@ -636,10 +659,17 @@ class CacheService {
           reportingPoints.add(point);
         }
       }
+      
+      if (Platform.isIOS && reportingPoints.isEmpty && _reportingPointsBox.isNotEmpty) {
+        developer.log('🍎 iOS: WARNING - Box has ${_reportingPointsBox.length} entries but parsed 0 points!');
+      }
 
       return reportingPoints;
     } catch (e) {
       developer.log('❌ Error loading cached reporting points: $e');
+      if (Platform.isIOS) {
+        developer.log('🍎 iOS: Stack trace: ${StackTrace.current}');
+      }
       return [];
     }
   }

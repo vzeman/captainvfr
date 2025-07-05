@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -65,6 +66,10 @@ class OptimizedMarkerLayer extends StatelessWidget {
     }
 
     debugPrint('OptimizedMarkerLayer: ${visibleMarkers.length} of ${markerPositions.length} markers visible');
+    
+    if (Platform.isIOS && visibleMarkers.isNotEmpty) {
+      debugPrint('🍎 iOS: Rendering ${visibleMarkers.length} markers in MarkerLayer');
+    }
 
     return MarkerLayer(markers: visibleMarkers);
   }
@@ -94,7 +99,20 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
     }
     
     final currentZoom = mapController.camera.zoom;
-    final positions = airports.map((a) => a.position).toList();
+    
+    // Filter airports based on zoom level
+    // Hide small airports when zoomed out (similar to navaids at zoom < 9)
+    List<Airport> visibleAirports = airports;
+    if (currentZoom < 9) {
+      // Only show medium and large airports when zoomed out
+      visibleAirports = airports.where((a) => 
+        a.type != 'small_airport' && 
+        a.type != 'heliport'
+      ).toList();
+      debugPrint('🏛️ Hiding small airports at zoom $currentZoom - showing ${visibleAirports.length} of ${airports.length} airports');
+    }
+    
+    final positions = visibleAirports.map((a) => a.position).toList();
     
     // Calculate base marker size based on zoom level
     final baseMarkerSize = currentZoom >= 12 ? 40.0 : 28.0;
@@ -117,7 +135,7 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
       markerWidth: maxMarkerSize,
       markerHeight: maxMarkerSize,
       markerBuilder: (index, position) {
-        final airport = airports[index];
+        final airport = visibleAirports[index];
         // Small airports get 25% smaller markers (75% of base size)
         final airportMarkerSize = airport.type == 'small_airport' 
             ? baseMarkerSize * 0.75 
@@ -213,9 +231,19 @@ class OptimizedReportingPointsLayer extends StatelessWidget {
     final currentZoom = mapController.camera.zoom;
     debugPrint('📍 OptimizedReportingPointsLayer - points: ${reportingPoints.length}, zoom: $currentZoom');
     
+    // iOS-specific debugging
+    if (Platform.isIOS) {
+      debugPrint('🍎 iOS: OptimizedReportingPointsLayer rendering with ${reportingPoints.length} points');
+      if (reportingPoints.isNotEmpty) {
+        debugPrint('🍎 iOS: Sample point - ${reportingPoints.first.name} at ${reportingPoints.first.position}');
+      }
+    }
+    
     // Only show reporting points when zoomed in enough
-    if (currentZoom < 9) {
-      debugPrint('📍 OptimizedReportingPointsLayer - Not showing: zoom $currentZoom < 9');
+    // Temporarily lower threshold on iOS for debugging
+    final zoomThreshold = Platform.isIOS ? 7 : 9;
+    if (currentZoom < zoomThreshold) {
+      debugPrint('📍 OptimizedReportingPointsLayer - Not showing: zoom $currentZoom < $zoomThreshold');
       return const SizedBox.shrink();
     }
     
