@@ -8,6 +8,7 @@ class AirportMarker extends StatelessWidget {
   final double size;
   final bool showLabel;
   final bool isSelected;
+  final double mapZoom;
 
   const AirportMarker({
     super.key,
@@ -16,6 +17,7 @@ class AirportMarker extends StatelessWidget {
     this.size = 24.0,
     this.showLabel = true,
     this.isSelected = false,
+    this.mapZoom = 10,
   });
   
 
@@ -29,8 +31,9 @@ class AirportMarker extends StatelessWidget {
     
     // Removed debug prints for performance
     
-    // The visual size of the marker
-    const visualSize = 32.0;
+    // The visual size of the marker based on zoom
+    // Use the size parameter which is already adjusted for zoom
+    final visualSize = size;
     
     // Weather indicator dot size
     final weatherDotSize = visualSize * 0.3;
@@ -158,6 +161,7 @@ class AirportMarkersLayer extends StatelessWidget {
   final ValueChanged<Airport>? onAirportTap;
   final bool showLabels;
   final double markerSize;
+  final double mapZoom;
 
   const AirportMarkersLayer({
     super.key,
@@ -165,27 +169,36 @@ class AirportMarkersLayer extends StatelessWidget {
     this.onAirportTap,
     this.showLabels = true,
     this.markerSize = 24.0,
+    this.mapZoom = 10,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Fixed size for markers
-    const markerSize = 40.0;
+    // Base marker size based on zoom
+    final baseMarkerSize = mapZoom >= 12 ? 40.0 : 28.0;
     
     final markers = airports
         .map(
-          (airport) => Marker(
-            width: markerSize,
-            height: markerSize,
-            point: airport.position,
-            child: AirportMarker(
-              airport: airport,
-              onTap: onAirportTap != null ? () => onAirportTap!(airport) : null,
-              size: markerSize,
-              showLabel: showLabels,
-              isSelected: false, // Default to false, can be set based on selection state
-            ),
-          ),
+          (airport) {
+            // Small airports get 25% smaller markers (75% of base size)
+            final airportMarkerSize = airport.type == 'small_airport' 
+                ? baseMarkerSize * 0.75 
+                : baseMarkerSize;
+            
+            return Marker(
+              width: airportMarkerSize,
+              height: airportMarkerSize,
+              point: airport.position,
+              child: AirportMarker(
+                airport: airport,
+                onTap: onAirportTap != null ? () => onAirportTap!(airport) : null,
+                size: airportMarkerSize,
+                showLabel: showLabels,
+                isSelected: false, // Default to false, can be set based on selection state
+                mapZoom: mapZoom,
+              ),
+            );
+          },
         )
         .toList();
 

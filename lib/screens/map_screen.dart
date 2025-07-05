@@ -34,7 +34,6 @@ import '../widgets/license_warning_widget.dart';
 import '../widgets/floating_waypoint_panel.dart';
 import '../widgets/airspaces_overlay.dart';
 import '../widgets/airspace_flight_info.dart';
-import '../widgets/reporting_points_overlay.dart';
 import '../services/openaip_service.dart';
 import '../models/airspace.dart';
 import '../models/reporting_point.dart';
@@ -770,10 +769,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
-                            'ACTIVE',
+                            'MY ALTITUDE',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 10,
+                              fontSize: 8,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -1413,13 +1412,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   onAirspaceTap: _onAirspaceSelected,
                   currentAltitude: _currentPosition?.altitude ?? 0,
                 ),
-              // Reporting points overlay
+              // Reporting points overlay (optimized)
               if (_showAirspaces && _reportingPoints.isNotEmpty)
-                ReportingPointsOverlay(
+                OptimizedReportingPointsLayer(
                   reportingPoints: _reportingPoints,
-                  showReportingPointsLayer: _showAirspaces,
                   onReportingPointTap: _onReportingPointSelected,
-                  mapZoom: _mapController.camera.zoom,
                 ),
               // Airport markers with tap handling (optimized)
               OptimizedAirportMarkersLayer(
