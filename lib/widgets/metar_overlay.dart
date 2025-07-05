@@ -56,12 +56,13 @@ class MetarOverlay extends StatelessWidget {
 
     return Marker(
       point: airport.position,
-      width: 120,
-      height: 120,
+      width: 80,
+      height: 80,
       child: GestureDetector(
         onTap: () => onAirportTap?.call(airport),
         child: Stack(
           alignment: Alignment.center,
+          clipBehavior: Clip.none,
           children: [
             // Weather condition indicator (background circle)
             Container(
@@ -83,7 +84,7 @@ class MetarOverlay extends StatelessWidget {
               Transform.rotate(
                 angle: (windData.direction - 90) * math.pi / 180, // Rotate to point in wind direction
                 child: CustomPaint(
-                  size: const Size(60, 60),
+                  size: const Size(50, 50),
                   painter: WindArrowPainter(
                     windSpeed: windData.speed,
                     gustSpeed: windData.gust,
@@ -93,18 +94,18 @@ class MetarOverlay extends StatelessWidget {
             // Wind speed text
             if (windData != null)
               Positioned(
-                bottom: 0,
+                bottom: 20,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                   decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(4),
+                    color: Colors.black.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(3),
                   ),
                   child: Text(
-                    '${windData.speed}${windData.gust != null ? 'G${windData.gust}' : ''}',
+                    '${windData.speed}${windData.gust != null ? 'G${windData.gust}' : ''}kt',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

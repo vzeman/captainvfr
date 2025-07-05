@@ -7,6 +7,7 @@ class NavaidMarker extends StatelessWidget {
   final VoidCallback? onTap;
   final double size;
   final bool isSelected;
+  final double mapZoom;
 
   const NavaidMarker({
     super.key,
@@ -14,6 +15,7 @@ class NavaidMarker extends StatelessWidget {
     this.onTap,
     this.size = 20.0,
     this.isSelected = false,
+    this.mapZoom = 10,
   });
 
   @override
@@ -23,8 +25,9 @@ class NavaidMarker extends StatelessWidget {
     final borderColor = isSelected ? Colors.amber : color;
     final borderWidth = isSelected ? 2.5 : 1.5;
 
-    // Visual size of the marker
-    const visualSize = 24.0;
+    // Visual size of the marker based on zoom
+    // Use the size parameter which is already adjusted for zoom
+    final visualSize = size;
 
     return GestureDetector(
       onTap: onTap,
@@ -119,26 +122,37 @@ class NavaidMarkersLayer extends StatelessWidget {
   final List<Navaid> navaids;
   final ValueChanged<Navaid>? onNavaidTap;
   final double markerSize;
+  final double mapZoom;
 
   const NavaidMarkersLayer({
     super.key,
     required this.navaids,
     this.onNavaidTap,
     this.markerSize = 20.0,
+    this.mapZoom = 10,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Only show navaids when zoomed in enough (same threshold as reporting points)
+    if (mapZoom < 9) {
+      return const SizedBox.shrink();
+    }
+    
+    // Dynamic size based on zoom - same as reporting points
+    final dynamicMarkerSize = mapZoom >= 12 ? 20.0 : 14.0;
+    
     return MarkerLayer(
       markers: navaids.map((navaid) {
         return Marker(
           point: navaid.position,
-          width: markerSize + 4, // Slightly larger for touch area
-          height: markerSize + 4,
+          width: dynamicMarkerSize + 4, // Slightly larger for touch area
+          height: dynamicMarkerSize + 4,
           child: NavaidMarker(
             navaid: navaid,
-            size: markerSize,
+            size: dynamicMarkerSize,
             onTap: () => onNavaidTap?.call(navaid),
+            mapZoom: mapZoom,
           ),
         );
       }).toList(),

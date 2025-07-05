@@ -758,19 +758,22 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
               ),
             ],
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Entries: $count',
                   style: const TextStyle(fontSize: 16),
                 ),
+                const SizedBox(height: 4),
                 Text(
                   'Updated: $lastFetch',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey[600],
                   ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ],
             ),

@@ -18,12 +18,17 @@ class ReportingPointsOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('📍 ReportingPointsOverlay - showLayer: $showReportingPointsLayer, points: ${reportingPoints.length}, zoom: $mapZoom');
+    
     if (!showReportingPointsLayer || reportingPoints.isEmpty) {
+      debugPrint('📍 ReportingPointsOverlay - Not showing: layer disabled or no points');
       return const SizedBox.shrink();
     }
 
     // Only show reporting points when zoomed in enough
-    if (mapZoom < 9) {
+    // Temporarily lowered threshold from 9 to 7 for debugging
+    if (mapZoom < 7) {
+      debugPrint('📍 ReportingPointsOverlay - Not showing: zoom $mapZoom < 7');
       return const SizedBox.shrink();
     }
 
