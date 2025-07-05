@@ -6,13 +6,17 @@ import '../models/airport.dart';
 import '../models/navaid.dart';
 import '../models/runway.dart';
 import '../models/frequency.dart';
+import '../models/airspace.dart';
+import '../models/reporting_point.dart';
 
-/// Cache service for storing airports, navaids, runways, and frequencies locally
+/// Cache service for storing airports, navaids, runways, frequencies, airspaces, and reporting points locally
 class CacheService {
   static const String _airportsBoxName = 'airports_cache';
   static const String _navaidsBoxName = 'navaids_cache';
   static const String _runwaysBoxName = 'runways_cache';
   static const String _frequenciesBoxName = 'frequencies_cache';
+  static const String _airspacesBoxName = 'airspaces_cache';
+  static const String _reportingPointsBoxName = 'reporting_points_cache';
   static const String _metadataBoxName = 'cache_metadata';
   static const String _weatherBoxName = 'weather_cache';
 
@@ -20,12 +24,16 @@ class CacheService {
   static const String _navaidsLastFetchKey = 'navaids_last_fetch';
   static const String _runwaysLastFetchKey = 'runways_last_fetch';
   static const String _frequenciesLastFetchKey = 'frequencies_last_fetch';
+  static const String _airspacesLastFetchKey = 'airspaces_last_fetch';
+  static const String _reportingPointsLastFetchKey = 'reporting_points_last_fetch';
   static const String _weatherLastFetchKey = 'weather_last_fetch';
 
   late Box<Map> _airportsBox;
   late Box<Map> _navaidsBox;
   late Box<Map> _runwaysBox;
   late Box<Map> _frequenciesBox;
+  late Box<Map> _airspacesBox;
+  late Box<Map> _reportingPointsBox;
   late Box<dynamic> _metadataBox;
   late Box<String> _weatherBox;
 
@@ -48,6 +56,8 @@ class CacheService {
       _navaidsBox = await Hive.openBox<Map>(_navaidsBoxName);
       _runwaysBox = await Hive.openBox<Map>(_runwaysBoxName);
       _frequenciesBox = await Hive.openBox<Map>(_frequenciesBoxName);
+      _airspacesBox = await Hive.openBox<Map>(_airspacesBoxName);
+      _reportingPointsBox = await Hive.openBox<Map>(_reportingPointsBoxName);
       _metadataBox = await Hive.openBox(_metadataBoxName);
       _weatherBox = await Hive.openBox<String>(_weatherBoxName);
 
@@ -83,6 +93,14 @@ class CacheService {
       if (!_frequenciesBox.isOpen) {
         developer.log('🔄 Frequencies box was closed, reopening...');
         _frequenciesBox = await Hive.openBox<Map>(_frequenciesBoxName);
+      }
+      if (!_airspacesBox.isOpen) {
+        developer.log('🔄 Airspaces box was closed, reopening...');
+        _airspacesBox = await Hive.openBox<Map>(_airspacesBoxName);
+      }
+      if (!_reportingPointsBox.isOpen) {
+        developer.log('🔄 Reporting points box was closed, reopening...');
+        _reportingPointsBox = await Hive.openBox<Map>(_reportingPointsBoxName);
       }
       if (!_metadataBox.isOpen) {
         developer.log('🔄 Metadata box was closed, reopening...');
@@ -211,6 +229,90 @@ class CacheService {
       developer.log('✅ Cached ${frequencies.length} frequencies successfully');
     } catch (e) {
       developer.log('❌ Error caching frequencies: $e');
+      rethrow;
+    }
+  }
+
+  /// Cache airspaces data (replaces all existing data)
+  Future<void> cacheAirspaces(List<Airspace> airspaces) async {
+    await _ensureInitialized();
+
+    try {
+      developer.log('💾 Caching ${airspaces.length} airspaces (replacing all)...');
+      developer.log('📊 Current box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}');
+
+      // Clear existing data
+      await _airspacesBox.clear();
+      developer.log('✅ Cleared existing airspaces');
+
+      // Cache airspaces as maps
+      int cached = 0;
+      for (final airspace in airspaces) {
+        try {
+          final json = airspace.toJson();
+          await _airspacesBox.put(airspace.id, json);
+          cached++;
+        } catch (e) {
+          developer.log('⚠️ Error caching airspace ${airspace.id}: $e');
+        }
+      }
+
+      // Update last fetch timestamp
+      await _metadataBox.put(_airspacesLastFetchKey, DateTime.now().toIso8601String());
+
+      developer.log('✅ Cached $cached/${airspaces.length} airspaces successfully');
+      developer.log('📊 Final box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}');
+    } catch (e) {
+      developer.log('❌ Error caching airspaces: $e');
+      developer.log('❌ Stack trace: ${StackTrace.current}');
+      rethrow;
+    }
+  }
+
+  /// Append airspaces data (adds to existing data without clearing)
+  Future<void> appendAirspaces(List<Airspace> airspaces) async {
+    await _ensureInitialized();
+
+    try {
+      developer.log('💾 Appending ${airspaces.length} airspaces to cache...');
+      developer.log('📊 Current box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}');
+
+      // Cache airspaces as maps without clearing
+      int cached = 0;
+      int updated = 0;
+      Set<String> uniqueIds = {};
+      
+      for (final airspace in airspaces) {
+        try {
+          final json = airspace.toJson();
+          final exists = _airspacesBox.containsKey(airspace.id);
+          
+          // Check for duplicate IDs in this batch
+          if (uniqueIds.contains(airspace.id)) {
+            developer.log('⚠️ Duplicate airspace ID found in batch: ${airspace.id}');
+          }
+          uniqueIds.add(airspace.id);
+          
+          await _airspacesBox.put(airspace.id, json);
+          if (exists) {
+            updated++;
+            developer.log('📝 Updated existing airspace: ${airspace.id}');
+          } else {
+            cached++;
+          }
+        } catch (e) {
+          developer.log('⚠️ Error caching airspace ${airspace.id}: $e');
+        }
+      }
+
+      // Update last fetch timestamp
+      await _metadataBox.put(_airspacesLastFetchKey, DateTime.now().toIso8601String());
+
+      developer.log('✅ Added $cached new airspaces, updated $updated existing ones');
+      developer.log('📊 Final box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}');
+    } catch (e) {
+      developer.log('❌ Error appending airspaces: $e');
+      developer.log('❌ Stack trace: ${StackTrace.current}');
       rethrow;
     }
   }
@@ -428,6 +530,120 @@ class CacheService {
     }
   }
 
+  /// Get cached airspaces
+  Future<List<Airspace>> getCachedAirspaces() async {
+    await _ensureInitialized();
+
+    try {
+      developer.log('📊 Airspaces box info: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}');
+      
+      final airspaces = <Airspace>[];
+
+      for (final key in _airspacesBox.keys) {
+        final data = _airspacesBox.get(key);
+        if (data != null) {
+          try {
+            final airspace = Airspace.fromJson(Map<String, dynamic>.from(data));
+            airspaces.add(airspace);
+          } catch (e) {
+            developer.log('⚠️ Error parsing airspace with key $key: $e');
+          }
+        }
+      }
+
+      developer.log('✅ Loaded ${airspaces.length} airspaces from cache');
+      return airspaces;
+    } catch (e) {
+      developer.log('❌ Error loading cached airspaces: $e');
+      developer.log('❌ Stack trace: ${StackTrace.current}');
+      return [];
+    }
+  }
+
+  /// Cache reporting points data (replaces all existing data)
+  Future<void> cacheReportingPoints(List<ReportingPoint> reportingPoints) async {
+    await _ensureInitialized();
+
+    try {
+      developer.log('💾 Caching ${reportingPoints.length} reporting points (replacing all)...');
+
+      // Clear existing data
+      await _reportingPointsBox.clear();
+
+      // Cache reporting points as maps
+      for (final point in reportingPoints) {
+        await _reportingPointsBox.put(point.id, point.toJson());
+      }
+
+      // Update last fetch timestamp
+      await _metadataBox.put(_reportingPointsLastFetchKey, DateTime.now().toIso8601String());
+
+      developer.log('✅ Cached ${reportingPoints.length} reporting points');
+    } catch (e) {
+      developer.log('❌ Error caching reporting points: $e');
+      rethrow;
+    }
+  }
+
+  /// Append reporting points data (adds to existing data without clearing)
+  Future<void> appendReportingPoints(List<ReportingPoint> reportingPoints) async {
+    await _ensureInitialized();
+
+    try {
+      developer.log('💾 Appending ${reportingPoints.length} reporting points to cache...');
+      developer.log('📊 Current box status: isOpen=${_reportingPointsBox.isOpen}, length=${_reportingPointsBox.length}');
+
+      // Cache reporting points as maps without clearing
+      int cached = 0;
+      int updated = 0;
+      for (final point in reportingPoints) {
+        try {
+          final exists = _reportingPointsBox.containsKey(point.id);
+          await _reportingPointsBox.put(point.id, point.toJson());
+          if (exists) {
+            updated++;
+          } else {
+            cached++;
+          }
+        } catch (e) {
+          developer.log('⚠️ Error caching reporting point ${point.id}: $e');
+        }
+      }
+
+      // Update last fetch timestamp
+      await _metadataBox.put(_reportingPointsLastFetchKey, DateTime.now().toIso8601String());
+
+      developer.log('✅ Added $cached new reporting points, updated $updated existing ones');
+      developer.log('📊 Final box status: isOpen=${_reportingPointsBox.isOpen}, length=${_reportingPointsBox.length}');
+    } catch (e) {
+      developer.log('❌ Error appending reporting points: $e');
+      developer.log('❌ Stack trace: ${StackTrace.current}');
+      rethrow;
+    }
+  }
+
+  /// Get cached reporting points
+  Future<List<ReportingPoint>> getCachedReportingPoints() async {
+    await _ensureInitialized();
+
+    try {
+      final reportingPoints = <ReportingPoint>[];
+
+      for (final key in _reportingPointsBox.keys) {
+        final data = _reportingPointsBox.get(key);
+        if (data != null) {
+          final point = ReportingPoint.fromJson(Map<String, dynamic>.from(data));
+          reportingPoints.add(point);
+        }
+      }
+
+      return reportingPoints;
+    } catch (e) {
+      developer.log('❌ Error loading cached reporting points: $e');
+      return [];
+    }
+  }
+
   /// Get cached weather data
   Future<String?> getCachedWeather(String icao) async {
     await _ensureInitialized();
@@ -480,6 +696,26 @@ class CacheService {
     return null;
   }
 
+  /// Get airspaces last fetch timestamp
+  Future<DateTime?> getAirspacesLastFetch() async {
+    await _ensureInitialized();
+    final timestampStr = _metadataBox.get(_airspacesLastFetchKey);
+    if (timestampStr != null) {
+      return DateTime.tryParse(timestampStr);
+    }
+    return null;
+  }
+
+  /// Get reporting points last fetch timestamp
+  Future<DateTime?> getReportingPointsLastFetch() async {
+    await _ensureInitialized();
+    final timestampStr = _metadataBox.get(_reportingPointsLastFetchKey);
+    if (timestampStr != null) {
+      return DateTime.tryParse(timestampStr);
+    }
+    return null;
+  }
+
   /// Get weather last fetch timestamp
   Future<DateTime?> getWeatherLastFetch() async {
     await _ensureInitialized();
@@ -506,6 +742,12 @@ class CacheService {
   Future<void> setFrequenciesLastFetch(DateTime timestamp) async {
     await _ensureInitialized();
     await _metadataBox.put(_frequenciesLastFetchKey, timestamp.toIso8601String());
+  }
+
+  /// Set airspaces last fetch timestamp
+  Future<void> setAirspacesLastFetch(DateTime timestamp) async {
+    await _ensureInitialized();
+    await _metadataBox.put(_airspacesLastFetchKey, timestamp.toIso8601String());
   }
 
   /// Set weather last fetch timestamp
@@ -542,6 +784,22 @@ class CacheService {
     await _metadataBox.delete(_frequenciesLastFetchKey);
   }
 
+  /// Clear airspaces cache
+  Future<void> clearAirspacesCache() async {
+    await _ensureInitialized();
+    developer.log('🗑️ Clearing airspaces cache - current count: ${_airspacesBox.length}');
+    await _airspacesBox.clear();
+    await _metadataBox.delete(_airspacesLastFetchKey);
+    developer.log('✅ Airspaces cache cleared - new count: ${_airspacesBox.length}');
+  }
+
+  /// Clear reporting points cache
+  Future<void> clearReportingPointsCache() async {
+    await _ensureInitialized();
+    await _reportingPointsBox.clear();
+    await _metadataBox.delete(_reportingPointsLastFetchKey);
+  }
+
   /// Clear weather cache
   Future<void> clearWeatherCache() async {
     await _ensureInitialized();
@@ -556,6 +814,8 @@ class CacheService {
     await _navaidsBox.clear();
     await _runwaysBox.clear();
     await _frequenciesBox.clear();
+    await _airspacesBox.clear();
+    await _reportingPointsBox.clear();
     await _metadataBox.clear();
     await _weatherBox.clear();
     developer.log('🗑️ All caches cleared');

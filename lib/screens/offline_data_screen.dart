@@ -7,6 +7,7 @@ import '../services/navaid_service.dart';
 import '../services/runway_service.dart';
 import '../services/frequency_service.dart';
 import '../services/weather_service.dart';
+import '../services/openaip_service.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 /// Screen for managing all offline data and caches
@@ -25,6 +26,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
   final RunwayService _runwayService = RunwayService();
   final FrequencyService _frequencyService = FrequencyService();
   final WeatherService _weatherService = WeatherService();
+  final OpenAIPService _openAIPService = OpenAIPService();
   
   // Scroll controller to preserve position
   final ScrollController _scrollController = ScrollController();
@@ -44,11 +46,121 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
   
   int _minZoom = 8;
   int _maxZoom = 14;
+  
+  // OpenAIP API key
+  String _openAIPApiKey = '';
+  final TextEditingController _apiKeyController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadAllCacheStats();
+    _loadApiKey();
+  }
+  
+  Future<void> _loadApiKey() async {
+    try {
+      final settingsBox = await Hive.openBox('settings');
+      final apiKey = settingsBox.get('openaip_api_key', defaultValue: '');
+      setState(() {
+        _openAIPApiKey = apiKey;
+        _apiKeyController.text = apiKey;
+      });
+      if (apiKey.isNotEmpty) {
+        _openAIPService.setApiKey(apiKey);
+      }
+    } catch (e) {
+      debugPrint('Error loading OpenAIP API key: $e');
+    }
+  }
+  
+  Future<void> _saveApiKey(String apiKey) async {
+    try {
+      final settingsBox = await Hive.openBox('settings');
+      await settingsBox.put('openaip_api_key', apiKey);
+      setState(() {
+        _openAIPApiKey = apiKey;
+      });
+      _openAIPService.setApiKey(apiKey);
+      
+      // No success message for auto-save
+      debugPrint('✅ OpenAIP API key auto-saved');
+      
+      // If this is the first time setting an API key, load reporting points and airspaces
+      if (apiKey.isNotEmpty) {
+        // Check and load reporting points
+        final cachedPoints = await _openAIPService.getCachedReportingPoints();
+        final cachedAirspaces = await _openAIPService.getCachedAirspaces();
+        
+        if (cachedPoints.isEmpty || cachedAirspaces.isEmpty) {
+          debugPrint('📍 First time API key set, loading data...');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Row(
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    SizedBox(width: 16),
+                    Text('Loading airspaces and reporting points...'),
+                  ],
+                ),
+                duration: Duration(seconds: 60),
+              ),
+            );
+          }
+          
+          try {
+            // Load both in parallel
+            final futures = <Future>[];
+            
+            if (cachedPoints.isEmpty) {
+              debugPrint('📍 Loading reporting points...');
+              futures.add(_openAIPService.fetchAllReportingPoints());
+            }
+            
+            if (cachedAirspaces.isEmpty) {
+              debugPrint('🌍 Loading airspaces...');
+              futures.add(_openAIPService.fetchAllAirspaces());
+            }
+            
+            await Future.wait(futures);
+            
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Airspaces and reporting points loaded successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            // Reload cache statistics
+            await _loadAllCacheStats();
+          } catch (e) {
+            debugPrint('❌ Error loading data: $e');
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error loading data: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error saving OpenAIP API key: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving API key: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _loadAllCacheStats({bool preserveScroll = false}) async {
@@ -113,6 +225,8 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       final navaidsBox = await Hive.openBox<Map>('navaids_cache');
       final runwaysBox = await Hive.openBox<Map>('runways_cache');
       final frequenciesBox = await Hive.openBox<Map>('frequencies_cache');
+      final airspacesBox = await Hive.openBox<Map>('airspaces_cache');
+      final reportingPointsBox = await Hive.openBox<Map>('reporting_points_cache');
       // Weather stats are now retrieved directly from WeatherService
       final metadataBox = await Hive.openBox('cache_metadata');
       
@@ -135,6 +249,16 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       stats['frequencies'] = {
         'count': frequenciesBox.length,
         'lastFetch': metadataBox.get('frequencies_last_fetch'),
+      };
+      
+      stats['airspaces'] = {
+        'count': airspacesBox.length,
+        'lastFetch': metadataBox.get('airspaces_last_fetch'),
+      };
+      
+      stats['reportingPoints'] = {
+        'count': reportingPointsBox.length,
+        'lastFetch': metadataBox.get('reporting_points_last_fetch'),
       };
       
       // Get weather statistics from WeatherService
@@ -204,13 +328,21 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       }
 
       // Refresh all data services
-      await Future.wait([
+      final futures = [
         _airportService.refreshData(),
         _navaidService.refreshData(),
         _runwayService.fetchRunways(forceRefresh: true),
         _frequencyService.fetchFrequencies(forceRefresh: true),
         _weatherService.forceReload(),
-      ]);
+      ];
+      
+      // Add airspaces refresh if API key is set
+      if (_openAIPApiKey.isNotEmpty) {
+        futures.add(_openAIPService.refreshAirspacesCache());
+        futures.add(_openAIPService.refreshReportingPointsCache());
+      }
+      
+      await Future.wait(futures);
 
       // Reload cache statistics
       await _loadAllCacheStats();
@@ -241,6 +373,162 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       setState(() {
         _isRefreshing = false;
       });
+    }
+  }
+
+  Future<void> _refreshAirspaces() async {
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    try {
+      debugPrint('Refreshing airspaces...');
+
+      // Show progress dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Loading Airspaces'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  const Text('Fetching airspaces in tiles...'),
+                  const SizedBox(height: 8),
+                  Text(
+                    'This process fetches data in 20 tiles to avoid timeouts.\nIt may take a few minutes.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      }
+
+      // Refresh airspaces
+      await _openAIPService.refreshAirspacesCache();
+      
+      // Close progress dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      
+      // Reload cache statistics
+      await _loadAllCacheStats();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Airspaces refreshed successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      // Close progress dialog if still open
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      
+      debugPrint('Error refreshing airspaces: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error refreshing airspaces: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _refreshReportingPoints() async {
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    try {
+      debugPrint('Refreshing reporting points...');
+
+      // Show progress dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Loading Reporting Points'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  const Text('Fetching reporting points in tiles...'),
+                  const SizedBox(height: 8),
+                  Text(
+                    'This process fetches data in 20 tiles to avoid timeouts.\nIt may take a few minutes.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      }
+
+      // Force refresh reporting points
+      await _openAIPService.refreshReportingPointsCache(forceRefresh: true);
+      
+      // Close progress dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      
+      // Reload cache statistics
+      await _loadAllCacheStats();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reporting points refreshed successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      // Close progress dialog if still open
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      
+      debugPrint('Error refreshing reporting points: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error refreshing reporting points: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
     }
   }
 
@@ -340,6 +628,12 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
           case 'frequencies':
             await _cacheService.clearFrequenciesCache();
             break;
+          case 'airspaces':
+            await _cacheService.clearAirspacesCache();
+            break;
+          case 'reporting points':
+            await _cacheService.clearReportingPointsCache();
+            break;
           case 'weather':
             await _cacheService.clearWeatherCache();
             break;
@@ -418,6 +712,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
     required String lastFetch,
     required VoidCallback onClear,
     String? subtitle,
+    VoidCallback? onRefresh,
   }) {
     return Card(
       elevation: 2,
@@ -439,6 +734,12 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                     ),
                   ),
                 ),
+                if (onRefresh != null) 
+                  IconButton(
+                    icon: const Icon(Icons.refresh, color: Colors.blue),
+                    onPressed: _isRefreshing ? null : onRefresh,
+                    tooltip: 'Refresh $title',
+                  ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
                   onPressed: onClear,
@@ -645,6 +946,32 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                     
                     const SizedBox(height: 8),
                     
+                    // Airspaces cache
+                    _buildCacheCard(
+                      title: 'Airspaces',
+                      icon: Icons.layers,
+                      count: _cacheStats['airspaces']?['count'] ?? 0,
+                      lastFetch: _formatLastFetch(_cacheStats['airspaces']?['lastFetch']),
+                      onClear: () => _clearSpecificCache('Airspaces'),
+                      subtitle: 'Controlled airspaces and restricted areas',
+                      onRefresh: _openAIPApiKey.isNotEmpty ? _refreshAirspaces : null,
+                    ),
+                    
+                    const SizedBox(height: 8),
+                    
+                    // Reporting points cache
+                    _buildCacheCard(
+                      title: 'Reporting Points',
+                      icon: Icons.location_on,
+                      count: _cacheStats['reportingPoints']?['count'] ?? 0,
+                      lastFetch: _formatLastFetch(_cacheStats['reportingPoints']?['lastFetch']),
+                      onClear: () => _clearSpecificCache('Reporting Points'),
+                      subtitle: 'VFR reporting points for navigation',
+                      onRefresh: _openAIPApiKey.isNotEmpty ? _refreshReportingPoints : null,
+                    ),
+                    
+                    const SizedBox(height: 8),
+                    
                     // Weather cache
                     Card(
                       elevation: 2,
@@ -708,6 +1035,108 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                                 color: Colors.grey[600],
                               ),
                             ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+                    
+                    // OpenAIP API Configuration
+                    Card(
+                      elevation: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.key, size: 24, color: Colors.blue[700]),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'OpenAIP Configuration',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Enter your OpenAIP API key to fetch airspaces data',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextField(
+                              controller: _apiKeyController,
+                              obscureText: true,
+                              decoration: const InputDecoration(
+                                labelText: 'API Key',
+                                hintText: 'Enter your OpenAIP API key',
+                                border: OutlineInputBorder(),
+                              ),
+                              onChanged: (value) {
+                                // Auto-save when user types
+                                _saveApiKey(value.trim());
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    'Get your API key from openaip.net',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (_openAIPApiKey.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  // Test the API key by fetching some airspaces
+                                  try {
+                                    final airspaces = await _openAIPService.fetchAirspaces(limit: 1);
+                                    if (!mounted) return;
+                                    // ignore: use_build_context_synchronously
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(airspaces.isNotEmpty 
+                                            ? 'API key is valid and working!' 
+                                            : 'API key seems valid but no airspaces found'),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    if (!mounted) return;
+                                    // ignore: use_build_context_synchronously
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('API key validation failed. Please check your key.'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                },
+                                icon: const Icon(Icons.check_circle, size: 16),
+                                label: const Text('Test API Key'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -933,6 +1362,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _apiKeyController.dispose();
     super.dispose();
   }
 }

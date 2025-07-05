@@ -7,8 +7,8 @@ plugins {
 
 android {
     namespace = "com.captainvfr.captainvfr"
-    compileSdk = 34  // Android 14 for latest compatibility
-    ndkVersion = "26.3.11579264"
+    compileSdk = 35  // Android 15 for latest compatibility
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

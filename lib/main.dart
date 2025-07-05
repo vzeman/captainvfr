@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'screens/map_screen.dart';
+import 'screens/offline_data_screen.dart';
 import 'services/location_service.dart';
 import 'services/barometer_service.dart';
 import 'services/flight_service.dart';
@@ -17,9 +18,11 @@ import 'services/checklist_service.dart';
 import 'services/license_service.dart';
 import 'services/connectivity_service.dart';
 import 'services/platform_services.dart';
-import 'services/vibration_alert_service.dart';
+import 'services/vibration_measurement_service.dart';
+import 'services/openaip_service.dart';
 import 'widgets/connectivity_banner.dart';
 import 'widgets/loading_screen.dart';
+import 'services/background_data_service.dart';
 import 'adapters/latlng_adapter.dart';
 import 'models/manufacturer.dart';
 import 'models/model.dart';
@@ -32,6 +35,8 @@ import 'models/flight_point.dart';
 import 'models/flight_segment.dart';
 import 'models/moving_segment.dart';
 import 'models/flight_plan.dart';
+import 'models/airspace.dart';
+import 'models/reporting_point.dart';
 
 void main() async {
   // Ensure Flutter binding is initialized
@@ -46,6 +51,20 @@ void main() async {
   try {
     // Initialize Hive and register adapters
     await Hive.initFlutter();
+    
+    // Migration: Clear airspaces and reporting points caches due to typeId change
+    try {
+      if (await Hive.boxExists('airspaces')) {
+        await Hive.deleteBoxFromDisk('airspaces');
+        debugPrint('🗑️ Cleared airspaces cache for migration');
+      }
+      if (await Hive.boxExists('reportingPoints')) {
+        await Hive.deleteBoxFromDisk('reportingPoints');
+        debugPrint('🗑️ Cleared reporting points cache for migration');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error during cache migration: $e');
+    }
 
     // Register flight-related adapters
     Hive.registerAdapter(FlightAdapter());
@@ -70,6 +89,12 @@ void main() async {
     // Register checklist adapters
     Hive.registerAdapter(ChecklistItemAdapter());
     Hive.registerAdapter(ChecklistAdapter());
+    
+    // Register airspace adapter
+    Hive.registerAdapter(AirspaceAdapter());
+    
+    // Register reporting point adapter
+    Hive.registerAdapter(ReportingPointAdapter());
 
     // Initialize cache service first
     final cacheService = CacheService();
@@ -85,8 +110,14 @@ void main() async {
     // Log network diagnostics for Android 12+ debugging
     await PlatformServices.logNetworkState();
     
-    // Initialize vibration alert service
-    await VibrationAlertService.initialize();
+    // Initialize vibration measurement service (using accelerometer)
+    final vibrationMeasurementService = VibrationMeasurementService();
+    try {
+      await vibrationMeasurementService.initialize();
+      debugPrint('✅ Vibration measurement service initialized');
+    } catch (e) {
+      debugPrint('⚠️ Failed to initialize vibration measurement service: $e');
+    }
 
     // Initialize services with error handling
     final locationService = LocationService();
@@ -118,6 +149,27 @@ void main() async {
     
     // Initialize license service
     final licenseService = LicenseService();
+    
+    // Initialize OpenAIP service
+    final openAIPService = OpenAIPService();
+    
+    // Initialize OpenAIP service (this will load API key and reporting points if needed)
+    try {
+      await openAIPService.initialize();
+      debugPrint('✅ OpenAIP service initialized');
+    } catch (e) {
+      debugPrint('⚠️ Failed to initialize OpenAIP service: $e');
+    }
+    
+    // Initialize background data service
+    final backgroundDataService = BackgroundDataService();
+    await backgroundDataService.initialize(
+      airportService: airportService,
+      runwayService: runwayService,
+      navaidService: navaidService,
+      frequencyService: frequencyService,
+      cacheService: cacheService,
+    );
 
     try {
       await aircraftSettingsService.initialize();
@@ -154,15 +206,7 @@ void main() async {
       }
     }
 
-    // Initialize data services with error handling - don't block app startup
-    try {
-      await _initializeDataServices(airportService, runwayService, navaidService, weatherService, frequencyService);
-    } catch (e) {
-      debugPrint('⚠️ Data services initialization failed: $e');
-      // Continue with app initialization
-    }
-
-    // Initialize checklist service then run the app
+    // Initialize checklist service
     await checklistService.initialize();
     
     // Initialize license service
@@ -196,12 +240,17 @@ void main() async {
           Provider<NavaidService>.value(value: navaidService),
           Provider<WeatherService>.value(value: weatherService),
           Provider<FrequencyService>.value(value: frequencyService),
+          Provider<OpenAIPService>.value(value: openAIPService),
+          Provider<VibrationMeasurementService>.value(value: vibrationMeasurementService),
+          ChangeNotifierProvider<BackgroundDataService>.value(
+            value: backgroundDataService,
+          ),
         ],
         child: const CaptainVFRApp(),
       ),
     );
 
-    // Initialize flight service after first frame
+    // Initialize flight service and start background data loading after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         await flightService.initialize();
@@ -211,6 +260,10 @@ void main() async {
         debugPrint('Stack trace: $stackTrace');
         // Don't crash the app if flight service fails
       }
+      
+      // Start loading data in the background
+      debugPrint('🚀 Starting background data loading...');
+      backgroundDataService.loadDataInBackground();
     });
 
   } catch (e, stackTrace) {
@@ -301,74 +354,74 @@ void _runMinimalApp() {
 }
 
 /// Initialize data services and ensure cached data is available
-Future<void> _initializeDataServices(
-  AirportService airportService,
-  RunwayService runwayService,
-  NavaidService navaidService,
-  WeatherService weatherService,
-  FrequencyService frequencyService,
-) async {
-  debugPrint('🚀 Initializing data services and checking cache...');
-
-  try {
-    // Initialize all services
-    await Future.wait([
-      airportService.initialize(),
-      runwayService.initialize(),
-      navaidService.initialize(),
-      weatherService.initialize(),
-      frequencyService.initialize(),
-    ]);
-
-    // Check if we have cached data, if not, fetch from network
-    final futures = <Future>[];
-
-    // Check airports
-    if (airportService.airports.isEmpty) {
-      debugPrint('📡 No cached airports found, fetching from network...');
-      futures.add(airportService.fetchNearbyAirports());
-    } else {
-      debugPrint('�� Found ${airportService.airports.length} cached airports');
-    }
-
-    // Check runways
-    if (runwayService.runways.isEmpty) {
-      debugPrint('📡 No cached runways found, fetching from network...');
-      futures.add(runwayService.fetchRunways());
-    } else {
-      debugPrint('✅ Found ${runwayService.runways.length} cached runways');
-    }
-
-    // Check navaids
-    if (navaidService.navaids.isEmpty) {
-      debugPrint('📡 No cached navaids found, fetching from network...');
-      futures.add(navaidService.fetchNavaids());
-    } else {
-      debugPrint('✅ Found ${navaidService.navaids.length} cached navaids');
-    }
-
-    // Check frequencies
-    if (frequencyService.frequencies.isEmpty) {
-      debugPrint('���� No cached frequencies found, fetching from network...');
-      futures.add(frequencyService.fetchFrequencies());
-    } else {
-      debugPrint('✅ Found ${frequencyService.frequencies.length} cached frequencies');
-    }
-
-    // Wait for all network requests to complete
-    if (futures.isNotEmpty) {
-      await Future.wait(futures);
-      debugPrint('✅ All missing data has been fetched and cached');
-    } else {
-      debugPrint('✅ All data was available from cache');
-    }
-
-  } catch (e, stackTrace) {
-    debugPrint('❌ Error initializing data services: $e');
-    debugPrint('Stack trace: $stackTrace');
-    // Continue with app initialization even if data loading fails
-  }
-}
+// Future<void> _initializeDataServices(
+//   AirportService airportService,
+//   RunwayService runwayService,
+//   NavaidService navaidService,
+//   WeatherService weatherService,
+//   FrequencyService frequencyService,
+// ) async {
+//   debugPrint('🚀 Initializing data services and checking cache...');
+// 
+//   try {
+//     // Initialize all services
+//     await Future.wait([
+//       airportService.initialize(),
+//       runwayService.initialize(),
+//       navaidService.initialize(),
+//       weatherService.initialize(),
+//       frequencyService.initialize(),
+//     ]);
+// 
+//     // Check if we have cached data, if not, fetch from network
+//     final futures = <Future>[];
+// 
+//     // Check airports
+//     if (airportService.airports.isEmpty) {
+//       debugPrint('📡 No cached airports found, fetching from network...');
+//       futures.add(airportService.fetchNearbyAirports());
+//     } else {
+//       debugPrint('�� Found ${airportService.airports.length} cached airports');
+//     }
+// 
+//     // Check runways
+//     if (runwayService.runways.isEmpty) {
+//       debugPrint('📡 No cached runways found, fetching from network...');
+//       futures.add(runwayService.fetchRunways());
+//     } else {
+//       debugPrint('✅ Found ${runwayService.runways.length} cached runways');
+//     }
+// 
+//     // Check navaids
+//     if (navaidService.navaids.isEmpty) {
+//       debugPrint('📡 No cached navaids found, fetching from network...');
+//       futures.add(navaidService.fetchNavaids());
+//     } else {
+//       debugPrint('✅ Found ${navaidService.navaids.length} cached navaids');
+//     }
+// 
+//     // Check frequencies
+//     if (frequencyService.frequencies.isEmpty) {
+//       debugPrint('���� No cached frequencies found, fetching from network...');
+//       futures.add(frequencyService.fetchFrequencies());
+//     } else {
+//       debugPrint('✅ Found ${frequencyService.frequencies.length} cached frequencies');
+//     }
+// 
+//     // Wait for all network requests to complete
+//     if (futures.isNotEmpty) {
+//       await Future.wait(futures);
+//       debugPrint('✅ All missing data has been fetched and cached');
+//     } else {
+//       debugPrint('✅ All data was available from cache');
+//     }
+// 
+//   } catch (e, stackTrace) {
+//     debugPrint('❌ Error initializing data services: $e');
+//     debugPrint('Stack trace: $stackTrace');
+//     // Continue with app initialization even if data loading fails
+//   }
+// }
 
 /// Clear Hive boxes to resolve typeId mismatch issues
 Future<void> _clearHiveBoxes() async {
@@ -517,6 +570,9 @@ class _CaptainVFRAppState extends State<CaptainVFRApp> {
       ),
       themeMode: ThemeMode.system,
       home: const LoadingScreen(),
+      routes: {
+        '/offline_data': (context) => const OfflineDataScreen(),
+      },
     );
   }
 }
