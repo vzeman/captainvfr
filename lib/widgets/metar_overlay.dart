@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import '../models/airport.dart';
@@ -20,11 +21,31 @@ class MetarOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!showMetarLayer) return const SizedBox.shrink();
 
-    final airportsWithMetar = airports.where((airport) => airport.rawMetar != null).toList();
+    final mapController = MapController.maybeOf(context);
+    if (mapController == null) {
+      return const SizedBox.shrink();
+    }
+
+    final bounds = mapController.camera.visibleBounds;
+    // Add padding to bounds
+    final paddedBounds = LatLngBounds(
+      LatLng(
+        bounds.southWest.latitude - 0.1,
+        bounds.southWest.longitude - 0.1,
+      ),
+      LatLng(
+        bounds.northEast.latitude + 0.1,
+        bounds.northEast.longitude + 0.1,
+      ),
+    );
+
+    final visibleAirportsWithMetar = airports
+        .where((airport) => airport.rawMetar != null && paddedBounds.contains(airport.position))
+        .toList();
 
     return MarkerLayer(
       markers: [
-        ...airportsWithMetar.map((airport) => _buildMetarMarker(airport)),
+        ...visibleAirportsWithMetar.map((airport) => _buildMetarMarker(airport)),
       ],
     );
   }

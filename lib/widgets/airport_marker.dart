@@ -27,9 +27,7 @@ class AirportMarker extends StatelessWidget {
     final borderColor = isSelected ? Colors.amber : color;
     final borderWidth = isSelected ? 3.0 : 2.0;
     
-    debugPrint('Building marker for ${airport.icao} - ${airport.name} (${airport.position})');
-    
-    debugPrint('Building marker for ${airport.icao} - ${airport.name}');
+    // Removed debug prints for performance
     
     // The visual size of the marker
     const visualSize = 32.0;
@@ -39,19 +37,7 @@ class AirportMarker extends StatelessWidget {
     
     return GestureDetector(
       onTap: () {
-        debugPrint('Marker tapped: ${airport.icao} - ${airport.name}');
-        if (onTap != null) {
-          debugPrint('Calling onTap callback for ${airport.icao}');
-          try {
-            onTap!();
-            debugPrint('Successfully called onTap for ${airport.icao}');
-          } catch (e, stackTrace) {
-            debugPrint('Error in onTap callback for ${airport.icao}: $e');
-            debugPrint('Stack trace: $stackTrace');
-          }
-        } else {
-          debugPrint('No onTap callback provided for ${airport.icao}');
-        }
+        onTap?.call();
       },
       child: Center(
         child: Stack(

@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'flight_log_screen.dart';
 import 'offline_data_screen.dart';
 import 'flight_plans_screen.dart';
@@ -21,8 +22,8 @@ import '../services/weather_service.dart';
 import '../services/offline_map_service.dart';
 import '../services/offline_tile_provider.dart';
 import '../services/flight_plan_service.dart';
-import '../widgets/airport_marker.dart';
 import '../widgets/navaid_marker.dart';
+import '../widgets/optimized_marker_layer.dart';
 import '../widgets/airport_info_sheet.dart';
 import '../widgets/flight_dashboard.dart';
 import '../widgets/airport_search_delegate.dart';
@@ -31,6 +32,14 @@ import '../widgets/flight_plan_overlay.dart';
 import '../widgets/compact_flight_plan_widget.dart';
 import '../widgets/license_warning_widget.dart';
 import '../widgets/floating_waypoint_panel.dart';
+import '../widgets/airspaces_overlay.dart';
+import '../widgets/airspace_flight_info.dart';
+import '../widgets/reporting_points_overlay.dart';
+import '../services/openaip_service.dart';
+import '../models/airspace.dart';
+import '../models/reporting_point.dart';
+import '../utils/airspace_utils.dart';
+import '../widgets/loading_progress_bar.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -48,7 +57,21 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   late final WeatherService _weatherService;
   OfflineMapService? _offlineMapService; // Make nullable to prevent LateInitializationError
   late final FlightPlanService _flightPlanService;
+  OpenAIPService? _openAIPService;
   late final MapController _mapController;
+  
+  // Getter to ensure OpenAIPService is available
+  OpenAIPService get openAIPService {
+    if (_openAIPService == null && mounted) {
+      try {
+        _openAIPService = Provider.of<OpenAIPService>(context, listen: false);
+      } catch (e) {
+        debugPrint('⚠️ OpenAIPService still not available, using singleton');
+        _openAIPService = OpenAIPService(); // This returns the singleton instance
+      }
+    }
+    return _openAIPService!;
+  }
   final GlobalKey _mapKey = GlobalKey();
   
   // State variables
@@ -58,6 +81,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   bool _showMetar = false; // Toggle for METAR overlay
   bool _showHeliports = false; // Toggle for heliport display (default hidden)
   bool _showSmallAirports = true; // Toggle for small airport display (default visible)
+  bool _showAirspaces = false; // Toggle for airspaces display
   bool _servicesInitialized = false;
   bool _isInitializing = false; // Guard against concurrent initialization
   bool _showFlightPlanning = false; // Toggle for integrated flight planning
@@ -77,6 +101,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   List<FlightSegment> _flightSegments = [];
   List<Airport> _airports = [];
   List<Navaid> _navaids = [];
+  List<Airspace> _airspaces = [];
+  List<ReportingPoint> _reportingPoints = [];
 
   // UI state
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -105,18 +131,32 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     
     // Initialize services from Provider to ensure they're properly initialized
     if (!_servicesInitialized) {
-      _flightService = Provider.of<FlightService>(context, listen: false);
-      _locationService = Provider.of<LocationService>(context, listen: false);
-      _airportService = Provider.of<AirportService>(context, listen: false);
-      _navaidService = Provider.of<NavaidService>(context, listen: false);
-      _weatherService = Provider.of<WeatherService>(context, listen: false);
-      _flightPlanService = Provider.of<FlightPlanService>(context, listen: false);
+      try {
+        _flightService = Provider.of<FlightService>(context, listen: false);
+        _locationService = Provider.of<LocationService>(context, listen: false);
+        _airportService = Provider.of<AirportService>(context, listen: false);
+        _navaidService = Provider.of<NavaidService>(context, listen: false);
+        _weatherService = Provider.of<WeatherService>(context, listen: false);
+        _flightPlanService = Provider.of<FlightPlanService>(context, listen: false);
+        
+        // Try to get OpenAIPService, but don't fail if it's not available yet
+        try {
+          _openAIPService = Provider.of<OpenAIPService>(context, listen: false);
+        } catch (e) {
+          debugPrint('⚠️ OpenAIPService not available yet, will retry later');
+          // We'll initialize it later in the build cycle
+        }
 
-      // Initialize services with caching
-      _initializeServices();
+        // Initialize services with caching
+        _initializeServices();
 
-      // Listen to flight service updates
-      _setupFlightServiceListener();
+        // Listen to flight service updates
+        _setupFlightServiceListener();
+        
+        _servicesInitialized = true;
+      } catch (e) {
+        debugPrint('Error initializing services: $e');
+      }
     }
   }
 
@@ -242,6 +282,12 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       if (!mounted) return;
       
       try {
+        // Check if map controller is ready
+        if (!mounted) {
+          debugPrint('📍 _loadAirports: Widget not mounted, returning');
+          return;
+        }
+        
         final bounds = _mapController.camera.visibleBounds;
         final zoom = _mapController.camera.zoom;
         
@@ -382,6 +428,12 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     debugPrint('🧭 _loadNavaids: Starting to load navaids...');
 
     try {
+      // Check if map controller is ready
+      if (!mounted) {
+        debugPrint('🧭 _loadNavaids: Widget not mounted, returning');
+        return;
+      }
+
       // Ensure navaids are fetched
       debugPrint('🧭 _loadNavaids: Calling fetchNavaids...');
       await _navaidService.fetchNavaids();
@@ -412,6 +464,100 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       }
     } catch (e) {
       debugPrint('❌ Error loading navaids: $e');
+    }
+  }
+
+  // Load airspaces in the current map view
+  Future<void> _loadAirspaces() async {
+    if (!_showAirspaces) {
+      debugPrint('🌍 _loadAirspaces: _showAirspaces is false, returning early');
+      return;
+    }
+
+    // Check if API key is set
+    final settingsBox = await Hive.openBox('settings');
+    final apiKey = settingsBox.get('openaip_api_key', defaultValue: '');
+    
+    if (apiKey.isEmpty) {
+      debugPrint('🌍 _loadAirspaces: No API key set, showing message');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please set your OpenAIP API key in Offline Data settings to view airspaces'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
+    debugPrint('🌍 _loadAirspaces: Loading airspaces from cache...');
+    debugPrint('🌍 API key length: ${apiKey.length}');
+
+    try {
+      // Always load from cache only - never from API during map usage
+      final airspaces = await openAIPService.getCachedAirspaces();
+      
+      if (airspaces.isEmpty) {
+        debugPrint('🌍 No cached airspaces available');
+        debugPrint('🌍 Consider refreshing airspaces in Offline Data settings');
+        
+        // Show a helpful message to the user
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('No cached airspaces. Please refresh in Offline Data settings.'),
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'Go to Settings',
+                onPressed: () {
+                  Navigator.pushNamed(context, '/offline_data');
+                },
+              ),
+            ),
+          );
+        }
+      } else {
+        debugPrint('🌍 Loaded ${airspaces.length} airspaces from cache');
+      }
+
+      if (mounted) {
+        setState(() {
+          _airspaces = airspaces;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading airspaces: $e');
+      debugPrint('❌ Stack trace: ${StackTrace.current}');
+    }
+  }
+
+  // Load reporting points in the current map view
+  Future<void> _loadReportingPoints() async {
+    if (!_showAirspaces) {
+      debugPrint('📍 _loadReportingPoints: _showAirspaces is false, returning early');
+      return;
+    }
+
+    debugPrint('📍 _loadReportingPoints: Loading reporting points from cache...');
+
+    try {
+      // Always load from cache only - never from API during map usage
+      final reportingPoints = await openAIPService.getCachedReportingPoints();
+      
+      if (reportingPoints.isEmpty) {
+        debugPrint('📍 No cached reporting points available');
+      } else {
+        debugPrint('📍 Loaded ${reportingPoints.length} reporting points from cache');
+      }
+
+      if (mounted) {
+        setState(() {
+          _reportingPoints = reportingPoints;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading reporting points: $e');
     }
   }
 
@@ -494,7 +640,25 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     });
   }
 
-  // Handle map tap - updated to support flight planning
+  // Toggle airspaces visibility
+  void _toggleAirspaces() {
+    setState(() {
+      _showAirspaces = !_showAirspaces;
+    });
+
+    // Load airspaces and reporting points when toggled on
+    if (_showAirspaces) {
+      _loadAirspaces();
+      _loadReportingPoints();
+    } else {
+      setState(() {
+        _airspaces = [];
+        _reportingPoints = [];
+      });
+    }
+  }
+
+  // Handle map tap - updated to support flight planning and airspace selection
   void _onMapTapped(TapPosition tapPosition, LatLng point) {
     debugPrint('Map tapped at: ${point.latitude}, ${point.longitude}');
 
@@ -505,12 +669,214 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       return;
     }
 
+    // Check if any airspaces contain the tapped point
+    if (_showAirspaces && _airspaces.isNotEmpty) {
+      final tappedAirspaces = _airspaces.where((airspace) {
+        return airspace.containsPoint(point);
+      }).toList();
+
+      if (tappedAirspaces.isNotEmpty) {
+        _showAirspacesAtPoint(tappedAirspaces, point);
+        return;
+      }
+    }
+
     // Otherwise, close any open dialogs or menus
     if (mounted) {
       debugPrint('Popping all routes until first');
       Navigator.of(context).popUntil((route) => route.isFirst);
     } else {
       debugPrint('Context not mounted, cannot pop routes');
+    }
+  }
+
+  // Show list of airspaces at a given point
+  void _showAirspacesAtPoint(List<Airspace> airspaces, LatLng point) async {
+    if (!mounted) return;
+
+    // Get current altitude if available
+    final currentAltitudeFt = _currentPosition?.altitude != null 
+        ? _currentPosition!.altitude * 3.28084 // Convert meters to feet
+        : null;
+
+    // Sort airspaces by altitude (lower first)
+    airspaces.sort((a, b) {
+      final altA = a.lowerLimitFt ?? 0;
+      final altB = b.lowerLimitFt ?? 0;
+      return altA.compareTo(altB);
+    });
+
+    // If only one airspace, show it directly
+    if (airspaces.length == 1) {
+      _onAirspaceSelected(airspaces.first);
+      return;
+    }
+
+    // Show selection dialog for multiple airspaces
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Airspaces at location'),
+            if (currentAltitudeFt != null)
+              Text(
+                'Current altitude: ${currentAltitudeFt.round()} ft',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: airspaces.map((airspace) {
+              // Check if current altitude is within this airspace
+              final isAtCurrentAltitude = currentAltitudeFt != null &&
+                  airspace.isAtAltitude(currentAltitudeFt);
+              
+              return Container(
+                decoration: isAtCurrentAltitude
+                    ? BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.1),
+                        border: Border.all(
+                          color: Colors.blue,
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      )
+                    : null,
+                margin: isAtCurrentAltitude 
+                    ? const EdgeInsets.symmetric(vertical: 4)
+                    : EdgeInsets.zero,
+                child: ListTile(
+                  leading: Icon(
+                    _getAirspaceIcon(airspace.type),
+                    color: _getAirspaceColor(airspace.type, airspace.icaoClass),
+                    size: isAtCurrentAltitude ? 28 : 24,
+                  ),
+                  title: Row(
+                    children: [
+                      Expanded(child: Text(airspace.name)),
+                      if (isAtCurrentAltitude)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.blue,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'ACTIVE',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  subtitle: Text(
+                    '${AirspaceUtils.getAirspaceTypeName(airspace.type)} ${AirspaceUtils.getIcaoClassName(airspace.icaoClass)}\n${airspace.altitudeRange}',
+                  ),
+                  isThreeLine: true,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _onAirspaceSelected(airspace);
+                  },
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getAirspaceIcon(String? type) {
+    if (type == null) return Icons.layers;
+    
+    switch (type.toUpperCase()) {
+      case 'CTR':
+      case 'ATZ':
+        return Icons.flight_land;
+      case 'D':
+      case 'DANGER':
+      case 'P':
+      case 'PROHIBITED':
+        return Icons.warning;
+      case 'R':
+      case 'RESTRICTED':
+        return Icons.block;
+      case 'TMA':
+        return Icons.flight_takeoff;
+      case 'TMZ':
+      case 'RMZ':
+        return Icons.radio;
+      default:
+        return Icons.layers;
+    }
+  }
+
+  Color _getAirspaceColor(String? type, String? icaoClass) {
+    if (type == null) return Colors.grey;
+    
+    switch (type.toUpperCase()) {
+      case 'CTR':
+      case 'D':
+      case 'DANGER':
+      case 'P':
+      case 'PROHIBITED':
+        return Colors.red;
+      case 'TMA':
+      case 'R':
+      case 'RESTRICTED':
+        return Colors.orange;
+      case 'ATZ':
+        return Colors.blue;
+      case 'TSA':
+        return Colors.purple;
+      case 'TRA':
+        return Colors.purple.shade700;
+      case 'GLIDING':
+        return Colors.green;
+      case 'TMZ':
+        return Colors.amber;
+      case 'RMZ':
+        return Colors.yellow.shade700;
+      default:
+        // Check ICAO class if type doesn't match
+        if (icaoClass != null) {
+          switch (icaoClass.toUpperCase()) {
+            case 'A':
+              return Colors.red.shade800;
+            case 'B':
+              return Colors.red.shade600;
+            case 'C':
+              return Colors.orange.shade600;
+            case 'D':
+              return Colors.blue.shade600;
+            case 'E':
+              return Colors.green.shade600;
+            case 'F':
+              return Colors.green.shade400;
+            case 'G':
+              return Colors.grey;
+            default:
+              return Colors.grey.shade600;
+          }
+        }
+        return Colors.grey.shade600;
     }
   }
 
@@ -591,6 +957,17 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
     // Load airports in the new area
     _loadAirports();
+    
+    // Load navaids if they're enabled
+    if (_showNavaids) {
+      _loadNavaids();
+    }
+    
+    // Load airspaces and reporting points if they're enabled
+    if (_showAirspaces) {
+      _loadAirspaces();
+      _loadReportingPoints();
+    }
 
     // Load weather data for new airports if METAR overlay is enabled
     if (_showMetar) {
@@ -652,6 +1029,184 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         );
       }
     }
+  }
+
+  // Handle airspace selection
+  Future<void> _onAirspaceSelected(Airspace airspace) async {
+    debugPrint('_onAirspaceSelected called for ${airspace.name}');
+
+    if (!mounted) {
+      debugPrint('Context not mounted, returning early');
+      return;
+    }
+
+    try {
+      debugPrint('Showing airspace details for ${airspace.name}');
+      
+      // Create a simple dialog to show airspace information
+      await showDialog(
+        context: context,
+        builder: (BuildContext context) => AlertDialog(
+          title: Text(airspace.name),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (airspace.type != null)
+                  _buildInfoRow('Type', AirspaceUtils.getAirspaceTypeName(airspace.type)),
+                if (airspace.icaoClass != null)
+                  _buildInfoRow('ICAO Class', AirspaceUtils.getIcaoClassName(airspace.icaoClass)),
+                if (airspace.activity != null)
+                  _buildInfoRow('Activity', AirspaceUtils.getActivityName(airspace.activity)),
+                _buildInfoRow('Altitude', airspace.altitudeRange),
+                if (airspace.country != null)
+                  _buildInfoRow('Country', airspace.country!),
+                if (airspace.onDemand == true)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8.0),
+                    child: Text('⚠️ On Demand', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                if (airspace.onRequest == true)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8.0),
+                    child: Text('⚠️ On Request', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                if (airspace.byNotam == true)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8.0),
+                    child: Text('⚠️ By NOTAM', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                if (airspace.remarks != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Remarks:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text(airspace.remarks!),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error showing airspace details: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error showing airspace details')),
+        );
+      }
+    }
+  }
+
+  // Handle reporting point selection
+  Future<void> _onReportingPointSelected(ReportingPoint point) async {
+    debugPrint('_onReportingPointSelected called for ${point.name}');
+
+    if (!mounted) {
+      debugPrint('Context not mounted, returning early');
+      return;
+    }
+
+    try {
+      debugPrint('Showing reporting point details for ${point.name}');
+      
+      // Create a simple dialog to show reporting point information
+      await showDialog(
+        context: context,
+        builder: (BuildContext context) => AlertDialog(
+          title: Text(point.displayName),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildInfoRow('Name', point.name),
+                if (point.type != null)
+                  _buildInfoRow('Type', point.type!),
+                if (point.elevationString.isNotEmpty)
+                  _buildInfoRow('Elevation', point.elevationString),
+                if (point.country != null)
+                  _buildInfoRow('Country', point.country!),
+                if (point.state != null)
+                  _buildInfoRow('State', point.state!),
+                if (point.airportName != null)
+                  _buildInfoRow('Airport', point.airportName!),
+                if (point.description != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Description:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text(point.description!),
+                      ],
+                    ),
+                  ),
+                if (point.remarks != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Remarks:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text(point.remarks!),
+                      ],
+                    ),
+                  ),
+                if (point.tags != null && point.tags!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Tags:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text(point.tags!.join(', ')),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error showing reporting point details: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error showing reporting point details')),
+        );
+      }
+    }
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('$label: ', style: const TextStyle(fontWeight: FontWeight.bold)),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
   }
 
   /// Initialize services with cached data
@@ -772,6 +1327,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   if (_showNavaids) {
                     _loadNavaids();
                   }
+                  // Load airspaces and reporting points if they're enabled
+                  if (_showAirspaces) {
+                    _loadAirspaces();
+                    _loadReportingPoints();
+                  }
                   // Load weather data for new airports if METAR overlay is enabled
                   if (_showMetar) {
                     _loadWeatherForVisibleAirports();
@@ -784,7 +1344,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.captainvfr',
-                tileProvider: _servicesInitialized
+                tileProvider: _servicesInitialized && _offlineMapService != null
                     ? OfflineTileProvider(
                         urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                         offlineMapService: _offlineMapService!,
@@ -845,8 +1405,24 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                     ),
                   ]).expand((markers) => markers).toList(),
                 ),
-              // Airport markers with tap handling
-              AirportMarkersLayer(
+              // Airspaces overlay
+              if (_showAirspaces && _airspaces.isNotEmpty)
+                AirspacesOverlay(
+                  airspaces: _airspaces,
+                  showAirspacesLayer: _showAirspaces,
+                  onAirspaceTap: _onAirspaceSelected,
+                  currentAltitude: _currentPosition?.altitude ?? 0,
+                ),
+              // Reporting points overlay
+              if (_showAirspaces && _reportingPoints.isNotEmpty)
+                ReportingPointsOverlay(
+                  reportingPoints: _reportingPoints,
+                  showReportingPointsLayer: _showAirspaces,
+                  onReportingPointTap: _onReportingPointSelected,
+                  mapZoom: _mapController.camera.zoom,
+                ),
+              // Airport markers with tap handling (optimized)
+              OptimizedAirportMarkersLayer(
                 airports: _airports.where((airport) {
                   // Filter heliports based on toggle
                   if (airport.type == 'heliport' && !_showHeliports) {
@@ -861,9 +1437,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 }).toList(),
                 onAirportTap: _onAirportSelected,
               ),
-              // Navaid markers
+              // Navaid markers (optimized)
               if (_showNavaids && _navaids.isNotEmpty)
-                NavaidMarkersLayer(
+                OptimizedNavaidMarkersLayer(
                   navaids: _navaids,
                   onNavaidTap: _onNavaidSelected,
                 ),
@@ -1002,6 +1578,12 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                     isActive: _showSmallAirports,
                     onPressed: _toggleSmallAirports,
                   ),
+                  _buildLayerToggle(
+                    icon: _showAirspaces ? Icons.layers : Icons.layers_outlined,
+                    tooltip: 'Toggle Airspaces',
+                    isActive: _showAirspaces,
+                    onPressed: _toggleAirspaces,
+                  ),
                 ],
               ),
             ),
@@ -1078,6 +1660,22 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 curve: Curves.easeInOut,
                 height: _flightService.isTracking ? 200 : 0,
                 child: const FlightDashboard(),
+              ),
+            ),
+          
+          // Airspace information during flight
+          if (_flightService.isTracking && _currentPosition != null)
+            Positioned(
+              bottom: _flightService.isTracking ? 210 : 0,
+              left: 0,
+              right: 0,
+              child: AirspaceFlightInfo(
+                currentPosition: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                currentAltitude: _currentPosition!.altitude,
+                currentHeading: _currentPosition!.heading,
+                currentSpeed: _currentPosition!.speed,
+                openAIPService: openAIPService,
+                onAirspaceSelected: _onAirspaceSelected,
               ),
             ),
           // App bar - simplified without leading or actions
@@ -1334,6 +1932,13 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 ],
               );
             },
+          ),
+          // Loading progress bar at the top
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: LoadingProgressBar(),
           ),
         ],
       ),
