@@ -100,7 +100,7 @@ class FlightDashboard extends StatelessWidget {
         const Flexible(
           flex: 3,
           child: Text(
-            'FLIGHT DATA',
+            'FLIGHT',
             style: TextStyle(
               color: Colors.blueAccent,
               fontSize: 14,
