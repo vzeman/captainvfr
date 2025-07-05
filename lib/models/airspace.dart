@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'dart:developer' as developer;
 
 part 'airspace.g.dart';
@@ -200,6 +201,29 @@ class Airspace extends HiveObject {
   }
 
   String get altitudeRange => '$formattedLowerLimit - $formattedUpperLimit';
+  
+  // Cached bounding box for performance
+  late final LatLngBounds? _boundingBox = _calculateBoundingBox();
+  
+  LatLngBounds? get boundingBox => _boundingBox;
+  
+  LatLngBounds? _calculateBoundingBox() {
+    if (geometry.isEmpty) return null;
+    
+    double minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
+    
+    for (final point in geometry) {
+      minLat = minLat > point.latitude ? point.latitude : minLat;
+      maxLat = maxLat < point.latitude ? point.latitude : maxLat;
+      minLon = minLon > point.longitude ? point.longitude : minLon;
+      maxLon = maxLon < point.longitude ? point.longitude : maxLon;
+    }
+    
+    return LatLngBounds(
+      LatLng(minLat, minLon),
+      LatLng(maxLat, maxLon),
+    );
+  }
 
   bool containsPoint(LatLng point) {
     if (geometry.isEmpty) return false;

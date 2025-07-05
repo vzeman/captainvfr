@@ -42,7 +42,7 @@ class ConnectivityService extends ChangeNotifier {
     // Avoid checking too frequently
     if (_lastConnectionCheck != null) {
       final timeSinceLastCheck = DateTime.now().difference(_lastConnectionCheck!);
-      if (timeSinceLastCheck < const Duration(seconds: 10)) {
+      if (timeSinceLastCheck < const Duration(seconds: 180)) {
         return _hasInternetConnection;
       }
     }

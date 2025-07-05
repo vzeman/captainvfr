@@ -32,7 +32,7 @@ import '../widgets/flight_plan_overlay.dart';
 import '../widgets/compact_flight_plan_widget.dart';
 import '../widgets/license_warning_widget.dart';
 import '../widgets/floating_waypoint_panel.dart';
-import '../widgets/airspaces_overlay.dart';
+import '../widgets/optimized_airspaces_overlay.dart';
 import '../widgets/airspace_flight_info.dart';
 import '../services/openaip_service.dart';
 import '../models/airspace.dart';
@@ -86,6 +86,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   bool _showFlightPlanning = false; // Toggle for integrated flight planning
   String _errorMessage = '';
   Timer? _debounceTimer;
+  Timer? _airspaceDebounceTimer;
   
   // Flight data panel position state
   Offset _flightDataPanelPosition = const Offset(16, 220); // Default to bottom with positive margin
@@ -197,6 +198,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     _flightService.removeListener(_onFlightPathUpdated);
     _flightPlanService.removeListener(_onFlightPlanUpdated);
     _debounceTimer?.cancel();
+    _airspaceDebounceTimer?.cancel();
     _mapController.dispose();
     _flightService.dispose();
     super.dispose();
@@ -472,6 +474,17 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       debugPrint('🌍 _loadAirspaces: _showAirspaces is false, returning early');
       return;
     }
+    
+    // Cancel any pending debounce timer
+    _airspaceDebounceTimer?.cancel();
+    
+    // Set a new debounce timer (500ms delay for airspaces)
+    _airspaceDebounceTimer = Timer(const Duration(milliseconds: 500), () async {
+      await _loadAirspacesDebounced();
+    });
+  }
+  
+  Future<void> _loadAirspacesDebounced() async {
 
     // Check if API key is set
     final settingsBox = await Hive.openBox('settings');
@@ -1404,9 +1417,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                     ),
                   ]).expand((markers) => markers).toList(),
                 ),
-              // Airspaces overlay
+              // Airspaces overlay (optimized)
               if (_showAirspaces && _airspaces.isNotEmpty)
-                AirspacesOverlay(
+                OptimizedAirspacesOverlay(
                   airspaces: _airspaces,
                   showAirspacesLayer: _showAirspaces,
                   onAirspaceTap: _onAirspaceSelected,

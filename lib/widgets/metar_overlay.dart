@@ -91,10 +91,10 @@ class MetarOverlay extends StatelessWidget {
                   ),
                 ),
               ),
-            // Wind speed text
+            // Wind speed text - positioned below the weather indicator
             if (windData != null)
               Positioned(
-                bottom: 20,
+                top: 54, // Position below the 24px circle (starts at 28px, ends at 52px)
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                   decoration: BoxDecoration(
