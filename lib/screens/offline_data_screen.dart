@@ -105,7 +105,9 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
                     SizedBox(width: 16),
-                    Text('Loading airspaces and reporting points...'),
+                    Expanded(
+                      child: Text('Loading airspaces and reporting points...'),
+                    ),
                   ],
                 ),
                 duration: Duration(seconds: 60),
@@ -319,7 +321,9 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 SizedBox(width: 16),
-                Text('Refreshing all aviation data...'),
+                Expanded(
+                  child: Text('Refreshing all aviation data...'),
+                ),
               ],
             ),
             duration: Duration(seconds: 5),
@@ -552,7 +556,9 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 SizedBox(width: 16),
-                Text('Refreshing weather data...'),
+                Expanded(
+                  child: Text('Refreshing weather data...'),
+                ),
               ],
             ),
             duration: Duration(seconds: 3),
