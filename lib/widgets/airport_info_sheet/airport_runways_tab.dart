@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/airport.dart';
 import '../../models/runway.dart';
 import '../../services/runway_service.dart';
+import '../../services/settings_service.dart';
 import '../common/loading_widget.dart';
 import '../common/error_widget.dart' as custom;
 import '../common/status_chip.dart';
@@ -208,51 +210,67 @@ class RunwayCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Runway designation and basic info
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withAlpha(51), // 20% opacity
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    runway.designation,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                if (runway.lighted)
-                  Icon(Icons.lightbulb, size: 16, color: Colors.yellow[700]),
-                if (runway.closed)
-                  Icon(Icons.block, size: 16, color: Colors.red[700]),
-              ],
-            ),
-            const SizedBox(height: 8),
+    return Consumer<SettingsService>(
+      builder: (context, settings, child) {
+        final isMetric = settings.units == 'metric';
+        
+        // Format length based on units
+        final lengthStr = isMetric 
+            ? '${runway.lengthM.toStringAsFixed(0)} m'
+            : runway.lengthFormatted;
+            
+        // Format width based on units
+        final widthStr = runway.widthFt != null
+            ? isMetric 
+                ? '${runway.widthM!.toStringAsFixed(0)} m'
+                : '${runway.widthFt} ft'
+            : null;
 
-            // Runway details
-            Row(
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: _buildRunwayDetail(context, 'Length', runway.lengthFormatted),
+                // Runway designation and basic info
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withAlpha(51), // 20% opacity
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        runway.designation,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    if (runway.lighted)
+                      Icon(Icons.lightbulb, size: 16, color: Colors.yellow[700]),
+                    if (runway.closed)
+                      Icon(Icons.block, size: 16, color: Colors.red[700]),
+                  ],
                 ),
-                if (runway.widthFt != null)
-                  Expanded(
-                    child: _buildRunwayDetail(context, 'Width', '${runway.widthFt} ft'),
-                  ),
-              ],
-            ),
+                const SizedBox(height: 8),
+
+                // Runway details
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildRunwayDetail(context, 'Length', lengthStr),
+                    ),
+                    if (widthStr != null)
+                      Expanded(
+                        child: _buildRunwayDetail(context, 'Width', widthStr),
+                      ),
+                  ],
+                ),
             const SizedBox(height: 4),
             Row(
               children: [
@@ -286,6 +304,8 @@ class RunwayCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+      },
     );
   }
 

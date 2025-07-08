@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/flight_plan.dart';
 import '../services/flight_plan_service.dart';
+import '../services/settings_service.dart';
 
 class WaypointEditorDialog extends StatefulWidget {
   final int waypointIndex;
@@ -26,9 +27,8 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
   @override
   void initState() {
     super.initState();
-    _altitudeController = TextEditingController(
-      text: widget.waypoint.altitude.toStringAsFixed(0),
-    );
+    // Altitude will be set in build method based on unit settings
+    _altitudeController = TextEditingController();
     _nameController = TextEditingController(
       text: widget.waypoint.name ?? '',
     );
@@ -47,9 +47,14 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
 
   void _saveChanges() {
     final flightPlanService = Provider.of<FlightPlanService>(context, listen: false);
+    final settingsService = Provider.of<SettingsService>(context, listen: false);
+    final isMetric = settingsService.units == 'metric';
 
-    // Update altitude
-    final altitude = double.tryParse(_altitudeController.text) ?? widget.waypoint.altitude;
+    // Update altitude - convert back to feet if metric
+    var altitude = double.tryParse(_altitudeController.text) ?? widget.waypoint.altitude;
+    if (isMetric) {
+      altitude = altitude / 0.3048; // Convert meters to feet for storage
+    }
     flightPlanService.updateWaypointAltitude(widget.waypointIndex, altitude);
 
     // Update name and notes using the new service methods
@@ -95,45 +100,57 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text('Edit Waypoint ${widget.waypointIndex + 1}'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Waypoint coordinates (read-only)
-            Text(
-              'Position: ${widget.waypoint.latitude.toStringAsFixed(6)}, ${widget.waypoint.longitude.toStringAsFixed(6)}',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 16),
+    return Consumer<SettingsService>(
+      builder: (context, settings, child) {
+        final isMetric = settings.units == 'metric';
+        
+        // Set altitude text based on unit settings
+        if (_altitudeController.text.isEmpty) {
+          final displayAltitude = isMetric 
+              ? widget.waypoint.altitude * 0.3048 // Convert to meters
+              : widget.waypoint.altitude;
+          _altitudeController.text = displayAltitude.toStringAsFixed(0);
+        }
+        
+        return AlertDialog(
+          title: Text('Edit Waypoint ${widget.waypointIndex + 1}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Waypoint coordinates (read-only)
+                Text(
+                  'Position: ${widget.waypoint.latitude.toStringAsFixed(6)}, ${widget.waypoint.longitude.toStringAsFixed(6)}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 16),
 
-            // Name field
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'Enter waypoint name',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
+                // Name field
+                TextField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Name',
+                    hintText: 'Enter waypoint name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
 
-            // Altitude field
-            TextField(
-              controller: _altitudeController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
-              ],
-              decoration: const InputDecoration(
-                labelText: 'Altitude (ft MSL)',
-                hintText: 'Enter altitude in feet',
-                border: OutlineInputBorder(),
-                suffixText: 'ft',
-              ),
-            ),
+                // Altitude field
+                TextField(
+                  controller: _altitudeController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: isMetric ? 'Altitude (m MSL)' : 'Altitude (ft MSL)',
+                    hintText: isMetric ? 'Enter altitude in meters' : 'Enter altitude in feet',
+                    border: const OutlineInputBorder(),
+                    suffixText: isMetric ? 'm' : 'ft',
+                  ),
+                ),
             const SizedBox(height: 16),
 
             // Notes field
@@ -182,6 +199,8 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
           child: const Text('Save'),
         ),
       ],
+    );
+      },
     );
   }
 
