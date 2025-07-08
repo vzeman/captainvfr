@@ -22,14 +22,29 @@ class FlightDetailMap extends StatefulWidget {
 
 class _FlightDetailMapState extends State<FlightDetailMap> {
   late final MapController _mapController;
+  LatLngBounds? _flightBounds;
+  final GlobalKey<State> _mapKey = GlobalKey();
+  bool _isMapReady = false;
+  bool _tilesLoaded = false;
 
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
-    // Wait for the map to be ready before fitting bounds
+    _calculateBounds();
+    // Immediate initialization
+    _isMapReady = true;
+    
+    // Schedule bounds fitting after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fitBounds();
+      if (mounted) {
+        // Small delay to ensure map is fully initialized
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) {
+            _fitBoundsWhenReady();
+          }
+        });
+      }
     });
   }
 
@@ -39,7 +54,7 @@ class _FlightDetailMapState extends State<FlightDetailMap> {
     super.dispose();
   }
 
-  void _fitBounds() {
+  void _calculateBounds() {
     if (widget.flight.path.isEmpty) return;
 
     final positions = widget.flight.positions;
@@ -61,24 +76,64 @@ class _FlightDetailMapState extends State<FlightDetailMap> {
     final latPadding = (maxLat - minLat) * 0.1 + 0.01; // Add minimum padding
     final lngPadding = (maxLng - minLng) * 0.1 + 0.01; // Add minimum padding
 
-    final bounds = LatLngBounds(
+    _flightBounds = LatLngBounds(
       LatLng(minLat - latPadding, minLng - lngPadding),
       LatLng(maxLat + latPadding, maxLng + lngPadding),
     );
+  }
 
-    // Fit bounds with animation
-    _mapController.fitCamera(
-      CameraFit.bounds(
-        bounds: bounds,
-        padding: const EdgeInsets.all(40.0),
-      ),
-    );
+  void _fitBoundsWhenReady() {
+    if (_flightBounds == null || !mounted) return;
+
+    // Try to fit bounds, with retry logic if the map isn't ready yet
+    try {
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: _flightBounds!,
+          padding: const EdgeInsets.all(40.0),
+        ),
+      );
+      
+      // Force tile loading by triggering a micro zoom change
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && !_tilesLoaded) {
+          final currentZoom = _mapController.camera.zoom;
+          // Micro zoom in and out to force tile loading
+          _mapController.move(
+            _mapController.camera.center,
+            currentZoom + 0.01,
+          );
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (mounted) {
+              _mapController.move(
+                _mapController.camera.center,
+                currentZoom,
+              );
+            }
+          });
+        }
+      });
+    } catch (e) {
+      debugPrint('Map not ready yet, retrying...');
+      // Retry after a short delay
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          _fitBoundsWhenReady();
+        }
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.flight.path.isEmpty) {
       return const Center(child: Text('No flight path data available'));
+    }
+    
+    if (!_isMapReady) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
     }
 
     final positions = widget.flight.positions;
@@ -122,21 +177,87 @@ class _FlightDetailMapState extends State<FlightDetailMap> {
       }
     }
 
-    return FlutterMap(
-      mapController: _mapController,
-      options: MapOptions(
-        initialCenter: startPoint,
-        initialZoom: 13.0,
-        minZoom: 3.0,
-        maxZoom: 18.0,
-      ),
-      children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.example.captainvfr',
-        ),
-        PolylineLayer(polylines: polylines),
-        MarkerLayer(
+    // Calculate initial zoom level based on bounds
+    double initialZoom = 13.0;
+    LatLng initialCenter = startPoint;
+    
+    if (_flightBounds != null) {
+      // Calculate center of bounds
+      final centerLat = (_flightBounds!.north + _flightBounds!.south) / 2;
+      final centerLng = (_flightBounds!.east + _flightBounds!.west) / 2;
+      initialCenter = LatLng(centerLat, centerLng);
+      
+      // Calculate appropriate zoom level based on bounds size
+      final latDiff = _flightBounds!.north - _flightBounds!.south;
+      final lngDiff = _flightBounds!.east - _flightBounds!.west;
+      final maxDiff = latDiff > lngDiff ? latDiff : lngDiff;
+      
+      // Rough estimation of zoom level based on bounds
+      if (maxDiff > 1.0) {
+        initialZoom = 8.0;
+      } else if (maxDiff > 0.5) {
+        initialZoom = 9.0;
+      } else if (maxDiff > 0.2) {
+        initialZoom = 10.0;
+      } else if (maxDiff > 0.1) {
+        initialZoom = 11.0;
+      } else if (maxDiff > 0.05) {
+        initialZoom = 12.0;
+      } else {
+        initialZoom = 13.0;
+      }
+    }
+
+    return Container(
+      color: const Color(0xFFE5E3DF), // Light grey background
+      child: RepaintBoundary(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return FlutterMap(
+          key: _mapKey,
+          mapController: _mapController,
+          options: MapOptions(
+            initialCenter: initialCenter,
+            initialZoom: initialZoom,
+            minZoom: 3.0,
+            maxZoom: 18.0,
+            onMapReady: () {
+              // Force a rebuild when map is ready
+              if (mounted) {
+                // Force immediate state update to trigger tile loading
+                setState(() {});
+                
+                if (_flightBounds != null) {
+                  Future.delayed(const Duration(milliseconds: 200), () {
+                    if (mounted) {
+                      _fitBoundsWhenReady();
+                    }
+                  });
+                }
+              }
+            },
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.example.captainvfr',
+              maxZoom: 19,
+              tileBuilder: (context, tileWidget, tile) {
+                // Mark tiles as loaded when first tile renders
+                if (!_tilesLoaded && mounted) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted && !_tilesLoaded) {
+                      setState(() {
+                        _tilesLoaded = true;
+                      });
+                    }
+                  });
+                }
+                return tileWidget;
+              },
+            ),
+            PolylineLayer(polylines: polylines),
+            MarkerLayer(
           markers: [
             // Start marker
             Marker(
@@ -160,6 +281,10 @@ class _FlightDetailMapState extends State<FlightDetailMap> {
           ],
         ),
       ],
+        );
+          },
+        ),
+      ),
     );
   }
 }

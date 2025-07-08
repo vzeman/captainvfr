@@ -20,6 +20,7 @@ import 'services/connectivity_service.dart';
 import 'services/platform_services.dart';
 import 'services/vibration_measurement_service.dart';
 import 'services/openaip_service.dart';
+import 'services/settings_service.dart';
 import 'widgets/connectivity_banner.dart';
 import 'widgets/loading_screen.dart';
 import 'services/background_data_service.dart';
@@ -178,6 +179,9 @@ void main() async {
       debugPrint('⚠️ Failed to initialize OpenAIP service: $e');
     }
     
+    // Initialize Settings service
+    final settingsService = SettingsService();
+    
     // Initialize background data service
     final backgroundDataService = BackgroundDataService();
     await backgroundDataService.initialize(
@@ -250,6 +254,9 @@ void main() async {
           ),
           ChangeNotifierProvider<LicenseService>.value(
             value: licenseService,
+          ),
+          ChangeNotifierProvider<SettingsService>.value(
+            value: settingsService,
           ),
           Provider<AirportService>.value(value: airportService),
           Provider<CacheService>.value(value: cacheService),
@@ -339,6 +346,7 @@ void _runMinimalApp() {
   final aircraftSettingsService = AircraftSettingsService();
   final checklistService = ChecklistService();
   final licenseService = LicenseService();
+  final settingsService = SettingsService();
   final cacheService = CacheService();
   final flightService = FlightService(barometerService: barometerService);
   
@@ -358,6 +366,7 @@ void _runMinimalApp() {
         ChangeNotifierProvider<AircraftSettingsService>.value(value: aircraftSettingsService),
         ChangeNotifierProvider<ChecklistService>.value(value: checklistService),
         ChangeNotifierProvider<LicenseService>.value(value: licenseService),
+        ChangeNotifierProvider<SettingsService>.value(value: settingsService),
         Provider<AirportService>.value(value: airportService),
         Provider<CacheService>.value(value: cacheService),
         Provider<RunwayService>.value(value: runwayService),

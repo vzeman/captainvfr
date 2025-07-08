@@ -49,6 +49,14 @@ class OptimizedMarkerLayer extends StatelessWidget {
     // Filter markers to only those within padded bounds
     final visibleMarkers = <Marker>[];
     
+    // Log first few positions for debugging on iOS
+    if (Platform.isIOS && markerPositions.isNotEmpty) {
+      final firstPos = markerPositions.first;
+      debugPrint('🍎 iOS: First marker position: $firstPos');
+      debugPrint('🍎 iOS: Padded bounds: SW=${paddedBounds.southWest}, NE=${paddedBounds.northEast}');
+      debugPrint('🍎 iOS: Contains first marker: ${paddedBounds.contains(firstPos)}');
+    }
+    
     for (int i = 0; i < markerPositions.length; i++) {
       final position = markerPositions[i];
       

@@ -24,7 +24,7 @@ class CompactFlightPlanWidget extends StatefulWidget {
 class _CompactFlightPlanWidgetState extends State<CompactFlightPlanWidget> {
   final TextEditingController _cruiseSpeedController = TextEditingController();
   String? _selectedAircraftId;
-  bool _isFlightPlanVisible = true;
+  bool _isExpanded = true;
   int? _selectedWaypointIndex;
 
   @override
@@ -75,21 +75,15 @@ class _CompactFlightPlanWidgetState extends State<CompactFlightPlanWidget> {
           child: Container(
             margin: const EdgeInsets.only(top: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              color: const Color(0xB3000000), // Black with 0.7 opacity
+              borderRadius: BorderRadius.circular(12.0),
+              border: Border.all(color: const Color(0x7F448AFF), width: 1.0), // Blue accent with 0.5 opacity
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 _buildCompactHeader(flightPlanService),
-                if (flightPlan != null || isPlanning)
+                if (_isExpanded && (flightPlan != null || isPlanning))
                   _buildCompactContent(flightPlanService),
               ],
             ),
@@ -100,48 +94,61 @@ class _CompactFlightPlanWidgetState extends State<CompactFlightPlanWidget> {
   }
 
   Widget _buildCompactHeader(FlightPlanService flightPlanService) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: flightPlanService.isPlanning ? Colors.blue.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            flightPlanService.isPlanning ? Icons.flight_takeoff : Icons.map,
-            color: flightPlanService.isPlanning ? Colors.blue : Colors.grey[600],
-            size: 20,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              flightPlanService.isPlanning
-                ? 'Flight Planning Active'
-                : flightPlanService.currentFlightPlan?.name ?? 'No Flight Plan',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                color: flightPlanService.isPlanning ? Colors.blue : Colors.grey[700],
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _isExpanded = !_isExpanded;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            Icon(
+              _isExpanded ? Icons.expand_less : Icons.expand_more,
+              color: const Color(0xFF448AFF),
+              size: 24,
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              flightPlanService.isPlanning ? Icons.flight_takeoff : Icons.map,
+              color: flightPlanService.isPlanning ? const Color(0xFF448AFF) : Colors.white70,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                flightPlanService.isPlanning
+                  ? 'Flight Planning Active'
+                  : flightPlanService.currentFlightPlan?.name ?? 'No Flight Plan',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: Colors.white,
+                ),
               ),
             ),
-          ),
-          if (flightPlanService.isPlanning)
-            Text(
-              'Tap map to add waypoints',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-                fontStyle: FontStyle.italic,
+            if (flightPlanService.isPlanning && _isExpanded)
+              Text(
+                'Tap map to add waypoints',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontStyle: FontStyle.italic,
+                ),
               ),
+            IconButton(
+              icon: Icon(
+                Icons.close,
+                size: 20,
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
+              onPressed: widget.onClose,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             ),
-          IconButton(
-            icon: const Icon(Icons.close, size: 18),
-            onPressed: widget.onClose,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -159,8 +166,9 @@ class _CompactFlightPlanWidgetState extends State<CompactFlightPlanWidget> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.1),
+                color: const Color(0x1A448AFF), // Blue accent with low opacity
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0x33448AFF)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -186,22 +194,24 @@ class _CompactFlightPlanWidgetState extends State<CompactFlightPlanWidget> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                      color: const Color(0x1A448AFF),
+                      border: Border.all(color: const Color(0x33448AFF)),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.airplanemode_active, size: 16, color: Colors.grey),
+                        const Icon(Icons.airplanemode_active, size: 16, color: Color(0xFF448AFF)),
                         const SizedBox(width: 4),
-                        const Text('Aircraft:', style: TextStyle(fontSize: 12)),
+                        const Text('Aircraft:', style: TextStyle(fontSize: 12, color: Colors.white70)),
                         const SizedBox(width: 8),
                         Expanded(
                           child: DropdownButton<String>(
                             value: _selectedAircraftId,
                             isExpanded: true,
                             isDense: true,
-                            hint: const Text('Select Aircraft', style: TextStyle(fontSize: 12)),
-                            style: const TextStyle(fontSize: 12, color: Colors.black87),
+                            hint: const Text('Select Aircraft', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                            style: const TextStyle(fontSize: 12, color: Colors.white),
+                            dropdownColor: const Color(0xE6000000),
                             underline: const SizedBox(),
                             onChanged: (String? aircraftId) {
                               setState(() {
@@ -284,8 +294,8 @@ class _CompactFlightPlanWidgetState extends State<CompactFlightPlanWidget> {
                               onPressed: flightPlan != null ? () => _saveFlightPlan(flightPlanService) : null,
                             ),
                             _buildCompactButton(
-                              icon: _isFlightPlanVisible ? Icons.visibility_off : Icons.visibility,
-                              label: _isFlightPlanVisible ? 'Hide' : 'Show',
+                              icon: _isExpanded ? Icons.visibility_off : Icons.visibility,
+                              label: _isExpanded ? 'Hide' : 'Show',
                               onPressed: () => _toggleFlightPlanVisibility(flightPlanService),
                             ),
                             _buildCompactButton(
@@ -345,21 +355,21 @@ class _CompactFlightPlanWidgetState extends State<CompactFlightPlanWidget> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: Colors.blue),
+        Icon(icon, size: 16, color: const Color(0xFF448AFF)),
         const SizedBox(height: 2),
         Text(
           value,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 12,
-            color: Colors.blue,
+            color: Colors.white,
           ),
         ),
         Text(
           label,
           style: TextStyle(
             fontSize: 10,
-            color: Colors.grey[600],
+            color: Colors.white.withValues(alpha: 0.6),
           ),
         ),
       ],
@@ -376,10 +386,10 @@ class _CompactFlightPlanWidgetState extends State<CompactFlightPlanWidget> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: onPressed != null ? Colors.blue.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
+          color: onPressed != null ? const Color(0x1A448AFF) : const Color(0x1A666666),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: onPressed != null ? Colors.blue.withValues(alpha: 0.3) : Colors.grey.withValues(alpha: 0.3),
+            color: onPressed != null ? const Color(0x33448AFF) : const Color(0x33666666),
           ),
         ),
         child: Column(
@@ -388,14 +398,14 @@ class _CompactFlightPlanWidgetState extends State<CompactFlightPlanWidget> {
             Icon(
               icon,
               size: 16,
-              color: onPressed != null ? Colors.blue : Colors.grey,
+              color: onPressed != null ? const Color(0xFF448AFF) : Colors.grey,
             ),
             const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
                 fontSize: 10,
-                color: onPressed != null ? Colors.blue : Colors.grey,
+                color: onPressed != null ? Colors.white : Colors.grey,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -447,7 +457,7 @@ class _CompactFlightPlanWidgetState extends State<CompactFlightPlanWidget> {
   
   void _toggleFlightPlanVisibility(FlightPlanService flightPlanService) {
     setState(() {
-      _isFlightPlanVisible = !_isFlightPlanVisible;
+      _isExpanded = !_isExpanded;
     });
     flightPlanService.toggleFlightPlanVisibility();
   }

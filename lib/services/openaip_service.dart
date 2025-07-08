@@ -377,13 +377,16 @@ class OpenAIPService {
       developer.log('⚠️ Error clearing airspaces cache: $e');
     }
     
-    // Split the world into 20 tiles (5x4 grid)
-    const int tilesX = 5;
-    const int tilesY = 4;
+    // Split the world into more tiles to avoid hitting API limits per tile
+    // Using 10x8 grid (80 tiles) instead of 5x4 (20 tiles) for better granularity
+    const int tilesX = 10;
+    const int tilesY = 8;
     const double worldWidth = 360.0; // -180 to 180
     const double worldHeight = 180.0; // -90 to 90
     const double tileWidth = worldWidth / tilesX;
     const double tileHeight = worldHeight / tilesY;
+    
+    developer.log('📐 Using ${tilesX}x$tilesY grid (${tilesX * tilesY} tiles) with tile size: $tileWidth° x $tileHeight°');
     
     int totalTiles = tilesX * tilesY;
     int completedTiles = 0;
@@ -435,8 +438,8 @@ class OpenAIPService {
             developer.log('💾 Appended $tileAirspaces airspaces from tile $completedTiles');
           }
           
-          // Delay between tiles to avoid rate limiting
-          await Future.delayed(const Duration(seconds: 1));
+          // Smaller delay between tiles since we're using smaller tiles
+          await Future.delayed(const Duration(milliseconds: 500));
           
         } catch (e) {
           developer.log('❌ Error fetching tile ${completedTiles + 1}/$totalTiles: $e');
@@ -544,8 +547,14 @@ class OpenAIPService {
           final total = data['total'] ?? data['totalCount'] ?? data['count'];
           final currentPage = data['page'] ?? data['currentPage'];
           final totalPages = data['pages'] ?? data['totalPages'];
+          final hasMore = data['hasMore'] ?? data['has_more'];
+          
+          developer.log('📊 API Response structure keys: ${data.keys.toList()}');
+          
           if (total != null) {
-            developer.log('📊 API Response - Total: $total, Page: $currentPage/$totalPages');
+            developer.log('📊 API Response - Total available: $total, Current page: $currentPage/$totalPages, Items in this response: ${items.length}');
+          } else {
+            developer.log('📊 API Response - Items in this response: ${items.length}, hasMore: $hasMore');
           }
         }
         
@@ -553,9 +562,8 @@ class OpenAIPService {
             .map((json) => ReportingPoint.fromJson(json))
             .toList();
 
-        if (reportingPoints.isNotEmpty) {
-          await _cacheReportingPoints(reportingPoints);
-        }
+        // Don't cache here - let the caller decide whether to cache
+        // This prevents overwriting the cache when fetching individual tiles
 
         developer.log('✅ Fetched ${reportingPoints.length} reporting points from OpenAIP');
         return reportingPoints;
@@ -616,13 +624,16 @@ class OpenAIPService {
       developer.log('⚠️ Error clearing reporting points cache: $e');
     }
     
-    // Split the world into 20 tiles (5x4 grid)
-    const int tilesX = 5;
-    const int tilesY = 4;
+    // Split the world into more tiles to avoid hitting API limits per tile
+    // Using 10x8 grid (80 tiles) instead of 5x4 (20 tiles) for better granularity
+    const int tilesX = 10;
+    const int tilesY = 8;
     const double worldWidth = 360.0; // -180 to 180
     const double worldHeight = 180.0; // -90 to 90
     const double tileWidth = worldWidth / tilesX;
     const double tileHeight = worldHeight / tilesY;
+    
+    developer.log('📐 Using ${tilesX}x$tilesY grid (${tilesX * tilesY} tiles) with tile size: $tileWidth° x $tileHeight°');
     
     int totalTiles = tilesX * tilesY;
     int completedTiles = 0;
@@ -666,9 +677,15 @@ class OpenAIPService {
                 hasMore = false;
                 developer.log('🏁 Tile ${completedTiles + 1}: Last page reached (got ${points.length} < 1000)');
               } else {
-                page++;
-                // Small delay between pages
-                await Future.delayed(const Duration(milliseconds: 200));
+                // Check if we've hit a reasonable page limit to prevent infinite loops
+                if (page >= 10) {
+                  hasMore = false;
+                  developer.log('⚠️ Tile ${completedTiles + 1}: Reached page limit (10 pages), stopping pagination');
+                } else {
+                  page++;
+                  // Small delay between pages
+                  await Future.delayed(const Duration(milliseconds: 200));
+                }
               }
             }
           }
@@ -682,8 +699,8 @@ class OpenAIPService {
             developer.log('💾 Appended $tilePoints reporting points from tile $completedTiles');
           }
           
-          // Delay between tiles to avoid rate limiting
-          await Future.delayed(const Duration(seconds: 1));
+          // Smaller delay between tiles since we're using smaller tiles
+          await Future.delayed(const Duration(milliseconds: 500));
           
         } catch (e) {
           developer.log('❌ Error fetching tile ${completedTiles + 1}/$totalTiles: $e');
@@ -704,6 +721,57 @@ class OpenAIPService {
     final uniqueIds = allPoints.map((p) => p.id).toSet();
     if (uniqueIds.length != allPoints.length) {
       developer.log('⚠️ Found ${allPoints.length - uniqueIds.length} duplicate IDs in fetched data!');
+      
+      // Log which IDs are duplicated
+      final idCounts = <String, int>{};
+      for (final point in allPoints) {
+        idCounts[point.id] = (idCounts[point.id] ?? 0) + 1;
+      }
+      final duplicates = idCounts.entries.where((e) => e.value > 1).toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      
+      developer.log('📊 Top duplicate IDs:');
+      for (int i = 0; i < duplicates.length.clamp(0, 5); i++) {
+        developer.log('  - ID "${duplicates[i].key}": ${duplicates[i].value} occurrences');
+      }
+    }
+    
+    // Log geographic distribution
+    if (allPoints.isNotEmpty) {
+      final latitudes = allPoints.map((p) => p.position.latitude).toList()..sort();
+      final longitudes = allPoints.map((p) => p.position.longitude).toList()..sort();
+      developer.log('📍 Geographic distribution:');
+      developer.log('  - Latitude range: ${latitudes.first} to ${latitudes.last}');
+      developer.log('  - Longitude range: ${longitudes.first} to ${longitudes.last}');
+      
+      // Count points by region (rough estimation)
+      final regions = <String, int>{};
+      for (final point in allPoints) {
+        final lat = point.position.latitude;
+        final lon = point.position.longitude;
+        String region = 'Unknown';
+        
+        if (lat > 35 && lat < 71 && lon > -10 && lon < 40) {
+          region = 'Europe';
+        } else if (lat > 20 && lat < 50 && lon > -130 && lon < -60) {
+          region = 'North America';
+        } else if (lat > -35 && lat < 35 && lon > -20 && lon < 60) {
+          region = 'Africa';
+        } else if (lat > -10 && lat < 55 && lon > 60 && lon < 150) {
+          region = 'Asia';
+        } else if (lat > -50 && lat < -10 && lon > -80 && lon < -35) {
+          region = 'South America';
+        } else if (lat > -50 && lat < -10 && lon > 110 && lon < 180) {
+          region = 'Oceania';
+        }
+        
+        regions[region] = (regions[region] ?? 0) + 1;
+      }
+      
+      developer.log('📊 Points by region:');
+      for (final entry in regions.entries) {
+        developer.log('  - ${entry.key}: ${entry.value} points');
+      }
     }
     
     return allPoints;
@@ -775,14 +843,31 @@ class OpenAIPService {
 
   Future<void> refreshReportingPointsCache({bool forceRefresh = false}) async {
     try {
+      developer.log('🔄 Starting reporting points cache refresh...');
+      
+      // Check current cache status
+      final currentCached = await getCachedReportingPoints();
+      developer.log('📊 Current cache has ${currentCached.length} reporting points');
+      
       // Always fetch all reporting points when refresh is requested
       final reportingPoints = await fetchAllReportingPoints();
       
       if (reportingPoints.isNotEmpty) {
         developer.log('✅ Refreshed reporting points cache with ${reportingPoints.length} items');
+        
+        // Verify the refresh worked
+        final newCached = await getCachedReportingPoints();
+        developer.log('📊 After refresh, cache has ${newCached.length} reporting points');
+        
+        if (newCached.length < reportingPoints.length) {
+          developer.log('⚠️ Cache has fewer points than fetched! Cache: ${newCached.length}, Fetched: ${reportingPoints.length}');
+        }
+      } else {
+        developer.log('⚠️ No reporting points fetched during refresh');
       }
     } catch (e) {
       developer.log('❌ Error refreshing reporting points cache: $e');
+      developer.log('❌ Stack trace: ${StackTrace.current}');
     }
   }
 }

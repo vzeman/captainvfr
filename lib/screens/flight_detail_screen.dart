@@ -42,7 +42,7 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
               Tab(icon: Icon(Icons.info_outline), text: 'Info'),
               Tab(icon: Icon(Icons.timeline), text: 'Segments'),
               Tab(icon: Icon(Icons.speed), text: 'Speed'),
-              Tab(icon: Icon(Icons.vibration), text: 'Vibration'),
+              Tab(icon: Icon(Icons.vibration), text: 'Turbulence'),
               Tab(icon: Icon(Icons.terrain), text: 'Altitude'),
             ],
           ),
@@ -103,7 +103,7 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                     'No speed data available',
                   ),
 
-                  // Vibration Tab
+                  // Turbulence Tab
                   _buildChartTab(
                     widget.flight.vibrationData.isNotEmpty
                         ? VibrationChart(
@@ -117,7 +117,7 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                           )
                         : null,
                     Icons.vibration,
-                    'No vibration data available',
+                    'No turbulence data available',
                   ),
 
                   // Altitude Tab
