@@ -66,30 +66,9 @@ class OptimizedAirspacesOverlay extends StatelessWidget {
 
     debugPrint('OptimizedAirspacesOverlay: ${visibleAirspaces.length} of ${airspaces.length} airspaces visible at zoom $zoom');
 
-    // Don't render too many polygons at low zoom levels
-    List<Airspace> airspacesToRender = visibleAirspaces;
-    if (zoom < 8 && visibleAirspaces.length > 50) {
-      // At low zoom, only show the most important airspaces
-      airspacesToRender = visibleAirspaces.where((a) {
-        final type = a.type?.toUpperCase() ?? '';
-        final icaoClass = a.icaoClass?.toUpperCase() ?? '';
-        // Priority airspaces: CTR, TMA, Prohibited, Class A/B/C
-        return type.contains('CTR') || 
-               type.contains('TMA') || 
-               type.contains('PROHIBIT') ||
-               icaoClass == 'A' ||
-               icaoClass == 'B' ||
-               icaoClass == 'C';
-      }).toList();
-      
-      // Still limit to reasonable number
-      if (airspacesToRender.length > 30) {
-        airspacesToRender = airspacesToRender.take(30).toList();
-      }
-    }
-
+    // Render all visible airspaces regardless of zoom level
     return PolygonLayer(
-      polygons: airspacesToRender.map((airspace) => _buildAirspacePolygon(airspace)).toList(),
+      polygons: visibleAirspaces.map((airspace) => _buildAirspacePolygon(airspace)).toList(),
     );
   }
 
