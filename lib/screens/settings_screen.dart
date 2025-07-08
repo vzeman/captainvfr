@@ -70,6 +70,30 @@ class SettingsScreen extends StatelessWidget {
                       },
                     ),
                   ),
+                  ListTile(
+                    title: const Text(
+                      'Pressure Unit',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    subtitle: Text(
+                      'Barometric pressure display unit',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    trailing: DropdownButton<String>(
+                      value: settings.pressureUnit,
+                      dropdownColor: const Color(0xE6000000),
+                      style: const TextStyle(color: Colors.white),
+                      items: const [
+                        DropdownMenuItem(value: 'hPa', child: Text('hPa')),
+                        DropdownMenuItem(value: 'inHg', child: Text('inHg')),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          settings.setPressureUnit(value);
+                        }
+                      },
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 32),
@@ -224,6 +248,36 @@ class SettingsDialog {
                             onChanged: (value) {
                               if (value != null) {
                                 settings.setUnits(value);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Pressure',
+                          style: TextStyle(color: Colors.white70, fontSize: 11),
+                        ),
+                        SizedBox(
+                          height: 28,
+                          child: DropdownButton<String>(
+                            value: settings.pressureUnit,
+                            dropdownColor: const Color(0xE6000000),
+                            style: const TextStyle(color: Colors.white, fontSize: 11),
+                            isDense: true,
+                            items: const [
+                              DropdownMenuItem(value: 'hPa', child: Text('hPa')),
+                              DropdownMenuItem(value: 'inHg', child: Text('inHg')),
+                            ],
+                            onChanged: (value) {
+                              if (value != null) {
+                                settings.setPressureUnit(value);
                               }
                             },
                           ),

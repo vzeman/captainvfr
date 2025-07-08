@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/flight_plan.dart';
 import '../models/aircraft.dart';
 import '../services/flight_plan_service.dart';
+import '../services/settings_service.dart';
 import 'waypoint_editor_dialog.dart';
 
 class WaypointTableWidget extends StatefulWidget {
@@ -124,9 +125,13 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
     );
   }
 
-  void _updateWaypointAltitude(int index, String altitudeText) {
-    final altitude = double.tryParse(altitudeText);
+  void _updateWaypointAltitude(int index, String altitudeText, bool isMetric) {
+    var altitude = double.tryParse(altitudeText);
     if (altitude != null) {
+      // Convert to feet for storage if metric
+      if (isMetric) {
+        altitude = altitude / 0.3048; // Convert meters to feet
+      }
       final flightPlanService = Provider.of<FlightPlanService>(
         context,
         listen: false,
@@ -135,8 +140,22 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
     }
   }
 
-  String _formatDistance(double distance) {
-    return distance.toStringAsFixed(1);
+  String _formatDistance(double distance, bool isMetric) {
+    final displayDistance = isMetric ? distance * 1.852 : distance; // Convert nm to km if metric
+    return displayDistance.toStringAsFixed(1);
+  }
+  
+  String _getDistanceUnit(bool isMetric) {
+    return isMetric ? 'km' : 'nm';
+  }
+  
+  String _formatAltitude(double altitude, bool isMetric) {
+    final displayAltitude = isMetric ? altitude * 0.3048 : altitude; // Convert ft to m if metric
+    return displayAltitude.toStringAsFixed(0);
+  }
+  
+  String _getAltitudeUnit(bool isMetric) {
+    return isMetric ? 'm' : 'ft';
   }
 
   String _formatTime(double minutes) {
@@ -149,8 +168,13 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
     }
   }
 
-  String _formatFuel(double gallons) {
-    return gallons.toStringAsFixed(1);
+  String _formatFuel(double gallons, bool isMetric) {
+    final displayFuel = isMetric ? gallons * 3.78541 : gallons; // Convert gallons to liters if metric
+    return displayFuel.toStringAsFixed(1);
+  }
+  
+  String _getFuelUnit(bool isMetric) {
+    return isMetric ? 'L' : 'gal';
   }
 
   Color _getWaypointTypeColor(WaypointType type) {
@@ -174,7 +198,11 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                        widget.selectedAircraft?.cruiseSpeed.toDouble();
     final fuelConsumption = widget.selectedAircraft?.fuelConsumption;
 
-    return Card(
+    return Consumer<SettingsService>(
+      builder: (context, settings, child) {
+        final isMetric = settings.units == 'metric';
+        
+        return Card(
       elevation: 2,
       margin: const EdgeInsets.all(8),
       child: Column(
@@ -213,7 +241,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                   const Spacer(),
                   if (waypoints.isNotEmpty && cruiseSpeed != null)
                     Text(
-                      'Total: ${_formatDistance(widget.flightPlan!.totalDistance)} nm, '
+                      'Total: ${_formatDistance(widget.flightPlan!.totalDistance, isMetric)} ${_getDistanceUnit(isMetric)}, '
                       '${_formatTime(widget.flightPlan!.totalFlightTime)}',
                       style: theme.textTheme.bodySmall,
                     ),
@@ -378,7 +406,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                           FilteringTextInputFormatter.digitsOnly,
                                         ],
                                         decoration: InputDecoration(
-                                          suffixText: 'ft',
+                                          suffixText: _getAltitudeUnit(isMetric),
                                           border: InputBorder.none,
                                           isDense: true,
                                           contentPadding: const EdgeInsets.symmetric(
@@ -389,11 +417,12 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                         style: theme.textTheme.bodyMedium,
                                         textAlign: TextAlign.right,
                                         onSubmitted: (value) => 
-                                            _updateWaypointAltitude(index, value),
+                                            _updateWaypointAltitude(index, value, isMetric),
                                         onEditingComplete: () {
                                           _updateWaypointAltitude(
                                             index,
                                             _getAltitudeController(waypoint).text,
+                                            isMetric,
                                           );
                                         },
                                       ),
@@ -404,7 +433,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                       width: 70,
                                       child: Text(
                                         distanceFromPrevious != null
-                                            ? '${_formatDistance(distanceFromPrevious)} nm'
+                                            ? '${_formatDistance(distanceFromPrevious, isMetric)} ${_getDistanceUnit(isMetric)}'
                                             : '-',
                                         style: theme.textTheme.bodySmall,
                                         textAlign: TextAlign.right,
@@ -428,7 +457,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                       width: 60,
                                       child: Text(
                                         fuelFromPrevious != null
-                                            ? '${_formatFuel(fuelFromPrevious)} gal'
+                                            ? '${_formatFuel(fuelFromPrevious, isMetric)} ${_getFuelUnit(isMetric)}'
                                             : '-',
                                         style: theme.textTheme.bodySmall,
                                         textAlign: TextAlign.right,
@@ -461,6 +490,8 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
           ),
         ],
       ),
+    );
+      },
     );
   }
 }

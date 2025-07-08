@@ -9,6 +9,7 @@ class SettingsService extends ChangeNotifier {
   static const String _keyHighPrecisionTracking = 'high_precision_tracking';
   static const String _keyDarkMode = 'dark_mode';
   static const String _keyUnits = 'units';
+  static const String _keyPressureUnit = 'pressure_unit';
   
   late SharedPreferences _prefs;
   bool _isInitialized = false;
@@ -21,6 +22,7 @@ class SettingsService extends ChangeNotifier {
   bool _highPrecisionTracking = false;
   bool _darkMode = true;
   String _units = 'metric'; // 'metric' or 'imperial'
+  String _pressureUnit = 'hPa'; // 'hPa' or 'inHg'
   
   // Getters
   bool get rotateMapWithHeading => _rotateMapWithHeading;
@@ -30,6 +32,7 @@ class SettingsService extends ChangeNotifier {
   bool get highPrecisionTracking => _highPrecisionTracking;
   bool get darkMode => _darkMode;
   String get units => _units;
+  String get pressureUnit => _pressureUnit;
   bool get isInitialized => _isInitialized;
   
   SettingsService() {
@@ -51,6 +54,7 @@ class SettingsService extends ChangeNotifier {
     _highPrecisionTracking = _prefs.getBool(_keyHighPrecisionTracking) ?? false;
     _darkMode = _prefs.getBool(_keyDarkMode) ?? true;
     _units = _prefs.getString(_keyUnits) ?? 'metric';
+    _pressureUnit = _prefs.getString(_keyPressureUnit) ?? 'hPa';
   }
   
   // Setters
@@ -98,6 +102,14 @@ class SettingsService extends ChangeNotifier {
     }
   }
   
+  Future<void> setPressureUnit(String value) async {
+    if (value != _pressureUnit) {
+      _pressureUnit = value;
+      await _prefs.setString(_keyPressureUnit, value);
+      notifyListeners();
+    }
+  }
+  
   // Reset to defaults
   Future<void> resetToDefaults() async {
     await setRotateMapWithHeading(false);
@@ -107,6 +119,7 @@ class SettingsService extends ChangeNotifier {
     await setHighPrecisionTracking(false);
     await setDarkMode(true);
     await setUnits('metric');
+    await setPressureUnit('hPa');
   }
   
   // Unit conversion helpers

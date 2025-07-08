@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import '../services/flight_plan_service.dart';
 import '../services/flight_service.dart';
 import '../services/aircraft_settings_service.dart';
+import '../services/settings_service.dart';
 import '../models/flight.dart';
 import '../services/barometer_service.dart';
 import 'themed_dialog.dart';
@@ -350,24 +351,37 @@ class FlightDashboard extends StatelessWidget {
   }
 
   Widget _buildAdditionalIndicators(BuildContext context, FlightService flightService, BarometerService barometerService) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        Expanded(
-          child: _buildSmallIndicator(
-            'PRESS',
-            '${flightService.currentPressure.toStringAsFixed(0)} hPa',
-            Icons.compress,
-          ),
-        ),
-        Expanded(
-          child: _buildSmallIndicator(
-            'FUEL',
-            '${flightService.fuelUsed.toStringAsFixed(1)} gal',
-            Icons.local_gas_station,
-          ),
-        ),
-      ],
+    return Consumer<SettingsService>(
+      builder: (context, settings, child) {
+        // Convert pressure based on user preference
+        final pressureValue = flightService.currentPressure;
+        final displayPressure = settings.pressureUnit == 'inHg' 
+            ? pressureValue * 0.02953 // Convert hPa to inHg
+            : pressureValue;
+        final pressureStr = settings.pressureUnit == 'inHg'
+            ? displayPressure.toStringAsFixed(2)
+            : displayPressure.toStringAsFixed(0);
+            
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            Expanded(
+              child: _buildSmallIndicator(
+                'PRESS',
+                '$pressureStr ${settings.pressureUnit}',
+                Icons.compress,
+              ),
+            ),
+            Expanded(
+              child: _buildSmallIndicator(
+                'FUEL',
+                '${flightService.fuelUsed.toStringAsFixed(1)} gal',
+                Icons.local_gas_station,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
