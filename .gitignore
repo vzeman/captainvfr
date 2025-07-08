@@ -117,3 +117,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# API Configuration - contains sensitive keys
+lib/config/api_config.dart
