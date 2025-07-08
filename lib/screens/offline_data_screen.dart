@@ -1057,11 +1057,13 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                               children: [
                                 Icon(Icons.key, size: 24, color: Colors.blue[700]),
                                 const SizedBox(width: 8),
-                                const Text(
-                                  'OpenAIP Configuration',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+                                const Expanded(
+                                  child: Text(
+                                    'OpenAIP Configuration',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ],
