@@ -85,7 +85,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   bool _showMetar = false; // Toggle for METAR overlay
   bool _showHeliports = false; // Toggle for heliport display (default hidden)
   bool _showSmallAirports = true; // Toggle for small airport display (default visible)
-  bool _showAirspaces = false; // Toggle for airspaces display
+  bool _showAirspaces = true; // Toggle for airspaces display
   bool _servicesInitialized = false;
   bool _isInitializing = false; // Guard against concurrent initialization
   bool _showFlightPlanning = false; // Toggle for integrated flight planning
