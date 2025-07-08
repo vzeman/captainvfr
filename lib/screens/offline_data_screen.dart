@@ -1277,19 +1277,6 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                             const Text('Download tiles for current map area'),
                             const SizedBox(height: 16),
                             
-                            // Zoom level info
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.blue[50],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'Higher zoom levels provide more detail but require more storage space. Level 8-10 is good for general navigation, 11-14 for detailed airport views.',
-                                style: TextStyle(fontSize: 13),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
                             
                             // Zoom level sliders
                             Text('Min Zoom Level: $_minZoom'),
