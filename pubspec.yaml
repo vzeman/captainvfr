@@ -39,6 +39,7 @@ dependencies:
   geolocator: ^14.0.1
   sensors_plus: ^6.1.1
   flutter_compass: ^0.8.1
+  wakelock_plus: ^1.2.8
   
   # Charts
   fl_chart: ^1.0.0

@@ -85,27 +85,35 @@ class FlightPlanOverlay {
       markers.add(
         Marker(
           point: waypoint.latLng,
-          width: 100,
-          height: 25,
+          width: 80,
+          height: 20,
           child: Transform.translate(
-            offset: const Offset(0, -35),
+            offset: const Offset(20, -5), // Position to the right of the marker
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
                 color: isSelected 
                     ? Colors.yellow.withValues(alpha: 0.9)
-                    : Colors.black.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(4),
-                border: isSelected 
-                    ? Border.all(color: Colors.orange, width: 1)
-                    : null,
+                    : Colors.white.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(3),
+                border: Border.all(
+                  color: isSelected ? Colors.orange : Colors.black54,
+                  width: isSelected ? 1.5 : 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
               ),
               child: Text(
                 waypoint.name ?? 'WP${i + 1}',
                 style: TextStyle(
-                  color: isSelected ? Colors.black : Colors.white,
-                  fontSize: isSelected ? 11 : 10,
-                  fontWeight: FontWeight.bold,
+                  color: isSelected ? Colors.black : Colors.black87,
+                  fontSize: isSelected ? 10 : 9,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,

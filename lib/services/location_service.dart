@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 
 class LocationService {
   final GeolocatorPlatform _geolocator = GeolocatorPlatform.instance;
+  Position? _lastKnownPosition;
   
   /// Checks if location services are enabled
   Future<bool> isLocationServiceEnabled() async {
@@ -40,6 +41,14 @@ class LocationService {
       return Future.error('Location permissions are permanently denied');
     }
     
+    // Request background location permission for tracking
+    if (permission == LocationPermission.whileInUse) {
+      // Try to get always permission for background tracking
+      // Note: On iOS, this will show another permission dialog
+      // On Android 10+, this requires separate permission request
+      permission = await _geolocator.requestPermission();
+    }
+    
     return permission;
   }
 
@@ -47,7 +56,7 @@ class LocationService {
   Future<Position> getCurrentLocation() async {
     if (!kIsWeb && Platform.isMacOS) {
       // Return a default position for macOS
-      return Position(
+      final position = Position(
         latitude: 37.7749,  // Default to San Francisco
         longitude: -122.4194,
         timestamp: DateTime.now(),
@@ -59,14 +68,33 @@ class LocationService {
         altitudeAccuracy: 0.0,
         headingAccuracy: 0.0,
       );
+      _lastKnownPosition = position;
+      return position;
     }
 
     await requestPermission();
-    return await _geolocator.getCurrentPosition(
+    final position = await _geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.bestForNavigation,
       ),
     );
+    _lastKnownPosition = position;
+    return position;
+  }
+  
+  /// Gets the last known position quickly, or current position if no last known position
+  Future<Position> getLastKnownOrCurrentLocation() async {
+    // If we have a last known position, return it immediately
+    if (_lastKnownPosition != null) {
+      // Update position in background for next time
+      getCurrentLocation().then((position) {
+        _lastKnownPosition = position;
+      }).catchError((_) {});
+      return _lastKnownPosition!;
+    }
+    
+    // Otherwise get current position
+    return getCurrentLocation();
   }
 
   /// Gets the position stream for continuous location updates

@@ -182,8 +182,8 @@ class FlightPlanService extends ChangeNotifier {
       latitude: airport.position.latitude,
       longitude: airport.position.longitude,
       altitude: altitude,
-      name: airport.icaoCode?.isNotEmpty == true ? airport.icaoCode! : (airport.iataCode ?? airport.icao),
-      notes: airport.name,
+      name: airport.name,
+      notes: airport.icaoCode?.isNotEmpty == true ? airport.icaoCode! : (airport.iataCode ?? airport.icao),
       type: WaypointType.airport,
     );
 
@@ -203,8 +203,8 @@ class FlightPlanService extends ChangeNotifier {
       latitude: navaid.position.latitude,
       longitude: navaid.position.longitude,
       altitude: altitude,
-      name: navaid.ident,
-      notes: navaid.name,
+      name: navaid.name,
+      notes: navaid.ident,
       type: WaypointType.navaid,
     );
 

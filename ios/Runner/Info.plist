@@ -45,6 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs access to location when open to show your position on the map and track your flight path.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>

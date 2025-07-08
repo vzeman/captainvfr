@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'dart:math' show pi;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart' show LatLng;
+import 'package:latlong2/latlong.dart' show LatLng, Distance, LengthUnit;
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -12,6 +13,7 @@ import 'flight_plans_screen.dart';
 import 'aircraft_settings_screen.dart';
 import 'checklist_settings_screen.dart';
 import 'licenses_screen.dart';
+import 'settings_screen.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
 import '../models/flight_segment.dart';
@@ -36,10 +38,12 @@ import '../widgets/floating_waypoint_panel.dart';
 import '../widgets/optimized_airspaces_overlay.dart';
 import '../widgets/airspace_flight_info.dart';
 import '../services/openaip_service.dart';
+import '../services/settings_service.dart';
 import '../models/airspace.dart';
 import '../models/reporting_point.dart';
 import '../utils/airspace_utils.dart';
 import '../widgets/loading_progress_bar.dart';
+import '../widgets/themed_dialog.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -178,6 +182,40 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
         // Update flight segments for visualization
         _flightSegments = _flightService.flightSegments;
+        
+        // Update current position if tracking
+        if (_flightService.isTracking && _flightPathPoints.isNotEmpty) {
+          final lastPoint = _flightService.flightPath.last;
+          _currentPosition = Position(
+            latitude: lastPoint.latitude,
+            longitude: lastPoint.longitude,
+            timestamp: DateTime.now(),
+            accuracy: lastPoint.accuracy,
+            altitude: lastPoint.altitude,
+            heading: lastPoint.heading,
+            speed: lastPoint.speed,
+            speedAccuracy: lastPoint.speedAccuracy,
+            altitudeAccuracy: lastPoint.verticalAccuracy,
+            headingAccuracy: lastPoint.headingAccuracy,
+          );
+          
+          // Update map position and rotation during tracking
+          final settings = Provider.of<SettingsService>(context, listen: false);
+          if (settings.rotateMapWithHeading) {
+            // Move and rotate map
+            _mapController.moveAndRotate(
+              LatLng(lastPoint.latitude, lastPoint.longitude),
+              _mapController.camera.zoom,
+              -lastPoint.heading, // Negate for map rotation
+            );
+          } else {
+            // Just move map
+            _mapController.move(
+              LatLng(lastPoint.latitude, lastPoint.longitude),
+              _mapController.camera.zoom,
+            );
+          }
+        }
       });
     }
   }
@@ -220,10 +258,19 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             try {
-              _mapController.move(
-                LatLng(position.latitude, position.longitude),
-                _initialZoom,
-              );
+              final settings = Provider.of<SettingsService>(context, listen: false);
+              if (settings.rotateMapWithHeading && _flightService.isTracking && _flightService.currentHeading != null) {
+                _mapController.moveAndRotate(
+                  LatLng(position.latitude, position.longitude),
+                  _initialZoom,
+                  -_flightService.currentHeading!,
+                );
+              } else {
+                _mapController.move(
+                  LatLng(position.latitude, position.longitude),
+                  _initialZoom,
+                );
+              }
             } catch (e) {
               debugPrint('Error moving map: $e');
               // Fallback: try again after a short delay
@@ -573,7 +620,18 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         debugPrint('📍 Loaded ${reportingPoints.length} reporting points from cache');
         if (Platform.isIOS && reportingPoints.isNotEmpty) {
           debugPrint('🍎 iOS: First point - ${reportingPoints.first.name} at ${reportingPoints.first.position}');
-        }
+          
+          // Find reporting points near current map center
+          final center = _mapController.camera.center;
+          final nearbyPoints = reportingPoints.where((p) {
+            final distance = Distance().as(LengthUnit.Kilometer, p.position, center);
+            return distance < 100; // Within 100km
+          }).toList();
+          debugPrint('🍎 iOS: Found ${nearbyPoints.length} reporting points within 100km of map center $center');
+          if (nearbyPoints.isNotEmpty) {
+            debugPrint('🍎 iOS: Nearest point: ${nearbyPoints.first.name} at ${nearbyPoints.first.position}');
+          }
+                }
       }
 
       if (mounted) {
@@ -595,7 +653,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   // Center map on current location
   Future<void> _centerOnLocation() async {
     try {
-      final position = await _locationService.getCurrentLocation();
+      final position = await _locationService.getLastKnownOrCurrentLocation();
       if (mounted) {
         setState(() {
           _currentPosition = position;
@@ -744,93 +802,134 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     }
 
     // Show selection dialog for multiple airspaces
-    await showDialog(
+    await ThemedDialog.show(
       context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Airspaces at location'),
-            if (currentAltitudeFt != null)
-              Text(
-                'Current altitude: ${currentAltitudeFt.round()} ft',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
+      title: 'Airspaces at Location',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (currentAltitudeFt != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0x1A448AFF),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: const Color(0x33448AFF),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.height,
+                      size: 16,
+                      color: Color(0xFF448AFF),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Current altitude: ${currentAltitudeFt.round()} ft',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: airspaces.map((airspace) {
-              // Check if current altitude is within this airspace
-              final isAtCurrentAltitude = currentAltitudeFt != null &&
-                  airspace.isAtAltitude(currentAltitudeFt);
-              
-              return Container(
-                decoration: isAtCurrentAltitude
-                    ? BoxDecoration(
-                        color: Colors.blue.withValues(alpha: 0.1),
-                        border: Border.all(
-                          color: Colors.blue,
-                          width: 2,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      )
-                    : null,
-                margin: isAtCurrentAltitude 
-                    ? const EdgeInsets.symmetric(vertical: 4)
-                    : EdgeInsets.zero,
-                child: ListTile(
-                  leading: Icon(
-                    _getAirspaceIcon(airspace.type),
-                    color: _getAirspaceColor(airspace.type, airspace.icaoClass),
-                    size: isAtCurrentAltitude ? 28 : 24,
-                  ),
-                  title: Row(
-                    children: [
-                      Expanded(child: Text(airspace.name)),
-                      if (isAtCurrentAltitude)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.blue,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'MY ALTITUDE',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  subtitle: Text(
-                    '${AirspaceUtils.getAirspaceTypeName(airspace.type)} ${AirspaceUtils.getIcaoClassName(airspace.icaoClass)}\n${airspace.altitudeRange}',
-                  ),
-                  isThreeLine: true,
+            ),
+          ...airspaces.map((airspace) {
+            // Check if current altitude is within this airspace
+            final isAtCurrentAltitude = currentAltitudeFt != null &&
+                airspace.isAtAltitude(currentAltitudeFt);
+            
+            return Container(
+              decoration: isAtCurrentAltitude
+                  ? BoxDecoration(
+                      color: const Color(0x1A448AFF),
+                      border: Border.all(
+                        color: const Color(0xFF448AFF),
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    )
+                  : BoxDecoration(
+                      border: Border.all(
+                        color: const Color(0x33448AFF),
+                        width: 1,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
                   onTap: () {
                     Navigator.of(context).pop();
                     _onAirspaceSelected(airspace);
                   },
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _getAirspaceIcon(airspace.type),
+                          color: _getAirspaceColor(airspace.type, airspace.icaoClass),
+                          size: isAtCurrentAltitude ? 28 : 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                airspace.name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${AirspaceUtils.getAirspaceTypeName(airspace.type)} ${AirspaceUtils.getIcaoClassName(airspace.icaoClass)}',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              Text(
+                                airspace.altitudeRange,
+                                style: TextStyle(
+                                  color: const Color(0xFF448AFF),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right,
+                          color: Colors.white30,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              );
-            }).toList(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
+              ),
+            );
+          }).toList(),
         ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
     );
   }
 
@@ -1074,61 +1173,85 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     try {
       debugPrint('Showing airspace details for ${airspace.name}');
       
-      // Create a simple dialog to show airspace information
-      await showDialog(
+      // Create a themed dialog to show airspace information
+      await ThemedDialog.show(
         context: context,
-        builder: (BuildContext context) => AlertDialog(
-          title: Text(airspace.name),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (airspace.type != null)
-                  _buildInfoRow('Type', AirspaceUtils.getAirspaceTypeName(airspace.type)),
-                if (airspace.icaoClass != null)
-                  _buildInfoRow('ICAO Class', AirspaceUtils.getIcaoClassName(airspace.icaoClass)),
-                if (airspace.activity != null)
-                  _buildInfoRow('Activity', AirspaceUtils.getActivityName(airspace.activity)),
-                _buildInfoRow('Altitude', airspace.altitudeRange),
-                if (airspace.country != null)
-                  _buildInfoRow('Country', airspace.country!),
-                if (airspace.onDemand == true)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8.0),
-                    child: Text('⚠️ On Demand', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: airspace.name,
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (airspace.type != null)
+              _buildThemedInfoRow('Type', AirspaceUtils.getAirspaceTypeName(airspace.type)),
+            if (airspace.icaoClass != null)
+              _buildThemedInfoRow('ICAO Class', AirspaceUtils.getIcaoClassName(airspace.icaoClass)),
+            if (airspace.activity != null)
+              _buildThemedInfoRow('Activity', AirspaceUtils.getActivityName(airspace.activity)),
+            _buildThemedInfoRow('Altitude', airspace.altitudeRange),
+            if (airspace.country != null)
+              _buildThemedInfoRow('Country', airspace.country!),
+            if (airspace.onDemand == true)
+              const Padding(
+                padding: EdgeInsets.only(top: 8.0),
+                child: Text(
+                  '⚠️ On Demand', 
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
                   ),
-                if (airspace.onRequest == true)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8.0),
-                    child: Text('⚠️ On Request', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            if (airspace.onRequest == true)
+              const Padding(
+                padding: EdgeInsets.only(top: 8.0),
+                child: Text(
+                  '⚠️ On Request', 
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
                   ),
-                if (airspace.byNotam == true)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8.0),
-                    child: Text('⚠️ By NOTAM', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            if (airspace.byNotam == true)
+              const Padding(
+                padding: EdgeInsets.only(top: 8.0),
+                child: Text(
+                  '⚠️ By NOTAM', 
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
                   ),
-                if (airspace.remarks != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Remarks:', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text(airspace.remarks!),
-                      ],
+                ),
+              ),
+            if (airspace.remarks != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Remarks:', 
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF448AFF),
+                      ),
                     ),
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
+                    const SizedBox(height: 4),
+                    Text(
+                      airspace.remarks!,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
       );
     } catch (e) {
       debugPrint('Error showing airspace details: $e');
@@ -1152,70 +1275,96 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     try {
       debugPrint('Showing reporting point details for ${point.name}');
       
-      // Create a simple dialog to show reporting point information
-      await showDialog(
+      // Create a themed dialog to show reporting point information
+      await ThemedDialog.show(
         context: context,
-        builder: (BuildContext context) => AlertDialog(
-          title: Text(point.displayName),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildInfoRow('Name', point.name),
-                if (point.type != null)
-                  _buildInfoRow('Type', point.type!),
-                if (point.elevationString.isNotEmpty)
-                  _buildInfoRow('Elevation', point.elevationString),
-                if (point.country != null)
-                  _buildInfoRow('Country', point.country!),
-                if (point.state != null)
-                  _buildInfoRow('State', point.state!),
-                if (point.airportName != null)
-                  _buildInfoRow('Airport', point.airportName!),
-                if (point.description != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Description:', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text(point.description!),
-                      ],
+        title: point.displayName,
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildThemedInfoRow('Name', point.name),
+            if (point.type != null)
+              _buildThemedInfoRow('Type', point.type!),
+            if (point.elevationString.isNotEmpty)
+              _buildThemedInfoRow('Elevation', point.elevationString),
+            if (point.country != null)
+              _buildThemedInfoRow('Country', point.country!),
+            if (point.state != null)
+              _buildThemedInfoRow('State', point.state!),
+            if (point.airportName != null)
+              _buildThemedInfoRow('Airport', point.airportName!),
+            if (point.description != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Description:', 
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF448AFF),
+                      ),
                     ),
-                  ),
-                if (point.remarks != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Remarks:', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text(point.remarks!),
-                      ],
+                    const SizedBox(height: 4),
+                    Text(
+                      point.description!,
+                      style: const TextStyle(color: Colors.white70),
                     ),
-                  ),
-                if (point.tags != null && point.tags!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Tags:', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text(point.tags!.join(', ')),
-                      ],
+                  ],
+                ),
+              ),
+            if (point.remarks != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Remarks:', 
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF448AFF),
+                      ),
                     ),
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
+                    const SizedBox(height: 4),
+                    Text(
+                      point.remarks!,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+            if (point.tags != null && point.tags!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Tags:', 
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF448AFF),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      point.tags!.join(', '),
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
       );
     } catch (e) {
       debugPrint('Error showing reporting point details: $e');
@@ -1235,6 +1384,30 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         children: [
           Text('$label: ', style: const TextStyle(fontWeight: FontWeight.bold)),
           Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildThemedInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label: ', 
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF448AFF),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: Colors.white70),
+            ),
+          ),
         ],
       ),
     );
@@ -1519,13 +1692,14 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                           _mapKey,
                         ),
                       ),
-                      // Waypoint name labels
-                      MarkerLayer(
-                        markers: FlightPlanOverlay.buildWaypointLabels(
-                          flightPlan,
-                          _selectedWaypointIndex,
+                      // Waypoint name labels (only show when zoomed in)
+                      if (_mapController.camera.zoom > 11)
+                        MarkerLayer(
+                          markers: FlightPlanOverlay.buildWaypointLabels(
+                            flightPlan,
+                            _selectedWaypointIndex,
+                          ),
                         ),
-                      ),
                       // Segment labels (distance, heading, time)
                       Builder(
                         builder: (context) {
@@ -1547,13 +1721,21 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         _currentPosition!.latitude,
                         _currentPosition!.longitude,
                       ),
-                      width: 20,
-                      height: 20,
-                      child: Container(
-                        decoration: BoxDecoration(
+                      width: 30,
+                      height: 30,
+                      child: Transform.rotate(
+                        angle: (_currentPosition?.heading ?? 0) * pi / 180,
+                        child: const Icon(
+                          Icons.flight,
                           color: Colors.blue,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.white, width: 2),
+                          size: 30,
+                          shadows: [
+                            Shadow(
+                              offset: Offset(1, 1),
+                              blurRadius: 2,
+                              color: Colors.black54,
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -1678,24 +1860,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               ),
             ),
 
-          // Flight dashboard overlay
-          if (_flightService.isTracking)
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                height: _flightService.isTracking ? 200 : 0,
-                child: const FlightDashboard(),
-              ),
-            ),
           
           // Airspace information during flight
           if (_flightService.isTracking && _currentPosition != null)
             Positioned(
-              bottom: _flightService.isTracking ? 210 : 0,
+              bottom: 10,
               left: 0,
               right: 0,
               child: AirspaceFlightInfo(
@@ -1804,6 +1973,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                             builder: (context) => const LicensesScreen(),
                           ),
                         );
+                      } else if (value == 'settings') {
+                        SettingsDialog.show(context);
                       }
                     },
                     itemBuilder: (BuildContext context) => [
@@ -1864,6 +2035,16 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                             Icon(Icons.card_membership, size: 20),
                             SizedBox(width: 8),
                             Text('Licenses'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'settings',
+                        child: Row(
+                          children: [
+                            Icon(Icons.settings, size: 20),
+                            SizedBox(width: 8),
+                            Text('Settings'),
                           ],
                         ),
                       ),

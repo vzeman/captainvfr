@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../models/flight.dart';
 import '../models/flight_point.dart';
 import '../models/aircraft.dart';
@@ -131,6 +133,14 @@ class FlightService with ChangeNotifier {
       _currentYGyro = event.y;
       _currentZGyro = event.z;
     });
+    
+    // Compass
+    _compassSubscription = FlutterCompass.events?.listen((CompassEvent event) {
+      if (event.heading != null) {
+        _currentHeading = event.heading;
+        notifyListeners();
+      }
+    });
   }
   
   Future<void> initialize() async {
@@ -184,6 +194,9 @@ class FlightService with ChangeNotifier {
   void startTracking() {
     if (_isTracking) return;
     _isTracking = true;
+    
+    // Enable wakelock to keep screen on during tracking
+    WakelockPlus.enable();
     _flightPath.clear();
     _altitudeHistory.clear();
     _startTime = DateTime.now();
@@ -225,11 +238,38 @@ class FlightService with ChangeNotifier {
     });
     
     // Start listening to position updates
-    _positionSubscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
+    // Configure location settings for background tracking
+    late LocationSettings locationSettings;
+    if (Platform.isAndroid) {
+      locationSettings = AndroidSettings(
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 5, // meters
-      ),
+        intervalDuration: const Duration(seconds: 5),
+        // Enable background location updates
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationText: "Captain VFR is tracking your flight",
+          notificationTitle: "Flight Tracking Active",
+          enableWakeLock: true,
+        ),
+      );
+    } else if (Platform.isIOS) {
+      locationSettings = AppleSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 5, // meters
+        pauseLocationUpdatesAutomatically: false,
+        // Show background location indicator
+        showBackgroundLocationIndicator: true,
+        activityType: ActivityType.otherNavigation,
+      );
+    } else {
+      locationSettings = const LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 5, // meters
+      );
+    }
+    
+    _positionSubscription = Geolocator.getPositionStream(
+      locationSettings: locationSettings,
     ).listen(_onPositionChanged);
   }
   
@@ -238,13 +278,31 @@ class FlightService with ChangeNotifier {
 
     // Get the best available altitude measurement
     final bestAltitude = _getBestAltitude(position.altitude);
+    
+    // Calculate heading if compass is not available or if we don't have a heading yet
+    double heading = _currentHeading ?? 0.0;
+    if (_currentHeading == null && _flightPath.isNotEmpty) {
+      // Compute heading from previous position
+      final lastPoint = _flightPath.last;
+      final computedHeading = Geolocator.bearingBetween(
+        lastPoint.latitude,
+        lastPoint.longitude,
+        position.latitude,
+        position.longitude,
+      );
+      // Convert from [-180, 180] to [0, 360]
+      heading = computedHeading < 0 ? computedHeading + 360 : computedHeading;
+      // Update current heading for display
+      _currentHeading = heading;
+      notifyListeners();
+    }
 
     final point = FlightPoint(
       latitude: position.latitude,
       longitude: position.longitude,
       altitude: bestAltitude,
       speed: position.speed,
-      heading: _currentHeading ?? 0.0,
+      heading: heading,
       accuracy: position.accuracy,
       verticalAccuracy: 0.0, // position.verticalAccuracy not available in current geolocator
       speedAccuracy: position.speedAccuracy,
@@ -443,6 +501,9 @@ class FlightService with ChangeNotifier {
   Future<void> stopTracking() async {
     if (!_isTracking) return;
     _isTracking = false;
+    
+    // Disable wakelock when tracking stops
+    WakelockPlus.disable();
 
     // Set recording stopped time
     _recordingStoppedZulu = DateTime.now().toUtc();
@@ -734,17 +795,50 @@ class FlightService with ChangeNotifier {
   // Get the flight duration as a Duration object (alias for movingTime)
   Duration get flightDuration => movingTime;
   
-  // Get the vertical speed in m/s
+  // Get the vertical speed in feet per minute (fpm)
   double get verticalSpeed {
     if (_flightPath.length < 2) return 0.0;
     
-    final currentPoint = _flightPath.last;
-    final previousPoint = _flightPath[_flightPath.length - 2];
-    final altitudeDiff = currentPoint.altitude - previousPoint.altitude;
-    final timeDiff = currentPoint.timestamp.difference(previousPoint.timestamp).inSeconds;
+    // Use up to last 3 points for smoothing
+    int pointsToUse = math.min(3, _flightPath.length);
+    if (pointsToUse < 2) return 0.0;
     
-    return timeDiff > 0 ? altitudeDiff / timeDiff : 0.0;
+    double totalVerticalSpeed = 0.0;
+    int validMeasurements = 0;
+    
+    for (int i = _flightPath.length - 1; i > _flightPath.length - pointsToUse; i--) {
+      final currentPoint = _flightPath[i];
+      final previousPoint = _flightPath[i - 1];
+      
+      final altitudeDiff = currentPoint.altitude - previousPoint.altitude;
+      final timeDiff = currentPoint.timestamp.difference(previousPoint.timestamp).inMilliseconds / 1000.0; // Convert to seconds
+      
+      if (timeDiff > 0) {
+        // Convert from m/s to feet/minute: 1 m/s = 196.85 ft/min
+        final verticalSpeedMps = altitudeDiff / timeDiff;
+        final verticalSpeedFpm = verticalSpeedMps * 196.85;
+        totalVerticalSpeed += verticalSpeedFpm;
+        validMeasurements++;
+      }
+    }
+    
+    return validMeasurements > 0 ? totalVerticalSpeed / validMeasurements : 0.0;
   }
+  
+  // Get current G-force
+  double get currentGForce {
+    // Calculate total acceleration magnitude
+    final totalAccel = math.sqrt(
+      _currentXAccel * _currentXAccel + 
+      _currentYAccel * _currentYAccel + 
+      _currentZAccel * _currentZAccel
+    );
+    // Already in G's since we divided by _gravity in _initSensors
+    return totalAccel;
+  }
+  
+  // Get current barometric pressure in hPa
+  double get currentPressure => _barometerService?.lastPressure ?? 1013.25;
 
   // Clean up resources
   @override
@@ -757,6 +851,8 @@ class FlightService with ChangeNotifier {
     _barometerService?.dispose();
     _isTracking = false;
     _flightPath.clear();
+    // Ensure wakelock is disabled when service is disposed
+    WakelockPlus.disable();
     super.dispose();
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/flight_service.dart';
 import '../models/flight.dart';
+import '../widgets/themed_dialog.dart';
 import 'flight_detail_screen.dart';
 
 class FlightLogScreen extends StatelessWidget {
@@ -157,31 +158,18 @@ class FlightLogScreen extends StatelessWidget {
     final dateStr = '${flight.startTime.day}/${flight.startTime.month}/${flight.startTime.year} '
         '${flight.startTime.hour}:${flight.startTime.minute.toString().padLeft(2, '0')}';
 
-    showDialog(
+    ThemedDialog.showConfirmation(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Delete Flight'),
-          content: Text('Are you sure you want to delete the flight from $dateStr?\n\nThis action cannot be undone.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await _deleteFlight(context, flight);
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.error,
-              ),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
+      title: 'Delete Flight',
+      message: 'Are you sure you want to delete the flight from $dateStr?\n\nThis action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      destructive: true,
+    ).then((confirmed) {
+      if (confirmed == true) {
+        _deleteFlight(context, flight);
+      }
+    });
   }
 
   Future<void> _deleteFlight(BuildContext context, Flight flight) async {

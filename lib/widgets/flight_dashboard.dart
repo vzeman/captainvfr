@@ -6,6 +6,8 @@ import '../services/flight_service.dart';
 import '../services/aircraft_settings_service.dart';
 import '../models/flight.dart';
 import '../services/barometer_service.dart';
+import 'themed_dialog.dart';
+import 'compass_widget.dart';
 
 // Custom icons for the flight dashboard
 class FlightIcons {
@@ -47,8 +49,8 @@ class FlightDashboard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.all(16.0),
       constraints: const BoxConstraints(
-        minHeight: 120,
-        maxHeight: 200,
+        minHeight: 160,
+        maxHeight: 260,
         minWidth: 300,
       ),
       child: Material(
@@ -72,7 +74,7 @@ class FlightDashboard extends StatelessWidget {
               const SizedBox(height: 8),
               // Main indicators with fixed height
               SizedBox(
-                height: 60,
+                height: 90,
                 child: _buildMainIndicators(context, flightService, barometerService),
               ),
               const SizedBox(height: 8),
@@ -80,6 +82,12 @@ class FlightDashboard extends StatelessWidget {
               SizedBox(
                 height: 30,
                 child: _buildSecondaryIndicators(context, flightService, barometerService),
+              ),
+              const SizedBox(height: 8),
+              // Additional indicators with fixed height
+              SizedBox(
+                height: 30,
+                child: _buildAdditionalIndicators(context, flightService, barometerService),
               ),
             ],
           ),
@@ -175,54 +183,94 @@ class FlightDashboard extends StatelessWidget {
   }
 
   void _showAircraftSelectionDialog(BuildContext context, AircraftSettingsService aircraftService, FlightService flightService) {
-    showDialog(
+    ThemedDialog.show(
       context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Select Aircraft'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: aircraftService.aircrafts.isEmpty
-                ? const Text('No aircraft available. Please add an aircraft first.')
-                : ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: aircraftService.aircrafts.length,
-                    itemBuilder: (context, index) {
-                      final aircraft = aircraftService.aircrafts[index];
-                      final isSelected = aircraft.id == aircraftService.selectedAircraft?.id;
+      title: 'Select Aircraft',
+      content: SizedBox(
+        width: double.maxFinite,
+        child: aircraftService.aircrafts.isEmpty
+            ? const Text(
+                'No aircraft available. Please add an aircraft first.',
+                style: TextStyle(color: Colors.white70),
+              )
+            : ListView.builder(
+                shrinkWrap: true,
+                itemCount: aircraftService.aircrafts.length,
+                itemBuilder: (context, index) {
+                  final aircraft = aircraftService.aircrafts[index];
+                  final isSelected = aircraft.id == aircraftService.selectedAircraft?.id;
 
-                      return ListTile(
-                        leading: Icon(
-                          Icons.flight,
-                          color: isSelected ? Colors.blue : Colors.grey,
+                  return Container(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isSelected ? const Color(0x1A448AFF) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isSelected ? const Color(0x7F448AFF) : Colors.transparent,
+                      ),
+                    ),
+                    child: ListTile(
+                      leading: Icon(
+                        Icons.flight,
+                        color: isSelected ? const Color(0xFF448AFF) : Colors.white54,
+                      ),
+                      title: Text(
+                        aircraft.name,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.white70,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                         ),
-                        title: Text(aircraft.name),
-                        subtitle: Text('${aircraft.manufacturer} ${aircraft.model}'),
-                        trailing: isSelected ? const Icon(Icons.check, color: Colors.blue) : null,
-                        selected: isSelected,
-                        onTap: () {
-                          // Select the aircraft by ID
-                          aircraftService.aircraftService.selectAircraft(aircraft.id);
-                          // Set aircraft in flight service
-                          flightService.setAircraft(aircraft);
-                          Navigator.of(dialogContext).pop();
-                        },
-                      );
-                    },
-                  ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
-            ),
-          ],
-        );
-      },
+                      ),
+                      subtitle: Text(
+                        '${aircraft.manufacturer} ${aircraft.model}',
+                        style: const TextStyle(color: Colors.white54),
+                      ),
+                      trailing: isSelected 
+                          ? const Icon(Icons.check_circle, color: Color(0xFF448AFF)) 
+                          : null,
+                      onTap: () {
+                        // Select the aircraft by ID
+                        aircraftService.aircraftService.selectAircraft(aircraft.id);
+                        // Set aircraft in flight service
+                        flightService.setAircraft(aircraft);
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  );
+                },
+              ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+      ],
     );
   }
 
   Widget _buildMainIndicators(BuildContext context, FlightService flightService, BarometerService barometerService) {
+    final flightPlanService = Provider.of<FlightPlanService>(context);
+    final currentFlightPlan = flightPlanService.currentFlightPlan;
+    
+    // Calculate target heading if flight plan is active
+    double? targetHeading;
+    if (currentFlightPlan != null && currentFlightPlan.waypoints.length >= 2) {
+      // For now, just show heading from first to second waypoint
+      // In a real implementation, we'd track the active segment
+      final firstWaypoint = currentFlightPlan.waypoints[0];
+      final secondWaypoint = currentFlightPlan.waypoints[1];
+      
+      // Calculate bearing between waypoints
+      final distance = Distance();
+      targetHeading = distance.bearing(
+        LatLng(firstWaypoint.latitude, firstWaypoint.longitude),
+        LatLng(secondWaypoint.latitude, secondWaypoint.longitude),
+      );
+      // Convert from [-180, 180] to [0, 360]
+      if (targetHeading < 0) targetHeading += 360;
+    }
+    
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
@@ -243,11 +291,12 @@ class FlightDashboard extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: _buildIndicator(
-            'HDG',
-            flightService.currentHeading?.toStringAsFixed(0) ?? '---',
-            '°',
-            Icons.explore,
+          child: Center(
+            child: CompassWidget(
+              heading: flightService.currentHeading ?? 0,
+              targetHeading: targetHeading,
+              size: 50,
+            ),
           ),
         ),
       ],
@@ -277,15 +326,15 @@ class FlightDashboard extends StatelessWidget {
         Expanded(
           child: _buildSmallIndicator(
             'V/S',
-            flightService.verticalSpeed.toStringAsFixed(1),
+            '${flightService.verticalSpeed.toStringAsFixed(0)} fpm',
             FlightIcons.verticalSpeed,
           ),
         ),
         Expanded(
           child: _buildSmallIndicator(
-            'FUEL',
-            flightService.fuelUsed.toStringAsFixed(1),
-            Icons.local_gas_station,
+            'G',
+            '${flightService.currentGForce.toStringAsFixed(2)}g',
+            Icons.speed,
           ),
         ),
         if (hasFlightPlan)
@@ -296,6 +345,28 @@ class FlightDashboard extends StatelessWidget {
               Icons.flag,
             ),
           ),
+      ],
+    );
+  }
+
+  Widget _buildAdditionalIndicators(BuildContext context, FlightService flightService, BarometerService barometerService) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        Expanded(
+          child: _buildSmallIndicator(
+            'PRESS',
+            '${flightService.currentPressure.toStringAsFixed(0)} hPa',
+            Icons.compress,
+          ),
+        ),
+        Expanded(
+          child: _buildSmallIndicator(
+            'FUEL',
+            '${flightService.fuelUsed.toStringAsFixed(1)} gal',
+            Icons.local_gas_station,
+          ),
+        ),
       ],
     );
   }
