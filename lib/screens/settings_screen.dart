@@ -173,12 +173,14 @@ class SettingsScreen extends StatelessWidget {
     ).then((confirmed) {
       if (confirmed == true) {
         settings.resetToDefaults();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Settings reset to defaults'),
-            backgroundColor: Color(0xE6000000),
-          ),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Settings reset to defaults'),
+              backgroundColor: Color(0xE6000000),
+            ),
+          );
+        }
       }
     });
   }

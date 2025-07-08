@@ -136,7 +136,7 @@ class ThemedDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 16,
-      shadowColor: Colors.black.withOpacity(0.5),
+      shadowColor: Colors.black.withValues(alpha: 0.5),
       child: dialogContent,
     );
   }

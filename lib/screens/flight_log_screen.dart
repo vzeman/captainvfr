@@ -166,7 +166,7 @@ class FlightLogScreen extends StatelessWidget {
       cancelText: 'Cancel',
       destructive: true,
     ).then((confirmed) {
-      if (confirmed == true) {
+      if (confirmed == true && context.mounted) {
         _deleteFlight(context, flight);
       }
     });
