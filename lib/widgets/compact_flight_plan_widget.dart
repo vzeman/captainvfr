@@ -5,6 +5,7 @@ import '../services/aircraft_settings_service.dart';
 import '../services/checklist_service.dart';
 import '../models/aircraft.dart';
 import '../models/checklist.dart';
+import '../services/settings_service.dart';
 import 'waypoint_table_widget.dart';
 
 class CompactFlightPlanWidget extends StatefulWidget {
@@ -174,7 +175,15 @@ class _CompactFlightPlanWidgetState extends State<CompactFlightPlanWidget> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildQuickStat('Waypoints', '${flightPlan.waypoints.length}', Icons.location_on),
-                  _buildQuickStat('Distance', '${flightPlan.totalDistance.toStringAsFixed(0)} nm', Icons.straighten),
+                  Consumer<SettingsService>(
+                    builder: (context, settings, child) {
+                      final isMetric = settings.units == 'metric';
+                      final distance = flightPlan.totalDistance;
+                      final displayDistance = isMetric ? distance * 1.852 : distance; // Convert nm to km
+                      final unit = isMetric ? 'km' : 'nm';
+                      return _buildQuickStat('Distance', '${displayDistance.toStringAsFixed(0)} $unit', Icons.straighten);
+                    },
+                  ),
                   if (flightPlan.cruiseSpeed != null && flightPlan.cruiseSpeed! > 0)
                     _buildQuickStat('Time', '${flightPlan.totalFlightTime.toStringAsFixed(0)} min', Icons.access_time),
                 ],
