@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/airspace.dart';
 import '../models/reporting_point.dart';
+import '../config/api_config.dart';
 import 'cache_service.dart';
 
 class OpenAIPService {
@@ -20,6 +21,12 @@ class OpenAIPService {
   final CacheService _cacheService = CacheService();
   String? _apiKey;
   bool _initialized = false;
+  
+  /// Check if API key is available (either user-provided or default)
+  bool get hasApiKey => _apiKey != null && _apiKey!.isNotEmpty;
+  
+  /// Check if using default API key
+  bool get isUsingDefaultKey => _apiKey == ApiConfig.defaultOpenAipApiKey;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -27,16 +34,25 @@ class OpenAIPService {
     try {
       final settingsBox = await Hive.openBox('settings');
       final storedApiKey = settingsBox.get('openaip_api_key', defaultValue: '');
+      
       if (storedApiKey.isNotEmpty) {
+        // User has provided their own API key
         _apiKey = storedApiKey;
         developer.log('✅ OpenAIP API key loaded from storage: ${storedApiKey.substring(0, 4)}... (${storedApiKey.length} chars)');
-        
+      } else if (ApiConfig.useDefaultApiKey && ApiConfig.defaultOpenAipApiKey != 'YOUR_DEFAULT_API_KEY_HERE') {
+        // Use default API key if enabled and configured
+        _apiKey = ApiConfig.defaultOpenAipApiKey;
+        developer.log('✅ Using default OpenAIP API key');
+      } else {
+        developer.log('⚠️ No OpenAIP API key configured');
+      }
+      
+      if (_apiKey != null && _apiKey!.isNotEmpty) {
         // Load reporting points and airspaces on startup if cache is empty
         await _initializeReportingPoints();
         await _initializeAirspaces();
-      } else {
-        developer.log('⚠️ No OpenAIP API key found in storage');
       }
+      
       _initialized = true;
     } catch (e) {
       developer.log('❌ Error loading OpenAIP API key from storage: $e');
@@ -120,8 +136,6 @@ class OpenAIPService {
     _apiKey = apiKey;
     developer.log('✅ OpenAIP API key set: ${apiKey.isNotEmpty ? "Yes (${apiKey.length} chars)" : "Empty"}');
   }
-  
-  bool get hasApiKey => _apiKey != null && _apiKey!.isNotEmpty;
   
   String? get apiKey => _apiKey;
 
