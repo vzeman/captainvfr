@@ -149,11 +149,6 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
     return isMetric ? 'km' : 'nm';
   }
   
-  String _formatAltitude(double altitude, bool isMetric) {
-    final displayAltitude = isMetric ? altitude * 0.3048 : altitude; // Convert ft to m if metric
-    return displayAltitude.toStringAsFixed(0);
-  }
-  
   String _getAltitudeUnit(bool isMetric) {
     return isMetric ? 'm' : 'ft';
   }

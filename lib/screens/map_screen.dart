@@ -841,7 +841,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 ),
               ),
             ),
-          ...airspaces.map((airspace) {
+          ...airspaces.map<Widget>((airspace) {
             // Check if current altitude is within this airspace
             final isAtCurrentAltitude = currentAltitudeFt != null &&
                 airspace.isAtAltitude(currentAltitudeFt);
@@ -921,7 +921,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 ),
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
       actions: [
@@ -1376,18 +1376,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     }
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('$label: ', style: const TextStyle(fontWeight: FontWeight.bold)),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
   
   Widget _buildThemedInfoRow(String label, String value) {
     return Padding(

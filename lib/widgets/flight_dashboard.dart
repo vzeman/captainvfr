@@ -509,9 +509,9 @@ class _FlightDashboardState extends State<FlightDashboard> {
             Expanded(
               child: _buildSmallIndicator(
                 'FUEL',
-                '${settings.units == 'metric' 
-                    ? (flightService.fuelUsed * 3.78541).toStringAsFixed(1) + ' L'
-                    : flightService.fuelUsed.toStringAsFixed(1) + ' gal'}',
+                settings.units == 'metric' 
+                    ? '${(flightService.fuelUsed * 3.78541).toStringAsFixed(1)} L'
+                    : '${flightService.fuelUsed.toStringAsFixed(1)} gal',
                 Icons.local_gas_station,
               ),
             ),
