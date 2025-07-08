@@ -272,81 +272,101 @@ class FlightDashboard extends StatelessWidget {
       if (targetHeading < 0) targetHeading += 360;
     }
     
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        Expanded(
-          child: _buildIndicator(
-            'ALT',
-            (flightService.barometricAltitude ?? 0).toStringAsFixed(0),
-            'm',
-            FlightIcons.altitude,
-          ),
-        ),
-        Expanded(
-          child: _buildIndicator(
-            'SPEED',
-            (flightService.currentSpeed * 1.94384).toStringAsFixed(0), // Convert m/s to knots
-            'kt',
-            FlightIcons.speed,
-          ),
-        ),
-        Expanded(
-          child: Center(
-            child: CompassWidget(
-              heading: flightService.currentHeading ?? 0,
-              targetHeading: targetHeading,
-              size: 50,
+    return Consumer<SettingsService>(
+      builder: (context, settings, child) {
+        final isMetric = settings.units == 'metric';
+        final altitude = flightService.barometricAltitude ?? 0;
+        final displayAltitude = isMetric ? altitude : altitude * 3.28084; // Convert m to ft
+        final altitudeUnit = isMetric ? 'm' : 'ft';
+        
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            Expanded(
+              child: _buildIndicator(
+                'ALT',
+                displayAltitude.toStringAsFixed(0),
+                altitudeUnit,
+                FlightIcons.altitude,
+              ),
             ),
-          ),
-        ),
-      ],
+            Expanded(
+              child: _buildIndicator(
+                'SPEED',
+                (flightService.currentSpeed * 1.94384).toStringAsFixed(0), // Convert m/s to knots
+                'kt',
+                FlightIcons.speed,
+              ),
+            ),
+            Expanded(
+              child: Center(
+                child: CompassWidget(
+                  heading: flightService.currentHeading ?? 0,
+                  targetHeading: targetHeading,
+                  size: 50,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildSecondaryIndicators(BuildContext context, FlightService flightService, BarometerService barometerService) {
     final hasFlightPlan = Provider.of<FlightPlanService>(context, listen: false).currentFlightPlan != null;
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        Expanded(
-          child: _buildSmallIndicator(
-            'TIME',
-            flightService.formattedFlightTime,
-            FlightIcons.time,
-          ),
-        ),
-        Expanded(
-          child: _buildSmallIndicator(
-            'DIST',
-            '${(flightService.totalDistance / 1000).toStringAsFixed(1)}km',
-            FlightIcons.distance,
-          ),
-        ),
-        Expanded(
-          child: _buildSmallIndicator(
-            'V/S',
-            '${flightService.verticalSpeed.toStringAsFixed(0)} fpm',
-            FlightIcons.verticalSpeed,
-          ),
-        ),
-        Expanded(
-          child: _buildSmallIndicator(
-            'G',
-            '${flightService.currentGForce.toStringAsFixed(2)}g',
-            Icons.speed,
-          ),
-        ),
-        if (hasFlightPlan)
-          Expanded(
-            child: _buildSmallIndicator(
-              'NEXT',
-              _buildNextWaypointInfo(flightService, context),
-              Icons.flag,
+    return Consumer<SettingsService>(
+      builder: (context, settings, child) {
+        final isMetric = settings.units == 'metric';
+        final distanceMeters = flightService.totalDistance;
+        final displayDistance = isMetric 
+            ? distanceMeters / 1000 // Convert to km
+            : distanceMeters * 0.000621371; // Convert to miles
+        final distanceUnit = isMetric ? 'km' : 'mi';
+        
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            Expanded(
+              child: _buildSmallIndicator(
+                'TIME',
+                flightService.formattedFlightTime,
+                FlightIcons.time,
+              ),
             ),
-          ),
-      ],
+            Expanded(
+              child: _buildSmallIndicator(
+                'DIST',
+                '${displayDistance.toStringAsFixed(1)}$distanceUnit',
+                FlightIcons.distance,
+              ),
+            ),
+            Expanded(
+              child: _buildSmallIndicator(
+                'V/S',
+                '${flightService.verticalSpeed.toStringAsFixed(0)} fpm',
+                FlightIcons.verticalSpeed,
+              ),
+            ),
+            Expanded(
+              child: _buildSmallIndicator(
+                'G',
+                '${flightService.currentGForce.toStringAsFixed(2)}g',
+                Icons.speed,
+              ),
+            ),
+            if (hasFlightPlan)
+              Expanded(
+                child: _buildSmallIndicator(
+                  'NEXT',
+                  _buildNextWaypointInfo(flightService, context),
+                  Icons.flag,
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -375,7 +395,9 @@ class FlightDashboard extends StatelessWidget {
             Expanded(
               child: _buildSmallIndicator(
                 'FUEL',
-                '${flightService.fuelUsed.toStringAsFixed(1)} gal',
+                '${settings.units == 'metric' 
+                    ? (flightService.fuelUsed * 3.78541).toStringAsFixed(1) + ' L'
+                    : flightService.fuelUsed.toStringAsFixed(1) + ' gal'}',
                 Icons.local_gas_station,
               ),
             ),
@@ -486,6 +508,7 @@ class FlightDashboard extends StatelessWidget {
   /// Compute distance/time to next waypoint if a plan is loaded
   String _buildNextWaypointInfo(FlightService flightService, BuildContext context) {
     final planSvc = Provider.of<FlightPlanService>(context, listen: false);
+    final settingsSvc = Provider.of<SettingsService>(context, listen: false);
     final plan = planSvc.currentFlightPlan;
     // Check for all required conditions: plan exists, has waypoints, and flight path has data
     if (plan == null || plan.waypoints.isEmpty || flightService.flightPath.isEmpty) {
@@ -497,10 +520,16 @@ class FlightDashboard extends StatelessWidget {
       final wp = plan.waypoints.first;
       final dest = LatLng(wp.latitude, wp.longitude);
       final meterDist = const Distance().as(LengthUnit.Meter, currentPos, dest);
-      final km = meterDist / 1000;
+      
+      final isMetric = settingsSvc.units == 'metric';
+      final displayDistance = isMetric 
+          ? meterDist / 1000 // km
+          : meterDist * 0.000621371; // miles
+      final distanceUnit = isMetric ? 'km' : 'mi';
+      
       final speedKmh = flightService.currentSpeed * 3.6;
-      final etaMin = speedKmh > 0 ? (km / speedKmh) * 60 : 0;
-      return '${km.toStringAsFixed(1)}km/${etaMin.toStringAsFixed(0)}min';
+      final etaMin = speedKmh > 0 ? (displayDistance / (isMetric ? speedKmh : speedKmh * 0.621371)) * 60 : 0;
+      return '${displayDistance.toStringAsFixed(1)}$distanceUnit/${etaMin.toStringAsFixed(0)}min';
     } catch (e) {
       // Fallback in case of any unexpected errors
       return '--';
