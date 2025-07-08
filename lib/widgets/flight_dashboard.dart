@@ -134,12 +134,15 @@ class _FlightDashboardState extends State<FlightDashboard> {
                 children: [
                   Icon(FlightIcons.speed, color: Colors.blueAccent, size: 16),
                   const SizedBox(width: 4),
-                  Text(
-                    '${(flightService.currentSpeed * 1.94384).toStringAsFixed(0)} kt',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                  Flexible(
+                    child: Text(
+                      '${(flightService.currentSpeed * 1.94384).toStringAsFixed(0)} kt',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -152,12 +155,15 @@ class _FlightDashboardState extends State<FlightDashboard> {
                 children: [
                   Icon(FlightIcons.altitude, color: Colors.blueAccent, size: 16),
                   const SizedBox(width: 4),
-                  Text(
-                    '${displayAltitude.toStringAsFixed(0)} $altitudeUnit',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                  Flexible(
+                    child: Text(
+                      '${displayAltitude.toStringAsFixed(0)} $altitudeUnit',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -170,12 +176,15 @@ class _FlightDashboardState extends State<FlightDashboard> {
                 children: [
                   Icon(Icons.navigation, color: Colors.blueAccent, size: 16),
                   const SizedBox(width: 4),
-                  Text(
-                    '${(flightService.currentHeading ?? 0).toStringAsFixed(0)}°',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                  Flexible(
+                    child: Text(
+                      '${(flightService.currentHeading ?? 0).toStringAsFixed(0)}°',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
