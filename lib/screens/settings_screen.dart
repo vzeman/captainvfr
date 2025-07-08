@@ -291,12 +291,7 @@ class SettingsDialog {
           );
         },
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
-        ),
-      ],
+      actions: [],
     );
   }
 
