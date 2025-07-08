@@ -39,8 +39,15 @@ class FlightIcons {
   static const IconData baro = Icons.speed;
 }
 
-class FlightDashboard extends StatelessWidget {
+class FlightDashboard extends StatefulWidget {
   const FlightDashboard({super.key});
+
+  @override
+  State<FlightDashboard> createState() => _FlightDashboardState();
+}
+
+class _FlightDashboardState extends State<FlightDashboard> {
+  bool _isExpanded = true;
 
   @override
   Widget build(BuildContext context) {
@@ -49,51 +56,151 @@ class FlightDashboard extends StatelessWidget {
     
     return Container(
       margin: const EdgeInsets.all(16.0),
-      constraints: const BoxConstraints(
-        minHeight: 160,
-        maxHeight: 260,
+      constraints: BoxConstraints(
+        minHeight: _isExpanded ? 160 : 60,
+        maxHeight: _isExpanded ? 260 : 60,
         minWidth: 300,
       ),
       child: Material(
         color: Colors.transparent,
         child: Container(
-          padding: const EdgeInsets.all(12.0),
+          padding: EdgeInsets.all(_isExpanded ? 12.0 : 8.0),
           decoration: BoxDecoration(
             color: const Color(0xB3000000), // Black with 0.7 opacity
             borderRadius: BorderRadius.circular(12.0),
             border: Border.all(color: const Color(0x7F448AFF), width: 1.0), // Blue accent with 0.5 opacity
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header with fixed height
-              SizedBox(
-                height: 40,
-                child: _buildHeader(context, flightService),
-              ),
-              const SizedBox(height: 8),
-              // Main indicators with fixed height
-              SizedBox(
-                height: 90,
-                child: _buildMainIndicators(context, flightService, barometerService),
-              ),
-              const SizedBox(height: 8),
-              // Secondary indicators with fixed height
-              SizedBox(
-                height: 30,
-                child: _buildSecondaryIndicators(context, flightService, barometerService),
-              ),
-              const SizedBox(height: 8),
-              // Additional indicators with fixed height
-              SizedBox(
-                height: 30,
-                child: _buildAdditionalIndicators(context, flightService, barometerService),
-              ),
-            ],
-          ),
+          child: _isExpanded ? _buildExpandedView(context, flightService, barometerService) 
+                            : _buildCollapsedView(context, flightService, barometerService),
         ),
       ),
+    );
+  }
+  
+  Widget _buildExpandedView(BuildContext context, FlightService flightService, BarometerService barometerService) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header with fixed height
+        SizedBox(
+          height: 40,
+          child: _buildHeader(context, flightService),
+        ),
+        const SizedBox(height: 8),
+        // Main indicators with fixed height
+        SizedBox(
+          height: 90,
+          child: _buildMainIndicators(context, flightService, barometerService),
+        ),
+        const SizedBox(height: 8),
+        // Secondary indicators with fixed height
+        SizedBox(
+          height: 30,
+          child: _buildSecondaryIndicators(context, flightService, barometerService),
+        ),
+        const SizedBox(height: 8),
+        // Additional indicators with fixed height
+        SizedBox(
+          height: 30,
+          child: _buildAdditionalIndicators(context, flightService, barometerService),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildCollapsedView(BuildContext context, FlightService flightService, BarometerService barometerService) {
+    return Consumer<SettingsService>(
+      builder: (context, settings, child) {
+        final isMetric = settings.units == 'metric';
+        final altitude = flightService.barometricAltitude ?? 0;
+        final displayAltitude = isMetric ? altitude : altitude * 3.28084; // Convert m to ft
+        final altitudeUnit = isMetric ? 'm' : 'ft';
+        
+        return Row(
+          children: [
+            // Expand button
+            IconButton(
+              icon: const Icon(Icons.expand_more, color: Color(0xFF448AFF), size: 20),
+              onPressed: () => setState(() => _isExpanded = true),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            ),
+            const SizedBox(width: 8),
+            // Speed
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(FlightIcons.speed, color: Colors.blueAccent, size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${(flightService.currentSpeed * 1.94384).toStringAsFixed(0)} kt',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Altitude
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(FlightIcons.altitude, color: Colors.blueAccent, size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${displayAltitude.toStringAsFixed(0)} $altitudeUnit',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Heading
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.navigation, color: Colors.blueAccent, size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${(flightService.currentHeading ?? 0).toStringAsFixed(0)}°',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Tracking button
+            IconButton(
+              icon: Icon(
+                flightService.isTracking ? Icons.stop : Icons.play_arrow,
+                color: flightService.isTracking ? Colors.red : Colors.green,
+                size: 20,
+              ),
+              onPressed: () {
+                if (flightService.isTracking) {
+                  flightService.stopTracking();
+                } else {
+                  flightService.startTracking();
+                }
+              },
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -101,7 +208,14 @@ class FlightDashboard extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Compact aircraft selection at top-left
+        // Collapse button
+        IconButton(
+          icon: const Icon(Icons.expand_less, color: Color(0xFF448AFF), size: 20),
+          onPressed: () => setState(() => _isExpanded = false),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+        ),
+        // Compact aircraft selection
         Flexible(
           flex: 2,
           child: _buildCompactAircraftSelector(context, flightService),
