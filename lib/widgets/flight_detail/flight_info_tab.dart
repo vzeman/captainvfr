@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../models/flight.dart';
 import '../../models/moving_segment.dart';
+import '../../services/settings_service.dart';
 
 class FlightInfoTab extends StatelessWidget {
   final Flight flight;
@@ -73,51 +75,71 @@ class FlightInfoTab extends StatelessWidget {
           ],
 
           // Flight details grid
-          Text(
-            'Flight Details',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              SizedBox(
-                width: (MediaQuery.of(context).size.width - 48) / 2,
-                child: _buildInfoTile(
-                  context,
-                  icon: Icons.calendar_today,
-                  title: 'Date',
-                  value: dateFormat.format(flight.startTime),
-                ),
-              ),
-              SizedBox(
-                width: (MediaQuery.of(context).size.width - 48) / 2,
-                child: _buildInfoTile(
-                  context,
-                  icon: Icons.speed,
-                  title: 'Max Speed',
-                  value: '${(flight.maxSpeed * 3.6).toStringAsFixed(1)} km/h',
-                ),
-              ),
-              SizedBox(
-                width: (MediaQuery.of(context).size.width - 48) / 2,
-                child: _buildInfoTile(
-                  context,
-                  icon: Icons.height,
-                  title: 'Max Altitude',
-                  value: '${flight.maxAltitude.toStringAsFixed(0)} m',
-                ),
-              ),
-              SizedBox(
-                width: (MediaQuery.of(context).size.width - 48) / 2,
-                child: _buildInfoTile(
-                  context,
-                  icon: Icons.airplanemode_active,
-                  title: 'Distance',
-                  value: '${(flight.distanceTraveled / 1000).toStringAsFixed(1)} km',
-                ),
-              ),
+          Consumer<SettingsService>(
+            builder: (context, settings, child) {
+              final isMetric = settings.units == 'metric';
+              
+              // Format values based on unit settings
+              final speedValue = isMetric 
+                  ? '${(flight.maxSpeed * 3.6).toStringAsFixed(1)} km/h'
+                  : '${(flight.maxSpeed * 2.23694).toStringAsFixed(1)} mph';
+                  
+              final altitudeValue = isMetric 
+                  ? '${flight.maxAltitude.toStringAsFixed(0)} m'
+                  : '${(flight.maxAltitude * 3.28084).toStringAsFixed(0)} ft';
+                  
+              final distanceValue = isMetric 
+                  ? '${(flight.distanceTraveled / 1000).toStringAsFixed(1)} km'
+                  : '${(flight.distanceTraveled * 0.000621371).toStringAsFixed(1)} mi';
+              
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Flight Details',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      SizedBox(
+                        width: (MediaQuery.of(context).size.width - 48) / 2,
+                        child: _buildInfoTile(
+                          context,
+                          icon: Icons.calendar_today,
+                          title: 'Date',
+                          value: dateFormat.format(flight.startTime),
+                        ),
+                      ),
+                      SizedBox(
+                        width: (MediaQuery.of(context).size.width - 48) / 2,
+                        child: _buildInfoTile(
+                          context,
+                          icon: Icons.speed,
+                          title: 'Max Speed',
+                          value: speedValue,
+                        ),
+                      ),
+                      SizedBox(
+                        width: (MediaQuery.of(context).size.width - 48) / 2,
+                        child: _buildInfoTile(
+                          context,
+                          icon: Icons.height,
+                          title: 'Max Altitude',
+                          value: altitudeValue,
+                        ),
+                      ),
+                      SizedBox(
+                        width: (MediaQuery.of(context).size.width - 48) / 2,
+                        child: _buildInfoTile(
+                          context,
+                          icon: Icons.airplanemode_active,
+                          title: 'Distance',
+                          value: distanceValue,
+                        ),
+                      ),
               SizedBox(
                 width: (MediaQuery.of(context).size.width - 48) / 2,
                 child: _buildInfoTile(
@@ -136,7 +158,11 @@ class FlightInfoTab extends StatelessWidget {
                   value: '${flight.path.length}',
                 ),
               ),
-            ],
+                    ],
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
