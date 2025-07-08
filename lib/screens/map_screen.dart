@@ -812,32 +812,33 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           if (currentAltitudeFt != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 12.0),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0x1A448AFF),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: const Color(0x33448AFF),
+              child: IntrinsicWidth(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0x1A448AFF),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: const Color(0x33448AFF),
+                    ),
                   ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.height,
-                      size: 16,
-                      color: Color(0xFF448AFF),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Current altitude: ${currentAltitudeFt.round()} ft',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.white70,
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.height,
+                        size: 16,
+                        color: Color(0xFF448AFF),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Text(
+                        'Current altitude: ${currentAltitudeFt.round()} ft',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
