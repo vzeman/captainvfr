@@ -40,14 +40,34 @@ class FlightIcons {
 }
 
 class FlightDashboard extends StatefulWidget {
-  const FlightDashboard({super.key});
+  final bool? isExpanded;
+  final Function(bool)? onExpandedChanged;
+  
+  const FlightDashboard({
+    super.key,
+    this.isExpanded,
+    this.onExpandedChanged,
+  });
 
   @override
   State<FlightDashboard> createState() => _FlightDashboardState();
 }
 
 class _FlightDashboardState extends State<FlightDashboard> {
-  bool _isExpanded = true;
+  late bool _isExpanded;
+  
+  @override
+  void initState() {
+    super.initState();
+    _isExpanded = widget.isExpanded ?? true;
+  }
+  
+  void _toggleExpanded(bool expanded) {
+    setState(() {
+      _isExpanded = expanded;
+    });
+    widget.onExpandedChanged?.call(expanded);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,97 +137,135 @@ class _FlightDashboardState extends State<FlightDashboard> {
         final displayAltitude = isMetric ? altitude : altitude * 3.28084; // Convert m to ft
         final altitudeUnit = isMetric ? 'm' : 'ft';
         
-        return Row(
-          children: [
-            // Expand button
-            IconButton(
-              icon: const Icon(Icons.expand_more, color: Color(0xFF448AFF), size: 20),
-              onPressed: () => setState(() => _isExpanded = true),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            ),
-            const SizedBox(width: 8),
-            // Speed
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(FlightIcons.speed, color: Colors.blueAccent, size: 16),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      '${(flightService.currentSpeed * 1.94384).toStringAsFixed(0)} kt',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            // Calculate dynamic sizes based on available width
+            final availableWidth = constraints.maxWidth;
+            
+            // Base sizes that scale with available width
+            double iconSize = 12.0;
+            double fontSize = 12.0;
+            double buttonSize = 28.0;
+            double spacing = 2.0;
+            
+            if (availableWidth > 400) {
+              iconSize = 14.0;
+              fontSize = 13.0;
+              buttonSize = 32.0;
+              spacing = 4.0;
+            } else if (availableWidth < 300) {
+              iconSize = 10.0;
+              fontSize = 11.0;
+              buttonSize = 24.0;
+              spacing = 1.0;
+            }
+            
+            // Convert speed based on units
+            final speedMs = flightService.currentSpeed;
+            final displaySpeed = isMetric 
+                ? speedMs * 3.6 // Convert m/s to km/h
+                : speedMs * 1.94384; // Convert m/s to knots
+            final speedUnit = isMetric ? 'km/h' : 'kt';
+            
+            return Row(
+              children: [
+                // Expand button
+                SizedBox(
+                  width: buttonSize,
+                  height: buttonSize,
+                  child: IconButton(
+                    icon: Icon(Icons.expand_more, color: const Color(0xFF448AFF), size: iconSize + 4),
+                    onPressed: () => _toggleExpanded(true),
+                    padding: EdgeInsets.zero,
                   ),
-                ],
-              ),
-            ),
-            // Altitude
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(FlightIcons.altitude, color: Colors.blueAccent, size: 16),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      '${displayAltitude.toStringAsFixed(0)} $altitudeUnit',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+                ),
+                SizedBox(width: spacing * 2),
+                // Speed
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(FlightIcons.speed, color: Colors.blueAccent, size: iconSize),
+                      SizedBox(width: spacing),
+                      Flexible(
+                        child: Text(
+                          '${displaySpeed.toStringAsFixed(0)} $speedUnit',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: fontSize,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            // Heading
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.navigation, color: Colors.blueAccent, size: 16),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      '${(flightService.currentHeading ?? 0).toStringAsFixed(0)}°',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+                ),
+                // Altitude
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(FlightIcons.altitude, color: Colors.blueAccent, size: iconSize),
+                      SizedBox(width: spacing),
+                      Flexible(
+                        child: Text(
+                          '${displayAltitude.toStringAsFixed(0)} $altitudeUnit',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: fontSize,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            // Tracking button
-            IconButton(
-              icon: Icon(
-                flightService.isTracking ? Icons.stop : Icons.play_arrow,
-                color: flightService.isTracking ? Colors.red : Colors.green,
-                size: 20,
-              ),
-              onPressed: () {
-                if (flightService.isTracking) {
-                  flightService.stopTracking();
-                } else {
-                  flightService.startTracking();
-                }
-              },
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            ),
-          ],
+                ),
+                // Heading
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.navigation, color: Colors.blueAccent, size: iconSize),
+                      SizedBox(width: spacing),
+                      Flexible(
+                        child: Text(
+                          '${(flightService.currentHeading ?? 0).toStringAsFixed(0)}°',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: fontSize,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Tracking button
+                SizedBox(
+                  width: buttonSize,
+                  height: buttonSize,
+                  child: IconButton(
+                    icon: Icon(
+                      flightService.isTracking ? Icons.stop : Icons.play_arrow,
+                      color: flightService.isTracking ? Colors.red : Colors.green,
+                      size: iconSize + 4,
+                    ),
+                    onPressed: () {
+                      if (flightService.isTracking) {
+                        flightService.stopTracking();
+                      } else {
+                        flightService.startTracking();
+                      }
+                    },
+                    padding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -220,7 +278,7 @@ class _FlightDashboardState extends State<FlightDashboard> {
         // Collapse button
         IconButton(
           icon: const Icon(Icons.expand_less, color: Color(0xFF448AFF), size: 20),
-          onPressed: () => setState(() => _isExpanded = false),
+          onPressed: () => _toggleExpanded(false),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
         ),
@@ -402,6 +460,13 @@ class _FlightDashboardState extends State<FlightDashboard> {
         final displayAltitude = isMetric ? altitude : altitude * 3.28084; // Convert m to ft
         final altitudeUnit = isMetric ? 'm' : 'ft';
         
+        // Convert speed based on units
+        final speedMs = flightService.currentSpeed;
+        final displaySpeed = isMetric 
+            ? speedMs * 3.6 // Convert m/s to km/h
+            : speedMs * 1.94384; // Convert m/s to knots
+        final speedUnit = isMetric ? 'km/h' : 'kt';
+        
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
@@ -416,8 +481,8 @@ class _FlightDashboardState extends State<FlightDashboard> {
             Expanded(
               child: _buildIndicator(
                 'SPEED',
-                (flightService.currentSpeed * 1.94384).toStringAsFixed(0), // Convert m/s to knots
-                'kt',
+                displaySpeed.toStringAsFixed(0),
+                speedUnit,
                 FlightIcons.speed,
               ),
             ),
@@ -448,6 +513,16 @@ class _FlightDashboardState extends State<FlightDashboard> {
             : distanceMeters * 0.000621371; // Convert to miles
         final distanceUnit = isMetric ? 'km' : 'mi';
         
+        // Convert vertical speed based on units
+        final verticalSpeedFpm = flightService.verticalSpeed;
+        final displayVerticalSpeed = isMetric 
+            ? verticalSpeedFpm * 0.00508 // Convert fpm to m/s
+            : verticalSpeedFpm;
+        final verticalSpeedUnit = isMetric ? 'm/s' : 'fpm';
+        final verticalSpeedStr = isMetric 
+            ? displayVerticalSpeed.toStringAsFixed(1)
+            : displayVerticalSpeed.toStringAsFixed(0);
+        
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
@@ -468,7 +543,7 @@ class _FlightDashboardState extends State<FlightDashboard> {
             Expanded(
               child: _buildSmallIndicator(
                 'V/S',
-                '${flightService.verticalSpeed.toStringAsFixed(0)} fpm',
+                '$verticalSpeedStr $verticalSpeedUnit',
                 FlightIcons.verticalSpeed,
               ),
             ),
