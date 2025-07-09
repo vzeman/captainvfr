@@ -33,6 +33,7 @@ class FlightPointAdapter extends TypeAdapter<FlightPoint> {
       yGyro: fields[13] as double,
       zGyro: fields[14] as double,
       pressure: fields[15] as double,
+      verticalSpeed: fields[17] as double,
       timestamp: fields[16] as DateTime?,
     );
   }
@@ -40,7 +41,7 @@ class FlightPointAdapter extends TypeAdapter<FlightPoint> {
   @override
   void write(BinaryWriter writer, FlightPoint obj) {
     writer
-      ..writeByte(17)
+      ..writeByte(18)
       ..writeByte(0)
       ..write(obj.latitude)
       ..writeByte(1)
@@ -74,7 +75,9 @@ class FlightPointAdapter extends TypeAdapter<FlightPoint> {
       ..writeByte(15)
       ..write(obj.pressure)
       ..writeByte(16)
-      ..write(obj.timestamp);
+      ..write(obj.timestamp)
+      ..writeByte(17)
+      ..write(obj.verticalSpeed);
   }
 
   @override

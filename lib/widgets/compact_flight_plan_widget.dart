@@ -130,14 +130,6 @@ class _CompactFlightPlanWidgetState extends State<CompactFlightPlanWidget> {
               ),
             ),
             if (flightPlanService.isPlanning && _isExpanded)
-              Text(
-                'Tap map to add waypoints',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.white.withValues(alpha: 0.6),
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
             IconButton(
               icon: Icon(
                 Icons.close,

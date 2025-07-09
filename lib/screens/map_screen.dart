@@ -94,8 +94,12 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   Timer? _airspaceDebounceTimer;
   
   // Flight data panel position state
-  Offset _flightDataPanelPosition = const Offset(16, 220); // Default to bottom with positive margin
+  Offset _flightDataPanelPosition = const Offset(8, 220); // Default to bottom with minimal margin for phones
   bool _flightDashboardExpanded = true; // Track expanded state of flight dashboard
+  
+  // Airspace panel visibility and position
+  bool _showCurrentAirspacePanel = true; // Control visibility of current airspace panel
+  Offset _airspacePanelPosition = const Offset(0, 10); // Default position (centered horizontally, 10px from bottom)
 
   // Waypoint selection state
   int? _selectedWaypointIndex;
@@ -207,6 +211,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         _flightPathPoints = _flightService.flightPath
             .map((point) => LatLng(point.latitude, point.longitude))
             .toList();
+        
+        // Debug: Log flight path updates
+        if (_flightPathPoints.isNotEmpty) {
+          debugPrint('Flight path updated: ${_flightPathPoints.length} points');
+        }
 
         // Update flight segments for visualization
         _flightSegments = _flightService.flightSegments;
@@ -1610,8 +1619,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   polylines: [
                     Polyline(
                       points: _flightPathPoints,
-                      color: Colors.blue.withValues(alpha: 0.7),
-                      strokeWidth: 4.0,
+                      color: Colors.red,
+                      strokeWidth: 6.0,
+                      borderColor: Colors.white,
+                      borderStrokeWidth: 2.0,
                     ),
                   ],
                 ),
@@ -1843,6 +1854,16 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                     isActive: _showAirspaces,
                     onPressed: _toggleAirspaces,
                   ),
+                  _buildLayerToggle(
+                    icon: _showCurrentAirspacePanel ? Icons.info : Icons.info_outline,
+                    tooltip: 'Toggle Current Airspace Panel',
+                    isActive: _showCurrentAirspacePanel,
+                    onPressed: () {
+                      setState(() {
+                        _showCurrentAirspacePanel = !_showCurrentAirspacePanel;
+                      });
+                    },
+                  ),
                 ],
               ),
             ),
@@ -1858,7 +1879,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 feedback: Material(
                   color: Colors.transparent,
                   child: SizedBox(
-                    width: MediaQuery.of(context).size.width - 32,
+                    width: MediaQuery.of(context).size.width < 600 
+                        ? MediaQuery.of(context).size.width - 16 // Phone width
+                        : 600, // Tablet/desktop max width
                     child: FlightDashboard(
                       isExpanded: _flightDashboardExpanded,
                     ),
@@ -1869,21 +1892,38 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   setState(() {
                     // Calculate new position based on drag end position
                     final screenSize = MediaQuery.of(context).size;
+                    final isPhone = screenSize.width < 600;
+                    
                     double newX = details.offset.dx;
                     double newY = details.offset.dy;
 
+                    // Get panel dimensions
+                    final panelWidth = isPhone ? screenSize.width - 16 : 600;
+                    final panelHeight = _flightDashboardExpanded ? 260 : 60;
+
                     // Convert screen coordinates to bottom-relative positioning
-                    double bottomDistance = screenSize.height - newY - 200; // 200 is panel height
+                    double bottomDistance = screenSize.height - newY - panelHeight;
 
                     // Constrain to screen bounds with margins
-                    newX = newX.clamp(16.0, screenSize.width - (screenSize.width - 32)); // Keep within screen width
-                    bottomDistance = bottomDistance.clamp(16.0, screenSize.height - 250); // Keep within screen height
+                    final minMargin = isPhone ? 8.0 : 16.0;
+                    
+                    // Allow full horizontal movement on tablets/desktop
+                    if (!isPhone) {
+                      newX = newX.clamp(minMargin, screenSize.width - panelWidth - minMargin);
+                    } else {
+                      // On phones, keep centered
+                      newX = minMargin;
+                    }
+                    
+                    bottomDistance = bottomDistance.clamp(16.0, screenSize.height - panelHeight - 100);
 
                     _flightDataPanelPosition = Offset(newX, bottomDistance);
                   });
                 },
                 child: SizedBox(
-                  width: MediaQuery.of(context).size.width - 32,
+                  width: MediaQuery.of(context).size.width < 600 
+                      ? MediaQuery.of(context).size.width - 16 // Phone width
+                      : 600, // Tablet/desktop max width
                   child: FlightDashboard(
                     isExpanded: _flightDashboardExpanded,
                     onExpandedChanged: (expanded) {
@@ -1898,18 +1938,64 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
           
           // Airspace information during flight
-          if (_flightService.isTracking && _currentPosition != null)
+          if (_flightService.isTracking && _currentPosition != null && _showCurrentAirspacePanel)
             Positioned(
-              bottom: 10,
-              left: 0,
-              right: 0,
-              child: AirspaceFlightInfo(
-                currentPosition: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-                currentAltitude: _currentPosition!.altitude,
-                currentHeading: _currentPosition!.heading,
-                currentSpeed: _currentPosition!.speed,
-                openAIPService: openAIPService,
-                onAirspaceSelected: _onAirspaceSelected,
+              left: _airspacePanelPosition.dx,
+              bottom: _airspacePanelPosition.dy,
+              child: Draggable<String>(
+                data: 'airspace_panel',
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width - 32,
+                    ),
+                    child: AirspaceFlightInfo(
+                      currentPosition: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                      currentAltitude: _currentPosition!.altitude,
+                      currentHeading: _currentPosition!.heading,
+                      currentSpeed: _currentPosition!.speed,
+                      openAIPService: openAIPService,
+                      onAirspaceSelected: _onAirspaceSelected,
+                    ),
+                  ),
+                ),
+                childWhenDragging: Container(), // Empty container when dragging
+                onDragEnd: (details) {
+                  setState(() {
+                    // Calculate new position based on drag end position
+                    final screenSize = MediaQuery.of(context).size;
+                    double newX = details.offset.dx;
+                    double newY = details.offset.dy;
+
+                    // Convert screen coordinates to bottom-relative positioning
+                    double bottomDistance = screenSize.height - newY - 150; // Approximate panel height
+
+                    // Constrain to screen bounds with margins
+                    newX = newX.clamp(0.0, screenSize.width - 300); // Approximate panel width
+                    bottomDistance = bottomDistance.clamp(10.0, screenSize.height - 200);
+
+                    _airspacePanelPosition = Offset(newX, bottomDistance);
+                  });
+                },
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width - 32,
+                  ),
+                  child: AirspaceFlightInfo(
+                    currentPosition: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                    currentAltitude: _currentPosition!.altitude,
+                    currentHeading: _currentPosition!.heading,
+                    currentSpeed: _currentPosition!.speed,
+                    openAIPService: openAIPService,
+                    onAirspaceSelected: _onAirspaceSelected,
+                    onClose: () {
+                      setState(() {
+                        _showCurrentAirspacePanel = false;
+                      });
+                    },
+                  ),
+                ),
               ),
             ),
           // App bar - simplified without leading or actions

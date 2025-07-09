@@ -12,6 +12,7 @@ class AirspaceFlightInfo extends StatefulWidget {
   final double currentSpeed; // in m/s
   final OpenAIPService openAIPService;
   final Function(Airspace)? onAirspaceSelected;
+  final VoidCallback? onClose;
 
   const AirspaceFlightInfo({
     super.key,
@@ -21,6 +22,7 @@ class AirspaceFlightInfo extends StatefulWidget {
     required this.currentSpeed,
     required this.openAIPService,
     this.onAirspaceSelected,
+    this.onClose,
   });
 
   @override
@@ -32,6 +34,8 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
   Airspace? _nextAirspace;
   double? _distanceToNext;
   double? _timeToNext;
+  double? _distanceToExit;
+  double? _timeToExit;
 
   @override
   void didUpdateWidget(AirspaceFlightInfo oldWidget) {
@@ -72,6 +76,14 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
 
       // Find next airspace in flight path
       final nextAirspace = await _findNextAirspace();
+      
+      // Calculate distance to exit current airspace if no next airspace
+      if (currentAirspaces.isNotEmpty && nextAirspace == null && widget.currentSpeed > 1) {
+        _calculateExitDistance(currentAirspaces.first);
+      } else {
+        _distanceToExit = null;
+        _timeToExit = null;
+      }
 
       setState(() {
         _currentAirspaces = currentAirspaces;
@@ -159,6 +171,65 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
 
     return minDistance;
   }
+  
+  void _calculateExitDistance(Airspace currentAirspace) {
+    if (currentAirspace.geometry.isEmpty || widget.currentSpeed < 1) {
+      _distanceToExit = null;
+      _timeToExit = null;
+      return;
+    }
+    
+    // Search for airspace boundary in the direction of travel
+    final bearing = widget.currentHeading;
+    double? exitDistance;
+    
+    // Check points along the flight path to find where we exit the airspace
+    for (double distKm = 0.5; distKm <= 50; distKm += 0.5) {
+      final checkPoint = _calculateDestination(
+        widget.currentPosition,
+        bearing,
+        distKm * 1000, // Convert to meters
+      );
+      
+      // Check if this point is still inside the airspace
+      final inAirspace = _isPointInAirspace(checkPoint, currentAirspace);
+      
+      if (!inAirspace) {
+        // Found the exit point
+        exitDistance = distKm * 1000; // Convert to meters
+        break;
+      }
+    }
+    
+    if (exitDistance != null) {
+      _distanceToExit = exitDistance;
+      _timeToExit = exitDistance / widget.currentSpeed;
+    } else {
+      _distanceToExit = null;
+      _timeToExit = null;
+    }
+  }
+  
+  bool _isPointInAirspace(LatLng point, Airspace airspace) {
+    // Simple point-in-polygon check
+    // This is a basic implementation - in production, use a proper
+    // point-in-polygon algorithm considering the airspace geometry
+    if (airspace.geometry.isEmpty) return false;
+    
+    // For now, check if the point is within a certain distance of any boundary point
+    // This is a simplification - real implementation would need proper polygon checking
+    final distance = Distance();
+    const double threshold = 1000; // 1km threshold
+    
+    for (final boundaryPoint in airspace.geometry) {
+      final dist = distance.as(LengthUnit.Meter, point, boundaryPoint);
+      if (dist < threshold) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
 
   LatLng _calculateDestination(LatLng start, double bearing, double distanceMeters) {
     const earthRadius = 6371000.0; // Earth's radius in meters
@@ -204,22 +275,24 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
         borderRadius: BorderRadius.circular(8.0),
         border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          if (_currentAirspaces.isNotEmpty) ...[
-            const Text(
-              'CURRENT AIRSPACE',
-              style: TextStyle(
-                color: Colors.orange,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 4),
-            ..._currentAirspaces.map((airspace) => GestureDetector(
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_currentAirspaces.isNotEmpty) ...[
+                const Text(
+                  'CURRENT AIRSPACE',
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                ..._currentAirspaces.map((airspace) => GestureDetector(
               onTap: widget.onAirspaceSelected != null 
                   ? () => widget.onAirspaceSelected!(airspace)
                   : null,
@@ -253,22 +326,22 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
                   ],
                 ),
               ),
-            )),
-          ],
-          if (_nextAirspace != null && _currentAirspaces.isNotEmpty)
-            const Divider(color: Colors.grey, height: 8),
-          if (_nextAirspace != null) ...[
-            const Text(
-              'NEXT AIRSPACE',
-              style: TextStyle(
-                color: Colors.blue,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 4),
-            GestureDetector(
+                )),
+              ],
+              if (_nextAirspace != null && _currentAirspaces.isNotEmpty)
+                const Divider(color: Colors.grey, height: 8),
+              if (_nextAirspace != null) ...[
+                const Text(
+                  'NEXT AIRSPACE',
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                GestureDetector(
               onTap: widget.onAirspaceSelected != null && _nextAirspace != null
                   ? () => widget.onAirspaceSelected!(_nextAirspace!)
                   : null,
@@ -310,9 +383,84 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
                     ],
                   ],
                 ],
+                  ),
+                ),
+              ],
+              // Show exit distance if no next airspace
+              if (_currentAirspaces.isNotEmpty && _nextAirspace == null && _distanceToExit != null) ...[
+                if (_currentAirspaces.isNotEmpty)
+                  const Divider(color: Colors.grey, height: 8),
+                const Text(
+                  'AIRSPACE EXIT',
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.exit_to_app,
+                      size: 12,
+                      color: Colors.orange,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'Exiting ${_currentAirspaces.first.name}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      '${(_distanceToExit! / 1000).toStringAsFixed(1)}km',
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontSize: 10,
+                      ),
+                    ),
+                    if (_timeToExit != null) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        _formatDuration(_timeToExit!),
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ],
+          ),
+          // Close button in top right corner
+          if (widget.onClose != null)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: GestureDetector(
+                onTap: widget.onClose,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    size: 16,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
-          ],
         ],
       ),
     );
