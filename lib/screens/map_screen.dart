@@ -190,8 +190,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   
   // Handle cache updates
   void _onCacheUpdated() {
-    debugPrint('🔄 Cache updated, refreshing map data');
-    
+
     // Refresh airspaces if they're enabled
     if (_showAirspaces && mounted) {
       _refreshAirspacesDisplay();
@@ -215,11 +214,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         _flightPathPoints = _flightService.flightPath
             .map((point) => LatLng(point.latitude, point.longitude))
             .toList();
-        
-        // Debug: Log flight path updates
-        if (_flightPathPoints.isNotEmpty) {
-          debugPrint('Flight path updated: ${_flightPathPoints.length} points');
-        }
+
 
         // Update flight segments for visualization
         _flightSegments = _flightService.flightSegments;
@@ -539,24 +534,19 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     try {
       // Check if map controller is ready
       if (!mounted) {
-        debugPrint('🧭 _loadNavaids: Widget not mounted, returning');
         return;
       }
 
       // Ensure navaids are fetched
-      debugPrint('🧭 _loadNavaids: Calling fetchNavaids...');
       await _navaidService.fetchNavaids();
 
       final totalNavaids = _navaidService.navaids.length;
-      debugPrint('🧭 _loadNavaids: Total navaids available: $totalNavaids');
 
       if (totalNavaids == 0) {
-        debugPrint('❌ _loadNavaids: No navaids available in service');
         return;
       }
 
       final bounds = _mapController.camera.visibleBounds;
-      debugPrint('🧭 _loadNavaids: Map bounds - SW: ${bounds.southWest}, NE: ${bounds.northEast}');
 
       final navaids = _navaidService.getNavaidsInBounds(
         bounds.southWest,
@@ -576,7 +566,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   // Load airspaces in the current map view
   Future<void> _loadAirspaces() async {
     if (!_showAirspaces) {
-      debugPrint('🌍 _loadAirspaces: _showAirspaces is false, returning early');
       return;
     }
     
@@ -604,14 +593,12 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       return;
     }
 
-    debugPrint('🌍 _loadAirspaces: Loading airspaces...');
 
     try {
       // First, load from cache for immediate display
       final cachedAirspaces = await openAIPService.getCachedAirspaces();
       
       if (cachedAirspaces.isNotEmpty) {
-        debugPrint('🌍 Loaded ${cachedAirspaces.length} airspaces from cache');
         if (mounted) {
           setState(() {
             _airspaces = cachedAirspaces;
@@ -649,7 +636,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         setState(() {
           _airspaces = airspaces;
         });
-        debugPrint('🔄 Refreshed airspaces display with ${airspaces.length} items');
       }
     } catch (e) {
       debugPrint('❌ Error refreshing airspaces display: $e');
@@ -659,18 +645,14 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   // Load reporting points in the current map view
   Future<void> _loadReportingPoints() async {
     if (!_showAirspaces) {
-      debugPrint('📍 _loadReportingPoints: _showAirspaces is false, returning early');
       return;
     }
-
-    debugPrint('📍 _loadReportingPoints: Loading reporting points...');
 
     try {
       // First load from cache for immediate display
       final cachedPoints = await openAIPService.getCachedReportingPoints();
       
       if (cachedPoints.isNotEmpty) {
-        debugPrint('📍 Loaded ${cachedPoints.length} reporting points from cache');
         if (mounted) {
           setState(() {
             _reportingPoints = cachedPoints;
@@ -709,7 +691,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         setState(() {
           _reportingPoints = points;
         });
-        debugPrint('🔄 Refreshed reporting points display with ${points.length} items');
       }
     } catch (e) {
       debugPrint('❌ Error refreshing reporting points display: $e');
@@ -749,12 +730,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   
   // Toggle navaid visibility
   void _toggleNavaids() {
-    debugPrint('🔴 _toggleNavaids: Button pressed! Starting toggle...');
-    debugPrint('🧭 _toggleNavaids: Current state: $_showNavaids');
     setState(() {
       _showNavaids = !_showNavaids;
     });
-    debugPrint('🧭 _toggleNavaids: New state: $_showNavaids');
 
     // Load navaids immediately when toggled on
     if (_showNavaids) {
@@ -764,7 +742,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         _navaids = [];
       });
     }
-    debugPrint('🔴 _toggleNavaids: Toggle completed!');
   }
 
   // Toggle METAR overlay visibility
@@ -813,12 +790,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
   // Handle map tap - updated to support flight planning and airspace selection
   void _onMapTapped(TapPosition tapPosition, LatLng point) {
-    debugPrint('Map tapped at: ${point.latitude}, ${point.longitude}');
 
     // If in flight planning mode, add waypoint
     if (_flightPlanService.isPlanning) {
       _flightPlanService.addWaypoint(point);
-      debugPrint('Added waypoint at: ${point.latitude}, ${point.longitude}');
       return;
     }
 
@@ -836,10 +811,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
     // Otherwise, close any open dialogs or menus
     if (mounted) {
-      debugPrint('Popping all routes until first');
       Navigator.of(context).popUntil((route) => route.isFirst);
-    } else {
-      debugPrint('Context not mounted, cannot pop routes');
     }
   }
 
@@ -887,6 +859,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                     ),
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
                         Icons.height,
@@ -894,11 +867,14 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         color: Color(0xFF448AFF),
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        'Current altitude: ${currentAltitudeFt.round()} ft',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.white70,
+                      Flexible(
+                        child: Text(
+                          'Current altitude: ${currentAltitudeFt.round()} ft',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.white70,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -1077,7 +1053,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
   // Handle waypoint tap for selection
   void _onWaypointTapped(int index) {
-    debugPrint('Waypoint $index tapped');
 
     final flightPlan = _flightPlanService.currentFlightPlan;
     if (flightPlan != null && index >= 0 && index < flightPlan.waypoints.length) {
@@ -1089,8 +1064,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
   // Handle waypoint move via drag and drop
   void _onWaypointMoved(int index, LatLng newPosition) {
-    debugPrint('Waypoint $index moved to ${newPosition.latitude}, ${newPosition.longitude}');
-    
+
     final flightPlan = _flightPlanService.currentFlightPlan;
     if (flightPlan != null && index >= 0 && index < flightPlan.waypoints.length) {
       // Update waypoint position
@@ -1330,16 +1304,13 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
   // Handle reporting point selection
   Future<void> _onReportingPointSelected(ReportingPoint point) async {
-    debugPrint('_onReportingPointSelected called for ${point.name}');
 
     if (!mounted) {
-      debugPrint('Context not mounted, returning early');
       return;
     }
 
     try {
-      debugPrint('Showing reporting point details for ${point.name}');
-      
+
       // Create a themed dialog to show reporting point information
       await ThemedDialog.show(
         context: context,
@@ -1487,8 +1458,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           _servicesInitialized = true;
         });
       }
-
-      debugPrint('✅ Services initialized with cached data');
     } catch (e) {
       debugPrint('⚠️ Error initializing services: $e');
       // Don't set _servicesInitialized = true if initialization failed
@@ -1526,7 +1495,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       // Get only the ICAOs of airports that are actually visible
       final visibleAirportIcaos = visibleAirports.map((airport) => airport.icao).toList();
 
-      debugPrint('🌤️ Loading weather for ${visibleAirportIcaos.length}/${_airports.length} visible airports...');
 
       // Fetch weather data for visible airports
       await _weatherService.initialize();
@@ -1547,7 +1515,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         setState(() {
           // Force rebuild to show updated weather data
         });
-        debugPrint('✅ Updated weather data for ${metarData.length} visible airports');
       }
     } catch (e) {
       debugPrint('❌ Error loading weather for visible airports: $e');
@@ -1899,7 +1866,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                       tooltip: 'Toggle Navaids',
                       isActive: _showNavaids,
                       onPressed: () {
-                        debugPrint('🔴 NAVAID BUTTON PRESSED DIRECTLY!');
                         _toggleNavaids();
                       },
                     ),
