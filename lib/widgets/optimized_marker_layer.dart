@@ -234,7 +234,8 @@ class OptimizedReportingPointsLayer extends StatelessWidget {
     // Calculate dynamic marker size based on zoom level
     final markerSize = currentZoom >= 12 ? 20.0 : 14.0;
     final showLabel = currentZoom >= 11;
-    final totalHeight = showLabel ? markerSize + 20.0 : markerSize;
+    // Add extra height for label: marker + margin(2) + padding(2) + text(~14)
+    final totalHeight = showLabel ? markerSize + 25.0 : markerSize;
     final markerWidth = showLabel ? 100.0 : markerSize;
     
     return OptimizedMarkerLayer(
@@ -257,10 +258,12 @@ class OptimizedReportingPointsLayer extends StatelessWidget {
     
     return GestureDetector(
       onTap: () => onReportingPointTap?.call(point),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
             width: markerSize,
             height: markerSize,
             decoration: BoxDecoration(
@@ -314,6 +317,7 @@ class OptimizedReportingPointsLayer extends StatelessWidget {
               ),
             ),
         ],
+      ),
       ),
     );
   }

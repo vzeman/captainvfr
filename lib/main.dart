@@ -62,23 +62,17 @@ void main() async {
       final hasMigratedCaches = migrationBox.get('cache_migration_v1', defaultValue: false);
       
       if (!hasMigratedCaches) {
-        debugPrint('🔄 Running one-time cache migration...');
-        
+
         // Clear old format boxes if they exist
         if (await Hive.boxExists('airspaces')) {
           await Hive.deleteBoxFromDisk('airspaces');
-          debugPrint('🗑️ Cleared old airspaces cache');
         }
         if (await Hive.boxExists('reportingPoints')) {
           await Hive.deleteBoxFromDisk('reportingPoints');
-          debugPrint('🗑️ Cleared old reportingPoints cache');
         }
         
         // Mark migration as complete
         await migrationBox.put('cache_migration_v1', true);
-        debugPrint('✅ Cache migration completed');
-      } else {
-        debugPrint('✅ Cache migration already completed in previous run');
       }
     } catch (e) {
       debugPrint('⚠️ Error during cache migration: $e');
@@ -379,75 +373,6 @@ void _runMinimalApp() {
   );
 }
 
-/// Initialize data services and ensure cached data is available
-// Future<void> _initializeDataServices(
-//   AirportService airportService,
-//   RunwayService runwayService,
-//   NavaidService navaidService,
-//   WeatherService weatherService,
-//   FrequencyService frequencyService,
-// ) async {
-//   debugPrint('🚀 Initializing data services and checking cache...');
-// 
-//   try {
-//     // Initialize all services
-//     await Future.wait([
-//       airportService.initialize(),
-//       runwayService.initialize(),
-//       navaidService.initialize(),
-//       weatherService.initialize(),
-//       frequencyService.initialize(),
-//     ]);
-// 
-//     // Check if we have cached data, if not, fetch from network
-//     final futures = <Future>[];
-// 
-//     // Check airports
-//     if (airportService.airports.isEmpty) {
-//       debugPrint('📡 No cached airports found, fetching from network...');
-//       futures.add(airportService.fetchNearbyAirports());
-//     } else {
-//       debugPrint('�� Found ${airportService.airports.length} cached airports');
-//     }
-// 
-//     // Check runways
-//     if (runwayService.runways.isEmpty) {
-//       debugPrint('📡 No cached runways found, fetching from network...');
-//       futures.add(runwayService.fetchRunways());
-//     } else {
-//       debugPrint('✅ Found ${runwayService.runways.length} cached runways');
-//     }
-// 
-//     // Check navaids
-//     if (navaidService.navaids.isEmpty) {
-//       debugPrint('📡 No cached navaids found, fetching from network...');
-//       futures.add(navaidService.fetchNavaids());
-//     } else {
-//       debugPrint('✅ Found ${navaidService.navaids.length} cached navaids');
-//     }
-// 
-//     // Check frequencies
-//     if (frequencyService.frequencies.isEmpty) {
-//       debugPrint('���� No cached frequencies found, fetching from network...');
-//       futures.add(frequencyService.fetchFrequencies());
-//     } else {
-//       debugPrint('✅ Found ${frequencyService.frequencies.length} cached frequencies');
-//     }
-// 
-//     // Wait for all network requests to complete
-//     if (futures.isNotEmpty) {
-//       await Future.wait(futures);
-//       debugPrint('✅ All missing data has been fetched and cached');
-//     } else {
-//       debugPrint('✅ All data was available from cache');
-//     }
-// 
-//   } catch (e, stackTrace) {
-//     debugPrint('❌ Error initializing data services: $e');
-//     debugPrint('Stack trace: $stackTrace');
-//     // Continue with app initialization even if data loading fails
-//   }
-// }
 
 /// Clear Hive boxes to resolve typeId mismatch issues
 Future<void> _clearHiveBoxes() async {
@@ -473,7 +398,6 @@ Future<void> _clearHiveBoxes() async {
         if (Hive.isBoxOpen(boxName)) {
           final box = Hive.box(boxName);
           await box.close();
-          debugPrint('✅ Closed box: $boxName');
         }
       } catch (e) {
         debugPrint('⚠️ Error closing box $boxName: $e');
@@ -488,7 +412,6 @@ Future<void> _clearHiveBoxes() async {
     for (final boxName in boxNames) {
       try {
         await Hive.deleteBoxFromDisk(boxName);
-        debugPrint('✅ Deleted box from disk: $boxName');
       } catch (e) {
         debugPrint('⚠️ Error deleting box $boxName: $e');
         // Continue with other boxes even if one fails to delete
@@ -498,18 +421,15 @@ Future<void> _clearHiveBoxes() async {
     // As a final fallback, try to clear all Hive data
     try {
       await Hive.deleteFromDisk();
-      debugPrint('��� All Hive data cleared from disk');
     } catch (e) {
       debugPrint('⚠️ Error with global Hive clear: $e');
     }
 
-    debugPrint('✅ Hive boxes cleared successfully');
   } catch (e) {
     debugPrint('❌ Error clearing Hive boxes: $e');
     // Last resort - try to clear everything
     try {
       await Hive.deleteFromDisk();
-      debugPrint('✅ All Hive data cleared from disk as fallback');
     } catch (e2) {
       debugPrint('❌ Failed to clear Hive data from disk: $e2');
       rethrow;
