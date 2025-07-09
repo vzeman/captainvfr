@@ -48,14 +48,7 @@ class OptimizedMarkerLayer extends StatelessWidget {
 
     // Filter markers to only those within padded bounds
     final visibleMarkers = <Marker>[];
-    
-    // Log first few positions for debugging on iOS
-    if (Platform.isIOS && markerPositions.isNotEmpty) {
-      final firstPos = markerPositions.first;
-      debugPrint('🍎 iOS: First marker position: $firstPos');
-      debugPrint('🍎 iOS: Padded bounds: SW=${paddedBounds.southWest}, NE=${paddedBounds.northEast}');
-      debugPrint('🍎 iOS: Contains first marker: ${paddedBounds.contains(firstPos)}');
-    }
+
     
     for (int i = 0; i < markerPositions.length; i++) {
       final position = markerPositions[i];
@@ -71,12 +64,6 @@ class OptimizedMarkerLayer extends StatelessWidget {
           ),
         );
       }
-    }
-
-    debugPrint('OptimizedMarkerLayer: ${visibleMarkers.length} of ${markerPositions.length} markers visible');
-    
-    if (Platform.isIOS && visibleMarkers.isNotEmpty) {
-      debugPrint('🍎 iOS: Rendering ${visibleMarkers.length} markers in MarkerLayer');
     }
 
     return MarkerLayer(markers: visibleMarkers);
@@ -117,7 +104,6 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
         a.type != 'small_airport' && 
         a.type != 'heliport'
       ).toList();
-      debugPrint('🏛️ Hiding small airports at zoom $currentZoom - showing ${visibleAirports.length} of ${airports.length} airports');
     }
     
     final positions = visibleAirports.map((a) => a.position).toList();
