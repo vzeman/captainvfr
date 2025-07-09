@@ -12,6 +12,7 @@ import 'airport_info_sheet/airport_info_tab.dart';
 import 'airport_info_sheet/airport_weather_tab.dart';
 import 'airport_info_sheet/airport_runways_tab.dart';
 import 'airport_info_sheet/airport_frequencies_tab.dart';
+import 'airport_info_sheet/airport_notams_tab.dart';
 import 'airport_info_sheet/airport_data_fetcher.dart';
 
 // Key for testing
@@ -56,7 +57,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _tabController.addListener(_handleTabChange);
   }
 
@@ -262,11 +263,13 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
           // Tab Bar
           TabBar(
             controller: _tabController,
+            isScrollable: true,
             tabs: const [
               Tab(text: 'Info', icon: Icon(Icons.info_outline)),
               Tab(text: 'Weather', icon: Icon(Icons.cloud_outlined)),
               Tab(text: 'Runways', icon: Icon(Icons.straighten)),
               Tab(text: 'Frequencies', icon: Icon(Icons.radio)),
+              Tab(text: 'NOTAMs', icon: Icon(Icons.description)),
             ],
           ),
           
@@ -315,6 +318,9 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
                     });
                     _fetchFrequencies();
                   },
+                ),
+                AirportNotamsTab(
+                  airport: widget.airport,
                 ),
               ],
             ),

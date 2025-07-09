@@ -875,4 +875,55 @@ class CacheService extends ChangeNotifier {
       rethrow;
     }
   }
+  
+  // Generic cache methods for other data types
+  
+  /// Cache generic data with a key
+  Future<void> cacheData(String key, String data) async {
+    await _ensureInitialized();
+    try {
+      await _metadataBox.put(key, data);
+      await _metadataBox.put('${key}_timestamp', DateTime.now().toIso8601String());
+    } catch (e) {
+      developer.log('❌ Error caching data for $key: $e');
+      rethrow;
+    }
+  }
+  
+  /// Get cached generic data
+  Future<String?> getCachedData(String key) async {
+    await _ensureInitialized();
+    try {
+      return _metadataBox.get(key) as String?;
+    } catch (e) {
+      developer.log('❌ Error getting cached data for $key: $e');
+      return null;
+    }
+  }
+  
+  /// Get timestamp for cached data
+  Future<DateTime?> getCachedDataTimestamp(String key) async {
+    await _ensureInitialized();
+    try {
+      final timestampStr = _metadataBox.get('${key}_timestamp') as String?;
+      if (timestampStr != null) {
+        return DateTime.tryParse(timestampStr);
+      }
+    } catch (e) {
+      developer.log('❌ Error getting timestamp for $key: $e');
+    }
+    return null;
+  }
+  
+  /// Clear specific cached data
+  Future<void> clearCachedData(String key) async {
+    await _ensureInitialized();
+    try {
+      await _metadataBox.delete(key);
+      await _metadataBox.delete('${key}_timestamp');
+    } catch (e) {
+      developer.log('❌ Error clearing cached data for $key: $e');
+      rethrow;
+    }
+  }
 }
