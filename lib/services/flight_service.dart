@@ -126,11 +126,7 @@ class FlightService with ChangeNotifier {
         _currentXAccel = event.x / _gravity;
         _currentYAccel = event.y / _gravity;
         _currentZAccel = event.z / _gravity;
-        
-        // Debug: Log first few accelerometer readings
-        if (_flightPath.length < 5) {
-          debugPrint('Accelerometer: X=${_currentXAccel.toStringAsFixed(3)}g, Y=${_currentYAccel.toStringAsFixed(3)}g, Z=${_currentZAccel.toStringAsFixed(3)}g');
-        }
+
       }, onError: (error) {
         debugPrint('Accelerometer error: $error');
       });

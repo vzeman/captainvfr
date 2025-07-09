@@ -266,9 +266,13 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
     if (_currentAirspaces.isEmpty && _nextAirspace == null) {
       return const SizedBox.shrink();
     }
+    
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isPhone = screenWidth < 600;
+    final horizontalMargin = isPhone ? 8.0 : 0.0; // Minimal margin on phones, no margin on tablets
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+      margin: EdgeInsets.symmetric(horizontal: horizontalMargin, vertical: 4.0),
       padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
         color: Colors.black87,

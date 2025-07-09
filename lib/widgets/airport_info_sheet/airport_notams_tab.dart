@@ -20,9 +20,10 @@ class AirportNotamsTab extends StatefulWidget {
 }
 
 class _AirportNotamsTabState extends State<AirportNotamsTab> {
-  final NotamService _notamService = NotamService();
-  final NotamServiceV2 _notamServiceV2 = NotamServiceV2();
-  final NotamServiceV3 _notamServiceV3 = NotamServiceV3();
+  // Use late initialization to ensure fresh instances
+  late final NotamService _notamService;
+  late final NotamServiceV2 _notamServiceV2;
+  late final NotamServiceV3 _notamServiceV3;
   List<Notam> _notams = [];
   bool _isLoading = true;
   bool _isRefreshing = false;
@@ -32,16 +33,57 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
   @override
   void initState() {
     super.initState();
-    _loadNotams();
+    // Initialize services
+    _notamService = NotamService();
+    _notamServiceV2 = NotamServiceV2();
+    _notamServiceV3 = NotamServiceV3();
+    
+    // Clear any existing NOTAMs to prevent showing stale data
+    _notams = [];
+    _error = null;
+    _lastFetch = null;
+    
+    // Add a small delay to ensure the widget is properly mounted
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadNotams(forceRefresh: true); // Force refresh on initial load
+    });
+  }
+  
+  @override
+  void didUpdateWidget(AirportNotamsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If the airport changed, reload NOTAMs
+    if (oldWidget.airport.icao != widget.airport.icao) {
+      developer.log('📋 Airport changed from ${oldWidget.airport.icao} to ${widget.airport.icao}, reloading NOTAMs');
+      // Clear existing NOTAMs immediately to prevent showing wrong data
+      setState(() {
+        _notams = [];
+        _error = null;
+        _lastFetch = null;
+      });
+      _loadNotams(forceRefresh: true);
+    }
+  }
+  
+  @override
+  void dispose() {
+    // Clean up any pending operations
+    super.dispose();
   }
   
   Future<void> _loadNotams({bool forceRefresh = false}) async {
     if (!mounted) return;
     
+    developer.log('📋 Loading NOTAMs for ${widget.airport.icao} (forceRefresh: $forceRefresh)');
+    
     setState(() {
       _isLoading = !forceRefresh;
       _isRefreshing = forceRefresh;
       _error = null;
+      if (!forceRefresh) {
+        // Clear NOTAMs when not refreshing to prevent showing stale data
+        _notams = [];
+      }
     });
     
     try {

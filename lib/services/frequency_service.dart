@@ -35,14 +35,9 @@ class FrequencyService {
   /// Load frequencies from cache
   Future<void> _loadCachedFrequencies() async {
     try {
-      developer.log('🔧 FrequencyService: Loading frequencies from cache...');
-      final cachedFrequencies = await _cacheService.getCachedFrequencies();
-      developer.log('🔧 FrequencyService: Retrieved ${cachedFrequencies.length} frequencies from cache');
+      final cachedFrequencies = await _cacheService.getCachedFrequencies();developer.log('🔧 FrequencyService: Retrieved ${cachedFrequencies.length} frequencies from cache');
       if (cachedFrequencies.isNotEmpty) {
         _frequencies = cachedFrequencies;
-        developer.log('✅ Loaded ${_frequencies.length} frequencies from cache');
-      } else {
-        developer.log('⚠️ No frequencies found in cache');
       }
     } catch (e) {
       developer.log('❌ Error loading cached frequencies: $e');

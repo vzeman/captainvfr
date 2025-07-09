@@ -69,13 +69,11 @@ class OfflineTileImageProvider extends ImageProvider<OfflineTileImageProvider> {
       );
 
       if (cachedTile != null) {
-        logger.d('📱 Using cached tile: ${coordinates.z}/${coordinates.x}/${coordinates.y}');
         final buffer = await ImmutableBuffer.fromUint8List(cachedTile);
         return await decode(buffer);
       }
 
       // If not cached, try to download from online source
-      logger.d('🌐 Downloading tile: ${coordinates.z}/${coordinates.x}/${coordinates.y}');
       final url = urlTemplate
           .replaceAll('{z}', coordinates.z.toString())
           .replaceAll('{x}', coordinates.x.toString())

@@ -127,17 +127,11 @@ class _FlightDashboardState extends State<FlightDashboard> {
           child: _buildMainIndicators(context, flightService, barometerService),
         ),
         const SizedBox(height: 8),
-        // Secondary indicators with fixed height
-        SizedBox(
-          height: 30,
-          child: _buildSecondaryIndicators(context, flightService, barometerService),
-        ),
+        // Secondary indicators
+        _buildSecondaryIndicators(context, flightService, barometerService),
         const SizedBox(height: 8),
-        // Additional indicators with fixed height
-        SizedBox(
-          height: 30,
-          child: _buildAdditionalIndicators(context, flightService, barometerService),
-        ),
+        // Additional indicators
+        _buildAdditionalIndicators(context, flightService, barometerService),
       ],
     );
   }
@@ -630,10 +624,12 @@ class _FlightDashboardState extends State<FlightDashboard> {
         
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
               Row(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -675,7 +671,8 @@ class _FlightDashboardState extends State<FlightDashboard> {
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
               ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -687,9 +684,12 @@ class _FlightDashboardState extends State<FlightDashboard> {
       builder: (context, constraints) {
         // Dynamic sizing for small indicators
         final availableWidth = constraints.maxWidth;
-        final iconSize = availableWidth < 60 ? 10.0 : (availableWidth < 80 ? 12.0 : 14.0);
-        final valueFontSize = availableWidth < 60 ? 10.0 : (availableWidth < 80 ? 11.0 : 12.0);
-        final labelFontSize = availableWidth < 60 ? 8.0 : 9.0;
+        final availableHeight = constraints.maxHeight;
+        
+        // Adjust sizes based on available space
+        final iconSize = availableHeight < 32 ? 10.0 : (availableWidth < 60 ? 10.0 : (availableWidth < 80 ? 12.0 : 14.0));
+        final valueFontSize = availableHeight < 32 ? 9.0 : (availableWidth < 60 ? 10.0 : (availableWidth < 80 ? 11.0 : 12.0));
+        final labelFontSize = availableHeight < 32 ? 7.0 : (availableWidth < 60 ? 8.0 : 9.0);
         
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -697,38 +697,42 @@ class _FlightDashboardState extends State<FlightDashboard> {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, color: Colors.blueAccent, size: iconSize),
-                  const SizedBox(width: 1),
-                  Flexible(
-                    child: Text(
-                      value,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: valueFontSize,
-                        fontWeight: FontWeight.w500,
-                        fontFeatures: const [FontFeature.tabularFigures()],
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, color: Colors.blueAccent, size: iconSize),
+                    const SizedBox(width: 1),
+                    Flexible(
+                      child: Text(
+                        value,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: valueFontSize,
+                          fontWeight: FontWeight.w500,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
                     ),
-                  ),
-                ],
-              ),
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: labelFontSize,
-                  letterSpacing: 0.2,
+                  ],
                 ),
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
+              ),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: labelFontSize,
+                    letterSpacing: 0.2,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
               ),
             ],
           ),

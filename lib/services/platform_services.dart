@@ -26,7 +26,6 @@ class PlatformServices {
   static Future<Map<String, dynamic>> getNetworkDiagnostics() async {
     try {
       final result = await _networkChannel.invokeMethod('getNetworkDiagnostics');
-      _logger.d('Network diagnostics: $result');
       return Map<String, dynamic>.from(result as Map);
     } catch (e) {
       _logger.e('Error getting network diagnostics', error: e);

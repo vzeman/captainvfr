@@ -300,7 +300,6 @@ class OpenAIPService {
   Future<List<Airspace>> getCachedAirspaces() async {
     try {
       final cached = await _cacheService.getCachedAirspaces();
-      developer.log('✅ Retrieved ${cached.length} cached airspaces');
       return cached;
     } catch (e) {
       developer.log('❌ Error retrieving cached airspaces: $e');
@@ -1077,7 +1076,6 @@ class OpenAIPService {
   Future<List<ReportingPoint>> getCachedReportingPoints() async {
     try {
       final cached = await _cacheService.getCachedReportingPoints();
-      developer.log('✅ Retrieved ${cached.length} cached reporting points');
       return cached;
     } catch (e) {
       developer.log('❌ Error retrieving cached reporting points: $e');

@@ -32,13 +32,7 @@ class NavaidService {
   /// Load navaids from cache if available
   Future<void> _loadFromCache() async {
     try {
-      developer.log('📱 Loading navaids from cache...');
       _navaids = await _cacheService.getCachedNavaids();
-      if (_navaids.isNotEmpty) {
-        developer.log('✅ Loaded ${_navaids.length} navaids from cache');
-      } else {
-        developer.log('📱 No cached navaids found, will fetch from network');
-      }
     } catch (e) {
       developer.log('❌ Error loading navaids from cache: $e');
       _navaids = [];

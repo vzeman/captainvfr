@@ -320,6 +320,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
                   },
                 ),
                 AirportNotamsTab(
+                  key: ValueKey('notams_${widget.airport.icao}'),
                   airport: widget.airport,
                 ),
               ],
