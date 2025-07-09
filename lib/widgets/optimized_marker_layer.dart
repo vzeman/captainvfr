@@ -172,11 +172,9 @@ class OptimizedNavaidMarkersLayer extends StatelessWidget {
     }
     
     final currentZoom = mapController.camera.zoom;
-    debugPrint('🧭 OptimizedNavaidMarkersLayer - navaids: ${navaids.length}, zoom: $currentZoom');
-    
+
     // Only show navaids when zoomed in enough (same threshold as reporting points)
     if (currentZoom < 9) {
-      debugPrint('🧭 OptimizedNavaidMarkersLayer - Not showing: zoom $currentZoom < 9');
       return const SizedBox.shrink();
     }
     
@@ -223,21 +221,11 @@ class OptimizedReportingPointsLayer extends StatelessWidget {
     }
     
     final currentZoom = mapController.camera.zoom;
-    debugPrint('📍 OptimizedReportingPointsLayer - points: ${reportingPoints.length}, zoom: $currentZoom');
-    
-    // iOS-specific debugging
-    if (Platform.isIOS) {
-      debugPrint('🍎 iOS: OptimizedReportingPointsLayer rendering with ${reportingPoints.length} points');
-      if (reportingPoints.isNotEmpty) {
-        debugPrint('🍎 iOS: Sample point - ${reportingPoints.first.name} at ${reportingPoints.first.position}');
-      }
-    }
     
     // Only show reporting points when zoomed in enough
     // Temporarily lower threshold on iOS for debugging
     final zoomThreshold = Platform.isIOS ? 7 : 9;
     if (currentZoom < zoomThreshold) {
-      debugPrint('📍 OptimizedReportingPointsLayer - Not showing: zoom $currentZoom < $zoomThreshold');
       return const SizedBox.shrink();
     }
     

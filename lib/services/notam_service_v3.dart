@@ -96,35 +96,47 @@ class NotamServiceV3 {
       ]);
     }
     
-    // Add generic NOTAMs for all airports
-    notams.addAll([
-      Notam(
-        id: 'C0847/24_${now.millisecondsSinceEpoch}',
-        notamId: 'C0847/24',
-        icaoCode: icaoCode,
-        type: 'N',
-        effectiveFrom: now.add(const Duration(days: 3)),
-        effectiveUntil: now.add(const Duration(days: 4)),
-        schedule: '0800-1700',
-        text: 'C0847/24 NOTAMN\nE) AIRSPACE CLSD WI 5NM RADIUS OF $icaoCode SFC-3000FT AGL DUE TO AEROBATIC ACT',
-          decodedText: 'Airspace closed within 5 nautical mile radius of $icaoCode surface to 3000 feet above ground level due to aerobatic activity',
-        fetchedAt: now,
-        category: NotamCategory.airspace,
-      ),
-      Notam(
-        id: 'C0892/24_${now.millisecondsSinceEpoch}',
-        notamId: 'C0892/24',
-        icaoCode: icaoCode,
-        type: 'N',
-        effectiveFrom: now.subtract(const Duration(days: 7)),
-        effectiveUntil: now.add(const Duration(days: 30)),
-        schedule: '',
-        text: 'C0892/24 NOTAMN\nE) APRON NORTH CARGO AREA MARKING AND LIGHTING U/S',
-        decodedText: 'Apron north cargo area marking and lighting unserviceable',
-        fetchedAt: now,
-        category: NotamCategory.apron,
-      ),
-    ]);
+    // Add NOTAMs for other major airports
+    if (icaoCode == 'KORD' || icaoCode == 'KATL' || icaoCode == 'KLAX') {
+      // Major US airports might have operational NOTAMs
+      notams.add(
+        Notam(
+          id: 'A1847/24_${now.millisecondsSinceEpoch}',
+          notamId: 'A1847/24',
+          icaoCode: icaoCode,
+          type: 'N',
+          effectiveFrom: now.subtract(const Duration(days: 1)),
+          effectiveUntil: now.add(const Duration(days: 7)),
+          schedule: 'DLY 2200-0600',
+          text: 'A1847/24 NOTAMN\nE) RWY 28L/10R CLSD DUE TO MAINT',
+          decodedText: 'Runway 28L/10R closed due to maintenance',
+          fetchedAt: now,
+          category: NotamCategory.runway,
+        ),
+      );
+    }
+    
+    // Add NOTAMs for some European airports
+    if (icaoCode == 'EGLL' || icaoCode == 'LFPG' || icaoCode == 'EDDF') {
+      notams.add(
+        Notam(
+          id: 'B0756/24_${now.millisecondsSinceEpoch}',
+          notamId: 'B0756/24',
+          icaoCode: icaoCode,
+          type: 'N',
+          effectiveFrom: now.subtract(const Duration(hours: 6)),
+          effectiveUntil: now.add(const Duration(days: 2)),
+          schedule: '',
+          text: 'B0756/24 NOTAMN\nE) APRON STAND 45-48 CLSD',
+          decodedText: 'Apron stands 45-48 closed',
+          fetchedAt: now,
+          category: NotamCategory.apron,
+        ),
+      );
+    }
+    
+    // Small airfields like LZDV typically don't have NOTAMs
+    // Return empty list for most airports
     
     // Sort by importance and date
     notams.sort((a, b) {
@@ -148,18 +160,30 @@ class NotamServiceV3 {
   
   Future<List<Notam>> _getCachedNotams(String icaoCode) async {
     final cacheKey = 'notams_$icaoCode';
+    developer.log('📋 Checking cache for key: $cacheKey');
     final cachedData = await _cacheService.getCachedData(cacheKey);
     
     if (cachedData != null) {
       final List<dynamic> jsonList = json.decode(cachedData);
-      return jsonList.map((json) => Notam.fromJson(json)).toList();
+      final notams = jsonList.map((json) => Notam.fromJson(json)).toList();
+      developer.log('📋 Found ${notams.length} cached NOTAMs for $icaoCode');
+      // Log first NOTAM ID to debug
+      if (notams.isNotEmpty) {
+        developer.log('📋 First cached NOTAM ID: ${notams.first.notamId} for ${notams.first.icaoCode}');
+      }
+      return notams;
     }
     
+    developer.log('📋 No cached NOTAMs found for $icaoCode');
     return [];
   }
   
   Future<void> _cacheNotams(String icaoCode, List<Notam> notams) async {
     final cacheKey = 'notams_$icaoCode';
+    developer.log('📋 Caching ${notams.length} NOTAMs for $icaoCode with key: $cacheKey');
+    if (notams.isNotEmpty) {
+      developer.log('📋 First NOTAM to cache: ${notams.first.notamId} for ${notams.first.icaoCode}');
+    }
     final jsonData = json.encode(notams.map((n) => n.toJson()).toList());
     await _cacheService.cacheData(cacheKey, jsonData);
   }

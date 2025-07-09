@@ -100,6 +100,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   // Airspace panel visibility and position
   bool _showCurrentAirspacePanel = true; // Control visibility of current airspace panel
   Offset _airspacePanelPosition = const Offset(0, 10); // Default position (centered horizontally, 10px from bottom)
+  
+  // Toggle panel position
+  double _togglePanelRightPosition = 16.0; // Default position from right edge
+  double _togglePanelTopPosition = 0.4; // Default position as percentage from top (40%)
 
   // Waypoint selection state
   int? _selectedWaypointIndex;
@@ -529,11 +533,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   // Load navaids in the current map view
   Future<void> _loadNavaids() async {
     if (!_showNavaids) {
-      debugPrint('🧭 _loadNavaids: _showNavaids is false, returning early');
       return;
     }
-
-    debugPrint('🧭 _loadNavaids: Starting to load navaids...');
 
     try {
       // Check if map controller is ready
@@ -562,13 +563,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         bounds.northEast,
       );
 
-      debugPrint('🧭 _loadNavaids: Found ${navaids.length} navaids in current bounds');
-
       if (mounted) {
         setState(() {
           _navaids = navaids;
         });
-        debugPrint('✅ _loadNavaids: Updated state with ${navaids.length} navaids');
       }
     } catch (e) {
       debugPrint('❌ Error loading navaids: $e');
@@ -760,10 +758,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
     // Load navaids immediately when toggled on
     if (_showNavaids) {
-      debugPrint('🧭 _toggleNavaids: Calling _loadNavaids()...');
       _loadNavaids();
     } else {
-      debugPrint('🧭 _toggleNavaids: Clearing navaids list');
       setState(() {
         _navaids = [];
       });
@@ -1802,72 +1798,163 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 ),
             ],
           ),
-          // Vertical layer controls on the right side - centered vertically
+          // Vertical layer controls - draggable in both directions
           Positioned(
-            top: MediaQuery.of(context).size.height * 0.4, // Center vertically (40% from top)
-            right: 16,
+            top: MediaQuery.of(context).size.height * _togglePanelTopPosition,
+            right: _togglePanelRightPosition,
             child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+              width: 50, // Fixed width to constrain the draggable
+              child: Draggable<String>(
+                data: 'toggle_panel',
+                // Remove axis constraint to allow both horizontal and vertical movement
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    width: 50, // Fixed width for feedback
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.explore, size: 20, color: Colors.grey),
+                        SizedBox(height: 4),
+                        Icon(Icons.cloud, size: 20, color: Colors.grey),
+                        SizedBox(height: 4),
+                        Icon(Icons.adjust, size: 20, color: Colors.grey),
+                        SizedBox(height: 4),
+                        Icon(Icons.airplanemode_active, size: 20, color: Colors.grey),
+                        SizedBox(height: 4),
+                        Icon(Icons.layers, size: 20, color: Colors.grey),
+                        SizedBox(height: 4),
+                        Text('A', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      ],
+                    ),
                   ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildLayerToggle(
-                    icon: _showNavaids ? Icons.explore : Icons.explore_outlined,
-                    tooltip: 'Toggle Navaids',
-                    isActive: _showNavaids,
-                    onPressed: () {
-                      debugPrint('🔴 NAVAID BUTTON PRESSED DIRECTLY!');
-                      _toggleNavaids();
-                    },
+                ),
+                childWhenDragging: const SizedBox(width: 50), // Maintain space when dragging
+                onDragEnd: (details) {
+                  setState(() {
+                    final screenSize = MediaQuery.of(context).size;
+                    final dragX = details.offset.dx;
+                    final dragY = details.offset.dy;
+                    
+                    // Calculate new right position
+                    // dragX is from left, we need distance from right
+                    double newRightPosition = screenSize.width - dragX - 50; // 50 is panel width
+                    
+                    // Calculate new top position as percentage
+                    double newTopPosition = dragY / screenSize.height;
+                    
+                    // Constrain to screen bounds
+                    newRightPosition = newRightPosition.clamp(0.0, screenSize.width - 60);
+                    newTopPosition = newTopPosition.clamp(0.05, 0.85); // Keep between 5% and 85% of screen height
+                    
+                    _togglePanelRightPosition = newRightPosition;
+                    _togglePanelTopPosition = newTopPosition;
+                  });
+                },
+                child: Container(
+                  width: 50, // Ensure consistent width
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  _buildLayerToggle(
-                    icon: _showMetar ? Icons.cloud : Icons.cloud_outlined,
-                    tooltip: 'Toggle METAR Overlay',
-                    isActive: _showMetar,
-                    onPressed: _toggleMetar,
-                  ),
-                  _buildLayerToggle(
-                    icon: _showHeliports ? Icons.adjust : Icons.radio_button_unchecked,
-                    tooltip: 'Toggle Heliports',
-                    isActive: _showHeliports,
-                    onPressed: _toggleHeliports,
-                  ),
-                  _buildLayerToggle(
-                    icon: _showSmallAirports ? Icons.airplanemode_active : Icons.airplanemode_inactive,
-                    tooltip: 'Toggle Small Airports',
-                    isActive: _showSmallAirports,
-                    onPressed: _toggleSmallAirports,
-                  ),
-                  _buildLayerToggle(
-                    icon: _showAirspaces ? Icons.layers : Icons.layers_outlined,
-                    tooltip: 'Toggle Airspaces',
-                    isActive: _showAirspaces,
-                    onPressed: _toggleAirspaces,
-                  ),
-                  _buildLayerToggle(
-                    icon: _showCurrentAirspacePanel ? Icons.info : Icons.info_outline,
-                    tooltip: 'Toggle Current Airspace Panel',
-                    isActive: _showCurrentAirspacePanel,
-                    onPressed: () {
-                      setState(() {
-                        _showCurrentAirspacePanel = !_showCurrentAirspacePanel;
-                      });
-                    },
-                  ),
-                ],
+                  child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Drag handle indicator
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Center(
+                        child: Container(
+                          width: 30,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                    ),
+                    _buildLayerToggle(
+                      icon: _showNavaids ? Icons.explore : Icons.explore_outlined,
+                      tooltip: 'Toggle Navaids',
+                      isActive: _showNavaids,
+                      onPressed: () {
+                        debugPrint('🔴 NAVAID BUTTON PRESSED DIRECTLY!');
+                        _toggleNavaids();
+                      },
+                    ),
+                    _buildLayerToggle(
+                      icon: _showMetar ? Icons.cloud : Icons.cloud_outlined,
+                      tooltip: 'Toggle METAR Overlay',
+                      isActive: _showMetar,
+                      onPressed: _toggleMetar,
+                    ),
+                    _buildLayerToggle(
+                      icon: _showHeliports ? Icons.adjust : Icons.radio_button_unchecked,
+                      tooltip: 'Toggle Heliports',
+                      isActive: _showHeliports,
+                      onPressed: _toggleHeliports,
+                    ),
+                    _buildLayerToggle(
+                      icon: _showSmallAirports ? Icons.airplanemode_active : Icons.airplanemode_inactive,
+                      tooltip: 'Toggle Small Airports',
+                      isActive: _showSmallAirports,
+                      onPressed: _toggleSmallAirports,
+                    ),
+                    _buildLayerToggle(
+                      icon: _showAirspaces ? Icons.layers : Icons.layers_outlined,
+                      tooltip: 'Toggle Airspaces',
+                      isActive: _showAirspaces,
+                      onPressed: _toggleAirspaces,
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _showCurrentAirspacePanel ? Colors.blue.withValues(alpha: 0.1) : Colors.transparent,
+                      ),
+                      child: IconButton(
+                        icon: Text(
+                          'A',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: _showCurrentAirspacePanel ? Colors.blue : Colors.black,
+                          ),
+                        ),
+                        tooltip: 'Toggle Current Airspace Panel',
+                        onPressed: () {
+                          setState(() {
+                            _showCurrentAirspacePanel = !_showCurrentAirspacePanel;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
+        ),
 
           // Flight dashboard overlay - show when toggle is active
           if (_showStats)
@@ -1937,8 +2024,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             ),
 
           
-          // Airspace information during flight
-          if (_flightService.isTracking && _currentPosition != null && _showCurrentAirspacePanel)
+          // Airspace information panel
+          if (_currentPosition != null && _showCurrentAirspacePanel)
             Positioned(
               left: _airspacePanelPosition.dx,
               bottom: _airspacePanelPosition.dy,
@@ -1948,7 +2035,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   color: Colors.transparent,
                   child: Container(
                     constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width - 32,
+                      maxWidth: MediaQuery.of(context).size.width - 16,
                     ),
                     child: AirspaceFlightInfo(
                       currentPosition: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
@@ -1965,22 +2052,41 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   setState(() {
                     // Calculate new position based on drag end position
                     final screenSize = MediaQuery.of(context).size;
+                    final isPhone = screenSize.width < 600;
+                    final isTablet = screenSize.width >= 600 && screenSize.width < 1200;
+                    
                     double newX = details.offset.dx;
                     double newY = details.offset.dy;
 
-                    // Convert screen coordinates to bottom-relative positioning
-                    double bottomDistance = screenSize.height - newY - 150; // Approximate panel height
+                    // Get panel dimensions based on device type
+                    final panelWidth = isPhone ? screenSize.width - 16 : (isTablet ? 500 : 600);
+                    final panelHeight = 200; // Approximate panel height
 
-                    // Constrain to screen bounds with margins
-                    newX = newX.clamp(0.0, screenSize.width - 300); // Approximate panel width
-                    bottomDistance = bottomDistance.clamp(10.0, screenSize.height - 200);
+                    // Convert screen coordinates to bottom-relative positioning
+                    double bottomDistance = screenSize.height - newY - panelHeight;
+
+                    // Constrain horizontal position based on device type
+                    if (isPhone) {
+                      // On phones, keep it centered
+                      newX = 0;
+                    } else {
+                      // On tablets/desktop, allow horizontal movement
+                      newX = newX.clamp(0.0, screenSize.width - panelWidth - 16);
+                    }
+                    
+                    // Constrain vertical position
+                    bottomDistance = bottomDistance.clamp(10.0, screenSize.height - panelHeight - 100);
 
                     _airspacePanelPosition = Offset(newX, bottomDistance);
                   });
                 },
                 child: Container(
                   constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width - 32,
+                    maxWidth: MediaQuery.of(context).size.width < 600 
+                        ? MediaQuery.of(context).size.width - 16 
+                        : MediaQuery.of(context).size.width < 1200 
+                            ? 500 
+                            : 600,
                   ),
                   child: AirspaceFlightInfo(
                     currentPosition: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
