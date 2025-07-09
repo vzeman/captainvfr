@@ -1,6 +1,7 @@
 import 'dart:developer' as developer;
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/airport.dart';
@@ -11,7 +12,7 @@ import '../models/airspace.dart';
 import '../models/reporting_point.dart';
 
 /// Cache service for storing airports, navaids, runways, frequencies, airspaces, and reporting points locally
-class CacheService {
+class CacheService extends ChangeNotifier {
   static const String _airportsBoxName = 'airports_cache';
   static const String _navaidsBoxName = 'navaids_cache';
   static const String _runwaysBoxName = 'runways_cache';
@@ -263,6 +264,9 @@ class CacheService {
 
       developer.log('✅ Cached $cached/${airspaces.length} airspaces successfully');
       developer.log('📊 Final box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}');
+      
+      // Notify listeners about data change
+      notifyListeners();
     } catch (e) {
       developer.log('❌ Error caching airspaces: $e');
       developer.log('❌ Stack trace: ${StackTrace.current}');
@@ -311,6 +315,9 @@ class CacheService {
 
       developer.log('✅ Added $cached new airspaces, updated $updated existing ones');
       developer.log('📊 Final box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}');
+      
+      // Notify listeners about data change
+      notifyListeners();
     } catch (e) {
       developer.log('❌ Error appending airspaces: $e');
       developer.log('❌ Stack trace: ${StackTrace.current}');
@@ -587,6 +594,9 @@ class CacheService {
       }
 
       developer.log('✅ Cached ${reportingPoints.length} reporting points');
+      
+      // Notify listeners about data change
+      notifyListeners();
     } catch (e) {
       developer.log('❌ Error caching reporting points: $e');
       rethrow;
@@ -630,6 +640,9 @@ class CacheService {
 
       developer.log('✅ Added $cached new reporting points, updated $updated existing ones');
       developer.log('📊 Final box status: isOpen=${_reportingPointsBox.isOpen}, length=${_reportingPointsBox.length}');
+      
+      // Notify listeners about data change
+      notifyListeners();
     } catch (e) {
       developer.log('❌ Error appending reporting points: $e');
       developer.log('❌ Stack trace: ${StackTrace.current}');

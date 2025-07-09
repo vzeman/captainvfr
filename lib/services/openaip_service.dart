@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
-import 'dart:io' show Platform;
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -48,9 +47,9 @@ class OpenAIPService {
       }
       
       if (_apiKey != null && _apiKey!.isNotEmpty) {
-        // Load reporting points and airspaces on startup if cache is empty
-        await _initializeReportingPoints();
-        await _initializeAirspaces();
+        // Start loading in background without blocking initialization
+        // This allows the map to show immediately
+        _initializeDataInBackground();
       }
       
       _initialized = true;
@@ -59,61 +58,38 @@ class OpenAIPService {
     }
   }
   
+  // Initialize data in background without blocking
+  Future<void> _initializeDataInBackground() async {
+    // Don't await - let it run truly in background
+    // This allows the app to start immediately
+    _initializeReportingPoints().catchError((e) {
+      developer.log('❌ Background reporting points init error: $e');
+    });
+    
+    _initializeAirspaces().catchError((e) {
+      developer.log('❌ Background airspaces init error: $e');
+    });
+    
+    // Start loading all tiles in background after a delay
+    Future.delayed(const Duration(seconds: 5), () {
+      _loadAllAirspaceTilesInBackground();
+      _loadAllReportingPointsInBackground();
+    });
+  }
+  
   Future<void> _initializeReportingPoints() async {
     try {
-      // Add iOS-specific debugging
-      if (Platform.isIOS) {
-        developer.log('🍎 iOS: Starting reporting points initialization...');
-      }
-      
       final cachedPoints = await getCachedReportingPoints();
       developer.log('📍 Initial cache check: ${cachedPoints.length} reporting points found');
       
       if (cachedPoints.isEmpty) {
-        developer.log('📍 No cached reporting points found, loading all from API...');
-        await fetchAllReportingPoints();
-        
-        // Verify data was actually saved on iOS
-        if (Platform.isIOS) {
-          // Wait a moment for iOS file system
-          await Future.delayed(const Duration(milliseconds: 500));
-          
-          final verifyPoints = await getCachedReportingPoints();
-          developer.log('🍎 iOS: Verification after fetch - ${verifyPoints.length} points in cache');
-          if (verifyPoints.isEmpty) {
-            developer.log('🍎 iOS: WARNING - Data not persisted after fetch!');
-            developer.log('🍎 iOS: Attempting to diagnose issue...');
-            
-            // Try to fetch a small batch to test
-            try {
-              final testPoints = await _fetchReportingPointsRaw(
-                bbox: [0, 0, 10, 10],
-                limit: 10,
-              );
-              developer.log('🍎 iOS: Test fetch returned ${testPoints.length} points');
-              if (testPoints.isNotEmpty) {
-                await _cacheReportingPoints(testPoints);
-                final testVerify = await getCachedReportingPoints();
-                developer.log('🍎 iOS: After test cache: ${testVerify.length} points');
-              }
-            } catch (testError) {
-              developer.log('🍎 iOS: Test fetch error: $testError');
-            }
-          }
-        }
+        developer.log('📍 No cached reporting points found, will load progressively as needed');
+        // Don't load all points at startup - let the map load them progressively
       } else {
-        developer.log('✅ Found ${cachedPoints.length} cached reporting points, skipping API load');
-        
-        // On iOS, log additional info about the cached data
-        if (Platform.isIOS && cachedPoints.isNotEmpty) {
-          developer.log('🍎 iOS: Sample point - ID: ${cachedPoints.first.id}, Name: ${cachedPoints.first.name}');
-        }
+        developer.log('✅ Found ${cachedPoints.length} cached reporting points');
       }
     } catch (e) {
-      developer.log('❌ Error initializing reporting points: $e');
-      if (Platform.isIOS) {
-        developer.log('🍎 iOS: Stack trace: ${StackTrace.current}');
-      }
+      developer.log('❌ Error checking reporting points cache: $e');
     }
   }
   
@@ -121,14 +97,14 @@ class OpenAIPService {
     try {
       final cachedAirspaces = await getCachedAirspaces();
       if (cachedAirspaces.isEmpty) {
-        developer.log('🌍 No cached airspaces found, loading all from API...');
-        // fetchAllAirspaces already handles caching internally
-        await fetchAllAirspaces();
+        developer.log('🌍 No cached airspaces found, will load progressively as needed');
+        // Don't load all airspaces at startup - let the map load them progressively
+        // This allows the app to start immediately
       } else {
-        developer.log('✅ Found ${cachedAirspaces.length} cached airspaces, skipping API load');
+        developer.log('✅ Found ${cachedAirspaces.length} cached airspaces');
       }
     } catch (e) {
-      developer.log('❌ Error initializing airspaces: $e');
+      developer.log('❌ Error checking airspaces cache: $e');
     }
   }
 
@@ -503,6 +479,276 @@ class OpenAIPService {
       }
     } catch (e) {
       developer.log('❌ Error refreshing airspaces cache: $e');
+    }
+  }
+  
+  // Progressive loading for airspaces based on current map bounds
+  Future<void> loadAirspacesForBounds({
+    required double minLat,
+    required double minLon,
+    required double maxLat,
+    required double maxLon,
+    Function()? onDataLoaded,
+  }) async {
+    if (_apiKey == null || _apiKey!.isEmpty) {
+      developer.log('❌ No API key for progressive airspace loading');
+      return;
+    }
+    
+    try {
+      // Check if we already have data for this area in cache
+      final cachedAirspaces = await getCachedAirspaces();
+      
+      if (cachedAirspaces.isNotEmpty) {
+        final airspacesInBounds = cachedAirspaces.where((airspace) {
+          // Simple check if airspace overlaps with bounds
+          // This is a simplification - proper polygon intersection would be better
+          return airspace.geometry.any((point) => 
+            point.latitude >= minLat && point.latitude <= maxLat &&
+            point.longitude >= minLon && point.longitude <= maxLon
+          );
+        }).toList();
+        
+        // If we have some data, use it first
+        if (airspacesInBounds.isNotEmpty) {
+          developer.log('📦 Found ${airspacesInBounds.length} cached airspaces for bounds');
+          onDataLoaded?.call();
+          return; // We have data, no need to fetch more for this area
+        }
+      }
+      
+      // Fetch fresh data for this area
+      developer.log('🔄 Loading airspaces for bounds: [$minLon, $minLat, $maxLon, $maxLat]');
+      
+      final freshAirspaces = await _fetchAirspacesRaw(
+        bbox: [minLon, minLat, maxLon, maxLat],
+        limit: 1000,
+      );
+      
+      if (freshAirspaces.isNotEmpty) {
+        developer.log('✅ Loaded ${freshAirspaces.length} airspaces for current bounds');
+        
+        // Append to cache without clearing existing data
+        await _cacheAirspaces(freshAirspaces, append: true);
+        
+        // Notify that new data is available
+        onDataLoaded?.call();
+        
+        // Current tile loaded, all other tiles will be loaded by background process
+      }
+    } catch (e) {
+      developer.log('❌ Error loading airspaces for bounds: $e');
+    }
+  }
+  
+  // Load all airspace tiles in background
+  Future<void> _loadAllAirspaceTilesInBackground() async {
+    // Check if we already have airspaces cached
+    final cachedAirspaces = await getCachedAirspaces();
+    if (cachedAirspaces.length > 1000) {
+      developer.log('🔄 Already have ${cachedAirspaces.length} airspaces cached, skipping full background load');
+      return;
+    }
+    
+    developer.log('🌍 Starting background loading of ALL airspace tiles...');
+    
+    // Use the same tile grid as fetchAllAirspaces
+    const int tilesX = 10;
+    const int tilesY = 8;
+    const double worldWidth = 360.0; // -180 to 180
+    const double worldHeight = 180.0; // -90 to 90
+    const double tileWidth = worldWidth / tilesX;
+    const double tileHeight = worldHeight / tilesY;
+    
+    int totalTiles = tilesX * tilesY;
+    int completedTiles = 0;
+    Set<String> loadedTiles = {}; // Track which tiles we've loaded
+    
+    // Get already loaded tiles from cache to avoid re-loading
+    final existingAirspaces = await getCachedAirspaces();
+    for (final airspace in existingAirspaces) {
+      // Determine which tile this airspace belongs to
+      if (airspace.geometry.isNotEmpty) {
+        final point = airspace.geometry.first;
+        final tileX = ((point.longitude + 180) / tileWidth).floor();
+        final tileY = ((point.latitude + 90) / tileHeight).floor();
+        loadedTiles.add('$tileX,$tileY');
+      }
+    }
+    
+    developer.log('📦 Found ${loadedTiles.length} tiles already loaded in cache');
+    
+    // Load tiles in a smart order - start from center and spiral outward
+    List<List<int>> tileOrder = [];
+    
+    // Create all tile coordinates
+    for (int y = 0; y < tilesY; y++) {
+      for (int x = 0; x < tilesX; x++) {
+        tileOrder.add([x, y]);
+      }
+    }
+    
+    // Sort by distance from center (roughly where most users are)
+    tileOrder.sort((a, b) {
+      final centerX = tilesX / 2;
+      final centerY = tilesY / 2;
+      final distA = ((a[0] - centerX).abs() + (a[1] - centerY).abs());
+      final distB = ((b[0] - centerX).abs() + (b[1] - centerY).abs());
+      return distA.compareTo(distB);
+    });
+    
+    // Load tiles
+    for (final coords in tileOrder) {
+      final x = coords[0];
+      final y = coords[1];
+      final tileKey = '$x,$y';
+      
+      // Skip if already loaded
+      if (loadedTiles.contains(tileKey)) {
+        completedTiles++;
+        continue;
+      }
+      
+      // Calculate tile boundaries
+      double minLon = -180.0 + (x * tileWidth);
+      double maxLon = minLon + tileWidth;
+      double minLat = -90.0 + (y * tileHeight);
+      double maxLat = minLat + tileHeight;
+      
+      try {
+        // Longer delay between tiles to avoid rate limiting
+        await Future.delayed(const Duration(seconds: 2));
+        
+        developer.log('🗺️ Background loading tile ${completedTiles + 1}/$totalTiles: [$minLon, $minLat, $maxLon, $maxLat]');
+        
+        // Fetch with pagination
+        int page = 1;
+        bool hasMore = true;
+        int tileAirspaces = 0;
+        
+        while (hasMore) {
+          final airspaces = await _fetchAirspacesRaw(
+            bbox: [minLon, minLat, maxLon, maxLat],
+            page: page,
+            limit: 1000,
+          );
+          
+          if (airspaces.isEmpty) {
+            hasMore = false;
+          } else {
+            await _cacheAirspaces(airspaces, append: true);
+            tileAirspaces += airspaces.length;
+            page++;
+            
+            // Small delay between pages
+            await Future.delayed(const Duration(milliseconds: 500));
+          }
+        }
+        
+        completedTiles++;
+        loadedTiles.add(tileKey);
+        
+        if (tileAirspaces > 0) {
+          developer.log('✅ Background loaded $tileAirspaces airspaces for tile $completedTiles/$totalTiles');
+        }
+        
+        // Check current cache size periodically
+        if (completedTiles % 10 == 0) {
+          final currentCache = await getCachedAirspaces();
+          developer.log('📊 Progress: $completedTiles/$totalTiles tiles, ${currentCache.length} total airspaces cached');
+        }
+        
+      } catch (e) {
+        developer.log('⚠️ Error loading background tile ${completedTiles + 1}/$totalTiles: $e');
+        completedTiles++;
+        // Continue with next tile even if one fails
+        await Future.delayed(const Duration(seconds: 5)); // Longer delay after error
+      }
+    }
+    
+    final finalCache = await getCachedAirspaces();
+    developer.log('✅ Completed background loading of ALL tiles! Total airspaces cached: ${finalCache.length}');
+  }
+  
+  // Load all reporting points in background
+  Future<void> _loadAllReportingPointsInBackground() async {
+    // Check if we already have points cached
+    final cachedPoints = await getCachedReportingPoints();
+    if (cachedPoints.length > 1000) {
+      developer.log('🔄 Already have ${cachedPoints.length} reporting points cached, skipping full background load');
+      return;
+    }
+    
+    developer.log('📍 Starting background loading of ALL reporting points...');
+    
+    // Similar approach but reporting points are global, not tile-based
+    // We'll fetch them by country or in chunks
+    try {
+      // Start with a delay to not conflict with airspace loading
+      await Future.delayed(const Duration(seconds: 30));
+      
+      developer.log('📍 Fetching all reporting points globally...');
+      await fetchAllReportingPoints();
+      
+      final finalCache = await getCachedReportingPoints();
+      developer.log('✅ Completed background loading of reporting points! Total cached: ${finalCache.length}');
+    } catch (e) {
+      developer.log('❌ Error in background reporting points load: $e');
+    }
+  }
+  
+  // Progressive loading for reporting points based on current map bounds
+  Future<void> loadReportingPointsForBounds({
+    required double minLat,
+    required double minLon,
+    required double maxLat,
+    required double maxLon,
+    Function()? onDataLoaded,
+  }) async {
+    if (_apiKey == null || _apiKey!.isEmpty) {
+      developer.log('❌ No API key for progressive reporting points loading');
+      return;
+    }
+    
+    try {
+      // Check if we already have data for this area in cache
+      final cachedPoints = await getCachedReportingPoints();
+      
+      if (cachedPoints.isNotEmpty) {
+        final pointsInBounds = cachedPoints.where((point) {
+          return point.position.latitude >= minLat && 
+                 point.position.latitude <= maxLat &&
+                 point.position.longitude >= minLon && 
+                 point.position.longitude <= maxLon;
+        }).toList();
+        
+        // If we have some data, use it first
+        if (pointsInBounds.isNotEmpty) {
+          developer.log('📦 Found ${pointsInBounds.length} cached reporting points for bounds');
+          onDataLoaded?.call();
+          return; // We have data, no need to fetch more for this area
+        }
+      }
+      
+      // Fetch fresh data for this area
+      developer.log('🔄 Loading reporting points for bounds: [$minLon, $minLat, $maxLon, $maxLat]');
+      
+      final freshPoints = await _fetchReportingPointsRaw(
+        bbox: [minLon, minLat, maxLon, maxLat],
+        limit: 1000,
+      );
+      
+      if (freshPoints.isNotEmpty) {
+        developer.log('✅ Loaded ${freshPoints.length} reporting points for current bounds');
+        
+        // Append to cache without clearing existing data
+        await _cacheReportingPoints(freshPoints, append: true);
+        
+        // Notify that new data is available
+        onDataLoaded?.call();
+      }
+    } catch (e) {
+      developer.log('❌ Error loading reporting points for bounds: $e');
     }
   }
 

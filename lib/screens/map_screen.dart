@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 import 'dart:math' show pi;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart' show LatLng, Distance, LengthUnit;
+import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'flight_log_screen.dart';
 import 'offline_data_screen.dart';
 import 'flight_plans_screen.dart';
@@ -44,6 +42,7 @@ import '../models/reporting_point.dart';
 import '../utils/airspace_utils.dart';
 import '../widgets/loading_progress_bar.dart';
 import '../widgets/themed_dialog.dart';
+import '../services/cache_service.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -63,6 +62,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   late final FlightPlanService _flightPlanService;
   OpenAIPService? _openAIPService;
   late final MapController _mapController;
+  late final CacheService _cacheService;
   
   // Getter to ensure OpenAIPService is available
   OpenAIPService get openAIPService {
@@ -79,7 +79,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   final GlobalKey _mapKey = GlobalKey();
   
   // State variables
-  bool _isLoading = true;
+  bool _isLocationLoaded = false; // Track if location has been loaded
   bool _showStats = false;
   bool _showNavaids = true; // Toggle for navaid display
   bool _showMetar = false; // Toggle for METAR overlay
@@ -95,6 +95,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   
   // Flight data panel position state
   Offset _flightDataPanelPosition = const Offset(16, 220); // Default to bottom with positive margin
+  bool _flightDashboardExpanded = true; // Track expanded state of flight dashboard
 
   // Waypoint selection state
   int? _selectedWaypointIndex;
@@ -124,9 +125,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     // Initialize map controller
     _mapController = MapController();
     
-    // Initial setup
+    // Start location loading in background without blocking UI
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initLocation();
+      _initLocationInBackground();
     });
   }
   
@@ -143,6 +144,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         _navaidService = Provider.of<NavaidService>(context, listen: false);
         _weatherService = Provider.of<WeatherService>(context, listen: false);
         _flightPlanService = Provider.of<FlightPlanService>(context, listen: false);
+        _cacheService = Provider.of<CacheService>(context, listen: false);
         
         // Try to get OpenAIPService, but don't fail if it's not available yet
         try {
@@ -158,6 +160,14 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         // Listen to flight service updates
         _setupFlightServiceListener();
         
+        // Listen to cache updates
+        _setupCacheListener();
+        
+        // Start loading data in background if location is already available
+        if (_currentPosition != null && !_isLocationLoaded) {
+          _onLocationLoaded();
+        }
+        
         _servicesInitialized = true;
       } catch (e) {
         debugPrint('Error initializing services: $e');
@@ -165,6 +175,24 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     }
   }
 
+  // Setup listener for cache updates
+  void _setupCacheListener() {
+    _cacheService.addListener(_onCacheUpdated);
+  }
+  
+  // Handle cache updates
+  void _onCacheUpdated() {
+    debugPrint('🔄 Cache updated, refreshing map data');
+    
+    // Refresh airspaces if they're enabled
+    if (_showAirspaces && mounted) {
+      _refreshAirspacesDisplay();
+      _refreshReportingPointsDisplay();
+    }
+    
+    // Could also refresh other data types here if needed
+  }
+  
   // Setup listener for flight service updates
   void _setupFlightServiceListener() {
     _flightService.addListener(_onFlightPathUpdated);
@@ -236,6 +264,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   void dispose() {
     _flightService.removeListener(_onFlightPathUpdated);
     _flightPlanService.removeListener(_onFlightPlanUpdated);
+    _cacheService.removeListener(_onCacheUpdated);
     _debounceTimer?.cancel();
     _airspaceDebounceTimer?.cancel();
     _mapController.dispose();
@@ -243,82 +272,103 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     super.dispose();
   }
   
-  // Initialize location services and get current position
-  Future<void> _initLocation() async {
+  // Initialize location in background without blocking the UI
+  Future<void> _initLocationInBackground() async {
     try {
       final position = await _locationService.getCurrentLocation();
       if (mounted) {
         setState(() {
           _currentPosition = position;
           _errorMessage = '';
-          _isLoading = false; // Set loading to false when location is loaded
         });
-
-        // Wait for the next frame to ensure FlutterMap is rendered before using MapController
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            try {
-              final settings = Provider.of<SettingsService>(context, listen: false);
-              if (settings.rotateMapWithHeading && _flightService.isTracking && _flightService.currentHeading != null) {
-                _mapController.moveAndRotate(
-                  LatLng(position.latitude, position.longitude),
-                  _initialZoom,
-                  -_flightService.currentHeading!,
-                );
-              } else {
-                _mapController.move(
-                  LatLng(position.latitude, position.longitude),
-                  _initialZoom,
-                );
-              }
-            } catch (e) {
-              debugPrint('Error moving map: $e');
-              // Fallback: try again after a short delay
-              Future.delayed(const Duration(milliseconds: 100), () {
-                if (mounted) {
-                  try {
-                    _mapController.move(
-                      LatLng(position.latitude, position.longitude),
-                      _initialZoom,
-                    );
-                  } catch (e) {
-                    debugPrint('Error moving map (retry): $e');
-                  }
-                }
-              });
-            }
-          }
-        });
-
-        await _loadAirports();
-
-        // Load navaids if they should be shown
-        if (_showNavaids) {
-          await _loadNavaids();
-        }
+        
+        // Location loaded successfully, handle the rest
+        _onLocationLoaded();
       }
     } catch (e) {
       debugPrint('Error initializing location: $e');
       if (mounted) {
         setState(() {
-          _errorMessage = 'Failed to get location: ${e.toString()}';
-          _isLoading = false; // Also set loading to false on error
+          _errorMessage = 'Location unavailable - using default position';
         });
-
-        // Only show SnackBar if we have a valid Scaffold context
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            try {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error getting location: ${e.toString()}')),
-              );
-            } catch (scaffoldError) {
-              debugPrint('Could not show SnackBar: $scaffoldError');
-            }
-          }
+        
+        // Use a default position if location fails
+        setState(() {
+          // Default to San Francisco or any other default location
+          _currentPosition = Position(
+            latitude: 37.7749,
+            longitude: -122.4194,
+            timestamp: DateTime.now(),
+            accuracy: 0,
+            altitude: 0,
+            heading: 0,
+            speed: 0,
+            speedAccuracy: 0,
+            altitudeAccuracy: 0,
+            headingAccuracy: 0,
+          );
         });
+        
+        // Still trigger loading with default position
+        _onLocationLoaded();
       }
     }
+  }
+  
+  // Handle actions after location is loaded
+  void _onLocationLoaded() {
+    if (_isLocationLoaded) return; // Prevent duplicate calls
+    _isLocationLoaded = true;
+    
+    // Wait for the next frame to ensure FlutterMap is rendered before using MapController
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _currentPosition != null) {
+        try {
+          final settings = Provider.of<SettingsService>(context, listen: false);
+          if (settings.rotateMapWithHeading && _flightService.isTracking && _flightService.currentHeading != null) {
+            _mapController.moveAndRotate(
+              LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+              _initialZoom,
+              -_flightService.currentHeading!,
+            );
+          } else {
+            _mapController.move(
+              LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+              _initialZoom,
+            );
+          }
+        } catch (e) {
+          debugPrint('Error moving map: $e');
+          // Fallback: try again after a short delay
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (mounted && _currentPosition != null) {
+              try {
+                _mapController.move(
+                  LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                  _initialZoom,
+                );
+              } catch (e) {
+                debugPrint('Error moving map (retry): $e');
+              }
+            }
+          });
+        }
+        
+        // Start loading data progressively
+        _loadAirports();
+        
+        // Load navaids if they should be shown
+        if (_showNavaids) {
+          _loadNavaids();
+        }
+        
+        // Load airspaces if they should be shown
+        if (_showAirspaces) {
+          _loadAirspaces();
+          _loadReportingPoints();
+        }
+      }
+    });
   }
   
   // Load airports in the current map view with debouncing
@@ -533,13 +583,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   }
   
   Future<void> _loadAirspacesDebounced() async {
-
-    // Check if API key is set
-    final settingsBox = await Hive.openBox('settings');
-    final apiKey = settingsBox.get('openaip_api_key', defaultValue: '');
-    
-    if (apiKey.isEmpty) {
-      debugPrint('🌍 _loadAirspaces: No API key set, showing message');
+    // Check if we have API key (either user or default)
+    if (!openAIPService.hasApiKey) {
+      debugPrint('🌍 _loadAirspaces: No API key available');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -551,42 +597,55 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       return;
     }
 
-    debugPrint('🌍 _loadAirspaces: Loading airspaces from cache...');
+    debugPrint('🌍 _loadAirspaces: Loading airspaces...');
 
     try {
-      // Always load from cache only - never from API during map usage
-      final airspaces = await openAIPService.getCachedAirspaces();
+      // First, load from cache for immediate display
+      final cachedAirspaces = await openAIPService.getCachedAirspaces();
       
-      if (airspaces.isEmpty) {
-        debugPrint('🌍 No cached airspaces available');
-        
-        // Show a helpful message to the user
+      if (cachedAirspaces.isNotEmpty) {
+        debugPrint('🌍 Loaded ${cachedAirspaces.length} airspaces from cache');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('No cached airspaces. Please refresh in Offline Data settings.'),
-              duration: const Duration(seconds: 5),
-              action: SnackBarAction(
-                label: 'Go to Settings',
-                onPressed: () {
-                  Navigator.pushNamed(context, '/offline_data');
-                },
-              ),
-            ),
-          );
+          setState(() {
+            _airspaces = cachedAirspaces;
+          });
         }
-      } else {
-        debugPrint('🌍 Loaded ${airspaces.length} airspaces from cache');
       }
-
+      
+      // Then progressively load data for current bounds
+      final bounds = _mapController.camera.visibleBounds;
+      
+      // Load airspaces for current map bounds
+      await openAIPService.loadAirspacesForBounds(
+        minLat: bounds.southWest.latitude,
+        minLon: bounds.southWest.longitude,
+        maxLat: bounds.northEast.latitude,
+        maxLon: bounds.northEast.longitude,
+        onDataLoaded: () {
+          // Refresh the display when new data is loaded
+          if (mounted) {
+            _refreshAirspacesDisplay();
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('❌ Error loading airspaces: $e');
+      debugPrint('❌ Stack trace: ${StackTrace.current}');
+    }
+  }
+  
+  // Refresh airspaces display when new data is available
+  Future<void> _refreshAirspacesDisplay() async {
+    try {
+      final airspaces = await openAIPService.getCachedAirspaces();
       if (mounted) {
         setState(() {
           _airspaces = airspaces;
         });
+        debugPrint('🔄 Refreshed airspaces display with ${airspaces.length} items');
       }
     } catch (e) {
-      debugPrint('❌ Error loading airspaces: $e');
-      debugPrint('❌ Stack trace: ${StackTrace.current}');
+      debugPrint('❌ Error refreshing airspaces display: $e');
     }
   }
 
@@ -597,56 +656,56 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       return;
     }
 
-    debugPrint('📍 _loadReportingPoints: Loading reporting points from cache...');
-    
-    // Add iOS-specific debugging
-    if (Platform.isIOS) {
-      debugPrint('🍎 iOS: Loading reporting points on ${Platform.operatingSystem} ${Platform.operatingSystemVersion}');
-    }
+    debugPrint('📍 _loadReportingPoints: Loading reporting points...');
 
     try {
-      // Always load from cache only - never from API during map usage
-      final reportingPoints = await openAIPService.getCachedReportingPoints();
+      // First load from cache for immediate display
+      final cachedPoints = await openAIPService.getCachedReportingPoints();
       
-      if (reportingPoints.isEmpty) {
-        debugPrint('📍 No cached reporting points available');
-        if (Platform.isIOS) {
-          debugPrint('🍎 iOS: Cache returned empty list - checking if service is initialized...');
-          if (!openAIPService.hasApiKey) {
-            debugPrint('🍎 iOS: No API key set - this might be why points are not loading');
-          }
+      if (cachedPoints.isNotEmpty) {
+        debugPrint('📍 Loaded ${cachedPoints.length} reporting points from cache');
+        if (mounted) {
+          setState(() {
+            _reportingPoints = cachedPoints;
+          });
         }
-      } else {
-        debugPrint('📍 Loaded ${reportingPoints.length} reporting points from cache');
-        if (Platform.isIOS && reportingPoints.isNotEmpty) {
-          debugPrint('🍎 iOS: First point - ${reportingPoints.first.name} at ${reportingPoints.first.position}');
-          
-          // Find reporting points near current map center
-          final center = _mapController.camera.center;
-          final nearbyPoints = reportingPoints.where((p) {
-            final distance = Distance().as(LengthUnit.Kilometer, p.position, center);
-            return distance < 100; // Within 100km
-          }).toList();
-          debugPrint('🍎 iOS: Found ${nearbyPoints.length} reporting points within 100km of map center $center');
-          if (nearbyPoints.isNotEmpty) {
-            debugPrint('🍎 iOS: Nearest point: ${nearbyPoints.first.name} at ${nearbyPoints.first.position}');
-          }
-                }
       }
-
-      if (mounted) {
-        setState(() {
-          _reportingPoints = reportingPoints;
-          if (Platform.isIOS) {
-            debugPrint('🍎 iOS: setState completed - _reportingPoints now has ${_reportingPoints.length} items');
-          }
-        });
+      
+      // Then progressively load for current bounds if we have an API key
+      if (openAIPService.hasApiKey) {
+        final bounds = _mapController.camera.visibleBounds;
+        
+        // Load reporting points for current area
+        await openAIPService.loadReportingPointsForBounds(
+          minLat: bounds.southWest.latitude,
+          minLon: bounds.southWest.longitude,
+          maxLat: bounds.northEast.latitude,
+          maxLon: bounds.northEast.longitude,
+          onDataLoaded: () {
+            // Refresh the display when new data is loaded
+            if (mounted) {
+              _refreshReportingPointsDisplay();
+            }
+          },
+        );
       }
     } catch (e) {
       debugPrint('❌ Error loading reporting points: $e');
-      if (Platform.isIOS) {
-        debugPrint('🍎 iOS: Stack trace: ${StackTrace.current}');
+    }
+  }
+  
+  // Refresh reporting points display when new data is available
+  Future<void> _refreshReportingPointsDisplay() async {
+    try {
+      final points = await openAIPService.getCachedReportingPoints();
+      if (mounted) {
+        setState(() {
+          _reportingPoints = points;
+        });
+        debugPrint('🔄 Refreshed reporting points display with ${points.length} items');
       }
+    } catch (e) {
+      debugPrint('❌ Error refreshing reporting points display: $e');
     }
   }
 
@@ -1503,7 +1562,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             options: MapOptions(
               initialCenter: _currentPosition != null
                   ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
-                  : const LatLng(0, 0), // Default center
+                  : const LatLng(37.7749, -122.4194), // Default to San Francisco
               initialZoom: _initialZoom,
               minZoom: _minZoom,
               maxZoom: _maxZoom,
@@ -1800,7 +1859,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   color: Colors.transparent,
                   child: SizedBox(
                     width: MediaQuery.of(context).size.width - 32,
-                    child: const FlightDashboard(),
+                    child: FlightDashboard(
+                      isExpanded: _flightDashboardExpanded,
+                    ),
                   ),
                 ),
                 childWhenDragging: Container(), // Empty container when dragging
@@ -1823,27 +1884,13 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 },
                 child: SizedBox(
                   width: MediaQuery.of(context).size.width - 32,
-                  child: Stack(
-                    children: [
-                      const FlightDashboard(),
-                      // Drag handle at the top of the panel
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.blueAccent.withValues(alpha: 0.7),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Icon(
-                            Icons.drag_handle,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: FlightDashboard(
+                    isExpanded: _flightDashboardExpanded,
+                    onExpandedChanged: (expanded) {
+                      setState(() {
+                        _flightDashboardExpanded = expanded;
+                      });
+                    },
                   ),
                 ),
               ),
@@ -2061,10 +2108,28 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               ),
             ),
           ),
-          // Loading indicator
-          if (_isLoading)
-            const Center(
-              child: CircularProgressIndicator(),
+          // Location loading indicator (small, non-blocking)
+          if (!_isLocationLoaded)
+            const Positioned(
+              top: 60,
+              right: 16,
+              child: Card(
+                child: Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 8),
+                      Text('Getting location...', style: TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ),
             ),
             
           // Error message
