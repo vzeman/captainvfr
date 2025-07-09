@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:latlong2/latlong.dart';
 import 'package:hive/hive.dart';
 import 'flight_point.dart';
@@ -95,6 +96,9 @@ class Flight extends HiveObject {
 
   // Get speeds for charts
   List<double> get speeds => path.map((point) => point.speed).toList();
+  
+  // Get vertical speeds for charts (in m/s)
+  List<double> get verticalSpeeds => path.map((point) => point.verticalSpeed).toList();
 
   // Get accelerometer data for vibration analysis
   List<double> get vibrationData {
@@ -102,7 +106,7 @@ class Flight extends HiveObject {
       final x = point.xAcceleration;
       final y = point.yAcceleration;
       final z = point.zAcceleration;
-      return (x * x + y * y + z * z).abs(); // Magnitude of acceleration
+      return math.sqrt(x * x + y * y + z * z); // Magnitude of acceleration in G's
     }).toList();
   }
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/flight.dart';
-import '../widgets/altitude_chart.dart';
+import '../widgets/altitude_vertical_speed_chart.dart';
 import '../widgets/speed_chart.dart';
 import '../widgets/vibration_chart.dart';
 import '../widgets/flight_detail/flight_detail_map.dart';
@@ -123,8 +123,9 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                   // Altitude Tab
                   _buildChartTab(
                     hasAltitudeData
-                        ? AltitudeChart(
+                        ? AltitudeVerticalSpeedChart(
                             altitudeData: widget.flight.altitudes,
+                            verticalSpeedData: widget.flight.verticalSpeeds,
                             currentAltitude: widget.flight.altitudes.isNotEmpty
                                 ? widget.flight.altitudes.last
                                 : null,

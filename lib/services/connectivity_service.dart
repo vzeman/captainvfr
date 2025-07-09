@@ -22,8 +22,8 @@ class ConnectivityService extends ChangeNotifier {
   Future<void> initialize() async {
     debugPrint('🌐 Initializing connectivity service...');
     
-    // Perform initial connectivity check
-    await checkInternetConnection();
+    // Perform initial connectivity check silently
+    await checkInternetConnection(silent: true);
     
     // Listen to connectivity changes
     _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
@@ -38,7 +38,7 @@ class ConnectivityService extends ChangeNotifier {
 
   /// Checks if the device has actual internet connectivity
   /// This performs an HTTP request to verify internet access, not just network connectivity
-  Future<bool> checkInternetConnection() async {
+  Future<bool> checkInternetConnection({bool silent = false}) async {
     // Avoid checking too frequently
     if (_lastConnectionCheck != null) {
       final timeSinceLastCheck = DateTime.now().difference(_lastConnectionCheck!);
@@ -47,8 +47,10 @@ class ConnectivityService extends ChangeNotifier {
       }
     }
     
-    _isCheckingConnection = true;
-    notifyListeners();
+    if (!silent) {
+      _isCheckingConnection = true;
+      notifyListeners();
+    }
     
     try {
       // First check basic connectivity
@@ -86,7 +88,9 @@ class ConnectivityService extends ChangeNotifier {
       debugPrint('❌ Error checking connectivity: $e');
       _hasInternetConnection = false;
     } finally {
-      _isCheckingConnection = false;
+      if (!silent) {
+        _isCheckingConnection = false;
+      }
       notifyListeners();
     }
     

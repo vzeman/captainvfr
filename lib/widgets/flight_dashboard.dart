@@ -74,12 +74,25 @@ class _FlightDashboardState extends State<FlightDashboard> {
     final flightService = Provider.of<FlightService>(context);
     final barometerService = Provider.of<BarometerService>(context);
     
+    // Get screen dimensions
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isPhone = screenWidth < 600;
+    final isTablet = screenWidth >= 600 && screenWidth < 1200;
+    
+    // Responsive margins and width
+    final horizontalMargin = isPhone ? 8.0 : 16.0;
+    final maxWidth = isPhone ? double.infinity : (isTablet ? 600.0 : 800.0);
+    
     return Container(
-      margin: const EdgeInsets.all(16.0),
+      margin: EdgeInsets.symmetric(
+        horizontal: horizontalMargin,
+        vertical: 16.0,
+      ),
       constraints: BoxConstraints(
         minHeight: _isExpanded ? 160 : 60,
         maxHeight: _isExpanded ? 260 : 60,
         minWidth: 300,
+        maxWidth: maxWidth,
       ),
       child: Material(
         color: Colors.transparent,
@@ -606,100 +619,121 @@ class _FlightDashboardState extends State<FlightDashboard> {
   }
 
   Widget _buildIndicator(String label, String value, String unit, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Dynamic sizing based on available width
+        final availableWidth = constraints.maxWidth;
+        final iconSize = availableWidth < 80 ? 12.0 : (availableWidth < 120 ? 14.0 : 16.0);
+        final valueFontSize = availableWidth < 80 ? 16.0 : (availableWidth < 120 ? 18.0 : 20.0);
+        final unitFontSize = availableWidth < 80 ? 10.0 : (availableWidth < 120 ? 11.0 : 12.0);
+        final labelFontSize = availableWidth < 80 ? 8.0 : (availableWidth < 120 ? 9.0 : 10.0);
+        
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Icon(icon, color: Colors.blueAccent, size: 14),
-              const SizedBox(width: 2),
-              Flexible(
-                child: Text(
-                  value,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    fontFeatures: [FontFeature.tabularFigures()],
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Icon(icon, color: Colors.blueAccent, size: iconSize),
+                  const SizedBox(width: 2),
+                  Flexible(
+                    child: Text(
+                      value,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: valueFontSize,
+                        fontWeight: FontWeight.bold,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                  const SizedBox(width: 1),
+                  Text(
+                    unit,
+                    style: TextStyle(
+                      color: Colors.blueAccent,
+                      fontSize: unitFontSize,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 1),
+              const SizedBox(height: 2),
               Text(
-                unit,
-                style: const TextStyle(
-                  color: Colors.blueAccent,
-                  fontSize: 10,
+                label,
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: labelFontSize,
+                  letterSpacing: 0.5,
                 ),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.grey,
-              fontSize: 9,
-              letterSpacing: 0.5,
-            ),
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildSmallIndicator(String label, String value, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Dynamic sizing for small indicators
+        final availableWidth = constraints.maxWidth;
+        final iconSize = availableWidth < 60 ? 10.0 : (availableWidth < 80 ? 12.0 : 14.0);
+        final valueFontSize = availableWidth < 60 ? 10.0 : (availableWidth < 80 ? 11.0 : 12.0);
+        final labelFontSize = availableWidth < 60 ? 8.0 : 9.0;
+        
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: Colors.blueAccent, size: 8),
-              const SizedBox(width: 1),
-              Flexible(
-                child: Text(
-                  value,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    fontFeatures: [FontFeature.tabularFigures()],
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: Colors.blueAccent, size: iconSize),
+                  const SizedBox(width: 1),
+                  Flexible(
+                    child: Text(
+                      value,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: valueFontSize,
+                        fontWeight: FontWeight.w500,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
+                ],
+              ),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: labelFontSize,
+                  letterSpacing: 0.2,
                 ),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ],
           ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.grey,
-              fontSize: 7,
-              letterSpacing: 0.2,
-            ),
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

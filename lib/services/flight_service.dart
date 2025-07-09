@@ -120,12 +120,23 @@ class FlightService with ChangeNotifier {
   // Initialize sensor subscriptions
   void _initSensors() {
     // Accelerometer
-    _accelerometerSubscription = accelerometerEventStream().listen((AccelerometerEvent event) {
-      // Convert from m/s² to g's if needed
-      _currentXAccel = event.x / _gravity;
-      _currentYAccel = event.y / _gravity;
-      _currentZAccel = event.z / _gravity;
-    });
+    try {
+      _accelerometerSubscription = accelerometerEventStream().listen((AccelerometerEvent event) {
+        // Convert from m/s² to g's
+        _currentXAccel = event.x / _gravity;
+        _currentYAccel = event.y / _gravity;
+        _currentZAccel = event.z / _gravity;
+        
+        // Debug: Log first few accelerometer readings
+        if (_flightPath.length < 5) {
+          debugPrint('Accelerometer: X=${_currentXAccel.toStringAsFixed(3)}g, Y=${_currentYAccel.toStringAsFixed(3)}g, Z=${_currentZAccel.toStringAsFixed(3)}g');
+        }
+      }, onError: (error) {
+        debugPrint('Accelerometer error: $error');
+      });
+    } catch (e) {
+      debugPrint('Failed to initialize accelerometer: $e');
+    }
     
     // Gyroscope
     _gyroscopeSubscription = gyroscopeEventStream().listen((GyroscopeEvent event) {
@@ -296,12 +307,27 @@ class FlightService with ChangeNotifier {
       _currentHeading = heading;
       notifyListeners();
     }
+    
+    // Calculate vertical speed in m/s
+    double calculatedVerticalSpeed = 0.0;
+    if (_flightPath.isNotEmpty) {
+      final lastPoint = _flightPath.last;
+      final altitudeDiff = bestAltitude - lastPoint.altitude;
+      final timeDiff = DateTime.now().difference(lastPoint.timestamp).inMilliseconds / 1000.0;
+      
+      if (timeDiff > 0) {
+        calculatedVerticalSpeed = altitudeDiff / timeDiff; // m/s
+      }
+    }
+    
+    // Get smoothed speed to avoid GPS zero jumps
+    double smoothedSpeed = _getSmoothedSpeed(position.speed);
 
     final point = FlightPoint(
       latitude: position.latitude,
       longitude: position.longitude,
       altitude: bestAltitude,
-      speed: position.speed,
+      speed: smoothedSpeed,
       heading: heading,
       accuracy: position.accuracy,
       verticalAccuracy: 0.0, // position.verticalAccuracy not available in current geolocator
@@ -314,6 +340,7 @@ class FlightService with ChangeNotifier {
       yGyro: _currentYGyro,
       zGyro: _currentZGyro,
       pressure: _barometerService?.lastPressure ?? 0.0,
+      verticalSpeed: calculatedVerticalSpeed,
     );
 
     _flightPath.add(point);
@@ -328,38 +355,141 @@ class FlightService with ChangeNotifier {
     onFlightPathUpdated?.call();
   }
 
+  /// Get smoothed speed to avoid GPS zero jumps
+  double _getSmoothedSpeed(double gpsSpeed) {
+    // If we don't have enough data, return GPS speed
+    if (_flightPath.length < 3) {
+      return gpsSpeed;
+    }
+    
+    // If GPS reports zero but we've been moving, calculate speed from position change
+    if (gpsSpeed == 0.0) {
+      final recentPoints = _flightPath.reversed.take(3).toList();
+      
+      if (recentPoints.length >= 2) {
+        // Calculate speed from last few position changes
+        double totalDistance = 0.0;
+        double totalTime = 0.0;
+        
+        for (int i = 0; i < recentPoints.length - 1; i++) {
+          final distance = Geolocator.distanceBetween(
+            recentPoints[i].latitude,
+            recentPoints[i].longitude,
+            recentPoints[i + 1].latitude,
+            recentPoints[i + 1].longitude,
+          );
+          final timeDiff = recentPoints[i].timestamp.difference(recentPoints[i + 1].timestamp).inSeconds.abs();
+          
+          if (timeDiff > 0) {
+            totalDistance += distance;
+            totalTime += timeDiff;
+          }
+        }
+        
+        if (totalTime > 0) {
+          final calculatedSpeed = totalDistance / totalTime;
+          // Only use calculated speed if it's reasonable (less than 100 m/s for small aircraft)
+          if (calculatedSpeed < 100.0) {
+            return calculatedSpeed;
+          }
+        }
+      }
+    }
+    
+    // If GPS speed seems reasonable, use weighted average with recent speeds
+    if (gpsSpeed > 0.0 && gpsSpeed < 100.0) {
+      final recentSpeeds = _flightPath.reversed.take(3).map((p) => p.speed).where((s) => s > 0).toList();
+      if (recentSpeeds.isNotEmpty) {
+        // Weighted average: current reading gets 50% weight, recent average gets 50%
+        final avgRecentSpeed = recentSpeeds.reduce((a, b) => a + b) / recentSpeeds.length;
+        return (gpsSpeed * 0.5) + (avgRecentSpeed * 0.5);
+      }
+    }
+    
+    return gpsSpeed;
+  }
+
   /// Get the best available altitude measurement by combining GPS and barometric data
   double _getBestAltitude(double gpsAltitude) {
     final barometricAltitude = _barometerService?.altitudeMeters;
     final altitudeFromService = _altitudeService.currentAltitude;
 
     // Priority order:
-    // 1. Altitude service (if available and seems reliable)
-    // 2. Barometric altitude (if available and seems reasonable)
-    // 3. GPS altitude (fallback)
+    // 1. Barometric altitude (most accurate for aviation)
+    // 2. Altitude service (if available)
+    // 3. GPS altitude (fallback, with smoothing)
 
-    if (altitudeFromService != null && _isAltitudeReasonable(altitudeFromService)) {
-      return altitudeFromService;
-    }
-
+    // Use barometric altitude if available and reasonable
     if (barometricAltitude != null && _isAltitudeReasonable(barometricAltitude)) {
-      // If we have both GPS and barometric, use weighted average favoring barometric
-      // Barometric is typically more accurate for relative changes
-      if (_isAltitudeReasonable(gpsAltitude)) {
-        // Weight: 70% barometric, 30% GPS for better accuracy
-        return (barometricAltitude * 0.7) + (gpsAltitude * 0.3);
+      // Add altitude to history for smoothing
+      _altitudeHistory.add(barometricAltitude);
+      if (_altitudeHistory.length > 10) {
+        _altitudeHistory.removeAt(0);
       }
-      return barometricAltitude;
+      return _getSmoothedAltitude(barometricAltitude);
     }
 
-    // Fallback to GPS altitude
-    return gpsAltitude;
+    // Use altitude service if available
+    if (altitudeFromService != null && _isAltitudeReasonable(altitudeFromService)) {
+      _altitudeHistory.add(altitudeFromService);
+      if (_altitudeHistory.length > 10) {
+        _altitudeHistory.removeAt(0);
+      }
+      return _getSmoothedAltitude(altitudeFromService);
+    }
+
+    // Fallback to GPS altitude with heavy smoothing to avoid jumps
+    if (_isAltitudeReasonable(gpsAltitude)) {
+      _altitudeHistory.add(gpsAltitude);
+      if (_altitudeHistory.length > 10) {
+        _altitudeHistory.removeAt(0);
+      }
+      return _getSmoothedAltitude(gpsAltitude);
+    }
+
+    // If GPS altitude is unreasonable, use last known good altitude
+    if (_altitudeHistory.isNotEmpty) {
+      return _altitudeHistory.last;
+    }
+
+    // Absolute fallback - use sea level
+    return 0.0;
+  }
+
+  /// Get smoothed altitude to avoid sinusoidal patterns
+  double _getSmoothedAltitude(double currentAltitude) {
+    if (_altitudeHistory.length < 3) {
+      return currentAltitude;
+    }
+
+    // Use median of last few values to filter out outliers
+    final recentValues = _altitudeHistory.reversed.take(5).toList()..sort();
+    final median = recentValues[recentValues.length ~/ 2];
+    
+    // If current value is too far from median, use weighted average
+    final deviation = (currentAltitude - median).abs();
+    if (deviation > 50.0) { // More than 50m deviation is suspicious
+      // Use 30% current, 70% median
+      return (currentAltitude * 0.3) + (median * 0.7);
+    }
+    
+    // Otherwise use weighted average of recent values
+    double sum = 0.0;
+    double weight = 0.0;
+    for (int i = 0; i < math.min(5, _altitudeHistory.length); i++) {
+      final w = 1.0 / (i + 1); // More recent values get higher weight
+      sum += _altitudeHistory[_altitudeHistory.length - 1 - i] * w;
+      weight += w;
+    }
+    
+    return sum / weight;
   }
 
   /// Check if altitude value seems reasonable (basic sanity check)
   bool _isAltitudeReasonable(double altitude) {
-    // Basic sanity check: altitude between -500m (Dead Sea level) and 15000m (reasonable aircraft altitude)
-    return altitude >= -500.0 && altitude <= 15000.0;
+    // Sea level should be 0m, reject negative values and unreasonably high values
+    // Most small aircraft operate below 10,000m
+    return altitude >= 0.0 && altitude <= 10000.0;
   }
 
   /// Update moving segments based on current speed

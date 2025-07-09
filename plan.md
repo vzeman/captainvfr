@@ -1,25 +1,25 @@
 # Development tasks for the project
 
-## Bugs
-- [x] heading information is incorrect and is not reporting in the Flight data panel at all, use all sensors, which devices like iphone offer to track correct heading of airplain. If no sensor is available, use computed heading (averaged from previous positions)
-- [x] when I click on the button to update my current position in the top menu panel, it takes very long time until the map is updated - review if there is any option to optimize the speed (e.g .dont wait for measurement of current GPS position, but use last known position and quickly update the map)
-- [x] when I start tracking, there is duplicate Flioght data panel - starting of tracking should not show next same panel - Flight data panel is showed/hided by toggle button, it is correct solution, start tracking button should not show it again
-- [x] during the flight tracking is not updated on the current position on the map - we should update the position as the airplain is moving
-- [x] change icon of current position from blue dot to airplane icon
-- [x] display should never switch off on the device when the tracking is active - if the tracking is not activated, display can be locked if device is set so.
-- [x] tracking should continue properly also if the application is on the background - if the application is in the background, tracking should continue and update the position on the map
-- [x] design of multiple forms is not nice, we should use same design for all popups and dialogs. Nice design has flight data panel, use the same design for all types of dialogs, popups and forms (dark background, rounded corners, white text, etc.)
-- [x] when I load detail of flight log, map is not loaded properly, I need to move with map to see it properly - looks like map is not initialized properly when the flight log detail loaded, it refresh properly with first move of map
-- [x] vertical speed in the flight data panel is not working properly, it is not showing correct values
-- [x] show in the flight panel data also how many Gs are applied to the airplane, we should record in the flight log changes of Gs during the flight and visualize it in the same chart as Turbulences bar (rename vibrations to turbulences tab in flight log detail), we should use accelerometer data to calculate Gs
-- [x] in the flight data panel show also barometric pressure, it should be updated during the flight tracking
+## Current airspace panel
+- [x] Add a button to close airspace panel in the riht top corner
+- [x] add option to drag and drop the airspace panel to other position
+- [x] add toggle button to show/hide the current airspace panel under airspaces toggle button
+- [x] current airspace panel should show also distance and time to the end of airspace if there is no next airspace defined for current flight path
 
+## internet connection
+- [x] add a button to close notifications about internet connection in the right top corner
+- [x] remove button TAP FOR INFO from the notification about internet connection, also remove the dialog which was shown after tapping the button
+- [x] adjust the font size of the message based on the screen size
 
-## New features
-- [x] Visualisation of heading in the flight data panel - create a small compass in the flight data panel, which will show the heading of the airplane (in the middle count be current heading as number, but same will be show as line in the compass circle), it should be updated during the flight tracking, if flight plan is activated, one more value of heading should be displayed for current segment of flight we are flying from flight plan
+## Flight data panel
+- [x] in the iphone make the flight data panel wider to use the full width of the screen - add just few pixels of padding, on bigger screens you can define maximum width how the panel will groiw
+- [x] on bigger screens like ipad or any desktop, it should be possible to drag and drop the panel not just vertically but also horizontally
+- [x] dynamically increase the size of fonts based on the size of the panel (defined by available space on the screen)
 
-
-## Settings Dialog
-- [x] add Settings dialog to the application, which will allow to set some options
-- [x] add option if map during tracking should be turned to the North or Heading of the airplane, during flight tracking we should use Heading of the airplane, if not tracking, we can use North
-- 
+## Flight tracking
+- [x] even I see in the flight data panel correct values of Gs, in the flight log detail I see just zeros in the tab with turbulence chart
+- [x] during tracking record also vertical speed and show it in the same chart as the altitude tab in flight detail
+- [x] during the tracking I don't see on the map line of the flight path, improve design of the flight path line on the map - make it a bit more wider, and better color
+- [x] the speed in the flight detail is not correct - it is jumping often to zero even if my speed was constant ... speed shown in the flight data panel seems to be correct, just recorded speed in the flight log detail seems to be incorrect
+- [x] altitude seems to be incorrect during tracking - it should show altitude abouve the sea level, not above the ground ... sometimes it shows even negative valus, what should not be possible
+- [x] recorded altitude in flight log detail looks like sinusoid what is for sure not correct - review what could be wrong with the altitude recording

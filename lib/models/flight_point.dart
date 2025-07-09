@@ -40,6 +40,8 @@ class FlightPoint extends HiveObject {
   late double pressure;         // Air pressure in hPa
   @HiveField(16)
   late DateTime timestamp;
+  @HiveField(17)
+  late double verticalSpeed;    // Vertical speed in m/s
 
   FlightPoint({
     double? latitude,
@@ -58,6 +60,7 @@ class FlightPoint extends HiveObject {
     this.yGyro = 0.0,
     this.zGyro = 0.0,
     this.pressure = 0.0,
+    this.verticalSpeed = 0.0,
     DateTime? timestamp,
   }) {
     this.latitude = latitude ?? 0.0;
@@ -102,6 +105,7 @@ class FlightPoint extends HiveObject {
       'yGyro': yGyro,
       'zGyro': zGyro,
       'pressure': pressure,
+      'verticalSpeed': verticalSpeed,
       'timestamp': timestamp.toIso8601String(),
     };
   }
@@ -124,6 +128,7 @@ class FlightPoint extends HiveObject {
       yGyro: (json['yGyro'] as num?)?.toDouble() ?? 0.0,
       zGyro: (json['zGyro'] as num?)?.toDouble() ?? 0.0,
       pressure: (json['pressure'] as num?)?.toDouble() ?? 0.0,
+      verticalSpeed: (json['verticalSpeed'] as num?)?.toDouble() ?? 0.0,
       timestamp: DateTime.parse(json['timestamp'] as String),
     );
   }
