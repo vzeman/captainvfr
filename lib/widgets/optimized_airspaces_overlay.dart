@@ -126,7 +126,7 @@ class _OptimizedAirspacesOverlayState extends State<OptimizedAirspacesOverlay> {
   List<LatLng> _simplifyPolygonWithCache(Airspace airspace, double zoom) {
     // Create cache key based on airspace ID and zoom level
     final zoomLevel = zoom.round();
-    final cacheKey = airspace.id ?? airspace.hashCode.toString();
+    final cacheKey = airspace.id.isNotEmpty ? airspace.id : airspace.hashCode.toString();
     
     // Check cache first
     if (_simplifiedPolygonsCache.containsKey(cacheKey)) {

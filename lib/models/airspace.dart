@@ -1,7 +1,6 @@
 import 'package:hive/hive.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'dart:developer' as developer;
 
 part 'airspace.g.dart';
 
@@ -135,7 +134,6 @@ class Airspace extends HiveObject {
       final type = json['type']?.toString() ?? 'unknown';
       final geometryHash = parseGeometry(json['geometry']).hashCode;
       airspaceId = 'generated_${name}_${type}_$geometryHash';
-      developer.log('⚠️ Generated ID for airspace: $airspaceId');
     }
     
     return Airspace(

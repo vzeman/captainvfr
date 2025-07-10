@@ -1769,7 +1769,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           Positioned(
             top: MediaQuery.of(context).size.height * _togglePanelTopPosition,
             right: _togglePanelRightPosition,
-            child: Container(
+            child: SizedBox(
               width: 50, // Fixed width to constrain the draggable
               child: Draggable<String>(
                 data: 'toggle_panel',
