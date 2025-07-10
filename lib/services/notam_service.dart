@@ -53,7 +53,6 @@ class NotamService {
         await _cacheNotams(icaoCode, notams);
       }
       
-      developer.log('✅ Fetched ${notams.length} NOTAMs for $icaoCode from API');
       return notams;
     } catch (e) {
       developer.log('❌ Error fetching NOTAMs from API: $e');

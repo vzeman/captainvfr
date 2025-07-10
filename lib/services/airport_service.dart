@@ -59,7 +59,6 @@ class AirportService {
   /// Load airports from cache if available
   Future<void> _loadFromCache() async {
     try {
-      developer.log('📱 Loading airports from cache...');
       final cachedAirports = await _cacheService.getCachedAirports();
 
       // Filter out closed airports from cached data as well
@@ -67,13 +66,6 @@ class AirportService {
         airport.type.toLowerCase() != 'closed'
       ).toList();
 
-      final filteredCount = cachedAirports.length - _airports.length;
-
-      if (_airports.isNotEmpty) {
-        developer.log('✅ Loaded ${_airports.length} airports from cache ($filteredCount closed airports filtered out)');
-      } else {
-        developer.log('📱 No valid cached airports found, will fetch from network');
-      }
     } catch (e) {
       developer.log('❌ Error loading airports from cache: $e');
       _airports = [];
@@ -82,7 +74,6 @@ class AirportService {
   
   /// Force refresh data from network
   Future<void> refreshData() async {
-    developer.log('🔄 Force refreshing airports data...');
     await _cacheService.clearAllCaches();
     _airports.clear();
     await fetchNearbyAirports(forceRefresh: true);
@@ -102,15 +93,10 @@ class AirportService {
   
   /// Get airports within a bounding box
   Future<List<Airport>> getAirportsInBounds(LatLng southWest, LatLng northEast) async {
-    developer.log('📍 getAirportsInBounds called with bounds: $southWest to $northEast');
 
     if (_airports.isEmpty) {
-      developer.log('🔄 No airports in cache, fetching nearby airports...');
       // If no airports loaded yet, try to fetch some
       await fetchNearbyAirports();
-      developer.log('✅ Fetched ${_airports.length} airports');
-    } else {
-      developer.log('📦 Using ${_airports.length} cached airports');
     }
     
     // Filter airports within the bounding box (closed airports already excluded at data loading level)
@@ -128,29 +114,22 @@ class AirportService {
   
   // Fetch all airports from OurAirports
   Future<void> fetchNearbyAirports({LatLng? position, bool forceRefresh = false}) async {
-    developer.log('🚀 fetchNearbyAirports called with position: $position, forceRefresh: $forceRefresh');
     if (_isLoading) {
-      developer.log('⏳ Already loading airports, skipping...');
       return;
     }
     
     // If we already have airports and not forcing refresh, no need to fetch again
     if (_airports.isNotEmpty && !forceRefresh) {
-      developer.log('✅ Using cached airports (${_airports.length} airports)');
       return;
     }
     
     _isLoading = true;
-    developer.log('🌐 Fetching all airports...');
 
     try {
       // First try to fetch from network
       final url = '$_baseUrl/airports.csv';
-      developer.log('🔗 Fetching airports from: $url');
 
-      final stopwatch = Stopwatch()..start();
       final response = await http.get(Uri.parse(url));
-      developer.log('📡 Airport data response status: ${response.statusCode} (took ${stopwatch.elapsedMilliseconds}ms)');
 
       if (response.statusCode == 200) {
         developer.log('📊 Successfully fetched airport data. Parsing...');

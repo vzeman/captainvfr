@@ -208,7 +208,6 @@ class OpenAIPService {
           developer.log('📊 Most duplicated IDs: ${duplicates.map((e) => "${e.key}: ${e.value} times").join(", ")}');
         }
 
-        developer.log('✅ Fetched ${airspaces.length} airspaces from OpenAIP');
         return airspaces;
       } else if (response.statusCode == 429) {
         developer.log('⚠️ Rate limit hit (429). Waiting 60 seconds before retry...');
@@ -444,11 +443,9 @@ class OpenAIPService {
     // Final verification of what's in cache
     try {
       final finalCachedCount = (await getCachedAirspaces()).length;
-      developer.log('📊 Final count in cache: $finalCachedCount');
-      
+
       if (finalCachedCount != allAirspaces.length) {
-        developer.log('⚠️ Mismatch! Fetched ${allAirspaces.length} but cache has $finalCachedCount');
-        
+
         // Try one final cache update with all airspaces
         if (allAirspaces.isNotEmpty) {
           developer.log('🔄 Attempting final cache update with all ${allAirspaces.length} airspaces...');
@@ -801,22 +798,6 @@ class OpenAIPService {
         final data = json.decode(response.body);
         final List<dynamic> items = data['items'] ?? data['data'] ?? data ?? [];
         
-        // Log pagination info if available
-        if (data is Map) {
-          final total = data['total'] ?? data['totalCount'] ?? data['count'];
-          final currentPage = data['page'] ?? data['currentPage'];
-          final totalPages = data['pages'] ?? data['totalPages'];
-          final hasMore = data['hasMore'] ?? data['has_more'];
-          
-          developer.log('📊 API Response structure keys: ${data.keys.toList()}');
-          
-          if (total != null) {
-            developer.log('📊 API Response - Total available: $total, Current page: $currentPage/$totalPages, Items in this response: ${items.length}');
-          } else {
-            developer.log('📊 API Response - Items in this response: ${items.length}, hasMore: $hasMore');
-          }
-        }
-        
         final reportingPoints = items
             .map((json) => ReportingPoint.fromJson(json))
             .toList();
@@ -824,7 +805,6 @@ class OpenAIPService {
         // Don't cache here - let the caller decide whether to cache
         // This prevents overwriting the cache when fetching individual tiles
 
-        developer.log('✅ Fetched ${reportingPoints.length} reporting points from OpenAIP');
         return reportingPoints;
       } else if (response.statusCode == 429) {
         developer.log('⚠️ Rate limit hit (429). Waiting 60 seconds before retry...');

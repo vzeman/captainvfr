@@ -105,10 +105,8 @@ class BackgroundDataService extends ChangeNotifier {
     final cachedAirports = await _cacheService.getCachedAirports();
     
     if (cachedAirports.isEmpty) {
-      developer.log('📡 No cached airports, fetching from API...');
       await _airportService.fetchNearbyAirports();
     } else {
-      developer.log('✅ Loaded ${cachedAirports.length} airports from cache');
       // Initialize the service with cached data
       await _airportService.initialize();
     }
