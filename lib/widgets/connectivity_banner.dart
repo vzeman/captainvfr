@@ -40,15 +40,22 @@ class _ConnectivityBannerState extends State<ConnectivityBanner> {
           });
         }
         
-        return Column(
+        return Stack(
           children: [
-            // Show banner only when there's no internet (not when checking) and not dismissed
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              height: !hasInternet && !isChecking && !_isBannerDismissed ? null : 0,
-              child: Material(
-                color: Colors.red.shade700,
-                child: AnimatedSwitcher(
+            // Main content fills the entire area
+            widget.child,
+            // Position banner at the bottom
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                height: !hasInternet && !isChecking && !_isBannerDismissed ? null : 0,
+                child: Material(
+                  color: Colors.red.shade700,
+                  elevation: 8,
+                  child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 300),
                     child: !hasInternet && !isChecking && !_isBannerDismissed
                         ? Container(
@@ -58,53 +65,55 @@ class _ConnectivityBannerState extends State<ConnectivityBanner> {
                               horizontal: screenWidth < 400 ? 12 : 16,
                               vertical: screenWidth < 400 ? 8 : 12,
                             ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.wifi_off,
-                                  color: Colors.white,
-                                  size: iconSize,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    'No internet connection. Some features may be limited.',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: fontSize,
-                                      fontWeight: FontWeight.w500,
+                            child: SafeArea(
+                              top: false,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.wifi_off,
+                                    color: Colors.white,
+                                    size: iconSize,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'No internet connection. Some features may be limited.',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: fontSize,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                // Close button
-                                GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _isBannerDismissed = true;
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withAlpha(51),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Icon(
-                                      Icons.close,
-                                      color: Colors.white,
-                                      size: iconSize - 4,
+                                  // Close button with better touch target
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          _isBannerDismissed = true;
+                                        });
+                                      },
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        child: Icon(
+                                          Icons.close,
+                                          color: Colors.white,
+                                          size: iconSize,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           )
                         : const SizedBox.shrink(),
+                  ),
                 ),
               ),
             ),
-            // Main content
-            Expanded(child: widget.child),
           ],
         );
       },

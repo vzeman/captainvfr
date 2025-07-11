@@ -1,13 +1,13 @@
 # Development tasks for the project
 
-## Application startup
-- [x] application should start even without internet connection, it should not wait for syncing data from the servers, if there is not internet, app should use just the data already stored in caches
+## Tracking
+- [x] line, which prints the path of the tracked flight should be more visible. Now it is behind the airspaces layer on the map and it is very hard to see it. Move it to the top layer so it is better visible, change the color to red
 
 
 ## Flight planning
-- [x] waypoint values in the table of waypoints shuld user units defined in Settings (Metric or Imperial) based on the user's settings
-- [x] waypoints table row should be formatted in 2 rows, first row should contain the waypoint name and altitude, second row should contain all computed values (distance, speed, time, fuel) in the same row (if fuel or speed is not possible to compute, simply don't show anything)
-- [x] label of the segment rendered on the map should be smaller, it should change the size of the label based on the text in the label - there should be no empty lines as it is now (render just value distance, heading and time if available aircraft settings)
+- [x] When I want to scroll the waipoints in flight plan, it is moving the position of the panel instead. Movement of the panel should be done just if I drag and drop outside of the table with waypoints. Inside the table should be just scrolling the table rows.
+- [x] when I collapse table with waypoints, it should not be expanded during drag and drop of the flight plan panel, it should keep the table of waipoints collapsed
 
-## NOTAMs
-- [x] as I move on the map, a lot of requests are mode to NOTAM service, this is not good, we should limit the number of requests to the NOTAM service, we should request all notams at once for area we need (if it is possible) - analyze first if notam service supports this before you start implementation
+
+## Airspaces
+- [x] when I click toggle button to show current airspace, it takes very long time until the popup is displayed. Maybe it is waiting for current gps position. Maybe it independent. popup should be displayed rigth after clicking the button, not after the gps position is received. After you get gps position, simply just update the content of current airspace popup. Also when the popup is opened, load immediatelly last known gps position, later when you get new one, just update the values.

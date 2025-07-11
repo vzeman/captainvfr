@@ -135,6 +135,12 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   static const double _maxZoom = 18.0;
   static const double _minZoom = 3.0;
   
+  // Auto-centering control
+  bool _autoCenteringEnabled = true;
+  Timer? _autoCenteringTimer;
+  static const Duration _autoCenteringDelay = Duration(minutes: 3);
+  bool _wasTracking = false;
+  
   @override
   void initState() {
     super.initState();
@@ -219,6 +225,14 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   void _onFlightPathUpdated() {
     if (mounted) {
       setState(() {
+        // Check if tracking just started
+        if (_flightService.isTracking && !_wasTracking) {
+          // Re-enable auto-centering when tracking starts
+          _autoCenteringEnabled = true;
+          _autoCenteringTimer?.cancel();
+        }
+        _wasTracking = _flightService.isTracking;
+        
         // Convert flight points to LatLng for map visualization
         _flightPathPoints = _flightService.flightPath
             .map((point) => LatLng(point.latitude, point.longitude))
@@ -244,21 +258,23 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             headingAccuracy: lastPoint.headingAccuracy,
           );
           
-          // Update map position and rotation during tracking
-          final settings = Provider.of<SettingsService>(context, listen: false);
-          if (settings.rotateMapWithHeading) {
-            // Move and rotate map
-            _mapController.moveAndRotate(
-              LatLng(lastPoint.latitude, lastPoint.longitude),
-              _mapController.camera.zoom,
-              -lastPoint.heading, // Negate for map rotation
-            );
-          } else {
-            // Just move map
-            _mapController.move(
-              LatLng(lastPoint.latitude, lastPoint.longitude),
-              _mapController.camera.zoom,
-            );
+          // Update map position and rotation during tracking only if auto-centering is enabled
+          if (_autoCenteringEnabled) {
+            final settings = Provider.of<SettingsService>(context, listen: false);
+            if (settings.rotateMapWithHeading) {
+              // Move and rotate map
+              _mapController.moveAndRotate(
+                LatLng(lastPoint.latitude, lastPoint.longitude),
+                _mapController.camera.zoom,
+                -lastPoint.heading, // Negate for map rotation
+              );
+            } else {
+              // Just move map
+              _mapController.move(
+                LatLng(lastPoint.latitude, lastPoint.longitude),
+                _mapController.camera.zoom,
+              );
+            }
           }
         }
       });
@@ -290,6 +306,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     _debounceTimer?.cancel();
     _airspaceDebounceTimer?.cancel();
     _notamPrefetchTimer?.cancel();
+    _autoCenteringTimer?.cancel();
     _mapController.dispose();
     _flightService.dispose();
     super.dispose();
@@ -719,7 +736,13 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       if (mounted) {
         setState(() {
           _currentPosition = position;
+          // Re-enable auto-centering when user manually centers
+          _autoCenteringEnabled = true;
         });
+        
+        // Cancel any existing auto-centering timer
+        _autoCenteringTimer?.cancel();
+        
         _mapController.move(
           LatLng(position.latitude, position.longitude),
           _mapController.camera.zoom,
@@ -1713,6 +1736,25 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               onTap: (tapPosition, point) => _onMapTapped(tapPosition, point),
               onPositionChanged: (position, hasGesture) {
                 if (hasGesture) {
+                  // Disable auto-centering when user manually moves the map
+                  if (_autoCenteringEnabled && _flightService.isTracking) {
+                    setState(() {
+                      _autoCenteringEnabled = false;
+                    });
+                    
+                    // Cancel any existing timer
+                    _autoCenteringTimer?.cancel();
+                    
+                    // Start a new timer to re-enable auto-centering after 3 minutes
+                    _autoCenteringTimer = Timer(_autoCenteringDelay, () {
+                      if (mounted && _flightService.isTracking) {
+                        setState(() {
+                          _autoCenteringEnabled = true;
+                        });
+                      }
+                    });
+                  }
+                  
                   _loadAirports();
                   // Also load navaids if they're enabled
                   if (_showNavaids) {
@@ -1745,61 +1787,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                       )
                     : null,
               ),
-              // Flight path layer
-              if (_flightPathPoints.isNotEmpty)
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: _flightPathPoints,
-                      color: Colors.red,
-                      strokeWidth: 6.0,
-                      borderColor: Colors.white,
-                      borderStrokeWidth: 2.0,
-                    ),
-                  ],
-                ),
-              // Flight segment markers
-              if (_flightSegments.isNotEmpty)
-                MarkerLayer(
-                  markers: _flightSegments.map((segment) => [
-                    // Start marker
-                    Marker(
-                      point: segment.startLatLng,
-                      width: 16,
-                      height: 16,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: _getSegmentColor(segment.type),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: Icon(
-                          _getSegmentIcon(segment.type),
-                          size: 8,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    // End marker
-                    Marker(
-                      point: segment.endLatLng,
-                      width: 16,
-                      height: 16,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: _getSegmentColor(segment.type).withValues(alpha: 0.7),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: Icon(
-                          Icons.flag,
-                          size: 8,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ]).expand((markers) => markers).toList(),
-                ),
               // Airspaces overlay (optimized)
               if (_showAirspaces && _airspaces.isNotEmpty)
                 OptimizedAirspacesOverlay(
@@ -1904,6 +1891,61 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   );
                 },
               ),
+              // Flight path layer - moved here to be above airspaces
+              if (_flightPathPoints.isNotEmpty)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _flightPathPoints,
+                      color: Colors.red,
+                      strokeWidth: 6.0,
+                      borderColor: Colors.white,
+                      borderStrokeWidth: 2.0,
+                    ),
+                  ],
+                ),
+              // Flight segment markers
+              if (_flightSegments.isNotEmpty)
+                MarkerLayer(
+                  markers: _flightSegments.map((segment) => [
+                    // Start marker
+                    Marker(
+                      point: segment.startLatLng,
+                      width: 16,
+                      height: 16,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _getSegmentColor(segment.type),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: Icon(
+                          _getSegmentIcon(segment.type),
+                          size: 8,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    // End marker
+                    Marker(
+                      point: segment.endLatLng,
+                      width: 16,
+                      height: 16,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _getSegmentColor(segment.type).withValues(alpha: 0.7),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: Icon(
+                          Icons.flag,
+                          size: 8,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ]).expand((markers) => markers).toList(),
+                ),
               // Current position marker
               if (_currentPosition != null)
                 MarkerLayer(
@@ -2168,7 +2210,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
           
           // Airspace information panel
-          if (_currentPosition != null && _showCurrentAirspacePanel)
+          if (_showCurrentAirspacePanel)
             Positioned(
               left: _airspacePanelPosition.dx,
               bottom: _airspacePanelPosition.dy,
@@ -2184,14 +2226,16 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                               ? 500 
                               : 600,
                     ),
-                    child: AirspaceFlightInfo(
-                      currentPosition: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-                      currentAltitude: _currentPosition!.altitude,
-                      currentHeading: _currentPosition!.heading,
-                      currentSpeed: _currentPosition!.speed,
-                      openAIPService: openAIPService,
-                      onAirspaceSelected: _onAirspaceSelected,
-                    ),
+                    child: _currentPosition != null
+                      ? AirspaceFlightInfo(
+                          currentPosition: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                          currentAltitude: _currentPosition!.altitude,
+                          currentHeading: _currentPosition!.heading,
+                          currentSpeed: _currentPosition!.speed,
+                          openAIPService: openAIPService,
+                          onAirspaceSelected: _onAirspaceSelected,
+                        )
+                      : _buildLoadingAirspacePanel(),
                   ),
                 ),
                 childWhenDragging: Container(), // Empty container when dragging
@@ -2235,19 +2279,21 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                             ? 500 
                             : 600,
                   ),
-                  child: AirspaceFlightInfo(
-                    currentPosition: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-                    currentAltitude: _currentPosition!.altitude,
-                    currentHeading: _currentPosition!.heading,
-                    currentSpeed: _currentPosition!.speed,
-                    openAIPService: openAIPService,
-                    onAirspaceSelected: _onAirspaceSelected,
-                    onClose: () {
-                      setState(() {
-                        _showCurrentAirspacePanel = false;
-                      });
-                    },
-                  ),
+                  child: _currentPosition != null
+                    ? AirspaceFlightInfo(
+                        currentPosition: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                        currentAltitude: _currentPosition!.altitude,
+                        currentHeading: _currentPosition!.heading,
+                        currentSpeed: _currentPosition!.speed,
+                        openAIPService: openAIPService,
+                        onAirspaceSelected: _onAirspaceSelected,
+                        onClose: () {
+                          setState(() {
+                            _showCurrentAirspacePanel = false;
+                          });
+                        },
+                      )
+                    : _buildLoadingAirspacePanel(),
                 ),
               ),
             ),
@@ -2424,9 +2470,14 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                     tooltip: 'Search airports',
                   ),
                   IconButton(
-                    icon: const Icon(Icons.my_location, color: Colors.black),
+                    icon: Icon(
+                      Icons.my_location,
+                      color: _autoCenteringEnabled ? Colors.black : Colors.grey,
+                    ),
                     onPressed: _centerOnLocation,
-                    tooltip: 'Center on location',
+                    tooltip: _autoCenteringEnabled 
+                        ? 'Center on location' 
+                        : 'Center on location (auto-centering paused)',
                   ),
                   IconButton(
                     icon: Icon(
@@ -2623,6 +2674,53 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       icon: Icon(icon, color: isActive ? Colors.blue : Colors.black),
       tooltip: tooltip,
       onPressed: onPressed,
+    );
+  }
+  
+  Widget _buildLoadingAirspacePanel() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xE6000000),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            'Getting location...',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(width: 12),
+          IconButton(
+            icon: const Icon(Icons.close, size: 16),
+            color: Colors.white54,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: 24,
+              minHeight: 24,
+            ),
+            onPressed: () {
+              setState(() {
+                _showCurrentAirspacePanel = false;
+              });
+            },
+          ),
+        ],
+      ),
     );
   }
 
