@@ -214,7 +214,17 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
   }
 
   void _showNewFlightPlanDialog(BuildContext context) {
-    final controller = TextEditingController();
+    // Generate default name with random number
+    final randomNum = DateTime.now().millisecondsSinceEpoch % 1000;
+    final defaultName = 'Flight Plan $randomNum';
+    final controller = TextEditingController(text: defaultName);
+    
+    // Select all text when dialog opens
+    controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: controller.text.length,
+    );
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

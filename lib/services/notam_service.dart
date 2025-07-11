@@ -308,8 +308,30 @@ class NotamService {
     final cachedData = await _cacheService.getCachedData(cacheKey);
     
     if (cachedData != null) {
-      final List<dynamic> jsonList = json.decode(cachedData);
-      return jsonList.map((json) => Notam.fromJson(json)).toList();
+      try {
+        final List<dynamic> jsonList = json.decode(cachedData);
+        return jsonList.map((json) {
+          // Ensure the JSON data is properly typed
+          final Map<String, dynamic> notamJson = Map<String, dynamic>.from(json);
+          
+          // Clean up any corrupted NOTAM IDs
+          if (notamJson['notamId'] != null) {
+            String notamId = notamJson['notamId'].toString();
+            // Remove any URL encoding artifacts
+            notamId = notamId.replaceAll(RegExp(r'%[0-9A-Fa-f]{2}'), '');
+            // Remove any null bytes or control characters
+            notamId = notamId.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
+            notamJson['notamId'] = notamId.trim();
+          }
+          
+          return Notam.fromJson(notamJson);
+        }).toList();
+      } catch (e) {
+        developer.log('❌ Error parsing cached NOTAMs: $e');
+        // Clear corrupted cache
+        await _cacheService.clearCachedData(cacheKey);
+        return [];
+      }
     }
     
     return [];
@@ -318,7 +340,25 @@ class NotamService {
   /// Cache NOTAMs for an airport
   Future<void> _cacheNotams(String icaoCode, List<Notam> notams) async {
     final cacheKey = 'notams_$icaoCode';
-    final jsonData = json.encode(notams.map((n) => n.toJson()).toList());
+    
+    // Clean up NOTAM data before caching to prevent corruption
+    final cleanedNotams = notams.map((notam) {
+      final json = notam.toJson();
+      
+      // Ensure NOTAM ID is clean
+      if (json['notamId'] != null) {
+        String notamId = json['notamId'].toString();
+        // Remove any URL encoding artifacts
+        notamId = notamId.replaceAll(RegExp(r'%[0-9A-Fa-f]{2}'), '');
+        // Remove any null bytes or control characters
+        notamId = notamId.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
+        json['notamId'] = notamId.trim();
+      }
+      
+      return json;
+    }).toList();
+    
+    final jsonData = json.encode(cleanedNotams);
     await _cacheService.cacheData(cacheKey, jsonData);
   }
   

@@ -346,7 +346,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
           ],
         ),
         subtitle: Text(
-          notam.decodedText ?? notam.text,
+          _getNotamPreview(notam),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: theme.textTheme.bodySmall?.copyWith(
@@ -372,24 +372,42 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
                 const SizedBox(height: 12),
                 
                 // Validity period
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildDetailRow(
-                        'Effective From',
-                        _formatDateTime(notam.effectiveFrom),
-                      ),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: notam.isActive 
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : notam.isFuture 
+                            ? Colors.blue.withValues(alpha: 0.1)
+                            : Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: notam.isActive 
+                          ? Colors.green.withValues(alpha: 0.3)
+                          : notam.isFuture 
+                              ? Colors.blue.withValues(alpha: 0.3)
+                              : Colors.red.withValues(alpha: 0.3),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildDetailRow(
-                        'Until',
-                        notam.effectiveUntil != null 
-                            ? _formatDateTime(notam.effectiveUntil!)
-                            : 'Permanent',
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildDetailRow(
+                          'Effective From',
+                          _formatDateTime(notam.effectiveFrom),
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildDetailRow(
+                          'Until',
+                          notam.effectiveUntil != null 
+                              ? _formatDateTime(notam.effectiveUntil!)
+                              : 'PERMANENT',
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 
                 // Schedule if available
@@ -484,6 +502,41 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
   Widget _buildDetailRow(String label, String value) {
     final theme = Theme.of(context);
     
+    // Special formatting for ICAO format NOTAMs
+    if (label == 'ICAO Format') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.2),
+              ),
+            ),
+            child: SelectableText(
+              _formatNotamText(value),
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 12,
+                color: theme.colorScheme.onSurface,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -500,6 +553,54 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
         ),
       ],
     );
+  }
+  
+  String _formatNotamText(String text) {
+    // Format NOTAM text for better readability
+    // Each field on its own line, properly indented
+    final lines = text.split('\n');
+    final formattedLines = <String>[];
+    
+    for (final line in lines) {
+      if (line.trim().isEmpty) continue;
+      
+      // Check if this is a field line (starts with letter followed by ))
+      if (RegExp(r'^[A-Z]\)').hasMatch(line.trim())) {
+        formattedLines.add(line.trim());
+      } else if (line.contains('NOTAM')) {
+        // NOTAM header line
+        formattedLines.add(line.trim());
+      } else {
+        // Continuation of previous field - indent it
+        formattedLines.add('   ${line.trim()}');
+      }
+    }
+    
+    return formattedLines.join('\n');
+  }
+  
+  String _getNotamPreview(Notam notam) {
+    // If we have decoded text, use that
+    if (notam.decodedText != null && notam.decodedText!.isNotEmpty) {
+      return notam.decodedText!;
+    }
+    
+    // Otherwise, try to extract the E) field from ICAO format
+    final eFieldMatch = RegExp(r'E\)\s*(.+?)(?:\n|$)', multiLine: true).firstMatch(notam.text);
+    if (eFieldMatch != null) {
+      return eFieldMatch.group(1)?.trim() ?? notam.text;
+    }
+    
+    // Fallback to first meaningful line
+    final lines = notam.text.split('\n');
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.isNotEmpty && !trimmed.contains('NOTAM')) {
+        return trimmed;
+      }
+    }
+    
+    return notam.text;
   }
   
   Widget _buildInfoChip(String label, Color color) {

@@ -144,6 +144,21 @@ class FlightPlanService extends ChangeNotifier {
     _waypointCounter = 1;
     notifyListeners();
   }
+  
+  // Create a new flight plan with a generic sequential name
+  void createNewFlightPlan() {
+    // Count existing flight plans to generate a unique number
+    int planNumber = _savedFlightPlans.length + 1;
+    String planName = 'Flight Plan $planNumber';
+    
+    // Check if name already exists and increment if needed
+    while (_savedFlightPlans.any((fp) => fp.name == planName)) {
+      planNumber++;
+      planName = 'Flight Plan $planNumber';
+    }
+    
+    startNewFlightPlan(name: planName);
+  }
 
   // Add a waypoint by clicking on the map
   void addWaypoint(LatLng position, {double? altitude}) {

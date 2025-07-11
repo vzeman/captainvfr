@@ -30,7 +30,7 @@ import '../widgets/flight_dashboard.dart';
 import '../widgets/airport_search_delegate.dart';
 import '../widgets/metar_overlay.dart';
 import '../widgets/flight_plan_overlay.dart';
-import '../widgets/compact_flight_plan_widget.dart';
+import '../widgets/flight_planning_panel.dart';
 import '../widgets/license_warning_widget.dart';
 import '../widgets/floating_waypoint_panel.dart';
 import '../widgets/optimized_airspaces_overlay.dart';
@@ -104,6 +104,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   // Toggle panel position
   double _togglePanelRightPosition = 16.0; // Default position from right edge
   double _togglePanelTopPosition = 0.4; // Default position as percentage from top (40%)
+  
+  // Flight planning panel position and state
+  Offset _flightPlanningPanelPosition = const Offset(16, 100); // Default position
+  bool _flightPlanningExpanded = true; // Track expanded state of flight planning panel
 
   // Waypoint selection state
   int? _selectedWaypointIndex;
@@ -791,8 +795,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   // Handle map tap - updated to support flight planning and airspace selection
   void _onMapTapped(TapPosition tapPosition, LatLng point) {
 
-    // If in flight planning mode, add waypoint
-    if (_flightPlanService.isPlanning) {
+    // If in flight planning mode and panel is visible, add waypoint
+    // Only allow adding waypoints when the flight planning panel is shown and in edit mode
+    if (_flightPlanService.isPlanning && _showFlightPlanning) {
       _flightPlanService.addWaypoint(point);
       return;
     }
@@ -1076,8 +1081,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   Future<void> _onAirportSelected(Airport airport) async {
     debugPrint('_onAirportSelected called for ${airport.icao} - ${airport.name}');
 
-    // If in flight planning mode, add airport as waypoint instead of showing details
-    if (_flightPlanService.isPlanning) {
+    // If in flight planning mode and panel is visible, add airport as waypoint instead of showing details
+    if (_flightPlanService.isPlanning && _showFlightPlanning) {
       debugPrint('Flight planning mode active - adding airport as waypoint');
       _flightPlanService.addAirportWaypoint(airport);
       debugPrint('Added airport waypoint: ${airport.icao} - ${airport.name}');
@@ -1162,8 +1167,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   Future<void> _onNavaidSelected(Navaid navaid) async {
     debugPrint('_onNavaidSelected called for ${navaid.ident} - ${navaid.name}');
 
-    // If in flight planning mode, add navaid as waypoint instead of showing details
-    if (_flightPlanService.isPlanning) {
+    // If in flight planning mode and panel is visible, add navaid as waypoint instead of showing details
+    if (_flightPlanService.isPlanning && _showFlightPlanning) {
       debugPrint('Flight planning mode active - adding navaid as waypoint');
       _flightPlanService.addNavaidWaypoint(navaid);
       debugPrint('Added navaid waypoint: ${navaid.ident} - ${navaid.name}');
@@ -1229,6 +1234,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             _buildThemedInfoRow('Altitude', airspace.altitudeRange),
             if (airspace.country != null)
               _buildThemedInfoRow('Country', airspace.country!),
+            // Extract and display frequency if available in remarks
+            if (airspace.remarks != null && _extractFrequency(airspace.remarks!) != null)
+              _buildThemedInfoRow('Frequency', _extractFrequency(airspace.remarks!)!),
             if (airspace.onDemand == true)
               const Padding(
                 padding: EdgeInsets.only(top: 8.0),
@@ -1435,6 +1443,30 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         ],
       ),
     );
+  }
+  
+  /// Extract frequency information from remarks or other text
+  String? _extractFrequency(String text) {
+    // Common frequency patterns:
+    // - 123.456 MHz
+    // - 123.45 MHz
+    // - 123.4 MHz
+    // - FREQ: 123.456
+    // - Frequency: 123.456
+    // - Tower 123.456
+    // - APP 123.456
+    final frequencyPattern = RegExp(
+      r'(?:freq(?:uency)?|tower|app|ground|atis|approach|departure|center|control|radio)?\s*:?\s*(\d{3}\.\d{1,3})(?:\s*mhz)?',
+      caseSensitive: false,
+    );
+    
+    final match = frequencyPattern.firstMatch(text);
+    if (match != null) {
+      final freq = match.group(1);
+      return '$freq MHz';
+    }
+    
+    return null;
   }
 
   /// Initialize services with cached data
@@ -1893,27 +1925,29 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                       isActive: _showAirspaces,
                       onPressed: _toggleAirspaces,
                     ),
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _showCurrentAirspacePanel ? Colors.blue.withValues(alpha: 0.1) : Colors.transparent,
-                      ),
-                      child: IconButton(
-                        icon: Text(
-                          'A',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: _showCurrentAirspacePanel ? Colors.blue : Colors.black,
-                          ),
-                        ),
-                        tooltip: 'Toggle Current Airspace Panel',
-                        onPressed: () {
-                          setState(() {
-                            _showCurrentAirspacePanel = !_showCurrentAirspacePanel;
-                          });
-                        },
-                      ),
+                    _buildLayerToggle(
+                      icon: _showCurrentAirspacePanel ? Icons.account_tree : Icons.account_tree_outlined,
+                      tooltip: 'Toggle Current Airspace Panel',
+                      isActive: _showCurrentAirspacePanel,
+                      onPressed: () {
+                        setState(() {
+                          _showCurrentAirspacePanel = !_showCurrentAirspacePanel;
+                        });
+                      },
+                    ),
+                    _buildLayerToggle(
+                      icon: _showFlightPlanning ? Icons.route : Icons.route_outlined,
+                      tooltip: 'Toggle Flight Planning',
+                      isActive: _showFlightPlanning,
+                      onPressed: () {
+                        setState(() {
+                          _showFlightPlanning = !_showFlightPlanning;
+                          // Auto-create flight plan if none exists
+                          if (_showFlightPlanning && _flightPlanService.currentFlightPlan == null) {
+                            _flightPlanService.createNewFlightPlan();
+                          }
+                        });
+                      },
                     ),
                   ],
                 ),
@@ -1937,6 +1971,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         : 600, // Tablet/desktop max width
                     child: FlightDashboard(
                       isExpanded: _flightDashboardExpanded,
+                      onExpandedChanged: (expanded) {
+                        // Don't update state during drag
+                      },
                     ),
                   ),
                 ),
@@ -2001,7 +2038,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   color: Colors.transparent,
                   child: Container(
                     constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width - 16,
+                      maxWidth: MediaQuery.of(context).size.width < 600 
+                          ? MediaQuery.of(context).size.width - 16 
+                          : MediaQuery.of(context).size.width < 1200 
+                              ? 500 
+                              : 600,
                     ),
                     child: AirspaceFlightInfo(
                       currentPosition: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
@@ -2325,20 +2366,88 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             builder: (context, flightPlanService, child) {
               return Stack(
                 children: [
-                  // Compact Flight Planning Widget - replaces the large floating panel
-                  CompactFlightPlanWidget(
-                    isVisible: _showFlightPlanning,
-                    onClose: () {
-                      setState(() {
-                        _showFlightPlanning = false;
-                      });
-                      // Stop planning mode - check if we need to toggle
-                      if (_flightPlanService.isPlanning) {
-                        _flightPlanService.togglePlanningMode();
-                      }
-                      debugPrint('Flight planning closed from compact widget');
-                    },
-                  ),
+                  // Flight Planning Panel - new unified draggable panel
+                  if (_showFlightPlanning)
+                    Positioned(
+                      left: _flightPlanningPanelPosition.dx,
+                      top: _flightPlanningPanelPosition.dy,
+                      child: Draggable<String>(
+                        data: 'flight_planning_panel',
+                        feedback: Material(
+                          color: Colors.transparent,
+                          child: SizedBox(
+                            width: MediaQuery.of(context).size.width < 600 
+                                ? MediaQuery.of(context).size.width - 16
+                                : 600,
+                            child: FlightPlanningPanel(
+                              isExpanded: _flightPlanningExpanded,
+                              onClose: () {
+                                setState(() {
+                                  _showFlightPlanning = false;
+                                });
+                                // Stop planning mode - check if we need to toggle
+                                if (_flightPlanService.isPlanning) {
+                                  _flightPlanService.togglePlanningMode();
+                                }
+                                debugPrint('Flight planning closed from panel');
+                              },
+                            ),
+                          ),
+                        ),
+                        childWhenDragging: Container(),
+                        onDragEnd: (details) {
+                          setState(() {
+                            final screenSize = MediaQuery.of(context).size;
+                            final isPhone = screenSize.width < 600;
+                            
+                            double newX = details.offset.dx;
+                            double newY = details.offset.dy;
+                            
+                            final panelWidth = isPhone ? screenSize.width - 16 : 600;
+                            final panelHeight = _flightPlanningExpanded ? 600 : 50;
+                            
+                            // Constrain position
+                            final minMargin = isPhone ? 8.0 : 16.0;
+                            
+                            if (!isPhone) {
+                              newX = newX.clamp(minMargin, screenSize.width - panelWidth - minMargin);
+                            } else {
+                              newX = minMargin;
+                            }
+                            
+                            newY = newY.clamp(
+                              MediaQuery.of(context).padding.top + 60,
+                              screenSize.height - panelHeight - 100
+                            );
+                            
+                            _flightPlanningPanelPosition = Offset(newX, newY);
+                          });
+                        },
+                        child: SizedBox(
+                          width: MediaQuery.of(context).size.width < 600 
+                              ? MediaQuery.of(context).size.width - 16
+                              : 600,
+                          child: FlightPlanningPanel(
+                            isExpanded: _flightPlanningExpanded,
+                            onExpandedChanged: (expanded) {
+                              setState(() {
+                                _flightPlanningExpanded = expanded;
+                              });
+                            },
+                            onClose: () {
+                              setState(() {
+                                _showFlightPlanning = false;
+                              });
+                              // Stop planning mode - check if we need to toggle
+                              if (_flightPlanService.isPlanning) {
+                                _flightPlanService.togglePlanningMode();
+                              }
+                              debugPrint('Flight planning closed from panel');
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
                   // Floating waypoint panel for selected waypoint
                   if (_selectedWaypointIndex != null && 
                       flightPlanService.currentFlightPlan != null &&
