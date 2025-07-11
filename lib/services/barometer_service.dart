@@ -80,6 +80,9 @@ class BarometerService {
     } on PlatformException catch (e) {
       _logger.e('Error checking barometer availability: $e');
       return false;
+    } on MissingPluginException catch (e) {
+      _logger.e('Barometer plugin not implemented on this platform: $e');
+      return false;
     }
   }
 
@@ -109,6 +112,12 @@ class BarometerService {
         _logger.w('Barometer not available, using simulated data');
         _startSimulatedPressureUpdates();
       }
+    } on MissingPluginException catch (e) {
+      _logger.e('Barometer plugin not implemented: $e');
+      _isBarometerAvailable = false;
+      _isListening = false;
+      // Fallback to simulation if native plugin is missing
+      _startSimulatedPressureUpdates();
     } catch (e) {
       _logger.e('Error starting barometer: $e');
       _isListening = false;

@@ -126,7 +126,6 @@ class FlightService with ChangeNotifier {
         _currentXAccel = event.x / _gravity;
         _currentYAccel = event.y / _gravity;
         _currentZAccel = event.z / _gravity;
-
       }, onError: (error) {
         debugPrint('Accelerometer error: $error');
       });
@@ -148,6 +147,11 @@ class FlightService with ChangeNotifier {
         notifyListeners();
       }
     });
+    
+    // Check if compass is available
+    if (FlutterCompass.events == null) {
+      debugPrint('Compass not available on this device - will use GPS-based heading');
+    }
   }
   
   Future<void> initialize() async {
@@ -286,22 +290,35 @@ class FlightService with ChangeNotifier {
     // Get the best available altitude measurement
     final bestAltitude = _getBestAltitude(position.altitude);
     
-    // Calculate heading if compass is not available or if we don't have a heading yet
+    // Calculate heading from GPS movement
     double heading = _currentHeading ?? 0.0;
-    if (_currentHeading == null && _flightPath.isNotEmpty) {
-      // Compute heading from previous position
+    if (_flightPath.isNotEmpty) {
       final lastPoint = _flightPath.last;
-      final computedHeading = Geolocator.bearingBetween(
+      // Calculate distance to check if we're actually moving
+      final distance = Geolocator.distanceBetween(
         lastPoint.latitude,
         lastPoint.longitude,
         position.latitude,
         position.longitude,
       );
-      // Convert from [-180, 180] to [0, 360]
-      heading = computedHeading < 0 ? computedHeading + 360 : computedHeading;
-      // Update current heading for display
-      _currentHeading = heading;
-      notifyListeners();
+      
+      // Only update heading if we've moved more than 5 meters
+      if (distance > 5.0) {
+        final computedHeading = Geolocator.bearingBetween(
+          lastPoint.latitude,
+          lastPoint.longitude,
+          position.latitude,
+          position.longitude,
+        );
+        // Convert from [-180, 180] to [0, 360]
+        heading = computedHeading < 0 ? computedHeading + 360 : computedHeading;
+        
+        // Always update GPS-based heading if compass is not available
+        if (FlutterCompass.events == null || _currentHeading == null) {
+          _currentHeading = heading;
+          notifyListeners();
+        }
+      }
     }
     
     // Calculate vertical speed in m/s
@@ -709,98 +726,93 @@ class FlightService with ChangeNotifier {
     _pausePoints.clear();
   }
   
+  // Optimize G-force data by keeping only max values per minute
+  List<FlightPoint> _optimizeGForceData(List<FlightPoint> points) {
+    if (points.isEmpty) return points;
+    
+    final optimizedPoints = <FlightPoint>[];
+    Map<DateTime, List<FlightPoint>> minuteGroups = {};
+    
+    // Group points by minute
+    for (final point in points) {
+      final minuteKey = DateTime(
+        point.timestamp.year,
+        point.timestamp.month,
+        point.timestamp.day,
+        point.timestamp.hour,
+        point.timestamp.minute,
+      );
+      minuteGroups.putIfAbsent(minuteKey, () => []).add(point);
+    }
+    
+    // For each minute, keep the point with the highest G-force
+    for (final entry in minuteGroups.entries) {
+      final pointsInMinute = entry.value;
+      
+      if (pointsInMinute.length == 1) {
+        // Only one point in this minute, keep it as is
+        optimizedPoints.add(pointsInMinute.first);
+      } else {
+        // Find the point with maximum total G-force
+        FlightPoint? maxGPoint;
+        double maxTotalG = 0.0;
+        
+        for (final point in pointsInMinute) {
+          final totalG = math.sqrt(
+            point.xAcceleration * point.xAcceleration +
+            point.yAcceleration * point.yAcceleration +
+            point.zAcceleration * point.zAcceleration
+          );
+          
+          if (totalG > maxTotalG) {
+            maxTotalG = totalG;
+            maxGPoint = point;
+          }
+        }
+        
+        // Keep the point with max G-force, but also keep first and last points of the minute
+        // to maintain accurate position tracking
+        optimizedPoints.add(pointsInMinute.first);
+        if (maxGPoint != null && maxGPoint != pointsInMinute.first && maxGPoint != pointsInMinute.last) {
+          optimizedPoints.add(maxGPoint);
+        }
+        if (pointsInMinute.last != pointsInMinute.first) {
+          optimizedPoints.add(pointsInMinute.last);
+        }
+      }
+    }
+    
+    // Sort by timestamp to maintain chronological order
+    optimizedPoints.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    
+    debugPrint('G-force optimization: ${points.length} points reduced to ${optimizedPoints.length} points');
+    return optimizedPoints;
+  }
+  
   // Create a flight from the current tracking data
   Flight _createFlight() {
     if (_flightPath.isEmpty) {
       throw Exception('No flight data to save');
     }
     
-    final startTime = _flightPath.first.timestamp;
-    final endTime = _flightPath.last.timestamp;
+    // Optimize G-force data before saving
+    final optimizedPath = _optimizeGForceData(_flightPath);
+    
+    final startTime = optimizedPath.first.timestamp;
+    final endTime = optimizedPath.last.timestamp;
     
     // Calculate max altitude and speed
     double maxAltitude = 0.0;
     double maxSpeed = 0.0;
     
-    // Convert flight path to FlightPoint objects
-    final flightPoints = <FlightPoint>[];
-    
-    // Add first point
-    if (_flightPath.isNotEmpty) {
-      final firstPoint = _flightPath.first;
-      flightPoints.add(FlightPoint(
-        latitude: firstPoint.position.latitude,
-        longitude: firstPoint.position.longitude,
-        altitude: firstPoint.altitude,
-        speed: 0.0, // Initial speed is 0
-        heading: 0.0, // Will be updated with next point
-        timestamp: firstPoint.timestamp,
-        accuracy: firstPoint.accuracy,
-        verticalAccuracy: 0.0, // Not available from Position
-        speedAccuracy: 0.0, // Not available from Position
-        headingAccuracy: 0.0, // Not available from Position
-        xAcceleration: 0.0, // Will be updated by sensor service
-        yAcceleration: 0.0, // Will be updated by sensor service
-        zAcceleration: 0.0, // Will be updated by sensor service
-        xGyro: 0.0, // Will be updated by sensor service
-        yGyro: 0.0, // Will be updated by sensor service
-        zGyro: 0.0, // Will be updated by sensor service
-        pressure: 0.0, // Will be updated by barometer service
-      ));
-    }
-    
-    // Process subsequent points
-    for (var i = 1; i < _flightPath.length; i++) {
-      final prevPoint = _flightPath[i - 1];
-      final currPoint = _flightPath[i];
-      
-      // Calculate distance between points
-      final distance = Geolocator.distanceBetween(
-        prevPoint.position.latitude,
-        prevPoint.position.longitude,
-        currPoint.position.latitude,
-        currPoint.position.longitude,
-      );
-      
-      // Calculate time difference in seconds
-      final timeDiff = currPoint.timestamp.difference(prevPoint.timestamp).inSeconds.toDouble();
-      final speed = timeDiff > 0 ? distance / timeDiff : 0.0; // m/s
-      
-      // Calculate heading (bearing) between points
-      final heading = Geolocator.bearingBetween(
-        prevPoint.position.latitude,
-        prevPoint.position.longitude,
-        currPoint.position.latitude,
-        currPoint.position.longitude,
-      );
-      
-      maxSpeed = math.max(maxSpeed, speed);
-      maxAltitude = math.max(maxAltitude, currPoint.altitude);
-      
-      // Add the flight point with calculated data
-      flightPoints.add(FlightPoint(
-        latitude: currPoint.position.latitude,
-        longitude: currPoint.position.longitude,
-        altitude: currPoint.altitude,
-        speed: speed,
-        heading: heading,
-        timestamp: currPoint.timestamp,
-        accuracy: currPoint.accuracy,
-        verticalAccuracy: 0.0, // Not available from Position
-        speedAccuracy: 0.0, // Not available from Position
-        headingAccuracy: 0.0, // Not available from Position
-        xAcceleration: 0.0, // Will be updated by sensor service
-        yAcceleration: 0.0, // Will be updated by sensor service
-        zAcceleration: 0.0, // Will be updated by sensor service
-        xGyro: 0.0, // Will be updated by sensor service
-        yGyro: 0.0, // Will be updated by sensor service
-        zGyro: 0.0, // Will be updated by sensor service
-        pressure: 0.0, // Will be updated by barometer service
-      ));
+    // Calculate stats from optimized path
+    for (final point in optimizedPath) {
+      maxAltitude = math.max(maxAltitude, point.altitude);
+      maxSpeed = math.max(maxSpeed, point.speed);
     }
     
     // Calculate moving time (time spent moving > 1 m/s)
-    final movingTime = flightPoints.fold<Duration>(
+    final movingTime = optimizedPath.fold<Duration>(
       Duration.zero,
       (total, point) => point.speed > 1.0 
           ? total + Duration(seconds: 1) 
@@ -811,7 +823,7 @@ class FlightService with ChangeNotifier {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       startTime: startTime,
       endTime: endTime,
-      path: flightPoints,
+      path: optimizedPath,
       maxAltitude: maxAltitude,
       distanceTraveled: _totalDistance,
       movingTime: movingTime,

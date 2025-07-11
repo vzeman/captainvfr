@@ -39,6 +39,7 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
     _isExpanded = widget.isExpanded ?? true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final flightPlanService = context.read<FlightPlanService>();
+      final aircraftService = context.read<AircraftSettingsService>();
       final flightPlan = flightPlanService.currentFlightPlan;
       
       // Sync edit mode with planning mode
@@ -58,6 +59,21 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
         if (flightPlan.cruiseSpeed != null) {
           _cruiseSpeedController.text = flightPlan.cruiseSpeed!.toStringAsFixed(0);
         }
+      }
+      
+      // Auto-select aircraft if not already selected
+      if (_selectedAircraftId == null && aircraftService.aircrafts.isNotEmpty) {
+        final aircrafts = aircraftService.aircrafts;
+        
+        if (aircrafts.length == 1) {
+          // Only one aircraft - auto-select it
+          setState(() {
+            _selectedAircraftId = aircrafts.first.id;
+          });
+          _updateAircraft(flightPlanService, aircraftService, aircrafts.first.id);
+        }
+        // Note: We could implement last-used aircraft selection if Flight model
+        // had an aircraftId field in the future
       }
     });
   }
@@ -95,8 +111,8 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
         vertical: 16.0,
       ),
       constraints: BoxConstraints(
-        minHeight: _isExpanded ? 200 : 50,
-        maxHeight: _isExpanded ? 600 : 50,
+        minHeight: _isExpanded ? 200 : 60,
+        maxHeight: _isExpanded ? 600 : 60,
         minWidth: 300,
         maxWidth: maxWidth,
       ),
@@ -138,7 +154,7 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
         color: _isEditMode ? const Color(0x33448AFF) : Colors.transparent,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(12.0)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: _isExpanded ? 8.0 : 4.0),
       child: Row(
         children: [
           // Expand/Collapse button
@@ -146,10 +162,11 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
             icon: Icon(
               _isExpanded ? Icons.expand_less : Icons.expand_more,
               color: const Color(0xFF448AFF),
+              size: _isExpanded ? 24 : 20,
             ),
             onPressed: () => _toggleExpanded(!_isExpanded),
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            constraints: BoxConstraints(minWidth: _isExpanded ? 32 : 28, minHeight: _isExpanded ? 32 : 28),
           ),
           
           // Flight planning icon
@@ -168,14 +185,14 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
               children: [
                 Text(
                   flightPlan?.name ?? (isPlanning ? 'Flight Planning' : 'No Flight Plan'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 14,
+                    fontSize: _isExpanded ? 14 : 13,
                     fontWeight: FontWeight.w600,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (flightPlan != null && flightPlan.waypoints.isNotEmpty)
+                if (_isExpanded && flightPlan != null && flightPlan.waypoints.isNotEmpty)
                   Consumer<SettingsService>(
                     builder: (context, settings, child) {
                       final isMetric = settings.units == 'metric';
@@ -238,12 +255,12 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
             IconButton(
               icon: Icon(
                 Icons.close,
-                size: 20,
+                size: _isExpanded ? 20 : 18,
                 color: Colors.white.withValues(alpha: 0.7),
               ),
               onPressed: widget.onClose,
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              constraints: BoxConstraints(minWidth: _isExpanded ? 32 : 28, minHeight: _isExpanded ? 32 : 28),
             ),
         ],
       ),
@@ -301,6 +318,67 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
       builder: (context, aircraftService, child) {
         final aircrafts = aircraftService.aircrafts;
         
+        // If no aircraft defined, only show cruise speed input
+        if (aircrafts.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0x1A448AFF),
+              border: Border.all(color: const Color(0x33448AFF)),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.speed, size: 16, color: Color(0xFF448AFF)),
+                const SizedBox(width: 4),
+                const Text('Cruise Speed:', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _cruiseSpeedController,
+                    enabled: _isEditMode,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(fontSize: 12, color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: '120',
+                      hintStyle: const TextStyle(color: Colors.white30),
+                      suffix: const Text('kts', style: TextStyle(fontSize: 10, color: Colors.white70)),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      filled: true,
+                      fillColor: const Color(0x1A448AFF),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: const BorderSide(color: Color(0x33448AFF)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: const BorderSide(color: Color(0x33448AFF)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: const BorderSide(color: Color(0xFF448AFF)),
+                      ),
+                      disabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: const BorderSide(color: Color(0x1A666666)),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      final speed = double.tryParse(value);
+                      if (speed != null && speed > 0) {
+                        flightPlanService.updateCruiseSpeed(speed);
+                        _autosaveFlightPlan(flightPlanService);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        
+        // Show full aircraft section when aircraft are available
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
