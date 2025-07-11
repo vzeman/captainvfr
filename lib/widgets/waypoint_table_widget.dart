@@ -12,6 +12,8 @@ class WaypointTableWidget extends StatefulWidget {
   final Aircraft? selectedAircraft;
   final int? selectedWaypointIndex;
   final Function(int)? onWaypointSelected;
+  final bool isExpanded;
+  final Function(bool)? onExpandedChanged;
 
   const WaypointTableWidget({
     super.key,
@@ -19,6 +21,8 @@ class WaypointTableWidget extends StatefulWidget {
     this.selectedAircraft,
     this.selectedWaypointIndex,
     this.onWaypointSelected,
+    this.isExpanded = true,
+    this.onExpandedChanged,
   });
 
   @override
@@ -27,7 +31,7 @@ class WaypointTableWidget extends StatefulWidget {
 
 class _WaypointTableWidgetState extends State<WaypointTableWidget> 
     with SingleTickerProviderStateMixin {
-  bool _isExpanded = true;
+  late bool _isExpanded;
   late AnimationController _animationController;
   late Animation<double> _animation;
   
@@ -40,6 +44,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
   @override
   void initState() {
     super.initState();
+    _isExpanded = widget.isExpanded;
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -80,6 +85,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
         _animationController.reverse();
       }
     });
+    widget.onExpandedChanged?.call(_isExpanded);
   }
 
   TextEditingController _getNameController(Waypoint waypoint) {
@@ -283,10 +289,14 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                         ),
                       ),
                     )
-                  : ReorderableListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      buildDefaultDragHandles: false,
+                  : Container(
+                      constraints: BoxConstraints(
+                        maxHeight: 400, // Limit height to enable scrolling
+                      ),
+                      child: ReorderableListView.builder(
+                        shrinkWrap: true,
+                        physics: const ClampingScrollPhysics(),
+                        buildDefaultDragHandles: false,
                       onReorder: (oldIndex, newIndex) {
                         final flightPlanService = Provider.of<FlightPlanService>(
                           context,
@@ -548,6 +558,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                           );
                       },
                     ),
+                  ),
             ),
           ),
         ],

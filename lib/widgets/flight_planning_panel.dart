@@ -32,6 +32,7 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
   String? _selectedAircraftId;
   int? _selectedWaypointIndex;
   Timer? _autosaveTimer;
+  bool _isWaypointTableExpanded = true; // Track waypoint table expanded state
   
   @override
   void initState() {
@@ -299,6 +300,12 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
                     flightPlan: flightPlan,
                     selectedAircraft: selectedAircraft,
                     selectedWaypointIndex: _selectedWaypointIndex,
+                    isExpanded: _isWaypointTableExpanded,
+                    onExpandedChanged: (expanded) {
+                      setState(() {
+                        _isWaypointTableExpanded = expanded;
+                      });
+                    },
                     onWaypointSelected: (index) {
                       setState(() {
                         _selectedWaypointIndex = index;

@@ -119,13 +119,27 @@ class FlightService with ChangeNotifier {
   
   // Initialize sensor subscriptions
   void _initSensors() {
-    // Accelerometer
+    // Don't initialize sensors until tracking starts to save battery and CPU
+    debugPrint('Sensors will be initialized when tracking starts');
+    
+    // Check if compass is available
+    if (FlutterCompass.events == null) {
+      debugPrint('Compass not available on this device - will use GPS-based heading');
+    }
+  }
+  
+  // Start sensor subscriptions when tracking begins
+  void _startSensors() {
+    // Accelerometer with reduced sampling rate
     try {
-      _accelerometerSubscription = accelerometerEventStream().listen((AccelerometerEvent event) {
+      _accelerometerSubscription = accelerometerEventStream(
+        samplingPeriod: const Duration(milliseconds: 100), // 10Hz instead of max
+      ).listen((AccelerometerEvent event) {
         // Convert from m/s² to g's
         _currentXAccel = event.x / _gravity;
         _currentYAccel = event.y / _gravity;
         _currentZAccel = event.z / _gravity;
+        // Don't call notifyListeners here - too frequent
       }, onError: (error) {
         debugPrint('Accelerometer error: $error');
       });
@@ -133,25 +147,30 @@ class FlightService with ChangeNotifier {
       debugPrint('Failed to initialize accelerometer: $e');
     }
     
-    // Gyroscope
-    _gyroscopeSubscription = gyroscopeEventStream().listen((GyroscopeEvent event) {
+    // Gyroscope with reduced sampling rate
+    _gyroscopeSubscription = gyroscopeEventStream(
+      samplingPeriod: const Duration(milliseconds: 100), // 10Hz instead of max
+    ).listen((GyroscopeEvent event) {
       _currentXGyro = event.x;
       _currentYGyro = event.y;
       _currentZGyro = event.z;
+      // Don't call notifyListeners here - too frequent
     });
     
-    // Compass
+    // Compass - throttle updates
+    DateTime? lastCompassUpdate;
     _compassSubscription = FlutterCompass.events?.listen((CompassEvent event) {
       if (event.heading != null) {
         _currentHeading = event.heading;
-        notifyListeners();
+        // Throttle compass updates to max 2 per second
+        final now = DateTime.now();
+        if (lastCompassUpdate == null || 
+            now.difference(lastCompassUpdate!).inMilliseconds > 500) {
+          lastCompassUpdate = now;
+          notifyListeners();
+        }
       }
     });
-    
-    // Check if compass is available
-    if (FlutterCompass.events == null) {
-      debugPrint('Compass not available on this device - will use GPS-based heading');
-    }
   }
   
   Future<void> initialize() async {
@@ -208,6 +227,10 @@ class FlightService with ChangeNotifier {
     
     // Enable wakelock to keep screen on during tracking
     WakelockPlus.enable();
+    
+    // Start sensors only when tracking begins
+    _startSensors();
+    
     _flightPath.clear();
     _altitudeHistory.clear();
     _startTime = DateTime.now();
@@ -254,8 +277,8 @@ class FlightService with ChangeNotifier {
     if (Platform.isAndroid) {
       locationSettings = AndroidSettings(
         accuracy: LocationAccuracy.bestForNavigation,
-        distanceFilter: 5, // meters
-        intervalDuration: const Duration(seconds: 5),
+        distanceFilter: 10, // meters - increased to reduce updates
+        intervalDuration: const Duration(seconds: 2), // faster updates but with distance filter
         // Enable background location updates
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationText: "Captain VFR is tracking your flight",
@@ -266,7 +289,7 @@ class FlightService with ChangeNotifier {
     } else if (Platform.isIOS) {
       locationSettings = AppleSettings(
         accuracy: LocationAccuracy.bestForNavigation,
-        distanceFilter: 5, // meters
+        distanceFilter: 10, // meters - increased to reduce updates
         pauseLocationUpdatesAutomatically: false,
         // Show background location indicator
         showBackgroundLocationIndicator: true,
@@ -275,7 +298,7 @@ class FlightService with ChangeNotifier {
     } else {
       locationSettings = const LocationSettings(
         accuracy: LocationAccuracy.bestForNavigation,
-        distanceFilter: 5, // meters
+        distanceFilter: 10, // meters
       );
     }
     
@@ -287,6 +310,15 @@ class FlightService with ChangeNotifier {
   void _onPositionChanged(Position position) {
     if (!_isTracking) return;
 
+    // Defer heavy processing to next frame to keep UI responsive
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _processPositionUpdate(position);
+    });
+  }
+  
+  void _processPositionUpdate(Position position) {
+    if (!_isTracking) return;
+    
     // Get the best available altitude measurement
     final bestAltitude = _getBestAltitude(position.altitude);
     
@@ -365,6 +397,9 @@ class FlightService with ChangeNotifier {
     _updateFlightSegments(point);
 
     _updateFlightStats();
+    
+    // Throttle notifications to avoid excessive UI updates
+    _throttledNotifyListeners();
     onFlightPathUpdated?.call();
   }
 
@@ -644,6 +679,9 @@ class FlightService with ChangeNotifier {
   Future<void> stopTracking() async {
     if (!_isTracking) return;
     _isTracking = false;
+    
+    // Stop sensors to save battery
+    _stopSensors();
     
     // Disable wakelock when tracking stops
     WakelockPlus.disable();
@@ -979,14 +1017,44 @@ class FlightService with ChangeNotifier {
   double get currentPressure => _barometerService?.lastPressure ?? 1013.25;
 
   // Clean up resources
+  // Throttling for notifications
+  DateTime? _lastNotifyTime;
+  Timer? _notifyTimer;
+  static const _notifyThrottleMs = 250; // Max 4 updates per second
+  
+  void _throttledNotifyListeners() {
+    final now = DateTime.now();
+    if (_lastNotifyTime == null || 
+        now.difference(_lastNotifyTime!).inMilliseconds > _notifyThrottleMs) {
+      _lastNotifyTime = now;
+      notifyListeners();
+    } else {
+      // Schedule a delayed notification if we're throttling
+      _notifyTimer?.cancel();
+      _notifyTimer = Timer(const Duration(milliseconds: _notifyThrottleMs), () {
+        _lastNotifyTime = DateTime.now();
+        notifyListeners();
+      });
+    }
+  }
+  
+  // Stop sensor subscriptions
+  void _stopSensors() {
+    _compassSubscription?.cancel();
+    _compassSubscription = null;
+    _accelerometerSubscription?.cancel();
+    _accelerometerSubscription = null;
+    _gyroscopeSubscription?.cancel();
+    _gyroscopeSubscription = null;
+  }
+  
   @override
   void dispose() {
+    _stopSensors();
     _positionSubscription?.cancel();
     _barometerSubscription?.cancel();
-    _compassSubscription?.cancel();
-    _accelerometerSubscription?.cancel();
-    _gyroscopeSubscription?.cancel();
     _barometerService?.dispose();
+    _notifyTimer?.cancel();
     _isTracking = false;
     _flightPath.clear();
     // Ensure wakelock is disabled when service is disposed

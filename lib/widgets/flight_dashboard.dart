@@ -60,6 +60,38 @@ class _FlightDashboardState extends State<FlightDashboard> {
   void initState() {
     super.initState();
     _isExpanded = widget.isExpanded ?? true;
+    
+    // Auto-select aircraft after frame is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _autoSelectAircraft();
+    });
+  }
+  
+  void _autoSelectAircraft() {
+    final aircraftService = context.read<AircraftSettingsService>();
+    final flightService = context.read<FlightService>();
+    
+    // Only auto-select if no aircraft is currently selected
+    if (aircraftService.selectedAircraft == null && aircraftService.aircrafts.isNotEmpty) {
+      if (aircraftService.aircrafts.length == 1) {
+        // Only one aircraft - auto-select it
+        aircraftService.aircraftService.selectAircraft(aircraftService.aircrafts.first.id);
+        if (flightService.isTracking) {
+          flightService.setAircraft(aircraftService.aircrafts.first);
+        }
+      } else if (aircraftService.aircrafts.length > 1) {
+        // Multiple aircraft - try to select the last used one
+        final flights = flightService.flights;
+        if (flights.isNotEmpty) {
+          // Since Flight model doesn't have aircraftId, we can't implement this yet
+          // For now, just select the first aircraft
+          aircraftService.aircraftService.selectAircraft(aircraftService.aircrafts.first.id);
+          if (flightService.isTracking) {
+            flightService.setAircraft(aircraftService.aircrafts.first);
+          }
+        }
+      }
+    }
   }
   
   void _toggleExpanded(bool expanded) {
@@ -282,51 +314,60 @@ class _FlightDashboardState extends State<FlightDashboard> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Collapse button
-        IconButton(
-          icon: const Icon(Icons.expand_less, color: Color(0xFF448AFF), size: 20),
-          onPressed: () => _toggleExpanded(false),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-        ),
-        // Compact aircraft selection
-        Flexible(
-          flex: 2,
-          child: _buildCompactAircraftSelector(context, flightService),
-        ),
-        const Flexible(
-          flex: 3,
-          child: Text(
-            'FLIGHT',
-            style: TextStyle(
-              color: Colors.blueAccent,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
-            ),
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
+        // Left side: Collapse button and title
+        Expanded(
+          child: Row(
+            children: [
+              // Collapse button
+              IconButton(
+                icon: const Icon(Icons.expand_less, color: Color(0xFF448AFF), size: 20),
+                onPressed: () => _toggleExpanded(false),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+              const SizedBox(width: 8),
+              // Title aligned to left
+              const Text(
+                'FLIGHT',
+                style: TextStyle(
+                  color: Colors.blueAccent,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ),
-        // Larger tracking button for better visibility
-        SizedBox(
-          width: 48,
-          height: 48,
-          child: IconButton(
-            icon: Icon(
-              flightService.isTracking ? Icons.stop : Icons.play_arrow,
-              color: flightService.isTracking ? Colors.red : Colors.green,
-              size: 24,
+        // Right side: Aircraft selector and tracking button
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Compact aircraft selection
+            _buildCompactAircraftSelector(context, flightService),
+            const SizedBox(width: 8),
+            // Larger tracking button for better visibility
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: IconButton(
+                icon: Icon(
+                  flightService.isTracking ? Icons.stop : Icons.play_arrow,
+                  color: flightService.isTracking ? Colors.red : Colors.green,
+                  size: 24,
+                ),
+                onPressed: () {
+                  if (flightService.isTracking) {
+                    flightService.stopTracking();
+                  } else {
+                    flightService.startTracking();
+                  }
+                },
+                tooltip: flightService.isTracking ? 'Stop Tracking' : 'Start Tracking',
+              ),
             ),
-            onPressed: () {
-              if (flightService.isTracking) {
-                flightService.stopTracking();
-              } else {
-                flightService.startTracking();
-              }
-            },
-            tooltip: flightService.isTracking ? 'Stop Tracking' : 'Start Tracking',
-          ),
+          ],
         ),
       ],
     );
@@ -335,6 +376,11 @@ class _FlightDashboardState extends State<FlightDashboard> {
   Widget _buildCompactAircraftSelector(BuildContext context, FlightService flightService) {
     return Consumer<AircraftSettingsService>(
       builder: (context, aircraftService, child) {
+        // Hide aircraft selector if no aircraft are defined
+        if (aircraftService.aircrafts.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        
         final selectedAircraft = aircraftService.selectedAircraft;
 
         return InkWell(
@@ -576,8 +622,8 @@ class _FlightDashboardState extends State<FlightDashboard> {
   }
 
   Widget _buildAdditionalIndicators(BuildContext context, FlightService flightService, BarometerService barometerService) {
-    return Consumer<SettingsService>(
-      builder: (context, settings, child) {
+    return Consumer2<SettingsService, AircraftSettingsService>(
+      builder: (context, settings, aircraftService, child) {
         // Convert pressure based on user preference
         final pressureValue = flightService.currentPressure;
         final displayPressure = settings.pressureUnit == 'inHg' 
@@ -586,6 +632,9 @@ class _FlightDashboardState extends State<FlightDashboard> {
         final pressureStr = settings.pressureUnit == 'inHg'
             ? displayPressure.toStringAsFixed(2)
             : displayPressure.toStringAsFixed(0);
+        
+        // Check if aircraft is selected
+        final hasAircraft = aircraftService.selectedAircraft != null;
             
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -597,15 +646,16 @@ class _FlightDashboardState extends State<FlightDashboard> {
                 Icons.compress,
               ),
             ),
-            Expanded(
-              child: _buildSmallIndicator(
-                'FUEL',
-                settings.units == 'metric' 
-                    ? '${(flightService.fuelUsed * 3.78541).toStringAsFixed(1)} L'
-                    : '${flightService.fuelUsed.toStringAsFixed(1)} gal',
-                Icons.local_gas_station,
+            if (hasAircraft)
+              Expanded(
+                child: _buildSmallIndicator(
+                  'FUEL',
+                  settings.units == 'metric' 
+                      ? '${(flightService.fuelUsed * 3.78541).toStringAsFixed(1)} L'
+                      : '${flightService.fuelUsed.toStringAsFixed(1)} gal',
+                  Icons.local_gas_station,
+                ),
               ),
-            ),
           ],
         );
       },
