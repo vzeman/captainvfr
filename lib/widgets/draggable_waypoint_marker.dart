@@ -11,6 +11,7 @@ class DraggableWaypointMarker extends StatefulWidget {
   final bool isSelected;
   final Function(bool)? onDraggingChanged;
   final GlobalKey mapKey;
+  final bool isEditMode;
 
   const DraggableWaypointMarker({
     super.key,
@@ -21,6 +22,7 @@ class DraggableWaypointMarker extends StatefulWidget {
     required this.isSelected,
     this.onDraggingChanged,
     required this.mapKey,
+    required this.isEditMode,
   });
 
   @override
@@ -48,7 +50,7 @@ class _DraggableWaypointMarkerState extends State<DraggableWaypointMarker> {
   Widget build(BuildContext context) {
     return Listener(
       onPointerDown: (event) {
-        if (widget.isSelected) {
+        if (widget.isSelected && widget.isEditMode) {
           setState(() {
             _isDragging = true;
             _lastPosition = event.position;
@@ -87,7 +89,7 @@ class _DraggableWaypointMarkerState extends State<DraggableWaypointMarker> {
         }
       },
       child: MouseRegion(
-        cursor: widget.isSelected 
+        cursor: widget.isSelected && widget.isEditMode
             ? (_isDragging ? SystemMouseCursors.grabbing : SystemMouseCursors.grab)
             : SystemMouseCursors.click,
         child: AnimatedContainer(

@@ -91,13 +91,21 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
     return _nameControllers[waypoint.id]!;
   }
 
-  TextEditingController _getAltitudeController(Waypoint waypoint) {
-    if (!_altitudeControllers.containsKey(waypoint.id)) {
-      _altitudeControllers[waypoint.id] = TextEditingController(
-        text: waypoint.altitude.toStringAsFixed(0),
+  TextEditingController _getAltitudeController(Waypoint waypoint, bool isMetric) {
+    final key = '${waypoint.id}_$isMetric'; // Include units in key to refresh when changed
+    if (!_altitudeControllers.containsKey(key)) {
+      // Remove old controller with different units if exists
+      _altitudeControllers.removeWhere((k, v) => k.startsWith('${waypoint.id}_'));
+      
+      // Convert altitude to display units
+      final displayAltitude = isMetric 
+          ? waypoint.altitude * 0.3048  // Convert feet to meters
+          : waypoint.altitude;
+      _altitudeControllers[key] = TextEditingController(
+        text: displayAltitude.toStringAsFixed(0),
       );
     }
-    return _altitudeControllers[waypoint.id]!;
+    return _altitudeControllers[key]!;
   }
 
   FocusNode _getNameFocusNode(String waypointId) {
@@ -295,9 +303,11 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                         double? distanceFromPrevious;
                         double? timeFromPrevious;
                         double? fuelFromPrevious;
+                        double? headingFromPrevious;
                         
                         if (index > 0) {
                           distanceFromPrevious = waypoints[index - 1].distanceTo(waypoint);
+                          headingFromPrevious = waypoints[index - 1].bearingTo(waypoint);
                           if (cruiseSpeed != null && cruiseSpeed > 0) {
                             timeFromPrevious = (distanceFromPrevious / cruiseSpeed) * 60;
                             if (fuelConsumption != null && fuelConsumption > 0) {
@@ -336,170 +346,200 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                   vertical: 12,
                                 ),
                                 child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     // Drag Handle
-                                    ReorderableDragStartListener(
-                                      index: index,
-                                      child: const Icon(
-                                        Icons.drag_handle,
-                                        color: Colors.white70,
-                                        size: 20,
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 12),
+                                      child: ReorderableDragStartListener(
+                                        index: index,
+                                        child: const Icon(
+                                          Icons.drag_handle,
+                                          color: Colors.white70,
+                                          size: 20,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 12),
                                     
                                     // Waypoint Number
-                                    Container(
-                                      width: 32,
-                                      height: 32,
-                                      decoration: BoxDecoration(
-                                        color: _getWaypointTypeColor(waypoint.type)
-                                            .withValues(alpha: 0.2),
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: _getWaypointTypeColor(waypoint.type),
-                                          width: 2,
-                                        ),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          '${index + 1}',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w600,
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: Container(
+                                        width: 32,
+                                        height: 32,
+                                        decoration: BoxDecoration(
+                                          color: _getWaypointTypeColor(waypoint.type)
+                                              .withValues(alpha: 0.2),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
                                             color: _getWaypointTypeColor(waypoint.type),
-                                            fontSize: 14,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '${index + 1}',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              color: _getWaypointTypeColor(waypoint.type),
+                                              fontSize: 14,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
                                     const SizedBox(width: 12),
                                     
-                                    // Name (Editable)
+                                    // Main content in column
                                     Expanded(
-                                      flex: 3,
-                                      child: TextField(
-                                        controller: _getNameController(waypoint),
-                                        focusNode: _getNameFocusNode(waypoint.id),
-                                        decoration: InputDecoration(
-                                          hintText: 'WP${index + 1}',
-                                          hintStyle: const TextStyle(color: Colors.white30),
-                                          border: InputBorder.none,
-                                          isDense: true,
-                                          contentPadding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          // First row: Name and Altitude
+                                          Row(
+                                            children: [
+                                              // Name (Editable)
+                                              Expanded(
+                                                child: TextField(
+                                                  controller: _getNameController(waypoint),
+                                                  focusNode: _getNameFocusNode(waypoint.id),
+                                                  decoration: InputDecoration(
+                                                    hintText: 'WP${index + 1}',
+                                                    hintStyle: const TextStyle(color: Colors.white30),
+                                                    border: InputBorder.none,
+                                                    isDense: true,
+                                                    contentPadding: const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
+                                                  ),
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                  onSubmitted: (value) => 
+                                                      _updateWaypointName(index, value),
+                                                  onEditingComplete: () {
+                                                    _updateWaypointName(
+                                                      index,
+                                                      _getNameController(waypoint).text,
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              // Altitude (Editable)
+                                              SizedBox(
+                                                width: 80,
+                                                child: TextField(
+                                                  controller: _getAltitudeController(waypoint, isMetric),
+                                                  focusNode: _getAltitudeFocusNode(waypoint.id),
+                                                  keyboardType: TextInputType.number,
+                                                  inputFormatters: [
+                                                    FilteringTextInputFormatter.digitsOnly,
+                                                  ],
+                                                  decoration: InputDecoration(
+                                                    suffixText: _getAltitudeUnit(isMetric),
+                                                    suffixStyle: const TextStyle(color: Colors.white70, fontSize: 12),
+                                                    border: InputBorder.none,
+                                                    isDense: true,
+                                                    contentPadding: const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
+                                                  ),
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 14,
+                                                  ),
+                                                  textAlign: TextAlign.right,
+                                                  onSubmitted: (value) => 
+                                                      _updateWaypointAltitude(index, value, isMetric),
+                                                  onEditingComplete: () {
+                                                    _updateWaypointAltitude(
+                                                      index,
+                                                      _getAltitudeController(waypoint, isMetric).text,
+                                                      isMetric,
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                        ),
-                                        onSubmitted: (value) => 
-                                            _updateWaypointName(index, value),
-                                        onEditingComplete: () {
-                                          _updateWaypointName(
-                                            index,
-                                            _getNameController(waypoint).text,
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    
-                                    // Altitude (Editable)
-                                    SizedBox(
-                                      width: 80,
-                                      child: TextField(
-                                        controller: _getAltitudeController(waypoint),
-                                        focusNode: _getAltitudeFocusNode(waypoint.id),
-                                        keyboardType: TextInputType.number,
-                                        inputFormatters: [
-                                          FilteringTextInputFormatter.digitsOnly,
+                                          // Second row: Computed values (only if available)
+                                          if (distanceFromPrevious != null || timeFromPrevious != null || fuelFromPrevious != null)
+                                            Padding(
+                                              padding: const EdgeInsets.only(top: 4),
+                                              child: Row(
+                                                children: [
+                                                  // Distance
+                                                  if (distanceFromPrevious != null) ...[
+                                                    Text(
+                                                      '${_formatDistance(distanceFromPrevious, isMetric)} ${_getDistanceUnit(isMetric)}',
+                                                      style: const TextStyle(
+                                                        color: Colors.white60,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                  ],
+                                                  // Heading
+                                                  if (headingFromPrevious != null) ...[
+                                                    Text(
+                                                      '${headingFromPrevious.toStringAsFixed(0)}°',
+                                                      style: const TextStyle(
+                                                        color: Colors.white60,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                  ],
+                                                  // Time
+                                                  if (timeFromPrevious != null && cruiseSpeed != null) ...[
+                                                    Text(
+                                                      _formatTime(timeFromPrevious),
+                                                      style: const TextStyle(
+                                                        color: Colors.white60,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                  ],
+                                                  // Fuel
+                                                  if (fuelFromPrevious != null && fuelConsumption != null) ...[
+                                                    Text(
+                                                      '${_formatFuel(fuelFromPrevious, isMetric)} ${_getFuelUnit(isMetric)}',
+                                                      style: const TextStyle(
+                                                        color: Colors.white60,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ),
                                         ],
-                                        decoration: InputDecoration(
-                                          suffixText: _getAltitudeUnit(isMetric),
-                                          suffixStyle: const TextStyle(color: Colors.white70),
-                                          border: InputBorder.none,
-                                          isDense: true,
-                                          contentPadding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                        ),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                        ),
-                                        textAlign: TextAlign.right,
-                                        onSubmitted: (value) => 
-                                            _updateWaypointAltitude(index, value, isMetric),
-                                        onEditingComplete: () {
-                                          _updateWaypointAltitude(
-                                            index,
-                                            _getAltitudeController(waypoint).text,
-                                            isMetric,
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    
-                                    // Distance
-                                    SizedBox(
-                                      width: 70,
-                                      child: Text(
-                                        distanceFromPrevious != null
-                                            ? '${_formatDistance(distanceFromPrevious, isMetric)} ${_getDistanceUnit(isMetric)}'
-                                            : '-',
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 12,
-                                        ),
-                                        textAlign: TextAlign.right,
-                                      ),
-                                    ),
-                                    
-                                    // Time
-                                    SizedBox(
-                                      width: 60,
-                                      child: Text(
-                                        timeFromPrevious != null
-                                            ? _formatTime(timeFromPrevious)
-                                            : '-',
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 12,
-                                        ),
-                                        textAlign: TextAlign.right,
-                                      ),
-                                    ),
-                                    
-                                    // Fuel
-                                    SizedBox(
-                                      width: 60,
-                                      child: Text(
-                                        fuelFromPrevious != null
-                                            ? '${_formatFuel(fuelFromPrevious, isMetric)} ${_getFuelUnit(isMetric)}'
-                                            : '-',
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 12,
-                                        ),
-                                        textAlign: TextAlign.right,
                                       ),
                                     ),
                                     
                                     // More Options
-                                    IconButton(
-                                      icon: const Icon(Icons.more_vert, color: Colors.white70),
-                                      iconSize: 20,
-                                      onPressed: () {
-                                        showDialog(
-                                          context: context,
-                                          builder: (context) => WaypointEditorDialog(
-                                            waypointIndex: index,
-                                            waypoint: waypoint,
-                                          ),
-                                        );
-                                      },
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: IconButton(
+                                        icon: const Icon(Icons.more_vert, color: Colors.white70),
+                                        iconSize: 20,
+                                        onPressed: () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) => WaypointEditorDialog(
+                                              waypointIndex: index,
+                                              waypoint: waypoint,
+                                            ),
+                                          );
+                                        },
+                                      ),
                                     ),
                                   ],
                                 ),

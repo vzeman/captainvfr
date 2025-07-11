@@ -65,7 +65,8 @@ class NavaidService {
 
     try {
       final stopwatch = Stopwatch()..start();
-      final response = await http.get(Uri.parse(_navaidsUrl));
+      final response = await http.get(Uri.parse(_navaidsUrl))
+          .timeout(const Duration(seconds: 10));
       developer.log('📡 Navaid data response status: ${response.statusCode} (took ${stopwatch.elapsedMilliseconds}ms)');
 
       if (response.statusCode == 200) {

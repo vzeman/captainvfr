@@ -129,7 +129,8 @@ class AirportService {
       // First try to fetch from network
       final url = '$_baseUrl/airports.csv';
 
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(Uri.parse(url))
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         developer.log('📊 Successfully fetched airport data. Parsing...');

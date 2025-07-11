@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:captainvfr/services/connectivity_service.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  
   group('ConnectivityService', () {
     late ConnectivityService service;
 

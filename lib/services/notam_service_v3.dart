@@ -10,7 +10,32 @@ class NotamServiceV3 {
   NotamServiceV3._internal();
 
   final CacheService _cacheService = CacheService();
-  static const Duration _cacheExpiry = Duration(hours: 1);
+  static const Duration _cacheExpiry = Duration(hours: 6);
+  
+  /// Prefetch NOTAMs for multiple airports in parallel
+  Future<void> prefetchNotamsForAirports(List<String> icaoCodes) async {
+    if (icaoCodes.isEmpty) return;
+    
+    developer.log('📋 V3: Prefetching NOTAMs for ${icaoCodes.length} airports');
+    
+    // Process in batches to avoid overwhelming the cache
+    const batchSize = 10; // V3 is just mock data, so we can handle more
+    for (int i = 0; i < icaoCodes.length; i += batchSize) {
+      final batch = icaoCodes.skip(i).take(batchSize).toList();
+      
+      // Fetch NOTAMs in parallel for this batch
+      await Future.wait(
+        batch.map((icao) => getNotamsForAirport(icao, forceRefresh: false)
+          .catchError((e) {
+            developer.log('⚠️ V3: Failed to prefetch NOTAMs for $icao: $e');
+            return <Notam>[];
+          })
+        ),
+      );
+    }
+    
+    developer.log('✅ V3: Prefetch complete for ${icaoCodes.length} airports');
+  }
   
   /// Mock NOTAM data for demonstration
   /// In a real implementation, this would fetch from ICAO API or other sources
