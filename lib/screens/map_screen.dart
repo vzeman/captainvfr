@@ -14,7 +14,8 @@ import 'licenses_screen.dart';
 import 'settings_screen.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
-import '../models/flight_segment.dart';
+import '../models/flight_segment.dart' as flight_seg;
+import '../models/flight_plan.dart';
 import '../services/airport_service.dart';
 import '../services/navaid_service.dart';
 import '../services/flight_service.dart';
@@ -43,6 +44,7 @@ import '../utils/airspace_utils.dart';
 import '../widgets/loading_progress_bar.dart';
 import '../widgets/themed_dialog.dart';
 import '../services/cache_service.dart';
+import '../services/notam_service_v3.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -92,6 +94,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   String _errorMessage = '';
   Timer? _debounceTimer;
   Timer? _airspaceDebounceTimer;
+  Timer? _notamPrefetchTimer;
+  bool _waypointJustTapped = false; // Flag to prevent airspace popup when waypoint is tapped
+  int _notamFetchGeneration = 0; // Track NOTAM fetch generations to cancel outdated requests
   
   // Flight data panel position state
   Offset _flightDataPanelPosition = const Offset(8, 220); // Default to bottom with minimal margin for phones
@@ -116,7 +121,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   // Location and map state
   Position? _currentPosition;
   List<LatLng> _flightPathPoints = [];
-  List<FlightSegment> _flightSegments = [];
+  List<flight_seg.FlightSegment> _flightSegments = [];
   List<Airport> _airports = [];
   List<Navaid> _navaids = [];
   List<Airspace> _airspaces = [];
@@ -269,6 +274,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           _showFlightPlanning = true;
         }
       });
+      
+      // Prefetch NOTAMs for airports in the flight plan when it changes
+      if (_flightPlanService.currentFlightPlan != null) {
+        _prefetchFlightPlanNotams();
+      }
     }
   }
   
@@ -279,6 +289,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     _cacheService.removeListener(_onCacheUpdated);
     _debounceTimer?.cancel();
     _airspaceDebounceTimer?.cancel();
+    _notamPrefetchTimer?.cancel();
     _mapController.dispose();
     _flightService.dispose();
     super.dispose();
@@ -794,6 +805,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
   // Handle map tap - updated to support flight planning and airspace selection
   void _onMapTapped(TapPosition tapPosition, LatLng point) {
+    // If a waypoint was just tapped, ignore this map tap
+    if (_waypointJustTapped) {
+      return;
+    }
 
     // If in flight planning mode and panel is visible, add waypoint
     // Only allow adding waypoints when the flight planning panel is shown and in edit mode
@@ -821,6 +836,117 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   }
 
   // Show list of airspaces at a given point
+  // Prefetch NOTAMs for airports in flight plan
+  Future<void> _prefetchFlightPlanNotams() async {
+    final flightPlan = _flightPlanService.currentFlightPlan;
+    if (flightPlan == null) return;
+    
+    final airportIcaos = <String>[];
+    for (final waypoint in flightPlan.waypoints) {
+      if (waypoint.type == WaypointType.airport && waypoint.name != null) {
+        // Extract ICAO code from waypoint name (usually in format "ICAO - Airport Name")
+        final parts = waypoint.name!.split(' - ');
+        if (parts.isNotEmpty && parts[0].length == 4) {
+          airportIcaos.add(parts[0]);
+        }
+      }
+    }
+    
+    if (airportIcaos.isNotEmpty) {
+      debugPrint('Prefetching NOTAMs for flight plan airports: $airportIcaos');
+      try {
+        final notamService = NotamServiceV3(); // Using V3 as primary
+        await notamService.prefetchNotamsForAirports(airportIcaos);
+      } catch (e) {
+        debugPrint('Error prefetching flight plan NOTAMs: $e');
+      }
+    }
+  }
+  
+  // Prefetch NOTAMs for visible airports with debouncing
+  void _schedulePrefetchVisibleAirportNotams() {
+    // Cancel any existing timer
+    _notamPrefetchTimer?.cancel();
+    
+    // Increment generation to cancel any pending fetches
+    _notamFetchGeneration++;
+    
+    // Only prefetch NOTAMs when zoomed in enough (zoom > 11)
+    if (_mapController.camera.zoom <= 11) {
+      debugPrint('Skipping NOTAM prefetch - zoom level too low: ${_mapController.camera.zoom}');
+      return;
+    }
+    
+    // Schedule a new prefetch after 5 seconds of inactivity (increased from 2)
+    final currentGeneration = _notamFetchGeneration;
+    _notamPrefetchTimer = Timer(const Duration(seconds: 5), () async {
+      // Only proceed if this is still the latest generation
+      if (currentGeneration == _notamFetchGeneration) {
+        await _prefetchVisibleAirportNotams(currentGeneration);
+      }
+    });
+  }
+  
+  // Prefetch NOTAMs for visible airports
+  Future<void> _prefetchVisibleAirportNotams(int generation) async {
+    if (_airports.isEmpty) return;
+    
+    // Check if this generation is still current
+    if (generation != _notamFetchGeneration) {
+      debugPrint('Cancelling outdated NOTAM prefetch (generation $generation != $_notamFetchGeneration)');
+      return;
+    }
+    
+    final bounds = _mapController.camera.visibleBounds;
+    
+    // Filter visible airports and prioritize by type
+    final visibleAirports = _airports.where((airport) {
+      return bounds.contains(airport.position);
+    }).toList();
+    
+    // Sort by priority: large > medium > small > heliport > closed
+    visibleAirports.sort((a, b) {
+      const priorities = {
+        'large_airport': 0,
+        'medium_airport': 1,
+        'small_airport': 2,
+        'heliport': 3,
+        'closed': 4,
+      };
+      final aPriority = priorities[a.type] ?? 5;
+      final bPriority = priorities[b.type] ?? 5;
+      return aPriority.compareTo(bPriority);
+    });
+    
+    // Limit to 10 airports (reduced from 20) and exclude small airports, heliports and closed airports
+    final priorityAirports = visibleAirports
+        .where((a) => a.type != 'small_airport' && a.type != 'heliport' && a.type != 'closed')
+        .take(10)
+        .toList();
+    
+    if (priorityAirports.isNotEmpty) {
+      // Final check before making the request
+      if (generation != _notamFetchGeneration) {
+        debugPrint('Cancelling NOTAM prefetch before request (generation $generation != $_notamFetchGeneration)');
+        return;
+      }
+      
+      final icaoCodes = priorityAirports.map((a) => a.icao).toList();
+      debugPrint('Prefetching NOTAMs for ${icaoCodes.length} large/medium airports at zoom ${_mapController.camera.zoom}');
+      try {
+        final notamService = NotamServiceV3(); // Using V3 as primary
+        await notamService.prefetchNotamsForAirports(icaoCodes);
+        
+        // Check one more time after the async operation
+        if (generation != _notamFetchGeneration) {
+          debugPrint('NOTAM prefetch completed but is now outdated (generation $generation != $_notamFetchGeneration)');
+        }
+      } catch (e) {
+        debugPrint('Error prefetching visible airport NOTAMs: $e');
+      }
+    }
+  }
+  
   void _showAirspacesAtPoint(List<Airspace> airspaces, LatLng point) async {
     if (!mounted) return;
 
@@ -1063,6 +1189,15 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     if (flightPlan != null && index >= 0 && index < flightPlan.waypoints.length) {
       setState(() {
         _selectedWaypointIndex = _selectedWaypointIndex == index ? null : index;
+        _waypointJustTapped = true;
+      });
+      // Reset the flag after a short delay
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          setState(() {
+            _waypointJustTapped = false;
+          });
+        }
       });
     }
   }
@@ -1592,6 +1727,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   if (_showMetar) {
                     _loadWeatherForVisibleAirports();
                   }
+                  // Prefetch NOTAMs for visible airports
+                  _schedulePrefetchVisibleAirportNotams();
                 }
               },
             ),
@@ -1744,6 +1881,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                             });
                           },
                           _mapKey,
+                          flightPlanService.isPlanning,
                         ),
                       ),
                       // Waypoint name labels (only show when zoomed in)
@@ -1942,10 +2080,12 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                       onPressed: () {
                         setState(() {
                           _showFlightPlanning = !_showFlightPlanning;
-                          // Auto-create flight plan if none exists
+                          // Auto-create flight plan if none exists (with planning mode OFF)
                           if (_showFlightPlanning && _flightPlanService.currentFlightPlan == null) {
-                            _flightPlanService.createNewFlightPlan();
+                            _flightPlanService.createNewFlightPlan(enablePlanning: false);
                           }
+                          // Sync flight plan visibility with panel visibility
+                          _flightPlanService.setFlightPlanVisibility(_showFlightPlanning);
                         });
                       },
                     ),
@@ -2170,23 +2310,16 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                       } else if (value == 'toggle_flight_planning') {
                         setState(() {
                           _showFlightPlanning = !_showFlightPlanning;
+                          // Auto-create flight plan if none exists (with planning mode OFF)
+                          if (_showFlightPlanning && _flightPlanService.currentFlightPlan == null) {
+                            _flightPlanService.createNewFlightPlan(enablePlanning: false);
+                          }
+                          // Sync flight plan visibility with panel visibility
+                          _flightPlanService.setFlightPlanVisibility(_showFlightPlanning);
                         });
-
-                        // Toggle flight planning mode in the service
-                        if (_showFlightPlanning) {
-                          // Start planning mode - check if we need to toggle
-                          if (!_flightPlanService.isPlanning) {
-                            _flightPlanService.togglePlanningMode();
-                          }
-                          debugPrint('Started flight planning mode');
-                        } else {
-                          // Stop planning mode - check if we need to toggle
-                          if (_flightPlanService.isPlanning) {
-                            _flightPlanService.togglePlanningMode();
-                          }
-                          debugPrint('Stopped flight planning mode');
-                        }
-                        debugPrint('Flight planning toggled: $_showFlightPlanning');
+                        // Note: Planning mode is NOT automatically enabled when showing the panel
+                        // Users must explicitly enable it from within the panel
+                        debugPrint('Flight planning panel toggled: $_showFlightPlanning');
                       } else if (value == 'checklists') {
                         Navigator.push(
                           context,
@@ -2389,6 +2522,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                                 if (_flightPlanService.isPlanning) {
                                   _flightPlanService.togglePlanningMode();
                                 }
+                                // Hide flight plan layer on map
+                                _flightPlanService.setFlightPlanVisibility(false);
                                 debugPrint('Flight planning closed from panel');
                               },
                             ),
@@ -2442,6 +2577,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                               if (_flightPlanService.isPlanning) {
                                 _flightPlanService.togglePlanningMode();
                               }
+                              // Hide flight plan layer on map
+                              _flightPlanService.setFlightPlanVisibility(false);
                               debugPrint('Flight planning closed from panel');
                             },
                           ),

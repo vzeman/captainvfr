@@ -165,13 +165,13 @@ void main() async {
     // Initialize OpenAIP service
     final openAIPService = OpenAIPService();
     
-    // Initialize OpenAIP service (this will load API key and reporting points if needed)
-    try {
-      await openAIPService.initialize();
+    // Initialize OpenAIP service without blocking
+    // The service will load data in background after initialization
+    openAIPService.initialize().then((_) {
       debugPrint('✅ OpenAIP service initialized');
-    } catch (e) {
+    }).catchError((e) {
       debugPrint('⚠️ Failed to initialize OpenAIP service: $e');
-    }
+    });
     
     // Initialize Settings service
     final settingsService = SettingsService();

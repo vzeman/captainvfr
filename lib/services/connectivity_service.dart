@@ -22,8 +22,12 @@ class ConnectivityService extends ChangeNotifier {
   Future<void> initialize() async {
     debugPrint('🌐 Initializing connectivity service...');
     
-    // Perform initial connectivity check silently
-    await checkInternetConnection(silent: true);
+    // Don't block on initial connectivity check - do it in background
+    checkInternetConnection(silent: true).then((_) {
+      debugPrint('🌐 Initial connectivity check completed');
+    }).catchError((e) {
+      debugPrint('⚠️ Initial connectivity check failed: $e');
+    });
     
     // Listen to connectivity changes
     _connectivitySubscription = _connectivity.onConnectivityChanged.listen(

@@ -38,7 +38,21 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
     super.initState();
     _isExpanded = widget.isExpanded ?? true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final flightPlan = context.read<FlightPlanService>().currentFlightPlan;
+      final flightPlanService = context.read<FlightPlanService>();
+      final flightPlan = flightPlanService.currentFlightPlan;
+      
+      // Sync edit mode with planning mode
+      if (flightPlanService.isPlanning != _isEditMode) {
+        setState(() {
+          _isEditMode = flightPlanService.isPlanning;
+        });
+      }
+      
+      // If planning mode is on but it shouldn't be (edit mode is off), turn it off
+      if (flightPlanService.isPlanning && !_isEditMode) {
+        flightPlanService.togglePlanningMode();
+      }
+      
       if (flightPlan != null) {
         _selectedAircraftId = flightPlan.aircraftId;
         if (flightPlan.cruiseSpeed != null) {
@@ -101,7 +115,12 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
               _buildHeader(context, flightPlanService),
               if (_isExpanded) 
                 Flexible(
-                  child: _buildExpandedView(context, flightPlanService),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: 550, // Leave some space for header
+                    ),
+                    child: _buildExpandedView(context, flightPlanService),
+                  ),
                 ),
             ],
           ),
@@ -141,16 +160,39 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
           ),
           const SizedBox(width: 8),
           
-          // Title
+          // Title and stats
           Expanded(
-            child: Text(
-              flightPlan?.name ?? (isPlanning ? 'Flight Planning' : 'No Flight Plan'),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  flightPlan?.name ?? (isPlanning ? 'Flight Planning' : 'No Flight Plan'),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (flightPlan != null && flightPlan.waypoints.isNotEmpty)
+                  Consumer<SettingsService>(
+                    builder: (context, settings, child) {
+                      final isMetric = settings.units == 'metric';
+                      final distance = flightPlan.totalDistance;
+                      final displayDistance = isMetric ? distance * 1.852 : distance;
+                      final unit = isMetric ? 'km' : 'nm';
+                      return Text(
+                        '${flightPlan.waypoints.length} waypoints • ${displayDistance.toStringAsFixed(0)} $unit',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontSize: 11,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      );
+                    },
+                  ),
+              ],
             ),
           ),
           
@@ -216,12 +258,6 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Quick stats
-          if (flightPlan != null && flightPlan.waypoints.isNotEmpty)
-            _buildQuickStats(flightPlan),
-          
-          const SizedBox(height: 12),
-          
           // Aircraft selection and cruise speed
           _buildAircraftSection(flightPlanService),
           
@@ -257,59 +293,6 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
             ),
         ],
       ),
-    );
-  }
-  
-  Widget _buildQuickStats(dynamic flightPlan) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0x1A448AFF),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0x33448AFF)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildQuickStat('Waypoints', '${flightPlan.waypoints.length}', Icons.location_on),
-          Consumer<SettingsService>(
-            builder: (context, settings, child) {
-              final isMetric = settings.units == 'metric';
-              final distance = flightPlan.totalDistance;
-              final displayDistance = isMetric ? distance * 1.852 : distance;
-              final unit = isMetric ? 'km' : 'nm';
-              return _buildQuickStat('Distance', '${displayDistance.toStringAsFixed(0)} $unit', Icons.straighten);
-            },
-          ),
-          if (flightPlan.cruiseSpeed != null && flightPlan.cruiseSpeed! > 0)
-            _buildQuickStat('Time', '${flightPlan.totalFlightTime.toStringAsFixed(0)} min', Icons.access_time),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildQuickStat(String label, String value, IconData icon) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 16, color: const Color(0xFF448AFF)),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
-            color: Colors.white,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: Colors.white.withValues(alpha: 0.6),
-          ),
-        ),
-      ],
     );
   }
   

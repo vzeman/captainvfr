@@ -6,6 +6,7 @@ import 'runway_service.dart';
 import 'navaid_service.dart';
 import 'frequency_service.dart';
 import 'cache_service.dart';
+import 'connectivity_service.dart';
 
 class BackgroundDataService extends ChangeNotifier {
   static final BackgroundDataService _instance = BackgroundDataService._internal();
@@ -36,6 +37,7 @@ class BackgroundDataService extends ChangeNotifier {
   late final NavaidService _navaidService;
   late final FrequencyService _frequencyService;
   late final CacheService _cacheService;
+  final ConnectivityService _connectivityService = ConnectivityService();
 
   Future<void> initialize({
     required AirportService airportService,
@@ -105,7 +107,12 @@ class BackgroundDataService extends ChangeNotifier {
     final cachedAirports = await _cacheService.getCachedAirports();
     
     if (cachedAirports.isEmpty) {
-      await _airportService.fetchNearbyAirports();
+      // Only fetch from network if we have internet connection
+      if (_connectivityService.hasInternetConnection) {
+        await _airportService.fetchNearbyAirports();
+      } else {
+        developer.log('⚠️ No cached airports and no internet connection');
+      }
     } else {
       // Initialize the service with cached data
       await _airportService.initialize();
@@ -118,8 +125,12 @@ class BackgroundDataService extends ChangeNotifier {
     final cachedRunways = await _cacheService.getCachedRunways();
     
     if (cachedRunways.isEmpty) {
-      developer.log('📡 No cached runways, fetching from API...');
-      await _runwayService.fetchRunways();
+      if (_connectivityService.hasInternetConnection) {
+        developer.log('📡 No cached runways, fetching from API...');
+        await _runwayService.fetchRunways();
+      } else {
+        developer.log('⚠️ No cached runways and no internet connection');
+      }
     } else {
       developer.log('✅ Loaded ${cachedRunways.length} runways from cache');
       // Initialize the service with cached data
@@ -133,8 +144,12 @@ class BackgroundDataService extends ChangeNotifier {
     final cachedNavaids = await _cacheService.getCachedNavaids();
     
     if (cachedNavaids.isEmpty) {
-      developer.log('📡 No cached navaids, fetching from API...');
-      await _navaidService.fetchNavaids();
+      if (_connectivityService.hasInternetConnection) {
+        developer.log('📡 No cached navaids, fetching from API...');
+        await _navaidService.fetchNavaids();
+      } else {
+        developer.log('⚠️ No cached navaids and no internet connection');
+      }
     } else {
       developer.log('✅ Loaded ${cachedNavaids.length} navaids from cache');
       // Initialize the service with cached data
@@ -148,8 +163,12 @@ class BackgroundDataService extends ChangeNotifier {
     final cachedFrequencies = await _cacheService.getCachedFrequencies();
     
     if (cachedFrequencies.isEmpty) {
-      developer.log('📡 No cached frequencies, fetching from API...');
-      await _frequencyService.fetchFrequencies();
+      if (_connectivityService.hasInternetConnection) {
+        developer.log('📡 No cached frequencies, fetching from API...');
+        await _frequencyService.fetchFrequencies();
+      } else {
+        developer.log('⚠️ No cached frequencies and no internet connection');
+      }
     } else {
       developer.log('✅ Loaded ${cachedFrequencies.length} frequencies from cache');
       // Initialize the service with cached data

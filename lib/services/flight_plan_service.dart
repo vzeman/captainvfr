@@ -71,7 +71,9 @@ class FlightPlanService extends ChangeNotifier {
     );
 
     _currentFlightPlan = flightPlan;
-    _isPlanning = true;
+    // Planning mode is NOT automatically enabled when loading a flight plan
+    // Users must explicitly enable it if they want to edit
+    _isPlanning = false;
     _waypointCounter = flightPlan.waypoints.length + 1;
     notifyListeners();
   }
@@ -133,20 +135,20 @@ class FlightPlanService extends ChangeNotifier {
   }
 
   // Start creating a new flight plan
-  void startNewFlightPlan({String? name}) {
+  void startNewFlightPlan({String? name, bool enablePlanning = true}) {
     _currentFlightPlan = FlightPlan(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name ?? 'Flight Plan ${DateTime.now().day}/${DateTime.now().month}',
       createdAt: DateTime.now(),
       waypoints: [],
     );
-    _isPlanning = true;
+    _isPlanning = enablePlanning;
     _waypointCounter = 1;
     notifyListeners();
   }
   
   // Create a new flight plan with a generic sequential name
-  void createNewFlightPlan() {
+  void createNewFlightPlan({bool enablePlanning = false}) {
     // Count existing flight plans to generate a unique number
     int planNumber = _savedFlightPlans.length + 1;
     String planName = 'Flight Plan $planNumber';
@@ -157,13 +159,14 @@ class FlightPlanService extends ChangeNotifier {
       planName = 'Flight Plan $planNumber';
     }
     
-    startNewFlightPlan(name: planName);
+    startNewFlightPlan(name: planName, enablePlanning: enablePlanning);
   }
 
   // Add a waypoint by clicking on the map
   void addWaypoint(LatLng position, {double? altitude}) {
-    if (_currentFlightPlan == null) {
-      startNewFlightPlan();
+    if (_currentFlightPlan == null || !_isPlanning) {
+      // Don't add waypoints if there's no flight plan or planning mode is disabled
+      return;
     }
 
     // If altitude not specified, use previous waypoint's altitude or default
@@ -188,8 +191,9 @@ class FlightPlanService extends ChangeNotifier {
 
   // Add waypoint from airport
   void addAirportWaypoint(Airport airport, {double altitude = 3000.0}) {
-    if (_currentFlightPlan == null) {
-      startNewFlightPlan();
+    if (_currentFlightPlan == null || !_isPlanning) {
+      // Don't add waypoints if there's no flight plan or planning mode is disabled
+      return;
     }
 
     final waypoint = Waypoint(
@@ -209,8 +213,9 @@ class FlightPlanService extends ChangeNotifier {
 
   // Add waypoint from navaid
   void addNavaidWaypoint(Navaid navaid, {double altitude = 3000.0}) {
-    if (_currentFlightPlan == null) {
-      startNewFlightPlan();
+    if (_currentFlightPlan == null || !_isPlanning) {
+      // Don't add waypoints if there's no flight plan or planning mode is disabled
+      return;
     }
 
     final waypoint = Waypoint(
@@ -352,6 +357,14 @@ class FlightPlanService extends ChangeNotifier {
   void toggleFlightPlanVisibility() {
     _isFlightPlanVisible = !_isFlightPlanVisible;
     notifyListeners();
+  }
+  
+  // Set flight plan visibility directly
+  void setFlightPlanVisibility(bool visible) {
+    if (_isFlightPlanVisible != visible) {
+      _isFlightPlanVisible = visible;
+      notifyListeners();
+    }
   }
 
   // Get formatted flight plan summary

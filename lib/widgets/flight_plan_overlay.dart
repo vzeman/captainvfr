@@ -47,6 +47,7 @@ class FlightPlanOverlay {
     int? selectedWaypointIndex,
     Function(bool isDragging)? onDraggingChanged,
     GlobalKey mapKey,
+    bool isEditMode,
   ) {
     List<Marker> markers = [];
 
@@ -66,6 +67,7 @@ class FlightPlanOverlay {
             isSelected: selectedWaypointIndex == i,
             onDraggingChanged: onDraggingChanged,
             mapKey: mapKey,
+            isEditMode: isEditMode,
           ),
         ),
       );
@@ -133,8 +135,6 @@ class FlightPlanOverlay {
 
     if (flightPlan.waypoints.length < 2) return markers;
 
-    const labelWidth = 60.0;
-
     for (int i = 0; i < flightPlan.waypoints.length - 1; i++) {
       final from = flightPlan.waypoints[i];
       final to = flightPlan.waypoints[i + 1];
@@ -149,35 +149,57 @@ class FlightPlanOverlay {
       final bearing = from.bearingTo(to);
       final segment = flightPlan.segments[i];
       
-      String labelText = '${distance.toStringAsFixed(1)} NM\n${bearing.toStringAsFixed(0)}°';
+      // Build label parts
+      List<String> labelParts = [];
+      labelParts.add('${distance.toStringAsFixed(1)}nm');
+      labelParts.add('${bearing.toStringAsFixed(0)}°');
+      
       if (segment.flightTime > 0) {
         final minutes = segment.flightTime.round();
-        labelText += '\n${minutes}min';
+        if (minutes < 60) {
+          labelParts.add('${minutes}m');
+        } else {
+          final hours = minutes ~/ 60;
+          final mins = minutes % 60;
+          labelParts.add('${hours}h${mins > 0 ? mins.toString() : ''}');
+        }
       }
+      
+      final labelText = labelParts.join(' ');
+      
+      // Calculate dynamic width based on text length
+      final labelWidth = labelText.length * 5.0 + 10.0;
 
       markers.add(
         Marker(
           point: midpoint,
           width: labelWidth,
-          height: 45,
+          height: 16,
           child: _SegmentLabel(
             from: from.latLng,
             to: to.latLng,
             labelWidth: labelWidth,
             child: Container(
-              padding: const EdgeInsets.all(2),
+              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Colors.blue, width: 0.5),
+                color: Colors.white.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(3),
+                border: Border.all(color: Colors.blue.withValues(alpha: 0.7), width: 0.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
               ),
               child: Text(
                 labelText,
                 style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 7,
-                  fontWeight: FontWeight.w500,
-                  height: 1.1,
+                  color: Colors.black87,
+                  fontSize: 8,
+                  fontWeight: FontWeight.w600,
+                  height: 1.0,
                 ),
                 textAlign: TextAlign.center,
               ),

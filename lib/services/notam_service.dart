@@ -11,7 +11,7 @@ class NotamService {
   NotamService._internal();
 
   final CacheService _cacheService = CacheService();
-  static const Duration _cacheExpiry = Duration(hours: 1);
+  static const Duration _cacheExpiry = Duration(hours: 6);
   
   // FAA NOTAM API endpoints
   static const String _faaBaseUrl = 'https://www.aviationweather.gov/adds/dataserver_current/httpparam';
@@ -28,6 +28,36 @@ class NotamService {
   }
   
   /// Get NOTAMs for an airport, using cache if available and valid
+  /// Prefetch NOTAMs for multiple airports in parallel
+  Future<void> prefetchNotamsForAirports(List<String> icaoCodes) async {
+    if (icaoCodes.isEmpty) return;
+    
+    developer.log('📋 Prefetching NOTAMs for ${icaoCodes.length} airports');
+    
+    // Process in batches to avoid overwhelming the API
+    const batchSize = 5;
+    for (int i = 0; i < icaoCodes.length; i += batchSize) {
+      final batch = icaoCodes.skip(i).take(batchSize).toList();
+      
+      // Fetch NOTAMs in parallel for this batch
+      await Future.wait(
+        batch.map((icao) => getNotamsForAirport(icao, forceRefresh: false)
+          .catchError((e) {
+            developer.log('⚠️ Failed to prefetch NOTAMs for $icao: $e');
+            return <Notam>[];
+          })
+        ),
+      );
+      
+      // Small delay between batches to be nice to the API
+      if (i + batchSize < icaoCodes.length) {
+        await Future.delayed(const Duration(seconds: 1));
+      }
+    }
+    
+    developer.log('✅ Prefetch complete for ${icaoCodes.length} airports');
+  }
+  
   Future<List<Notam>> getNotamsForAirport(String icaoCode, {bool forceRefresh = false}) async {
     developer.log('📋 Fetching NOTAMs for $icaoCode (forceRefresh: $forceRefresh)');
     
