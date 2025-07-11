@@ -34,12 +34,12 @@ class CompassWidget extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Text(
           '${heading.toStringAsFixed(0)}°',
           style: TextStyle(
             color: primaryColor,
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -48,7 +48,7 @@ class CompassWidget extends StatelessWidget {
             'Target: ${targetHeading!.toStringAsFixed(0)}°',
             style: TextStyle(
               color: accentColor,
-              fontSize: 12,
+              fontSize: 11,
             ),
           ),
       ],
