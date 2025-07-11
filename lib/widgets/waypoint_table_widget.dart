@@ -187,7 +187,6 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final waypoints = widget.flightPlan?.waypoints ?? [];
     final cruiseSpeed = widget.flightPlan?.cruiseSpeed ?? 
                        widget.selectedAircraft?.cruiseSpeed.toDouble();
@@ -197,9 +196,13 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
       builder: (context, settings, child) {
         final isMetric = settings.units == 'metric';
         
-        return Card(
-      elevation: 2,
+        return Container(
       margin: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: const Color(0x1A448AFF), // Light blue background
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0x33448AFF)),
+      ),
       child: Column(
         children: [
           // Header
@@ -208,12 +211,12 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
+                color: const Color(0x33448AFF), // Darker blue for header
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  topRight: Radius.circular(12),
-                  bottomLeft: _isExpanded ? Radius.zero : Radius.circular(12),
-                  bottomRight: _isExpanded ? Radius.zero : Radius.circular(12),
+                  topLeft: const Radius.circular(12),
+                  topRight: const Radius.circular(12),
+                  bottomLeft: _isExpanded ? Radius.zero : const Radius.circular(12),
+                  bottomRight: _isExpanded ? Radius.zero : const Radius.circular(12),
                 ),
               ),
               child: Row(
@@ -221,15 +224,17 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                   AnimatedRotation(
                     turns: _isExpanded ? 0.25 : 0,
                     duration: const Duration(milliseconds: 300),
-                    child: Icon(
+                    child: const Icon(
                       Icons.chevron_right,
-                      color: theme.colorScheme.onSurfaceVariant,
+                      color: Colors.white70,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     'Waypoints (${waypoints.length})',
-                    style: theme.textTheme.titleMedium?.copyWith(
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -238,7 +243,10 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                     Text(
                       'Total: ${_formatDistance(widget.flightPlan!.totalDistance, isMetric)} ${_getDistanceUnit(isMetric)}, '
                       '${_formatTime(widget.flightPlan!.totalFlightTime)}',
-                      style: theme.textTheme.bodySmall,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
                     ),
                 ],
               ),
@@ -249,9 +257,9 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
           SizeTransition(
             sizeFactor: _animation,
             child: Container(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: const BorderRadius.only(
+              decoration: const BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(12),
                   bottomRight: Radius.circular(12),
                 ),
@@ -261,8 +269,9 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                       padding: const EdgeInsets.all(32),
                       child: Text(
                         'No waypoints added yet',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
                         ),
                       ),
                     )
@@ -297,17 +306,15 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                           }
                         }
                         
-                        return ReorderableDragStartListener(
+                        return Container(
                           key: ValueKey(waypoint.id),
-                          index: index,
-                          child: Container(
                             decoration: BoxDecoration(
                               color: isSelected 
-                                  ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
-                                  : null,
+                                  ? const Color(0x33448AFF)
+                                  : Colors.transparent,
                               border: Border(
                                 bottom: BorderSide(
-                                  color: theme.colorScheme.outlineVariant,
+                                  color: const Color(0x33448AFF),
                                   width: 0.5,
                                 ),
                               ),
@@ -331,10 +338,13 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                 child: Row(
                                   children: [
                                     // Drag Handle
-                                    Icon(
-                                      Icons.drag_handle,
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                      size: 20,
+                                    ReorderableDragStartListener(
+                                      index: index,
+                                      child: const Icon(
+                                        Icons.drag_handle,
+                                        color: Colors.white70,
+                                        size: 20,
+                                      ),
                                     ),
                                     const SizedBox(width: 12),
                                     
@@ -354,9 +364,10 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                       child: Center(
                                         child: Text(
                                           '${index + 1}',
-                                          style: theme.textTheme.bodyMedium?.copyWith(
+                                          style: TextStyle(
                                             fontWeight: FontWeight.w600,
                                             color: _getWaypointTypeColor(waypoint.type),
+                                            fontSize: 14,
                                           ),
                                         ),
                                       ),
@@ -371,6 +382,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                         focusNode: _getNameFocusNode(waypoint.id),
                                         decoration: InputDecoration(
                                           hintText: 'WP${index + 1}',
+                                          hintStyle: const TextStyle(color: Colors.white30),
                                           border: InputBorder.none,
                                           isDense: true,
                                           contentPadding: const EdgeInsets.symmetric(
@@ -378,7 +390,10 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                             vertical: 4,
                                           ),
                                         ),
-                                        style: theme.textTheme.bodyMedium,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                        ),
                                         onSubmitted: (value) => 
                                             _updateWaypointName(index, value),
                                         onEditingComplete: () {
@@ -402,6 +417,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                         ],
                                         decoration: InputDecoration(
                                           suffixText: _getAltitudeUnit(isMetric),
+                                          suffixStyle: const TextStyle(color: Colors.white70),
                                           border: InputBorder.none,
                                           isDense: true,
                                           contentPadding: const EdgeInsets.symmetric(
@@ -409,7 +425,10 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                             vertical: 4,
                                           ),
                                         ),
-                                        style: theme.textTheme.bodyMedium,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                        ),
                                         textAlign: TextAlign.right,
                                         onSubmitted: (value) => 
                                             _updateWaypointAltitude(index, value, isMetric),
@@ -430,7 +449,10 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                         distanceFromPrevious != null
                                             ? '${_formatDistance(distanceFromPrevious, isMetric)} ${_getDistanceUnit(isMetric)}'
                                             : '-',
-                                        style: theme.textTheme.bodySmall,
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 12,
+                                        ),
                                         textAlign: TextAlign.right,
                                       ),
                                     ),
@@ -442,7 +464,10 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                         timeFromPrevious != null
                                             ? _formatTime(timeFromPrevious)
                                             : '-',
-                                        style: theme.textTheme.bodySmall,
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 12,
+                                        ),
                                         textAlign: TextAlign.right,
                                       ),
                                     ),
@@ -454,14 +479,17 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                         fuelFromPrevious != null
                                             ? '${_formatFuel(fuelFromPrevious, isMetric)} ${_getFuelUnit(isMetric)}'
                                             : '-',
-                                        style: theme.textTheme.bodySmall,
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 12,
+                                        ),
                                         textAlign: TextAlign.right,
                                       ),
                                     ),
                                     
                                     // More Options
                                     IconButton(
-                                      icon: const Icon(Icons.more_vert),
+                                      icon: const Icon(Icons.more_vert, color: Colors.white70),
                                       iconSize: 20,
                                       onPressed: () {
                                         showDialog(
@@ -477,8 +505,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                 ),
                               ),
                             ),
-                          ),
-                        );
+                          );
                       },
                     ),
             ),

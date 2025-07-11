@@ -59,7 +59,7 @@ class NotamServiceV3 {
           effectiveFrom: now.subtract(const Duration(days: 2)),
           effectiveUntil: now.add(const Duration(days: 5)),
           schedule: 'DLY 0600-1400',
-          text: 'A2156/24 NOTAMN\nQ) ZNY/QMXLC/IV/NBO/A/000/999/4038N07347W005\nA) $icaoCode B) 2401151200 C) 2401252359\nE) TWY A BTN TWY B AND TWY C CLSD',
+          text: 'A2156/24 NOTAMN\nQ) ZNY/QMXLC/IV/NBO/A/000/999/4038N07347W005\nA) $icaoCode\nB) 2401151200\nC) 2401252359\nE) TWY A BTN TWY B AND TWY C CLSD',
           decodedText: 'Taxiway A between Taxiway B and Taxiway C closed',
           purpose: 'NBO',
           scope: 'A',
@@ -164,14 +164,37 @@ class NotamServiceV3 {
     final cachedData = await _cacheService.getCachedData(cacheKey);
     
     if (cachedData != null) {
-      final List<dynamic> jsonList = json.decode(cachedData);
-      final notams = jsonList.map((json) => Notam.fromJson(json)).toList();
-      developer.log('📋 Found ${notams.length} cached NOTAMs for $icaoCode');
-      // Log first NOTAM ID to debug
-      if (notams.isNotEmpty) {
-        developer.log('📋 First cached NOTAM ID: ${notams.first.notamId} for ${notams.first.icaoCode}');
+      try {
+        final List<dynamic> jsonList = json.decode(cachedData);
+        final notams = jsonList.map((json) {
+          // Ensure the JSON data is properly typed
+          final Map<String, dynamic> notamJson = Map<String, dynamic>.from(json);
+          
+          // Clean up any corrupted NOTAM IDs
+          if (notamJson['notamId'] != null) {
+            String notamId = notamJson['notamId'].toString();
+            // Remove any URL encoding artifacts
+            notamId = notamId.replaceAll(RegExp(r'%[0-9A-Fa-f]{2}'), '');
+            // Remove any null bytes or control characters
+            notamId = notamId.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
+            notamJson['notamId'] = notamId.trim();
+          }
+          
+          return Notam.fromJson(notamJson);
+        }).toList();
+        
+        developer.log('📋 Found ${notams.length} cached NOTAMs for $icaoCode');
+        // Log first NOTAM ID to debug
+        if (notams.isNotEmpty) {
+          developer.log('📋 First cached NOTAM ID: ${notams.first.notamId} for ${notams.first.icaoCode}');
+        }
+        return notams;
+      } catch (e) {
+        developer.log('❌ Error parsing cached NOTAMs: $e');
+        // Clear corrupted cache
+        await _cacheService.clearCachedData(cacheKey);
+        return [];
       }
-      return notams;
     }
     
     developer.log('📋 No cached NOTAMs found for $icaoCode');
@@ -184,7 +207,25 @@ class NotamServiceV3 {
     if (notams.isNotEmpty) {
       developer.log('📋 First NOTAM to cache: ${notams.first.notamId} for ${notams.first.icaoCode}');
     }
-    final jsonData = json.encode(notams.map((n) => n.toJson()).toList());
+    
+    // Clean up NOTAM data before caching to prevent corruption
+    final cleanedNotams = notams.map((notam) {
+      final json = notam.toJson();
+      
+      // Ensure NOTAM ID is clean
+      if (json['notamId'] != null) {
+        String notamId = json['notamId'].toString();
+        // Remove any URL encoding artifacts
+        notamId = notamId.replaceAll(RegExp(r'%[0-9A-Fa-f]{2}'), '');
+        // Remove any null bytes or control characters
+        notamId = notamId.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
+        json['notamId'] = notamId.trim();
+      }
+      
+      return json;
+    }).toList();
+    
+    final jsonData = json.encode(cleanedNotams);
     await _cacheService.cacheData(cacheKey, jsonData);
   }
 }
