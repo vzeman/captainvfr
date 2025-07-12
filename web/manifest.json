@@ -1,11 +1,11 @@
 {
-    "name": "captainvfr",
+    "name": "CaptainVFR",
     "short_name": "captainvfr",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "CaptainVFR is a flight planning application designed for VFR pilots, providing essential features like flight plan, flight tracking, weather updates, and navigation assistance.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
