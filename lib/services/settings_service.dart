@@ -21,7 +21,7 @@ class SettingsService extends ChangeNotifier {
   bool _autoSaveFlights = true;
   bool _highPrecisionTracking = false;
   bool _darkMode = true;
-  String _units = 'metric'; // 'metric' or 'imperial'
+  String _units = 'imperial'; // 'metric' or 'imperial'
   String _pressureUnit = 'hPa'; // 'hPa' or 'inHg'
   
   // Getters
@@ -53,8 +53,8 @@ class SettingsService extends ChangeNotifier {
     _autoSaveFlights = _prefs.getBool(_keyAutoSaveFlights) ?? true;
     _highPrecisionTracking = _prefs.getBool(_keyHighPrecisionTracking) ?? false;
     _darkMode = _prefs.getBool(_keyDarkMode) ?? true;
-    _units = _prefs.getString(_keyUnits) ?? 'metric';
-    _pressureUnit = _prefs.getString(_keyPressureUnit) ?? 'hPa';
+    _units = _prefs.getString(_keyUnits) ?? 'imperial';
+    _pressureUnit = _prefs.getString(_keyPressureUnit) ?? 'inHg';
   }
   
   // Setters
@@ -118,8 +118,8 @@ class SettingsService extends ChangeNotifier {
     await setAutoSaveFlights(true);
     await setHighPrecisionTracking(false);
     await setDarkMode(true);
-    await setUnits('metric');
-    await setPressureUnit('hPa');
+    await setUnits('imperial');
+    await setPressureUnit('inHg');
   }
   
   // Unit conversion helpers
