@@ -72,7 +72,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       try {
         _openAIPService = Provider.of<OpenAIPService>(context, listen: false);
       } catch (e) {
-        debugPrint('⚠️ OpenAIPService still not available, using singleton');
+        // debugPrint('⚠️ OpenAIPService still not available, using singleton');
         _openAIPService = OpenAIPService(); // This returns the singleton instance
       }
     }
@@ -173,7 +173,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         try {
           _openAIPService = Provider.of<OpenAIPService>(context, listen: false);
         } catch (e) {
-          debugPrint('⚠️ OpenAIPService not available yet, will retry later');
+          // debugPrint('⚠️ OpenAIPService not available yet, will retry later');
           // We'll initialize it later in the build cycle
         }
 
@@ -193,7 +193,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         
         _servicesInitialized = true;
       } catch (e) {
-        debugPrint('Error initializing services: $e');
+        // debugPrint('Error initializing services: $e');
       }
     }
   }
@@ -251,7 +251,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             timestamp: DateTime.now(),
             accuracy: lastPoint.accuracy,
             altitude: lastPoint.altitude,
-            heading: lastPoint.heading,
+            heading: _flightService.currentHeading ?? lastPoint.heading,
             speed: lastPoint.speed,
             speedAccuracy: lastPoint.speedAccuracy,
             altitudeAccuracy: lastPoint.verticalAccuracy,
@@ -266,7 +266,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               _mapController.moveAndRotate(
                 LatLng(lastPoint.latitude, lastPoint.longitude),
                 _mapController.camera.zoom,
-                -lastPoint.heading, // Negate for map rotation
+                -(_flightService.currentHeading ?? lastPoint.heading), // Negate for map rotation
               );
             } else {
               // Just move map
@@ -275,6 +275,23 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 _mapController.camera.zoom,
               );
             }
+          }
+        } else if (!_flightService.isTracking && _currentPosition != null) {
+          // When not tracking, still update heading from sensors if available
+          final currentHeading = _flightService.currentHeading;
+          if (currentHeading != null && (_currentPosition!.heading - currentHeading).abs() > 1.0) {
+            _currentPosition = Position(
+              latitude: _currentPosition!.latitude,
+              longitude: _currentPosition!.longitude,
+              timestamp: _currentPosition!.timestamp,
+              accuracy: _currentPosition!.accuracy,
+              altitude: _currentPosition!.altitude,
+              heading: currentHeading,
+              speed: _currentPosition!.speed,
+              speedAccuracy: _currentPosition!.speedAccuracy,
+              altitudeAccuracy: _currentPosition!.altitudeAccuracy,
+              headingAccuracy: _currentPosition!.headingAccuracy,
+            );
           }
         }
       });
@@ -326,7 +343,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         _onLocationLoaded();
       }
     } catch (e) {
-      debugPrint('Error initializing location: $e');
+      // debugPrint('Error initializing location: $e');
       if (mounted) {
         setState(() {
           _errorMessage = 'Location unavailable - using default position';
@@ -378,7 +395,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             );
           }
         } catch (e) {
-          debugPrint('Error moving map: $e');
+          // debugPrint('Error moving map: $e');
           // Fallback: try again after a short delay
           Future.delayed(const Duration(milliseconds: 100), () {
             if (mounted && _currentPosition != null) {
@@ -388,7 +405,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   _initialZoom,
                 );
               } catch (e) {
-                debugPrint('Error moving map (retry): $e');
+                // debugPrint('Error moving map (retry): $e');
               }
             }
           });
@@ -423,7 +440,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       try {
         // Check if map controller is ready
         if (!mounted) {
-          debugPrint('📍 _loadAirports: Widget not mounted, returning');
+          // debugPrint('📍 _loadAirports: Widget not mounted, returning');
           return;
         }
         
@@ -453,7 +470,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           }
         }
       } catch (e) {
-        debugPrint('Error loading airports: $e');
+        // debugPrint('Error loading airports: $e');
         if (mounted) {
           setState(() {
             _errorMessage = 'Failed to load airports. Please try again.';
@@ -478,7 +495,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       // Get ICAO codes for airports that need weather refresh
       final icaoCodes = airportsNeedingWeather.map((a) => a.icao).toList();
 
-      debugPrint('🌤️ Refreshing weather for ${icaoCodes.length} visible airports');
+      // debugPrint('🌤️ Refreshing weather for ${icaoCodes.length} visible airports');
 
       // Fetch weather data for visible airports
       final metarData = await _weatherService.getMetarsForAirports(icaoCodes);
@@ -502,9 +519,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         });
       }
 
-      debugPrint('✅ Weather refresh completed for visible airports');
+      // debugPrint('✅ Weather refresh completed for visible airports');
     } catch (e) {
-      debugPrint('❌ Error refreshing weather for visible airports: $e');
+      // debugPrint('❌ Error refreshing weather for visible airports: $e');
     }
   }
 
@@ -553,7 +570,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         });
       }
     } catch (e) {
-      debugPrint('Error loading nearby airports: $e');
+      // debugPrint('Error loading nearby airports: $e');
     }
   }
   
@@ -591,7 +608,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         });
       }
     } catch (e) {
-      debugPrint('❌ Error loading navaids: $e');
+      // debugPrint('❌ Error loading navaids: $e');
     }
   }
 
@@ -613,7 +630,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   Future<void> _loadAirspacesDebounced() async {
     // Check if we have API key (either user or default)
     if (!openAIPService.hasApiKey) {
-      debugPrint('🌍 _loadAirspaces: No API key available');
+      // debugPrint('🌍 _loadAirspaces: No API key available');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -655,8 +672,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         },
       );
     } catch (e) {
-      debugPrint('❌ Error loading airspaces: $e');
-      debugPrint('❌ Stack trace: ${StackTrace.current}');
+      // debugPrint('❌ Error loading airspaces: $e');
+      // debugPrint('❌ Stack trace: ${StackTrace.current}');
     }
   }
   
@@ -670,7 +687,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         });
       }
     } catch (e) {
-      debugPrint('❌ Error refreshing airspaces display: $e');
+      // debugPrint('❌ Error refreshing airspaces display: $e');
     }
   }
 
@@ -711,7 +728,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         );
       }
     } catch (e) {
-      debugPrint('❌ Error loading reporting points: $e');
+      // debugPrint('❌ Error loading reporting points: $e');
     }
   }
   
@@ -725,7 +742,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         });
       }
     } catch (e) {
-      debugPrint('❌ Error refreshing reporting points display: $e');
+      // debugPrint('❌ Error refreshing reporting points display: $e');
     }
   }
 
@@ -876,12 +893,12 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     }
     
     if (airportIcaos.isNotEmpty) {
-      debugPrint('Prefetching NOTAMs for flight plan airports: $airportIcaos');
+      // debugPrint('Prefetching NOTAMs for flight plan airports: $airportIcaos');
       try {
         final notamService = NotamServiceV3(); // Using V3 as primary
         await notamService.prefetchNotamsForAirports(airportIcaos);
       } catch (e) {
-        debugPrint('Error prefetching flight plan NOTAMs: $e');
+        // debugPrint('Error prefetching flight plan NOTAMs: $e');
       }
     }
   }
@@ -896,7 +913,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     
     // Only prefetch NOTAMs when zoomed in enough (zoom > 11)
     if (_mapController.camera.zoom <= 11) {
-      debugPrint('Skipping NOTAM prefetch - zoom level too low: ${_mapController.camera.zoom}');
+      // debugPrint('Skipping NOTAM prefetch - zoom level too low: ${_mapController.camera.zoom}');
       return;
     }
     
@@ -916,7 +933,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     
     // Check if this generation is still current
     if (generation != _notamFetchGeneration) {
-      debugPrint('Cancelling outdated NOTAM prefetch (generation $generation != $_notamFetchGeneration)');
+      // debugPrint('Cancelling outdated NOTAM prefetch (generation $generation != $_notamFetchGeneration)');
       return;
     }
     
@@ -950,22 +967,22 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     if (priorityAirports.isNotEmpty) {
       // Final check before making the request
       if (generation != _notamFetchGeneration) {
-        debugPrint('Cancelling NOTAM prefetch before request (generation $generation != $_notamFetchGeneration)');
+        // debugPrint('Cancelling NOTAM prefetch before request (generation $generation != $_notamFetchGeneration)');
         return;
       }
       
       final icaoCodes = priorityAirports.map((a) => a.icao).toList();
-      debugPrint('Prefetching NOTAMs for ${icaoCodes.length} large/medium airports at zoom ${_mapController.camera.zoom}');
+      // debugPrint('Prefetching NOTAMs for ${icaoCodes.length} large/medium airports at zoom ${_mapController.camera.zoom}');
       try {
         final notamService = NotamServiceV3(); // Using V3 as primary
         await notamService.prefetchNotamsForAirports(icaoCodes);
         
         // Check one more time after the async operation
         if (generation != _notamFetchGeneration) {
-          debugPrint('NOTAM prefetch completed but is now outdated (generation $generation != $_notamFetchGeneration)');
+          // debugPrint('NOTAM prefetch completed but is now outdated (generation $generation != $_notamFetchGeneration)');
         }
       } catch (e) {
-        debugPrint('Error prefetching visible airport NOTAMs: $e');
+        // debugPrint('Error prefetching visible airport NOTAMs: $e');
       }
     }
   }
@@ -1237,23 +1254,23 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
   // Handle airport selection
   Future<void> _onAirportSelected(Airport airport) async {
-    debugPrint('_onAirportSelected called for ${airport.icao} - ${airport.name}');
+    // debugPrint('_onAirportSelected called for ${airport.icao} - ${airport.name}');
 
     // If in flight planning mode and panel is visible, add airport as waypoint instead of showing details
     if (_flightPlanService.isPlanning && _showFlightPlanning) {
-      debugPrint('Flight planning mode active - adding airport as waypoint');
+      // debugPrint('Flight planning mode active - adding airport as waypoint');
       _flightPlanService.addAirportWaypoint(airport);
-      debugPrint('Added airport waypoint: ${airport.icao} - ${airport.name}');
+      // debugPrint('Added airport waypoint: ${airport.icao} - ${airport.name}');
       return;
     }
 
     if (!mounted) {
-      debugPrint('Context not mounted, returning early');
+      // debugPrint('Context not mounted, returning early');
       return;
     }
     
     try {
-      debugPrint('Showing bottom sheet for ${airport.icao}');
+      // debugPrint('Showing bottom sheet for ${airport.icao}');
       await showModalBottomSheet(
         context: context,
         isScrollControlled: true,
@@ -1261,15 +1278,15 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           airport: airport,
           weatherService: _weatherService,
           onClose: () {
-            debugPrint('Closing bottom sheet for ${airport.icao}');
+            // debugPrint('Closing bottom sheet for ${airport.icao}');
             Navigator.of(context).pop();
           },
         ),
       );
-      debugPrint('Bottom sheet closed for ${airport.icao}');
-    } catch (e, stackTrace) {
-      debugPrint('Error showing bottom sheet for ${airport.icao}: $e');
-      debugPrint('Stack trace: $stackTrace');
+      // debugPrint('Bottom sheet closed for ${airport.icao}');
+    } catch (e) {
+      // debugPrint('Error showing bottom sheet for ${airport.icao}: $e');
+      // debugPrint('Stack trace: $stackTrace');
       // Try to show error to user
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1323,38 +1340,35 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
   // Handle navaid selection
   Future<void> _onNavaidSelected(Navaid navaid) async {
-    debugPrint('_onNavaidSelected called for ${navaid.ident} - ${navaid.name}');
+    // debugPrint('_onNavaidSelected called for ${navaid.ident} - ${navaid.name}');
 
     // If in flight planning mode and panel is visible, add navaid as waypoint instead of showing details
     if (_flightPlanService.isPlanning && _showFlightPlanning) {
-      debugPrint('Flight planning mode active - adding navaid as waypoint');
+      // debugPrint('Flight planning mode active - adding navaid as waypoint');
       _flightPlanService.addNavaidWaypoint(navaid);
-      debugPrint('Added navaid waypoint: ${navaid.ident} - ${navaid.name}');
+      // debugPrint('Added navaid waypoint: ${navaid.ident} - ${navaid.name}');
       return;
     }
 
     if (!mounted) {
-      debugPrint('Context not mounted, returning early');
+      // debugPrint('Context not mounted, returning early');
       return;
     }
 
     try {
-      debugPrint('Showing bottom sheet for ${navaid.ident}');
+      // debugPrint('Showing bottom sheet for ${navaid.ident}');
       await showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         builder: (BuildContext context) => NavaidInfoSheet(
           navaid: navaid,
           onClose: () {
-            debugPrint('Closing bottom sheet for ${navaid.ident}');
             Navigator.of(context).pop();
           },
         ),
       );
-      debugPrint('Bottom sheet closed for ${navaid.ident}');
-    } catch (e, stackTrace) {
-      debugPrint('Error showing bottom sheet for ${navaid.ident}: $e');
-      debugPrint('Stack trace: $stackTrace');
+      // debugPrint('Bottom sheet closed for ${navaid.ident}');
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error showing navaid details')),
@@ -1365,16 +1379,12 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
   // Handle airspace selection
   Future<void> _onAirspaceSelected(Airspace airspace) async {
-    debugPrint('_onAirspaceSelected called for ${airspace.name}');
-
     if (!mounted) {
-      debugPrint('Context not mounted, returning early');
       return;
     }
 
     try {
-      debugPrint('Showing airspace details for ${airspace.name}');
-      
+
       // Create a themed dialog to show airspace information
       await ThemedDialog.show(
         context: context,
@@ -1459,7 +1469,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         ],
       );
     } catch (e) {
-      debugPrint('Error showing airspace details: $e');
+      // debugPrint('Error showing airspace details: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error showing airspace details')),
@@ -1569,7 +1579,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         ],
       );
     } catch (e) {
-      debugPrint('Error showing reporting point details: $e');
+      // debugPrint('Error showing reporting point details: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error showing reporting point details')),
@@ -1649,7 +1659,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         });
       }
     } catch (e) {
-      debugPrint('⚠️ Error initializing services: $e');
+      // debugPrint('⚠️ Error initializing services: $e');
       // Don't set _servicesInitialized = true if initialization failed
     } finally {
       _isInitializing = false; // Reset the guard flag
@@ -1707,7 +1717,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         });
       }
     } catch (e) {
-      debugPrint('❌ Error loading weather for visible airports: $e');
+      // debugPrint('❌ Error loading weather for visible airports: $e');
     }
   }
 
@@ -2365,7 +2375,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         });
                         // Note: Planning mode is NOT automatically enabled when showing the panel
                         // Users must explicitly enable it from within the panel
-                        debugPrint('Flight planning panel toggled: $_showFlightPlanning');
+                        // debugPrint('Flight planning panel toggled: $_showFlightPlanning');
                       } else if (value == 'checklists') {
                         Navigator.push(
                           context,
@@ -2575,7 +2585,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                                 }
                                 // Hide flight plan layer on map
                                 _flightPlanService.setFlightPlanVisibility(false);
-                                debugPrint('Flight planning closed from panel');
+                                // debugPrint('Flight planning closed from panel');
                               },
                             ),
                           ),
@@ -2630,7 +2640,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                               }
                               // Hide flight plan layer on map
                               _flightPlanService.setFlightPlanVisibility(false);
-                              debugPrint('Flight planning closed from panel');
+                              // debugPrint('Flight planning closed from panel');
                             },
                           ),
                         ),

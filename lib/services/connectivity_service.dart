@@ -20,19 +20,19 @@ class ConnectivityService extends ChangeNotifier {
   static const Duration _checkInterval = Duration(minutes: 1);
 
   Future<void> initialize() async {
-    debugPrint('🌐 Initializing connectivity service...');
+    // debugPrint('🌐 Initializing connectivity service...');
     
     // Don't block on initial connectivity check - do it in background
     checkInternetConnection(silent: true).then((_) {
-      debugPrint('🌐 Initial connectivity check completed');
+      // debugPrint('🌐 Initial connectivity check completed');
     }).catchError((e) {
-      debugPrint('⚠️ Initial connectivity check failed: $e');
+      // debugPrint('⚠️ Initial connectivity check failed: $e');
     });
     
     // Listen to connectivity changes
     _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
       (List<ConnectivityResult> results) async {
-        debugPrint('📡 Connectivity changed: $results');
+        // debugPrint('📡 Connectivity changed: $results');
         
         // Even if we have network connectivity, we need to verify internet access
         await checkInternetConnection();
@@ -61,7 +61,7 @@ class ConnectivityService extends ChangeNotifier {
       final connectivityResult = await _connectivity.checkConnectivity();
       
       if (connectivityResult.contains(ConnectivityResult.none)) {
-        debugPrint('❌ No network connectivity');
+        // debugPrint('❌ No network connectivity');
         _hasInternetConnection = false;
         _lastConnectionCheck = DateTime.now();
         notifyListeners();
@@ -76,20 +76,20 @@ class ConnectivityService extends ChangeNotifier {
         ).timeout(_checkTimeout);
         
         _hasInternetConnection = response.statusCode == 200;
-        debugPrint(_hasInternetConnection 
-          ? '✅ Internet connection verified' 
-          : '❌ Internet check failed with status: ${response.statusCode}'
-        );
+        // debugPrint(_hasInternetConnection 
+        //   ? '✅ Internet connection verified' 
+        //   : '❌ Internet check failed with status: ${response.statusCode}'
+        // );
       } catch (e) {
         // If the HTTP request fails, we don't have internet
         _hasInternetConnection = false;
-        debugPrint('❌ Internet check failed: $e');
+        // debugPrint('❌ Internet check failed: $e');
       }
       
       _lastConnectionCheck = DateTime.now();
       
     } catch (e) {
-      debugPrint('❌ Error checking connectivity: $e');
+      // debugPrint('❌ Error checking connectivity: $e');
       _hasInternetConnection = false;
     } finally {
       if (!silent) {

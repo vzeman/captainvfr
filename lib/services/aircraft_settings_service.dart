@@ -54,7 +54,7 @@ class AircraftSettingsService with ChangeNotifier {
       _isInitialized = true;
       notifyListeners();
     } catch (e) {
-      debugPrint('Error initializing aircraft settings service: $e');
+      // debugPrint('Error initializing aircraft settings service: $e');
       rethrow;
     }
   }
@@ -192,7 +192,7 @@ class AircraftSettingsService with ChangeNotifier {
   Future<void> _addDefaultModels() async {
     // Make sure we have manufacturers before trying to add models
     if (manufacturers.isEmpty) {
-      debugPrint('No manufacturers found, skipping default models');
+      // debugPrint('No manufacturers found, skipping default models');
       return;
     }
 
@@ -214,7 +214,7 @@ class AircraftSettingsService with ChangeNotifier {
       await addModel('PA-28', piper.id, AircraftCategory.singleEngine,
           engineCount: 1, maxSeats: 4, typicalCruiseSpeed: 125, typicalServiceCeiling: 14000);
     } catch (e) {
-      debugPrint('Error adding default models: $e');
+      // debugPrint('Error adding default models: $e');
     }
   }
 

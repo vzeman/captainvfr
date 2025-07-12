@@ -262,6 +262,31 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                         fontSize: 12,
                       ),
                     ),
+                  // Undo button - only show in edit mode when there are waypoints
+                  if (waypoints.isNotEmpty)
+                    Consumer<FlightPlanService>(
+                      builder: (context, flightPlanService, child) {
+                        return flightPlanService.isPlanning
+                          ? Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.undo,
+                                  color: Color(0xFF448AFF),
+                                  size: 20,
+                                ),
+                                onPressed: () => flightPlanService.removeLastWaypoint(),
+                                tooltip: 'Remove last waypoint',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                  minWidth: 32,
+                                  minHeight: 32,
+                                ),
+                              ),
+                            )
+                          : const SizedBox.shrink();
+                      },
+                    ),
                 ],
               ),
             ),

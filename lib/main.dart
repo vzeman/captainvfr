@@ -75,7 +75,7 @@ void main() async {
         await migrationBox.put('cache_migration_v1', true);
       }
     } catch (e) {
-      debugPrint('⚠️ Error during cache migration: $e');
+      // debugPrint('⚠️ Error during cache migration: $e');
     }
 
     // Register flight-related adapters
@@ -111,14 +111,12 @@ void main() async {
     // Initialize cache service first
     final cacheService = CacheService();
     await cacheService.initialize();
-    debugPrint('✅ Cache service initialized');
 
     // Initialize connectivity service first
     final connectivityService = ConnectivityService();
     await connectivityService.initialize();
     connectivityService.startPeriodicChecks();
-    debugPrint('✅ Connectivity service initialized');
-    
+
     // Log network diagnostics for Android 12+ debugging
     await PlatformServices.logNetworkState();
     
@@ -126,9 +124,7 @@ void main() async {
     final vibrationMeasurementService = VibrationMeasurementService();
     try {
       await vibrationMeasurementService.initialize();
-      debugPrint('✅ Vibration measurement service initialized');
     } catch (e) {
-      debugPrint('⚠️ Failed to initialize vibration measurement service: $e');
     }
 
     // Initialize services with error handling
@@ -144,9 +140,7 @@ void main() async {
     // Initialize flight plan service with error handling
     try {
       await flightPlanService.initialize();
-      debugPrint('✅ Flight plan service initialized');
     } catch (e) {
-      debugPrint('⚠️ Flight plan service initialization failed: $e');
     }
 
     final flightService = FlightService(
@@ -168,9 +162,7 @@ void main() async {
     // Initialize OpenAIP service without blocking
     // The service will load data in background after initialization
     openAIPService.initialize().then((_) {
-      debugPrint('✅ OpenAIP service initialized');
     }).catchError((e) {
-      debugPrint('⚠️ Failed to initialize OpenAIP service: $e');
     });
     
     // Initialize Settings service
@@ -188,10 +180,7 @@ void main() async {
 
     try {
       await aircraftSettingsService.initialize();
-      debugPrint('✅ Aircraft settings service initialized');
     } catch (e) {
-      debugPrint('❌ Error initializing aircraft settings service: $e');
-      debugPrint('Error type: ${e.runtimeType}');
 
       // Check for various Hive data corruption issues
       final errorString = e.toString();
@@ -204,19 +193,15 @@ void main() async {
           e is TypeError;
 
       if (isDataCorruption) {
-        debugPrint('⚠️ Clearing Hive boxes due to data corruption: $e');
         try {
           await _clearHiveBoxes();
-          debugPrint('✅ Hive boxes cleared, retrying initialization...');
           // Try initializing again after clearing boxes
           await aircraftSettingsService.initialize();
-          debugPrint('✅ Aircraft settings service initialized after clearing boxes');
         } catch (retryError) {
-          debugPrint('❌ Failed to initialize after clearing boxes: $retryError');
           // Don't rethrow - continue with app initialization
         }
       } else {
-        debugPrint('❌ Unexpected error type: $e');
+        // debugPrint('❌ Unexpected error type: $e');
         // Don't rethrow - continue with app initialization
       }
     }
@@ -272,21 +257,17 @@ void main() async {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         await flightService.initialize();
-        debugPrint('✅ Flight service initialized successfully');
-      } catch (e, stackTrace) {
-        debugPrint('⚠️ Flight service initialization failed: $e');
-        debugPrint('Stack trace: $stackTrace');
+      } catch (e) {
         // Don't crash the app if flight service fails
       }
       
       // Start loading data in the background
-      debugPrint('🚀 Starting background data loading...');
       backgroundDataService.loadDataInBackground();
     });
 
-  } catch (e, stackTrace) {
-    debugPrint('❌ Critical error during app initialization: $e');
-    debugPrint('Stack trace: $stackTrace');
+  } catch (e) {
+    // debugPrint('❌ Critical error during app initialization: $e');
+    // debugPrint('Stack trace: $stackTrace');
 
     // Try to clear corrupted data and start with minimal functionality
     final errorString = e.toString();
@@ -299,19 +280,19 @@ void main() async {
         e is TypeError;
 
     if (isDataCorruption) {
-      debugPrint('⚠️ Attempting emergency Hive cleanup...');
+      // debugPrint('⚠️ Attempting emergency Hive cleanup...');
       try {
         await _clearHiveBoxes();
-        debugPrint('✅ Emergency Hive cleanup completed');
+        // debugPrint('✅ Emergency Hive cleanup completed');
 
         // Restart the app initialization with minimal services
         _runMinimalApp();
       } catch (cleanupError) {
-        debugPrint('❌ Emergency cleanup failed: $cleanupError');
+        // debugPrint('❌ Emergency cleanup failed: $cleanupError');
         _runMinimalApp();
       }
     } else {
-      debugPrint('❌ Non-corruption error, starting with minimal app');
+      // debugPrint('❌ Non-corruption error, starting with minimal app');
       _runMinimalApp();
     }
   }
@@ -319,7 +300,7 @@ void main() async {
 
 /// Run the app with minimal functionality when full initialization fails
 void _runMinimalApp() {
-  debugPrint('🚀 Starting app with minimal functionality...');
+  // debugPrint('🚀 Starting app with minimal functionality...');
 
   // Show loading screen first
   runApp(const MaterialApp(
@@ -376,7 +357,7 @@ void _runMinimalApp() {
 
 /// Clear Hive boxes to resolve typeId mismatch issues
 Future<void> _clearHiveBoxes() async {
-  debugPrint('🧹 Clearing Hive boxes...');
+  // debugPrint('🧹 Clearing Hive boxes...');
   try {
     // List of all known box names that might contain problematic data
     final boxNames = [
@@ -400,7 +381,7 @@ Future<void> _clearHiveBoxes() async {
           await box.close();
         }
       } catch (e) {
-        debugPrint('⚠️ Error closing box $boxName: $e');
+        // debugPrint('⚠️ Error closing box $boxName: $e');
         // Continue with other boxes even if one fails to close
       }
     }
@@ -413,7 +394,7 @@ Future<void> _clearHiveBoxes() async {
       try {
         await Hive.deleteBoxFromDisk(boxName);
       } catch (e) {
-        debugPrint('⚠️ Error deleting box $boxName: $e');
+        // debugPrint('⚠️ Error deleting box $boxName: $e');
         // Continue with other boxes even if one fails to delete
       }
     }
@@ -422,16 +403,16 @@ Future<void> _clearHiveBoxes() async {
     try {
       await Hive.deleteFromDisk();
     } catch (e) {
-      debugPrint('⚠️ Error with global Hive clear: $e');
+      // debugPrint('⚠️ Error with global Hive clear: $e');
     }
 
   } catch (e) {
-    debugPrint('❌ Error clearing Hive boxes: $e');
+    // debugPrint('❌ Error clearing Hive boxes: $e');
     // Last resort - try to clear everything
     try {
       await Hive.deleteFromDisk();
     } catch (e2) {
-      debugPrint('❌ Failed to clear Hive data from disk: $e2');
+      // debugPrint('❌ Failed to clear Hive data from disk: $e2');
       rethrow;
     }
   }

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/aircraft.dart';
@@ -79,7 +80,7 @@ class _AircraftDocumentsWidgetState extends State<AircraftDocumentsWidget> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Add AFM, POH, or other aircraft documents',
+                    'Add images of AFM, POH, or other aircraft documents',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey,
@@ -176,10 +177,44 @@ class _AircraftDocumentsWidgetState extends State<AircraftDocumentsWidget> {
   }
   
   Future<void> _addDocument() async {
+    // Show dialog to let user choose between camera or gallery for image documents
+    final source = await showDialog<ImageSource>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Document Image'),
+        content: const Text(
+          'You can add images of your aircraft documents (AFM, POH, etc.).\n\n'
+          'Note: PDF and DOC files are not supported at this time.'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, ImageSource.camera),
+            child: const Text('Take Photo'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, ImageSource.gallery),
+            child: const Text('Choose from Gallery'),
+          ),
+        ],
+      ),
+    );
+
+    if (source == null) return;
+
     setState(() => _isLoading = true);
     
     try {
-      final documentPath = await _mediaService.pickDocument();
+      String? documentPath;
+      if (source == ImageSource.camera) {
+        documentPath = await _mediaService.takePhoto();
+      } else {
+        documentPath = await _mediaService.pickImageFromGallery();
+      }
+      
       if (documentPath != null) {
         await _addDocumentToAircraft(documentPath);
       }

@@ -38,7 +38,7 @@ class LicenseService extends ChangeNotifier {
     try {
       await loadLicenses();
     } catch (e) {
-      debugPrint('Error initializing license service: $e');
+      // debugPrint('Error initializing license service: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -61,7 +61,7 @@ class LicenseService extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      debugPrint('Error loading licenses: $e');
+      // debugPrint('Error loading licenses: $e');
       _licenses = [];
     }
   }
@@ -75,7 +75,7 @@ class LicenseService extends ChangeNotifier {
       );
       await prefs.setString(_storageKey, licensesJson);
     } catch (e) {
-      debugPrint('Error saving licenses: $e');
+      // debugPrint('Error saving licenses: $e');
       rethrow;
     }
   }
@@ -110,7 +110,7 @@ class LicenseService extends ChangeNotifier {
         try {
           await _mediaService.deleteLicensePhoto(imagePath);
         } catch (e) {
-          debugPrint('Error deleting license photo: $e');
+          // debugPrint('Error deleting license photo: $e');
         }
       }
     }

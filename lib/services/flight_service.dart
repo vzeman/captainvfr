@@ -108,7 +108,6 @@ class FlightService with ChangeNotifier {
   // Initialize with required services
   FlightService({this.onFlightPathUpdated, BarometerService? barometerService}) 
       : _barometerService = barometerService ?? BarometerService() {
-    _initSensors();
     _initializeStorage();
   }
   
@@ -116,18 +115,7 @@ class FlightService with ChangeNotifier {
     await FlightStorageService.init();
     await _loadFlights();
   }
-  
-  // Initialize sensor subscriptions
-  void _initSensors() {
-    // Don't initialize sensors until tracking starts to save battery and CPU
-    debugPrint('Sensors will be initialized when tracking starts');
-    
-    // Check if compass is available
-    if (FlutterCompass.events == null) {
-      debugPrint('Compass not available on this device - will use GPS-based heading');
-    }
-  }
-  
+
   // Start sensor subscriptions when tracking begins
   void _startSensors() {
     // Accelerometer with reduced sampling rate
@@ -141,10 +129,10 @@ class FlightService with ChangeNotifier {
         _currentZAccel = event.z / _gravity;
         // Don't call notifyListeners here - too frequent
       }, onError: (error) {
-        debugPrint('Accelerometer error: $error');
+        // debugPrint('Accelerometer error: $error');
       });
     } catch (e) {
-      debugPrint('Failed to initialize accelerometer: $e');
+      // debugPrint('Failed to initialize accelerometer: $e');
     }
     
     // Gyroscope with reduced sampling rate
@@ -174,7 +162,6 @@ class FlightService with ChangeNotifier {
   }
   
   Future<void> initialize() async {
-    debugPrint('FlightService initialized');
     await _loadFlights();
   }
   
@@ -184,7 +171,7 @@ class FlightService with ChangeNotifier {
       _flights = await FlightStorageService.getAllFlights();
       notifyListeners();
     } catch (e) {
-      debugPrint('Error loading flights: $e');
+      // debugPrint('Error loading flights: $e');
     }
   }
   
@@ -823,7 +810,6 @@ class FlightService with ChangeNotifier {
     // Sort by timestamp to maintain chronological order
     optimizedPoints.sort((a, b) => a.timestamp.compareTo(b.timestamp));
     
-    debugPrint('G-force optimization: ${points.length} points reduced to ${optimizedPoints.length} points');
     return optimizedPoints;
   }
   

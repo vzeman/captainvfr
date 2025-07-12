@@ -5,7 +5,9 @@ import 'package:logger/logger.dart';
 
 /// Service for measuring vibrations during flight using accelerometer
 class VibrationMeasurementService {
-  static final _logger = Logger();
+  static final _logger = Logger(
+    level: Level.warning, // Only log warnings and errors in production
+  );
   static final VibrationMeasurementService _instance = VibrationMeasurementService._internal();
   
   factory VibrationMeasurementService() => _instance;

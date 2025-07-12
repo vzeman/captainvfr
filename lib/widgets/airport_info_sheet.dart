@@ -1,4 +1,4 @@
-import 'dart:developer' show log;
+// import 'dart:developer' show log;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/airport.dart';
@@ -75,7 +75,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
     );
     _weatherInterpretationService = WeatherInterpretationService();
 
-    log('✅ Services obtained from Provider - Runway: ${runwayService.runways.length}, Frequency: ${frequencyService.frequencies.length}');
+    // log('✅ Services obtained from Provider - Runway: ${runwayService.runways.length}, Frequency: ${frequencyService.frequencies.length}');
   }
 
   @override
@@ -86,16 +86,16 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
   }
 
   void _handleTabChange() {
-    log('🔧 DEBUG: Tab changed to index ${_tabController.index}');
+    // log('🔧 DEBUG: Tab changed to index ${_tabController.index}');
 
     if (_tabController.index == 1 && !_weatherTabInitialized) {
-      log('🔧 DEBUG: Initializing weather tab');
+      // log('🔧 DEBUG: Initializing weather tab');
       _fetchWeather();
     } else if (_tabController.index == 2 && !_runwaysTabInitialized) {
-      log('🔧 DEBUG: Initializing runways tab');
+      // log('🔧 DEBUG: Initializing runways tab');
       _fetchRunways();
     } else if (_tabController.index == 3 && !_frequenciesTabInitialized) {
-      log('🔧 DEBUG: Initializing frequencies tab');
+      // log('🔧 DEBUG: Initializing frequencies tab');
       _fetchFrequencies();
     }
   }
@@ -184,10 +184,10 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
         setState(() {
           _frequencies = frequencies;
         });
-        log('🔧 DEBUG: Updated UI state with ${frequencies.length} frequencies');
+        // log('🔧 DEBUG: Updated UI state with ${frequencies.length} frequencies');
       }
     } catch (e) {
-      log('❌ Error fetching frequencies: $e');
+      // log('❌ Error fetching frequencies: $e');
       if (mounted) {
         setState(() {
           _frequenciesError = 'Failed to load frequency data: $e';

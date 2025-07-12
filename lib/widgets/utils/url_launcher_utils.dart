@@ -1,4 +1,4 @@
-import 'dart:developer' show log;
+// import 'dart:developer' show log;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -19,14 +19,14 @@ class UrlLauncherUtils {
         }
       }
     } on FormatException {
-      log('Invalid URL format: $url');
+      // log('Invalid URL format: $url');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid URL format')),
         );
       }
     } catch (e) {
-      log('Could not launch $url', error: e);
+      // log('Could not launch $url', error: e);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not launch $url')),
