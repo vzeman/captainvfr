@@ -70,7 +70,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         _openAIPService.setApiKey(apiKey);
       }
     } catch (e) {
-      debugPrint('Error loading OpenAIP API key: $e');
+      // debugPrint('Error loading OpenAIP API key: $e');
     }
   }
   
@@ -84,7 +84,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       _openAIPService.setApiKey(apiKey);
       
       // No success message for auto-save
-      debugPrint('✅ OpenAIP API key auto-saved');
+      // debugPrint('✅ OpenAIP API key auto-saved');
       
       // If this is the first time setting an API key, load reporting points and airspaces
       if (apiKey.isNotEmpty) {
@@ -93,7 +93,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         final cachedAirspaces = await _openAIPService.getCachedAirspaces();
         
         if (cachedPoints.isEmpty || cachedAirspaces.isEmpty) {
-          debugPrint('📍 First time API key set, loading data...');
+          // debugPrint('📍 First time API key set, loading data...');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -120,12 +120,12 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
             final futures = <Future>[];
             
             if (cachedPoints.isEmpty) {
-              debugPrint('📍 Loading reporting points...');
+              // debugPrint('📍 Loading reporting points...');
               futures.add(_openAIPService.fetchAllReportingPoints());
             }
             
             if (cachedAirspaces.isEmpty) {
-              debugPrint('🌍 Loading airspaces...');
+              // debugPrint('🌍 Loading airspaces...');
               futures.add(_openAIPService.fetchAllAirspaces());
             }
             
@@ -141,7 +141,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
             // Reload cache statistics
             await _loadAllCacheStats();
           } catch (e) {
-            debugPrint('❌ Error loading data: $e');
+            // debugPrint('❌ Error loading data: $e');
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -153,7 +153,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         }
       }
     } catch (e) {
-      debugPrint('Error saving OpenAIP API key: $e');
+      // debugPrint('Error saving OpenAIP API key: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -272,7 +272,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       };
       
     } catch (e) {
-      debugPrint('Error getting cache statistics: $e');
+      // debugPrint('Error getting cache statistics: $e');
     }
     
     return stats;
@@ -307,7 +307,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
     });
 
     try {
-      debugPrint('Refreshing all data...');
+      // debugPrint('Refreshing all data...');
 
       // Show loading indicator
       if (mounted) {
@@ -361,9 +361,9 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         );
       }
 
-      debugPrint('All data refreshed successfully');
+      // debugPrint('All data refreshed successfully');
     } catch (e) {
-      debugPrint('Error refreshing data: $e');
+      // debugPrint('Error refreshing data: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -386,7 +386,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
     });
 
     try {
-      debugPrint('Refreshing airspaces...');
+      // debugPrint('Refreshing airspaces...');
 
       // Show progress dialog
       if (mounted) {
@@ -440,7 +440,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         Navigator.of(context).pop();
       }
       
-      debugPrint('Error refreshing airspaces: $e');
+      // debugPrint('Error refreshing airspaces: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -464,7 +464,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
     });
 
     try {
-      debugPrint('Refreshing reporting points...');
+      // debugPrint('Refreshing reporting points...');
 
       // Show progress dialog
       if (mounted) {
@@ -518,7 +518,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         Navigator.of(context).pop();
       }
       
-      debugPrint('Error refreshing reporting points: $e');
+      // debugPrint('Error refreshing reporting points: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -542,7 +542,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
     });
 
     try {
-      debugPrint('Refreshing weather data...');
+      // debugPrint('Refreshing weather data...');
 
       // Show loading indicator
       if (mounted) {
@@ -582,9 +582,9 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         );
       }
 
-      debugPrint('Weather data refreshed successfully');
+      // debugPrint('Weather data refreshed successfully');
     } catch (e) {
-      debugPrint('Error refreshing weather data: $e');
+      // debugPrint('Error refreshing weather data: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

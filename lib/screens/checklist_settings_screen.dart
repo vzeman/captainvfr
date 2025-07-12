@@ -29,41 +29,6 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
       appBar: AppBar(
         title: const Text('Checklists'),
         actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (value) async {
-              switch (value) {
-                case 'import':
-                  await _importChecklists();
-                  break;
-                case 'export_all':
-                  await _exportAllChecklists();
-                  break;
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'import',
-                child: Row(
-                  children: [
-                    Icon(Icons.file_download, size: 20),
-                    SizedBox(width: 8),
-                    Text('Import Checklists'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'export_all',
-                child: Row(
-                  children: [
-                    Icon(Icons.file_upload, size: 20),
-                    SizedBox(width: 8),
-                    Text('Export All Checklists'),
-                  ],
-                ),
-              ),
-            ],
-          ),
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: 'Add Checklist',
@@ -130,11 +95,6 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
                                 onPressed: () => _openForm(checklist: c),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.file_upload),
-                                tooltip: 'Export',
-                                onPressed: () => _exportChecklist(c),
-                              ),
-                              IconButton(
                                 icon: const Icon(Icons.delete, color: Colors.red),
                                 tooltip: 'Delete',
                                 onPressed: () => _confirmDelete(c.id),
@@ -180,88 +140,5 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
         ],
       ),
     );
-  }
-  
-  Future<void> _importChecklists() async {
-    try {
-      final service = context.read<ChecklistService>();
-      final result = await service.importChecklists();
-      
-      if (!mounted) return;
-      
-      String message;
-      if (result.imported > 0 && result.skipped == 0 && !result.hasErrors) {
-        message = 'Successfully imported ${result.imported} checklist(s)';
-      } else {
-        message = 'Import completed:\n';
-        if (result.imported > 0) message += '${result.imported} imported\n';
-        if (result.skipped > 0) message += '${result.skipped} skipped (already exist)\n';
-        if (result.hasErrors) message += '${result.errors.length} failed';
-      }
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(seconds: 5),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error importing checklists: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-  
-  Future<void> _exportAllChecklists() async {
-    try {
-      final service = context.read<ChecklistService>();
-      if (service.checklists.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No checklists to export')),
-        );
-        return;
-      }
-      
-      await service.exportChecklists(service.checklists);
-      
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Exported ${service.checklists.length} checklist(s)'),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error exporting checklists: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-  
-  Future<void> _exportChecklist(Checklist checklist) async {
-    try {
-      final service = context.read<ChecklistService>();
-      await service.exportChecklist(checklist);
-      
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Checklist exported')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error exporting checklist: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 }

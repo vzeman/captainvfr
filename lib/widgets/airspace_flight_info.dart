@@ -90,7 +90,7 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
         _nextAirspace = nextAirspace;
       });
     } catch (e) {
-      debugPrint('Error updating airspace info: $e');
+      // debugPrint('Error updating airspace info: $e');
     }
   }
 
@@ -151,7 +151,6 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
 
       return closestAirspace;
     } catch (e) {
-      debugPrint('Error finding next airspace: $e');
       return null;
     }
   }
@@ -279,13 +278,14 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
         borderRadius: BorderRadius.circular(8.0),
         border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
       ),
-      child: Stack(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_currentAirspaces.isNotEmpty) ...[
+          if (_currentAirspaces.isNotEmpty) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 const Text(
                   'CURRENT AIRSPACE',
                   style: TextStyle(
@@ -295,6 +295,22 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
                     letterSpacing: 0.5,
                   ),
                 ),
+                if (widget.onClose != null)
+                  IconButton(
+                    onPressed: widget.onClose,
+                    icon: const Icon(
+                      Icons.close,
+                      size: 16,
+                      color: Colors.white70,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 20,
+                      minHeight: 20,
+                    ),
+                  ),
+              ],
+            ),
                 const SizedBox(height: 4),
                 ..._currentAirspaces.map((airspace) => GestureDetector(
               onTap: widget.onAirspaceSelected != null 
@@ -441,30 +457,7 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
                     ],
                   ],
                 ),
-              ],
-            ],
-          ),
-          // Close button in top right corner
-          if (widget.onClose != null)
-            Positioned(
-              top: 0,
-              right: 0,
-              child: GestureDetector(
-                onTap: widget.onClose,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    size: 16,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
+          ],
         ],
       ),
     );

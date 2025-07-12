@@ -28,14 +28,13 @@ class ManufacturerService with ChangeNotifier {
         if (manufacturer != null) {
           // Check if this is a corrupted manufacturer with placeholder data
           if (manufacturer.id.startsWith('corrupted-') || manufacturer.name == 'Unknown Manufacturer') {
-            debugPrint('Found corrupted manufacturer data for key $key: ${manufacturer.name}');
             corruptedKeys.add(key.toString());
           } else {
             validManufacturers.add(manufacturer);
           }
         }
       } catch (e) {
-        debugPrint('Corrupted manufacturer data found for key $key: $e');
+        // debugPrint('Corrupted manufacturer data found for key $key: $e');
         corruptedKeys.add(key.toString());
       }
     }
@@ -44,19 +43,14 @@ class ManufacturerService with ChangeNotifier {
     for (final key in corruptedKeys) {
       try {
         await _box!.delete(key);
-        debugPrint('Removed corrupted manufacturer data for key $key');
       } catch (e) {
-        debugPrint('Failed to remove corrupted manufacturer data for key $key: $e');
+        // debugPrint('Failed to remove corrupted manufacturer data for key $key: $e');
       }
     }
 
     _manufacturers = validManufacturers;
     _manufacturers.sort((a, b) => a.name.compareTo(b.name));
     notifyListeners();
-
-    if (corruptedKeys.isNotEmpty) {
-      debugPrint('Cleaned up ${corruptedKeys.length} corrupted manufacturer records');
-    }
   }
 
   Future<void> addManufacturer(Manufacturer manufacturer) async {

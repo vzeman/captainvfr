@@ -13,7 +13,9 @@ class WeatherService {
   static const String _tafUrl = 'https://aviationweather.gov/data/cache/tafs.cache.csv.gz';
   static const Duration cacheDuration = Duration(minutes: 5); // Keep for backwards compatibility
 
-  final _logger = Logger();
+  final _logger = Logger(
+    level: Level.warning, // Only log warnings and errors in production
+  );
   final _client = http.Client();
   final _cacheService = CacheService();
 

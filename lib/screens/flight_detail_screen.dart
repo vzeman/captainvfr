@@ -48,9 +48,17 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.share),
-              onPressed: () {
-                FlightDetailUtils.shareFlightData(widget.flight);
+              icon: const Icon(Icons.copy),
+              onPressed: () async {
+                await FlightDetailUtils.shareFlightData(widget.flight);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Flight data copied to clipboard'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
               },
             ),
           ],

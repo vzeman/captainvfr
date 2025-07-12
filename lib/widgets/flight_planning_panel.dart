@@ -43,16 +43,12 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
       final aircraftService = context.read<AircraftSettingsService>();
       final flightPlan = flightPlanService.currentFlightPlan;
       
-      // Sync edit mode with planning mode
-      if (flightPlanService.isPlanning != _isEditMode) {
+      // Sync edit mode with planning mode - only sync if planning mode is true
+      // This prevents turning off planning mode when the panel is first opened
+      if (flightPlanService.isPlanning && flightPlanService.isPlanning != _isEditMode) {
         setState(() {
           _isEditMode = flightPlanService.isPlanning;
         });
-      }
-      
-      // If planning mode is on but it shouldn't be (edit mode is off), turn it off
-      if (flightPlanService.isPlanning && !_isEditMode) {
-        flightPlanService.togglePlanningMode();
       }
       
       if (flightPlan != null) {
@@ -279,10 +275,6 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
           // Aircraft selection and cruise speed
           _buildAircraftSection(flightPlanService),
           
-          const SizedBox(height: 12),
-          
-          // Action buttons
-          _buildActionButtons(flightPlanService),
           
           // Waypoint table
           if (flightPlan != null && flightPlan.waypoints.isNotEmpty)
@@ -505,66 +497,6 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
     );
   }
   
-  Widget _buildActionButtons(FlightPlanService flightPlanService) {
-    final flightPlan = flightPlanService.currentFlightPlan;
-    
-    // Only show undo button when there are waypoints to remove
-    if (!_isEditMode || flightPlan == null || flightPlan.waypoints.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    
-    return Container(
-      alignment: Alignment.center,
-      child: _buildActionButton(
-        icon: Icons.undo,
-        label: 'Undo',
-        onPressed: () => flightPlanService.removeLastWaypoint(),
-      ),
-    );
-  }
-  
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback? onPressed,
-  }) {
-    return Material(
-      color: onPressed != null ? const Color(0x1A448AFF) : const Color(0x1A666666),
-      borderRadius: BorderRadius.circular(6),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(6),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: onPressed != null ? const Color(0x33448AFF) : const Color(0x33666666),
-            ),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: onPressed != null ? const Color(0xFF448AFF) : Colors.grey,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: onPressed != null ? Colors.white : Colors.grey,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
   
   void _updateAircraft(FlightPlanService flightPlanService, AircraftSettingsService aircraftService, String aircraftId) {
     final aircraft = aircraftService.aircrafts.firstWhere(

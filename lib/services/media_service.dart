@@ -1,11 +1,9 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:uuid/uuid.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
 // Custom exception for permission errors
@@ -103,7 +101,7 @@ class MediaService {
       final deviceInfo = DeviceInfoPlugin();
       return await deviceInfo.androidInfo;
     } catch (e) {
-      debugPrint('Error getting Android info: $e');
+      // debugPrint('Error getting Android info: $e');
       return null;
     }
   }
@@ -145,7 +143,7 @@ class MediaService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error picking image from gallery: $e');
+      // debugPrint('Error picking image from gallery: $e');
       rethrow;
     }
   }
@@ -170,7 +168,7 @@ class MediaService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error taking photo: $e');
+      // debugPrint('Error taking photo: $e');
       rethrow;
     }
   }
@@ -185,7 +183,7 @@ class MediaService {
       await image.saveTo(filePath);
       return filePath;
     } catch (e) {
-      debugPrint('Error saving image: $e');
+      // debugPrint('Error saving image: $e');
       rethrow;
     }
   }
@@ -198,7 +196,7 @@ class MediaService {
         await file.delete();
       }
     } catch (e) {
-      debugPrint('Error deleting photo: $e');
+      // debugPrint('Error deleting photo: $e');
       rethrow;
     }
   }
@@ -219,53 +217,19 @@ class MediaService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error getting file: $e');
+      // debugPrint('Error getting file: $e');
       return null;
     }
   }
   
-  // Pick document file
+  // Pick document file - REMOVED: file_picker dependency was removed
+  // Users can still add images using pickImageFromGallery() method
   Future<String?> pickDocument() async {
-    final status = await _requestPhotoPermission();
-    if (!await _handlePermissionDenied(status, 'access files')) {
-      return null;
-    }
-    
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'doc', 'docx', 'txt', 'jpg', 'jpeg', 'png'],
-      );
-      
-      if (result != null && result.files.single.path != null) {
-        return await _saveDocumentToStorage(result.files.single);
-      }
-      return null;
-    } catch (e) {
-      debugPrint('Error picking document: $e');
-      rethrow;
-    }
+    throw UnimplementedError(
+      'Document picking is not available. Use pickImageFromGallery() for image documents.'
+    );
   }
   
-  // Save document to app storage
-  Future<String> _saveDocumentToStorage(PlatformFile file) async {
-    try {
-      final docsDir = await _getDocumentsDirectory();
-      final fileName = '${_uuid.v4()}_${file.name}';
-      final filePath = path.join(docsDir.path, fileName);
-      
-      if (file.path != null) {
-        final sourceFile = File(file.path!);
-        await sourceFile.copy(filePath);
-        return filePath;
-      } else {
-        throw Exception('File path is null');
-      }
-    } catch (e) {
-      debugPrint('Error saving document: $e');
-      rethrow;
-    }
-  }
   
   // Delete document
   Future<void> deleteDocument(String documentPath) async {
@@ -275,7 +239,7 @@ class MediaService {
         await file.delete();
       }
     } catch (e) {
-      debugPrint('Error deleting document: $e');
+      // debugPrint('Error deleting document: $e');
       rethrow;
     }
   }
@@ -321,7 +285,7 @@ class MediaService {
       // Clean documents directory
       await _cleanupDirectory(docsDir, referencedPaths);
     } catch (e) {
-      debugPrint('Error cleaning up orphaned files: $e');
+      // debugPrint('Error cleaning up orphaned files: $e');
     }
   }
   
@@ -333,9 +297,8 @@ class MediaService {
       if (file is File && !referencedPaths.contains(file.path)) {
         try {
           await file.delete();
-          debugPrint('Deleted orphaned file: ${file.path}');
         } catch (e) {
-          debugPrint('Error deleting orphaned file: $e');
+          // debugPrint('Error deleting orphaned file: $e');
         }
       }
     }
@@ -361,7 +324,7 @@ class MediaService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error picking license image from gallery: $e');
+      // debugPrint('Error picking license image from gallery: $e');
       rethrow;
     }
   }
@@ -385,7 +348,7 @@ class MediaService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error taking license photo: $e');
+      // debugPrint('Error taking license photo: $e');
       rethrow;
     }
   }
@@ -399,7 +362,7 @@ class MediaService {
       await image.saveTo(filePath);
       return filePath;
     } catch (e) {
-      debugPrint('Error saving license image: $e');
+      // debugPrint('Error saving license image: $e');
       rethrow;
     }
   }
@@ -411,7 +374,7 @@ class MediaService {
         await file.delete();
       }
     } catch (e) {
-      debugPrint('Error deleting license photo: $e');
+      // debugPrint('Error deleting license photo: $e');
       rethrow;
     }
   }

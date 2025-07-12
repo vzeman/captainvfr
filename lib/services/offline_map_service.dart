@@ -15,7 +15,9 @@ class OfflineMapService {
   static const int _maxZoomLevel = 16;
   static const int _minZoomLevel = 4;
 
-  final Logger _logger = Logger();
+  final Logger _logger = Logger(
+    level: Level.warning, // Only log warnings and errors in production
+  );
   Database? _database;
   bool _isInitialized = false;
   bool _isCancelled = false; // Add cancellation flag

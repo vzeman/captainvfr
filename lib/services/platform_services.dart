@@ -4,7 +4,9 @@ import 'package:logger/logger.dart';
 /// Platform-specific services for Android 12+ compatibility
 class PlatformServices {
   static const _networkChannel = MethodChannel('captainvfr/network');
-  static final _logger = Logger();
+  static final _logger = Logger(
+    level: Level.warning, // Only log warnings and errors in production
+  );
 
   /// Check network status and get diagnostics
   static Future<Map<String, dynamic>> checkNetworkStatus() async {

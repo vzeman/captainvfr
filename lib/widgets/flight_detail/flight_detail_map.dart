@@ -114,7 +114,6 @@ class _FlightDetailMapState extends State<FlightDetailMap> {
         }
       });
     } catch (e) {
-      debugPrint('Map not ready yet, retrying...');
       // Retry after a short delay
       Future.delayed(const Duration(milliseconds: 100), () {
         if (mounted) {

@@ -159,7 +159,7 @@ class _DraggableWaypointMarkerState extends State<DraggableWaypointMarker> {
       // Call the callback with the new position
       widget.onWaypointMoved(widget.waypointIndex, newPosition);
     } catch (e) {
-      debugPrint('Error calculating new position: $e');
+      // debugPrint('Error calculating new position: $e');
     }
   }
 }

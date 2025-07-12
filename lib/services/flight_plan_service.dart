@@ -31,7 +31,7 @@ class FlightPlanService extends ChangeNotifier {
       _flightPlanBox = await Hive.openBox<FlightPlan>('flight_plans');
       _loadSavedFlightPlans();
     } catch (e) {
-      debugPrint('Error initializing flight plan service: $e');
+      // debugPrint('Error initializing flight plan service: $e');
     }
   }
 
@@ -57,9 +57,9 @@ class FlightPlanService extends ChangeNotifier {
     try {
       await _flightPlanBox!.put(_currentFlightPlan!.id, _currentFlightPlan!);
       _loadSavedFlightPlans();
-      debugPrint('Flight plan saved: ${_currentFlightPlan!.name}');
+      // debugPrint('Flight plan saved: ${_currentFlightPlan!.name}');
     } catch (e) {
-      debugPrint('Error saving flight plan: $e');
+      // debugPrint('Error saving flight plan: $e');
     }
   }
 
@@ -91,9 +91,9 @@ class FlightPlanService extends ChangeNotifier {
         clearFlightPlan();
       }
 
-      debugPrint('Flight plan deleted: $flightPlanId');
+      // debugPrint('Flight plan deleted: $flightPlanId');
     } catch (e) {
-      debugPrint('Error deleting flight plan: $e');
+      // debugPrint('Error deleting flight plan: $e');
     }
   }
 
@@ -127,9 +127,9 @@ class FlightPlanService extends ChangeNotifier {
       try {
         await _flightPlanBox!.put(duplicatedPlan.id, duplicatedPlan);
         _loadSavedFlightPlans();
-        debugPrint('Flight plan duplicated: ${duplicatedPlan.name}');
+        // debugPrint('Flight plan duplicated: ${duplicatedPlan.name}');
       } catch (e) {
-        debugPrint('Error duplicating flight plan: $e');
+        // debugPrint('Error duplicating flight plan: $e');
       }
     }
   }

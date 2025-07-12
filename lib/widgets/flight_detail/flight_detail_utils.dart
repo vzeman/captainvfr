@@ -1,5 +1,5 @@
 import 'package:intl/intl.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:flutter/services.dart';
 import '../../models/flight.dart';
 
 class FlightDetailUtils {
@@ -23,8 +23,8 @@ class FlightDetailUtils {
            '${utc.second.toString().padLeft(2, '0')}Z';
   }
 
-  // Share flight data
-  static void shareFlightData(Flight flight) {
+  // Copy flight data to clipboard (share_plus dependency was removed)
+  static Future<void> shareFlightData(Flight flight) async {
     // Calculate min altitude from altitudes list
     final minAltitude = flight.altitudes.isNotEmpty
         ? flight.altitudes.reduce((a, b) => a < b ? a : b)
@@ -46,7 +46,7 @@ class FlightDetailUtils {
       sb.writeln('Recording Stopped: ${formatZuluTime(flight.recordingStoppedZulu!)}');
     }
 
-    // Share the flight data using the correct SharePlus API
-    SharePlus.instance.share(ShareParams(text: sb.toString()));
+    // Copy to clipboard instead of sharing
+    await Clipboard.setData(ClipboardData(text: sb.toString()));
   }
 }

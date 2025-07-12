@@ -28,14 +28,12 @@ class ModelService with ChangeNotifier {
         if (model != null) {
           // Check if this is a corrupted model with placeholder data
           if (model.id.startsWith('corrupted-') || model.name == 'Unknown Model') {
-            debugPrint('Found corrupted model data for key $key: ${model.name}');
             corruptedKeys.add(key.toString());
           } else {
             validModels.add(model);
           }
         }
       } catch (e) {
-        debugPrint('Corrupted model data found for key $key: $e');
         corruptedKeys.add(key.toString());
       }
     }
@@ -44,19 +42,14 @@ class ModelService with ChangeNotifier {
     for (final key in corruptedKeys) {
       try {
         await _box!.delete(key);
-        debugPrint('Removed corrupted model data for key $key');
       } catch (e) {
-        debugPrint('Failed to remove corrupted model data for key $key: $e');
+        // debugPrint('Failed to remove corrupted model data for key $key: $e');
       }
     }
 
     _models = validModels;
     _models.sort((a, b) => a.name.compareTo(b.name));
     notifyListeners();
-
-    if (corruptedKeys.isNotEmpty) {
-      debugPrint('Cleaned up ${corruptedKeys.length} corrupted model records');
-    }
   }
 
   Future<void> addModel(Model model) async {
