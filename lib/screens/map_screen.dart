@@ -35,9 +35,10 @@ import '../widgets/flight_plan_overlay.dart';
 import '../widgets/flight_planning_panel.dart';
 import '../widgets/license_warning_widget.dart';
 import '../widgets/floating_waypoint_panel.dart';
-import '../widgets/optimized_airspaces_overlay.dart';
+import '../widgets/spatial_airspaces_overlay.dart';
 import '../widgets/airspace_flight_info.dart';
 import '../services/openaip_service.dart';
+import '../services/spatial_airspace_service.dart';
 import '../services/settings_service.dart';
 import '../models/airspace.dart';
 import '../models/reporting_point.dart';
@@ -66,6 +67,7 @@ class MapScreenState extends State<MapScreen>
   _offlineMapService; // Make nullable to prevent LateInitializationError
   late final FlightPlanService _flightPlanService;
   OpenAIPService? _openAIPService;
+  SpatialAirspaceService? _spatialAirspaceService;
   late final MapController _mapController;
   late final CacheService _cacheService;
 
@@ -83,13 +85,19 @@ class MapScreenState extends State<MapScreen>
     return _openAIPService!;
   }
 
+  // Getter to ensure SpatialAirspaceService is available
+  SpatialAirspaceService get spatialAirspaceService {
+    _spatialAirspaceService ??= SpatialAirspaceService(openAIPService);
+    return _spatialAirspaceService!;
+  }
+
   final GlobalKey _mapKey = GlobalKey();
 
   // State variables
   bool _isLocationLoaded = false; // Track if location has been loaded
   bool _showStats = false;
   bool _showNavaids = true; // Toggle for navaid display
-  bool _showMetar = false; // Toggle for METAR overlay
+  bool _showMetar = true; // Toggle for METAR overlay (default on)
   bool _showHeliports = false; // Toggle for heliport display (default hidden)
   bool _showSmallAirports =
       true; // Toggle for small airport display (default visible)
@@ -117,15 +125,12 @@ class MapScreenState extends State<MapScreen>
   // Airspace panel visibility and position
   bool _showCurrentAirspacePanel =
       true; // Control visibility of current airspace panel
-  Offset _airspacePanelPosition = const Offset(
-    0,
-    10,
-  ); // Default position (centered horizontally, 10px from bottom)
+  Offset? _airspacePanelPosition; // Will be calculated dynamically to center initially
 
   // Toggle panel position
   double _togglePanelRightPosition = 16.0; // Default position from right edge
   double _togglePanelTopPosition =
-      0.4; // Default position as percentage from top (40%)
+      0.02; // Default position as percentage from top (2% - very top)
 
   // Flight planning panel position and state
   Offset _flightPlanningPanelPosition = const Offset(
@@ -353,6 +358,7 @@ class MapScreenState extends State<MapScreen>
     _autoCenteringTimer?.cancel();
     _mapController.dispose();
     _flightService.dispose();
+    _spatialAirspaceService?.dispose();
     super.dispose();
   }
 
@@ -689,6 +695,8 @@ class MapScreenState extends State<MapScreen>
           setState(() {
             _airspaces = cachedAirspaces;
           });
+          
+          // Spatial index will be built automatically by the service
         }
       }
 
@@ -722,6 +730,8 @@ class MapScreenState extends State<MapScreen>
         setState(() {
           _airspaces = airspaces;
         });
+        
+        // Spatial index will be updated automatically by the service
       }
     } catch (e) {
       // debugPrint('❌ Error refreshing airspaces display: $e');
@@ -812,6 +822,28 @@ class MapScreenState extends State<MapScreen>
     }
   }
 
+  // Calculate centered position for airspace panel
+  Offset _getCenteredAirspacePanelPosition(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isPhone = screenSize.width < 600;
+    final isTablet = screenSize.width >= 600 && screenSize.width < 1200;
+    
+    // Calculate panel width based on constraints from the UI
+    final panelWidth = isPhone
+        ? screenSize.width - 16
+        : (isTablet ? 500 : 600);
+    
+    // Center horizontally
+    final leftPosition = (screenSize.width - panelWidth) / 2;
+    
+    // Position at bottom with some margin
+    final bottomPosition = 100.0;
+    
+    final centeredPosition = Offset(leftPosition, bottomPosition);
+    
+    return centeredPosition;
+  }
+
   // Toggle flight dashboard visibility
   void _toggleStats() {
     setState(() {
@@ -836,14 +868,18 @@ class MapScreenState extends State<MapScreen>
   }
 
   // Toggle METAR overlay visibility
-  void _toggleMetar() {
+  void _toggleMetar() async {
     setState(() {
       _showMetar = !_showMetar;
     });
 
-    // When METAR overlay is turned on, refresh weather for currently visible airports
-    if (_showMetar && _airports.isNotEmpty) {
-      _refreshWeatherForVisibleAirports(_airports);
+    // When METAR overlay is turned on, load weather for currently visible airports
+    if (_showMetar) {
+      try {
+        await _loadWeatherForVisibleAirports();
+      } catch (e) {
+        debugPrint('Error loading weather: $e');
+      }
     }
   }
 
@@ -863,18 +899,23 @@ class MapScreenState extends State<MapScreen>
 
   // Toggle airspaces visibility
   void _toggleAirspaces() {
-    setState(() {
-      _showAirspaces = !_showAirspaces;
-    });
-
-    // Load airspaces and reporting points when toggled on
-    if (_showAirspaces) {
+    if (!_showAirspaces) {
+      // Turning airspaces ON
+      setState(() {
+        _showAirspaces = true;
+      });
       _loadAirspaces();
       _loadReportingPoints();
     } else {
+      // Turning airspaces OFF - clear data immediately before setState
+      _airspaces = [];
+      _reportingPoints = [];
+      // Clear the spatial index to free memory
+      spatialAirspaceService.clearIndex();
+      
+      // Now update UI
       setState(() {
-        _airspaces = [];
-        _reportingPoints = [];
+        _showAirspaces = false;
       });
     }
   }
@@ -1723,8 +1764,16 @@ class MapScreenState extends State<MapScreen>
     if (_airports.isEmpty) return;
 
     try {
+      // Get the current map bounds
+      final bounds = _mapController.camera.visibleBounds;
+      
       // Get only the airports that are actually visible on the map (same filtering as markers)
       final visibleAirports = _airports.where((airport) {
+        // First check if airport is within visible bounds
+        if (!bounds.contains(airport.position)) {
+          return false;
+        }
+        
         // Filter heliports based on toggle
         if (airport.type == 'heliport' && !_showHeliports) {
           return false;
@@ -1753,13 +1802,17 @@ class MapScreenState extends State<MapScreen>
       final metarData = await _weatherService.getMetarsForAirports(
         visibleAirportIcaos,
       );
+      final tafData = await _weatherService.getTafsForAirports(
+        visibleAirportIcaos,
+      );
 
       // Update only the visible airports with weather data
       bool hasUpdates = false;
       for (final airport in visibleAirports) {
         final metar = metarData[airport.icao];
-        if (metar != null && airport.rawMetar != metar) {
-          airport.updateWeather(metar);
+        final taf = tafData[airport.icao];
+        if (metar != null) {
+          airport.updateWeather(metar, taf: taf);
           hasUpdates = true;
         }
       }
@@ -1859,10 +1912,10 @@ class MapScreenState extends State<MapScreen>
                       )
                     : null,
               ),
-              // Airspaces overlay (optimized)
-              if (_showAirspaces && _airspaces.isNotEmpty)
-                OptimizedAirspacesOverlay(
-                  airspaces: _airspaces,
+              // Airspaces overlay (spatial indexed)
+              if (_showAirspaces)
+                SpatialAirspacesOverlay(
+                  spatialService: spatialAirspaceService,
                   showAirspacesLayer: _showAirspaces,
                   onAirspaceTap: _onAirspaceSelected,
                   currentAltitude: _currentPosition?.altitude ?? 0,
@@ -2080,7 +2133,7 @@ class MapScreenState extends State<MapScreen>
           ),
           // Vertical layer controls - draggable in both directions
           Positioned(
-            top: MediaQuery.of(context).size.height * _togglePanelTopPosition,
+            top: MediaQuery.of(context).padding.top + (MediaQuery.of(context).size.height * _togglePanelTopPosition),
             right: _togglePanelRightPosition,
             child: SizedBox(
               width: 50, // Fixed width to constrain the draggable
@@ -2138,6 +2191,7 @@ class MapScreenState extends State<MapScreen>
                 onDragEnd: (details) {
                   setState(() {
                     final screenSize = MediaQuery.of(context).size;
+                    final safeAreaTop = MediaQuery.of(context).padding.top;
                     final dragX = details.offset.dx;
                     final dragY = details.offset.dy;
 
@@ -2146,8 +2200,9 @@ class MapScreenState extends State<MapScreen>
                     double newRightPosition =
                         screenSize.width - dragX - 50; // 50 is panel width
 
-                    // Calculate new top position as percentage
-                    double newTopPosition = dragY / screenSize.height;
+                    // Calculate new top position as percentage, accounting for safe area
+                    double adjustedDragY = dragY - safeAreaTop;
+                    double newTopPosition = adjustedDragY / screenSize.height;
 
                     // Constrain to screen bounds
                     newRightPosition = newRightPosition.clamp(
@@ -2155,9 +2210,9 @@ class MapScreenState extends State<MapScreen>
                       screenSize.width - 60,
                     );
                     newTopPosition = newTopPosition.clamp(
-                      0.05,
+                      0.0, // Allow positioning at the very top
                       0.85,
-                    ); // Keep between 5% and 85% of screen height
+                    ); // Keep between 0% and 85% of screen height
 
                     _togglePanelRightPosition = newRightPosition;
                     _togglePanelTopPosition = newTopPosition;
@@ -2208,7 +2263,9 @@ class MapScreenState extends State<MapScreen>
                         icon: _showMetar ? Icons.cloud : Icons.cloud_outlined,
                         tooltip: 'Toggle METAR Overlay',
                         isActive: _showMetar,
-                        onPressed: _toggleMetar,
+                        onPressed: () {
+                          _toggleMetar();
+                        },
                       ),
                       _buildLayerToggle(
                         icon: _showHeliports
@@ -2244,7 +2301,12 @@ class MapScreenState extends State<MapScreen>
                           setState(() {
                             _showCurrentAirspacePanel =
                                 !_showCurrentAirspacePanel;
+                            // Reset position when toggling on to ensure it centers
+                            if (_showCurrentAirspacePanel) {
+                              _airspacePanelPosition = null;
+                            }
                           });
+                          
                         },
                       ),
                       _buildLayerToggle(
@@ -2358,10 +2420,13 @@ class MapScreenState extends State<MapScreen>
             ),
 
           // Airspace information panel
-          if (_showCurrentAirspacePanel)
-            Positioned(
-              left: _airspacePanelPosition.dx,
-              bottom: _airspacePanelPosition.dy,
+          if (_showCurrentAirspacePanel) ...[
+            Builder(
+              builder: (context) {
+                final position = _airspacePanelPosition ?? _getCenteredAirspacePanelPosition(context);
+                return Positioned(
+                  left: position.dx,
+                  bottom: position.dy,
               child: Draggable<String>(
                 data: 'airspace_panel',
                 feedback: Material(
@@ -2374,19 +2439,48 @@ class MapScreenState extends State<MapScreen>
                           ? 500
                           : 600,
                     ),
-                    child: _currentPosition != null
-                        ? AirspaceFlightInfo(
-                            currentPosition: LatLng(
-                              _currentPosition!.latitude,
-                              _currentPosition!.longitude,
-                            ),
-                            currentAltitude: _currentPosition!.altitude,
-                            currentHeading: _currentPosition!.heading,
-                            currentSpeed: _currentPosition!.speed,
-                            openAIPService: openAIPService,
-                            onAirspaceSelected: _onAirspaceSelected,
-                          )
-                        : _buildLoadingAirspacePanel(),
+                    child: Builder(
+                      builder: (context) {
+                        // Always show airspace panel
+                        LatLng position;
+                        double altitude = 0.0;
+                        double heading = 0.0;
+                        double speed = 0.0;
+                        
+                        if (_currentPosition != null) {
+                          // Use actual GPS position if available
+                          position = LatLng(
+                            _currentPosition!.latitude,
+                            _currentPosition!.longitude,
+                          );
+                          altitude = _currentPosition!.altitude;
+                          heading = _currentPosition!.heading;
+                          speed = _currentPosition!.speed;
+                        } else {
+                          // Use map center as position
+                          final mapController = MapController.maybeOf(context);
+                          if (mapController != null) {
+                            try {
+                              position = mapController.camera.center;
+                            } catch (e) {
+                              // Default position if map not ready
+                              position = LatLng(50.0, 14.0); // Default to central Europe
+                            }
+                          } else {
+                            position = LatLng(50.0, 14.0); // Default to central Europe
+                          }
+                        }
+                        
+                        return AirspaceFlightInfo(
+                          currentPosition: position,
+                          currentAltitude: altitude,
+                          currentHeading: heading,
+                          currentSpeed: speed,
+                          openAIPService: openAIPService,
+                          onAirspaceSelected: _onAirspaceSelected,
+                        );
+                      },
+                    ),
                   ),
                 ),
                 childWhenDragging: Container(), // Empty container when dragging
@@ -2440,58 +2534,83 @@ class MapScreenState extends State<MapScreen>
                         ? 500
                         : 600,
                   ),
-                  child: _currentPosition != null
-                      ? AirspaceFlightInfo(
-                          currentPosition: LatLng(
-                            _currentPosition!.latitude,
-                            _currentPosition!.longitude,
-                          ),
-                          currentAltitude: _currentPosition!.altitude,
-                          currentHeading: _currentPosition!.heading,
-                          currentSpeed: _currentPosition!.speed,
-                          openAIPService: openAIPService,
-                          onAirspaceSelected: _onAirspaceSelected,
-                          onClose: () {
-                            setState(() {
-                              _showCurrentAirspacePanel = false;
-                            });
-                          },
-                        )
-                      : _buildLoadingAirspacePanel(),
+                  child: Builder(
+                    builder: (context) {
+                      // Always show airspace panel
+                      LatLng position;
+                      double altitude = 0.0;
+                      double heading = 0.0;
+                      double speed = 0.0;
+                      
+                      if (_currentPosition != null) {
+                        // Use actual GPS position if available
+                        position = LatLng(
+                          _currentPosition!.latitude,
+                          _currentPosition!.longitude,
+                        );
+                        altitude = _currentPosition!.altitude;
+                        heading = _currentPosition!.heading;
+                        speed = _currentPosition!.speed;
+                      } else {
+                        // Use map center as position
+                        final mapController = MapController.maybeOf(context);
+                        if (mapController != null) {
+                          try {
+                            position = mapController.camera.center;
+                          } catch (e) {
+                            // Default position if map not ready
+                            position = LatLng(50.0, 14.0); // Default to central Europe
+                          }
+                        } else {
+                          position = LatLng(50.0, 14.0); // Default to central Europe
+                        }
+                      }
+
+                      return AirspaceFlightInfo(
+                        currentPosition: position,
+                        currentAltitude: altitude,
+                        currentHeading: heading,
+                        currentSpeed: speed,
+                        openAIPService: openAIPService,
+                        onAirspaceSelected: _onAirspaceSelected,
+                        onClose: () {
+                          setState(() {
+                            _showCurrentAirspacePanel = false;
+                          });
+                        },
+                      );
+                    },
+                  ),
                 ),
               ),
+            );
+              },
             ),
-          // App bar - simplified without leading or actions
-          Positioned(
-            top: MediaQuery.of(context).padding.top,
-            left: 0,
-            right: 0,
-            child: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              automaticallyImplyLeading: false, // Remove default leading button
-            ),
-          ),
+          ],
 
           // Navigation and action controls positioned on the left side
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             left: 16, // Align with standard padding
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.6, // Limit to 60% of screen width
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                   PopupMenuButton<String>(
                     icon: const Icon(Icons.menu, color: Colors.black),
                     tooltip: 'Menu',
@@ -2679,6 +2798,7 @@ class MapScreenState extends State<MapScreen>
                 ],
               ),
             ),
+            ),
           ),
           // Location loading indicator (small, non-blocking)
           if (!_isLocationLoaded)
@@ -2860,6 +2980,84 @@ class MapScreenState extends State<MapScreen>
             left: 0,
             right: 0,
             child: LoadingProgressBar(),
+          ),
+          
+          // Zoom controls in bottom left corner
+          Positioned(
+            bottom: 20,
+            left: 16,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Zoom in button
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.add, size: 18),
+                    padding: EdgeInsets.zero,
+                    onPressed: () {
+                      final currentZoom = _mapController.camera.zoom;
+                      if (currentZoom < _maxZoom) {
+                        _mapController.move(
+                          _mapController.camera.center,
+                          currentZoom + 1,
+                        );
+                        // Trigger updates for all layers
+                        _loadAirports();
+                        if (_showNavaids) _loadNavaids();
+                      }
+                    },
+                    tooltip: 'Zoom In',
+                  ),
+                ),
+                const SizedBox(height: 4),
+                // Zoom out button
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.remove, size: 18),
+                    padding: EdgeInsets.zero,
+                    onPressed: () {
+                      final currentZoom = _mapController.camera.zoom;
+                      if (currentZoom > _minZoom) {
+                        _mapController.move(
+                          _mapController.camera.center,
+                          currentZoom - 1,
+                        );
+                        // Trigger updates for all layers
+                        _loadAirports();
+                        if (_showNavaids) _loadNavaids();
+                      }
+                    },
+                    tooltip: 'Zoom Out',
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

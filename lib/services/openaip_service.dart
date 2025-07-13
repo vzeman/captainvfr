@@ -803,11 +803,6 @@ class OpenAIPService {
         }
       }
 
-      // Fetch fresh data for this area
-      developer.log(
-        '🔄 Loading reporting points for bounds: [$minLon, $minLat, $maxLon, $maxLat]',
-      );
-
       final freshPoints = await _fetchReportingPointsRaw(
         bbox: [minLon, minLat, maxLon, maxLat],
         limit: 1000,

@@ -52,9 +52,7 @@ class WeatherService {
         _metarCache = cachedMetars;
         _tafCache = cachedTafs;
         _lastFetch = lastFetch;
-        _logger.d(
-          '📦 Loaded ${cachedMetars.length} METARs and ${cachedTafs.length} TAFs from cache',
-        );
+
 
         if (lastFetch != null) {
           final age = DateTime.now().difference(lastFetch);
@@ -428,8 +426,6 @@ class WeatherService {
       _logger.d('🚫 No airports provided for weather fetch - skipping');
       return {};
     }
-
-    _logger.d('🔍 Getting METARs for ${icaoCodes.length} airports from cache');
 
     // Load from persistent cache if in-memory cache is empty
     if (_metarCache.isEmpty) {

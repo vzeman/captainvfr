@@ -112,18 +112,9 @@ class FrequencyService {
 
     try {
       final lines = csvData.split('\n');
-      developer.log(
-        '📊 DEBUG: CSV has ${lines.length} lines (including header)',
-      );
-
-      // Show the header line for debugging
-      if (lines.isNotEmpty) {
-        developer.log('📊 DEBUG: CSV header: ${lines[0]}');
-      }
 
       // Show a few sample data lines
       if (lines.length > 1) {
-        developer.log('📊 DEBUG: Sample CSV lines:');
         final sampleCount = lines.length > 5 ? 5 : lines.length - 1;
         for (int i = 1; i <= sampleCount; i++) {
           developer.log('   Line $i: ${lines[i]}');
@@ -139,12 +130,6 @@ class FrequencyService {
           final frequency = Frequency.fromCsv(line);
           frequencies.add(frequency);
 
-          // Debug first few parsed frequencies
-          if (frequencies.length <= 10) {
-            developer.log(
-              '📊 DEBUG: Parsed frequency ${frequencies.length}: ${frequency.toString()}',
-            );
-          }
         } catch (e) {
           // Skip malformed rows
           developer.log('⚠️ Skipping malformed frequency row at line $i: $e');
@@ -165,37 +150,16 @@ class FrequencyService {
 
   /// Get frequencies for a specific airport
   List<Frequency> getFrequenciesForAirport(String airportIdent) {
-    developer.log(
-      '🔍 DEBUG: Searching frequencies for airport: "$airportIdent"',
-    );
-    developer.log(
-      '🔍 DEBUG: Total frequencies in service: ${_frequencies.length}',
-    );
 
     if (_frequencies.isEmpty) {
-      developer.log('⚠️ DEBUG: No frequencies loaded in service');
       return [];
     }
 
-    // Show some sample airport identifiers from the frequency data
-    if (_frequencies.isNotEmpty) {
-      developer.log('🔍 DEBUG: Sample airport identifiers in frequency data:');
-      final sampleSize = _frequencies.length > 20 ? 20 : _frequencies.length;
-      for (int i = 0; i < sampleSize; i++) {
-        final freq = _frequencies[i];
-        developer.log(
-          '   Sample ${i + 1}: "${freq.airportIdent}" (${freq.type}: ${freq.frequencyMhz} MHz)',
-        );
-      }
-    }
 
     // Try exact match first
     final exactMatches = _frequencies
         .where((frequency) => frequency.airportIdent == airportIdent)
         .toList();
-    developer.log(
-      '🔍 DEBUG: Exact matches for "$airportIdent": ${exactMatches.length}',
-    );
 
     // Try case-insensitive match
     final caseInsensitiveMatches = _frequencies
@@ -205,18 +169,9 @@ class FrequencyService {
               airportIdent.toUpperCase(),
         )
         .toList();
-    developer.log(
-      '🔍 DEBUG: Case-insensitive matches for "$airportIdent": ${caseInsensitiveMatches.length}',
-    );
 
-    // If we found matches, log them
     if (caseInsensitiveMatches.isNotEmpty) {
-      developer.log('🔍 DEBUG: Found frequencies:');
-      for (final freq in caseInsensitiveMatches) {
-        developer.log(
-          '   - ${freq.type}: ${freq.frequencyMhz} MHz (${freq.description ?? "No description"})',
-        );
-      }
+      return caseInsensitiveMatches;
     } else {
       // Try partial matches to see if there are similar airport codes
       final partialMatches = _frequencies
@@ -230,18 +185,6 @@ class FrequencyService {
                 ),
           )
           .toList();
-      developer.log(
-        '🔍 DEBUG: Partial matches for "$airportIdent": ${partialMatches.length}',
-      );
-
-      if (partialMatches.isNotEmpty) {
-        developer.log('🔍 DEBUG: Partial matches found:');
-        for (final freq in partialMatches.take(10)) {
-          developer.log(
-            '   - "${freq.airportIdent}" (${freq.type}: ${freq.frequencyMhz} MHz)',
-          );
-        }
-      }
     }
 
     return caseInsensitiveMatches;

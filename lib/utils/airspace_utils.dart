@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 /// Utility functions for converting OpenAIP airspace numeric values to human-readable text
 class AirspaceUtils {
   /// Convert numeric airspace type to human-readable text
@@ -178,6 +180,59 @@ class AirspaceUtils {
         return 'FL'; // Flight Level
       default:
         return reference;
+    }
+  }
+
+  /// Get color for airspace type and ICAO class
+  static Color getAirspaceColor(int type, int icaoClass) {
+    // Color coding based on airspace type
+    switch (type) {
+      case 0: // CTR - Control Zone
+        return Colors.red;
+      case 1: // TMA - Terminal Maneuvering Area
+        return Colors.orange;
+      case 2: // TMZ - Transponder Mandatory Zone
+        return Colors.amber;
+      case 3: // RMZ - Radio Mandatory Zone
+        return Colors.yellow.shade700;
+      case 4: // ATZ - Aerodrome Traffic Zone
+        return Colors.blue;
+      case 5: // DANGER
+        return Colors.red.shade700;
+      case 6: // PROHIBITED
+        return Colors.red.shade900;
+      case 7: // RESTRICTED
+        return Colors.orange.shade700;
+      case 8: // GLIDING
+        return Colors.green;
+      case 9: // WAVE
+        return Colors.cyan;
+      case 10: // TSA - Temporary Segregated Area
+        return Colors.purple;
+      case 11: // TRA - Temporary Reserved Area
+        return Colors.purple.shade700;
+      case 12: // MATZ - Military Aerodrome Traffic Zone
+        return Colors.blue.shade700;
+      default:
+        // Check ICAO class if type doesn't match
+        switch (icaoClass) {
+          case 0: // A
+            return Colors.red.shade800;
+          case 1: // B
+            return Colors.red.shade600;
+          case 2: // C
+            return Colors.orange.shade600;
+          case 3: // D
+            return Colors.blue.shade600;
+          case 4: // E
+            return Colors.green.shade600;
+          case 5: // F
+            return Colors.green.shade400;
+          case 6: // G
+            return Colors.grey;
+          default:
+            return Colors.grey.shade600;
+        }
     }
   }
 }

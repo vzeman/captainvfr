@@ -96,7 +96,7 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
         _nextAirspace = nextAirspace;
       });
     } catch (e) {
-      // debugPrint('Error updating airspace info: $e');
+      // Error updating airspace info: $e
     }
   }
 
@@ -278,7 +278,49 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
   @override
   Widget build(BuildContext context) {
     if (_currentAirspaces.isEmpty && _nextAirspace == null) {
-      return const SizedBox.shrink();
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+        padding: const EdgeInsets.all(12.0),
+        decoration: BoxDecoration(
+          color: Colors.black87,
+          borderRadius: BorderRadius.circular(8.0),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.5)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'CURRENT AIRSPACE',
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (widget.onClose != null)
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white, size: 16),
+                    onPressed: widget.onClose,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'No airspace at current position',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     final screenWidth = MediaQuery.of(context).size.width;
@@ -357,7 +399,7 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
                       Text(
                         airspace.altitudeRange,
                         style: const TextStyle(
-                          color: Colors.grey,
+                          color: Colors.white,
                           fontSize: 10,
                         ),
                       ),

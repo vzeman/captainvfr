@@ -1,11 +1,12 @@
 import 'package:hive/hive.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
+import '../utils/spatial_index.dart';
 
 part 'airspace.g.dart';
 
 @HiveType(typeId: 30)
-class Airspace extends HiveObject {
+class Airspace extends HiveObject implements SpatialIndexable {
   @HiveField(0)
   final String id;
 
@@ -208,6 +209,7 @@ class Airspace extends HiveObject {
   // Cached bounding box for performance
   late final LatLngBounds? _boundingBox = _calculateBoundingBox();
 
+  @override
   LatLngBounds? get boundingBox => _boundingBox;
 
   LatLngBounds? _calculateBoundingBox() {
@@ -225,6 +227,7 @@ class Airspace extends HiveObject {
     return LatLngBounds(LatLng(minLat, minLon), LatLng(maxLat, maxLon));
   }
 
+  @override
   bool containsPoint(LatLng point) {
     if (geometry.isEmpty) return false;
 

@@ -90,16 +90,12 @@ class _AirportInfoSheetState extends State<AirportInfoSheet>
   }
 
   void _handleTabChange() {
-    // log('🔧 DEBUG: Tab changed to index ${_tabController.index}');
 
     if (_tabController.index == 1 && !_weatherTabInitialized) {
-      // log('🔧 DEBUG: Initializing weather tab');
       _fetchWeather();
     } else if (_tabController.index == 2 && !_runwaysTabInitialized) {
-      // log('🔧 DEBUG: Initializing runways tab');
       _fetchRunways();
     } else if (_tabController.index == 3 && !_frequenciesTabInitialized) {
-      // log('🔧 DEBUG: Initializing frequencies tab');
       _fetchFrequencies();
     }
   }

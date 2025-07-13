@@ -1,4 +1,3 @@
-import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -94,32 +93,61 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
 
     final currentZoom = mapController.camera.zoom;
 
-    // Filter airports based on zoom level
-    // Hide small airports when zoomed out (similar to navaids at zoom < 9)
+    // Filter airports based on zoom level - more aggressive filtering
+    // This reduces clutter on the map when zoomed out
     List<Airport> visibleAirports = airports;
-    if (currentZoom < 9) {
-      // Only show medium and large airports when zoomed out
+    
+    if (currentZoom < 7) {
+      // Only show large airports when very zoomed out
       visibleAirports = airports
-          .where((a) => a.type != 'small_airport' && a.type != 'heliport')
+          .where((a) => a.type == 'large_airport')
+          .toList();
+    } else if (currentZoom < 9) {
+      // Show large and medium airports (hide small airports and heliports)
+      visibleAirports = airports
+          .where((a) => a.type == 'large_airport' || a.type == 'medium_airport')
+          .toList();
+    } else if (currentZoom < 9) {
+      // Show all airports except heliports
+      visibleAirports = airports
+          .where((a) => a.type != 'heliport')
           .toList();
     }
+    // At zoom >= 11, show all airports (including small airports and heliports)
 
     final positions = visibleAirports.map((a) => a.position).toList();
 
-    // Calculate base marker size based on zoom level
-    final baseMarkerSize = currentZoom >= 12 ? 40.0 : 28.0;
+    // Calculate base marker size with smooth interpolation based on zoom level
+    double baseMarkerSize;
+    if (currentZoom >= 12) {
+      // Linear interpolation from zoom 12 to 15
+      baseMarkerSize = 40.0 + (currentZoom - 12) * 3.0; // 40 at zoom 12, up to 49 at zoom 15
+    } else if (currentZoom >= 8) {
+      // Linear interpolation from zoom 8 to 12
+      baseMarkerSize = 24.0 + (currentZoom - 8) * 4.0; // 24 at zoom 8, 40 at zoom 12
+    } else if (currentZoom >= 5) {
+      // Linear interpolation from zoom 5 to 8
+      baseMarkerSize = 15.0 + (currentZoom - 5) * 3.0; // 15 at zoom 5, 24 at zoom 8
+    } else {
+      // Minimum size for very far zoom
+      baseMarkerSize = 15.0;
+    }
+    
+    // Clamp to reasonable bounds
+    baseMarkerSize = baseMarkerSize.clamp(15.0, 50.0);
 
     // Find the maximum marker size to use for the layer
     double maxMarkerSize = baseMarkerSize;
-    for (final airport in airports) {
-      if (airport.type != 'small_airport') {
-        maxMarkerSize = baseMarkerSize;
-        break;
-      }
-    }
-    // If all airports are small, use the smaller size
-    if (airports.every((a) => a.type == 'small_airport')) {
-      maxMarkerSize = baseMarkerSize * 0.75;
+    // Check if we have any large airports
+    if (visibleAirports.any((a) => a.type == 'large_airport')) {
+      maxMarkerSize = baseMarkerSize;
+    } else if (visibleAirports.any((a) => a.type == 'medium_airport')) {
+      maxMarkerSize = baseMarkerSize * 0.85;
+    } else if (visibleAirports.any((a) => a.type == 'small_airport')) {
+      maxMarkerSize = baseMarkerSize * 0.7;
+    } else {
+      // Only heliports
+      maxMarkerSize = baseMarkerSize * 0.6;
     }
 
     return OptimizedMarkerLayer(
@@ -128,10 +156,17 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
       markerHeight: maxMarkerSize,
       markerBuilder: (index, position) {
         final airport = visibleAirports[index];
-        // Small airports get 25% smaller markers (75% of base size)
-        final airportMarkerSize = airport.type == 'small_airport'
-            ? baseMarkerSize * 0.75
-            : baseMarkerSize;
+        // Adjust marker size based on airport type
+        double airportMarkerSize;
+        if (airport.type == 'small_airport') {
+          airportMarkerSize = baseMarkerSize * 0.7; // 30% smaller
+        } else if (airport.type == 'heliport') {
+          airportMarkerSize = baseMarkerSize * 0.6; // 40% smaller
+        } else if (airport.type == 'medium_airport') {
+          airportMarkerSize = baseMarkerSize * 0.85; // 15% smaller
+        } else {
+          airportMarkerSize = baseMarkerSize; // Full size for large airports
+        }
 
         return AirportMarker(
           airport: airport,
@@ -220,10 +255,8 @@ class OptimizedReportingPointsLayer extends StatelessWidget {
 
     final currentZoom = mapController.camera.zoom;
 
-    // Only show reporting points when zoomed in enough
-    // Temporarily lower threshold on iOS for debugging
-    final zoomThreshold = Platform.isIOS ? 7 : 9;
-    if (currentZoom < zoomThreshold) {
+    // Only show reporting points when zoomed in enough (same as small airports)
+    if (currentZoom < 9) {
       return const SizedBox.shrink();
     }
 

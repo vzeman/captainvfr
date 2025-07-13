@@ -139,7 +139,6 @@ class BackgroundDataService extends ChangeNotifier {
   }
 
   Future<void> _loadNavaids() async {
-    developer.log('📡 Loading navaids from cache...');
 
     final cachedNavaids = await _cacheService.getCachedNavaids();
 

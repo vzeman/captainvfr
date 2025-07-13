@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 import '../models/airport.dart';
 
 class MetarOverlay extends StatelessWidget {
@@ -27,6 +26,8 @@ class MetarOverlay extends StatelessWidget {
     }
 
     final bounds = mapController.camera.visibleBounds;
+    final zoom = mapController.camera.zoom;
+    
     // Add padding to bounds
     final paddedBounds = LatLngBounds(
       LatLng(bounds.southWest.latitude - 0.1, bounds.southWest.longitude - 0.1),
@@ -44,292 +45,151 @@ class MetarOverlay extends StatelessWidget {
     return MarkerLayer(
       markers: [
         ...visibleAirportsWithMetar.map(
-          (airport) => _buildMetarMarker(airport),
+          (airport) => _buildMetarMarker(airport, zoom),
         ),
       ],
     );
   }
 
-  Marker _buildMetarMarker(Airport airport) {
+  /// Calculate font size based on zoom level
+  double _getFontSize(double zoom) {
+    if (zoom >= 12) return 11.0;  // Close zoom
+    if (zoom >= 10) return 10.0;  // Medium zoom
+    if (zoom >= 8) return 9.0;    // Far zoom
+    return 8.0;                    // Very far zoom
+  }
+
+  Marker _buildMetarMarker(Airport airport, double zoom) {
     final windData = _parseWindFromMetar(airport.rawMetar!);
-    final flightCategory = airport.flightCategory ?? 'VFR';
+    
+    final fontSize = _getFontSize(zoom);
+    
+    // Calculate icon container size based on zoom
+    final iconContainerSize = _getIconContainerSize(zoom);
+    final iconSize = _getIconSize(zoom);
+
+    // Only show wind data if available and zoom is sufficient
+    if (windData == null || zoom < 9) {
+      return Marker(
+        point: airport.position,
+        width: 0,
+        height: 0,
+        child: const SizedBox.shrink(),
+      );
+    }
 
     return Marker(
       point: airport.position,
-      width: 80,
-      height: 80,
+      width: 120, // Width for wind label
+      height: 80, // Height to position below airport marker
       child: GestureDetector(
         onTap: () => onAirportTap?.call(airport),
-        child: Stack(
-          alignment: Alignment.center,
-          clipBehavior: Clip.none,
-          children: [
-            // Weather condition indicator (background circle)
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _getFlightCategoryColor(flightCategory),
-                border: Border.all(color: Colors.white, width: 2),
-              ),
-              child: Icon(
-                _getWeatherIcon(airport.rawMetar!),
-                size: 12,
-                color: Colors.white,
-              ),
-            ),
-            // Wind arrow
-            if (windData != null)
-              Transform.rotate(
-                angle:
-                    (windData.direction - 90) *
-                    math.pi /
-                    180, // Rotate to point in wind direction
-                child: CustomPaint(
-                  size: const Size(50, 50),
-                  painter: WindArrowPainter(
-                    windSpeed: windData.speed,
-                    gustSpeed: windData.gust,
-                  ),
+        child: Padding(
+          padding: EdgeInsets.only(top: 30), // Offset to position below airport marker
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Wind direction arrow - scales with zoom
+              Container(
+                width: iconContainerSize,
+                height: iconContainerSize,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  shape: BoxShape.circle,
                 ),
-              ),
-            // Wind speed text - positioned below the weather indicator
-            if (windData != null)
-              Positioned(
-                top:
-                    54, // Position below the 24px circle (starts at 28px, ends at 52px)
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 3,
-                    vertical: 1,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                  child: Text(
-                    '${windData.speed}${windData.gust != null ? 'G${windData.gust}' : ''}kt',
-                    style: const TextStyle(
+                child: Center(
+                  child: Transform.rotate(
+                    angle: (windData.direction + 180) * math.pi / 180, // Add 180 to point where wind is going
+                    child: Icon(
+                      Icons.navigation, // Better arrow icon for direction
                       color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
+                      size: iconSize,
                     ),
                   ),
                 ),
               ),
-          ],
+            SizedBox(width: 4),
+            // Wind speed text - smaller label
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: fontSize * 0.3,
+                vertical: fontSize * 0.1,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text(
+                '${windData.speed}${windData.gust != null ? 'G${windData.gust}' : ''}kt',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            ],
+          ),
         ),
       ),
     );
   }
-
-  Color _getFlightCategoryColor(String category) {
-    switch (category.toUpperCase()) {
-      case 'VFR':
-        return Colors.green;
-      case 'MVFR':
-        return Colors.blue;
-      case 'IFR':
-        return Colors.red;
-      case 'LIFR':
-        return Colors.purple;
-      default:
-        return Colors.grey;
-    }
+  
+  /// Calculate icon container size based on zoom level
+  double _getIconContainerSize(double zoom) {
+    if (zoom >= 12) return 24.0;  // Close zoom
+    if (zoom >= 10) return 20.0;  // Medium zoom
+    if (zoom >= 8) return 16.0;   // Far zoom
+    return 14.0;                   // Very far zoom
+  }
+  
+  /// Calculate icon size based on zoom level
+  double _getIconSize(double zoom) {
+    if (zoom >= 12) return 16.0;  // Close zoom
+    if (zoom >= 10) return 14.0;  // Medium zoom
+    if (zoom >= 8) return 11.0;   // Far zoom
+    return 9.0;                    // Very far zoom
   }
 
-  IconData _getWeatherIcon(String metar) {
-    // Check for various weather conditions in METAR
-    if (metar.contains('TS')) return Icons.flash_on; // Thunderstorm
-    if (metar.contains('SN')) return Icons.ac_unit; // Snow
-    if (metar.contains('RA')) return Icons.grain; // Rain
-    if (metar.contains('FG') || metar.contains('BR')) {
-      return Icons.cloud; // Fog/Mist
-    }
-    if (metar.contains('OVC') || metar.contains('BKN')) {
-      return Icons.cloud; // Overcast/Broken
-    }
-    if (metar.contains('SCT') || metar.contains('FEW')) {
-      return Icons.wb_cloudy; // Scattered/Few
-    }
-    return Icons.wb_sunny; // Clear
-  }
 
+  // Parse wind data from METAR
   WindData? _parseWindFromMetar(String metar) {
-    // Parse wind from METAR string (e.g., "36010KT" or "36010G20KT")
-    final windMatch = RegExp(
-      r'\b(\d{3}|VRB)(\d{2,3})(G(\d{2,3}))?KT\b',
-    ).firstMatch(metar);
-    if (windMatch == null) return null;
+    // Updated regex pattern to handle more formats
+    final windRegex = RegExp(
+      r'(?:METAR\s+)?[A-Z]{4}\s+\d{6}Z?\s+(?:AUTO\s+)?(\d{3}|VRB)(\d{2,3})(?:G(\d{2,3}))?KT',
+    );
+    final match = windRegex.firstMatch(metar);
 
-    final directionStr = windMatch.group(1);
-    if (directionStr == 'VRB') {
-      return null; // Skip variable wind for arrow display
+    if (match != null) {
+      final directionStr = match.group(1);
+      final speedStr = match.group(2);
+      final gustStr = match.group(3);
+
+      // Handle variable wind direction
+      final direction = directionStr == 'VRB' ? 0 : int.tryParse(directionStr!) ?? 0;
+      final speed = int.tryParse(speedStr!) ?? 0;
+      final gust = gustStr != null ? int.tryParse(gustStr) : null;
+
+      return WindData(
+        direction: direction.toDouble(),
+        speed: speed,
+        gust: gust,
+      );
     }
-
-    final direction = int.tryParse(directionStr!);
-    final speed = int.tryParse(windMatch.group(2)!);
-    final gust = windMatch.group(4) != null
-        ? int.tryParse(windMatch.group(4)!)
-        : null;
-
-    if (direction == null || speed == null) return null;
-
-    return WindData(direction: direction, speed: speed, gust: gust);
+    return null;
   }
 }
 
 class WindData {
-  final int direction;
+  final double direction;
   final int speed;
   final int? gust;
 
-  WindData({required this.direction, required this.speed, this.gust});
+  WindData({
+    required this.direction,
+    required this.speed,
+    this.gust,
+  });
 }
 
-class WindArrowPainter extends CustomPainter {
-  final int windSpeed;
-  final int? gustSpeed;
-
-  WindArrowPainter({required this.windSpeed, this.gustSpeed});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.black
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-
-    final center = Offset(size.width / 2, size.height / 2);
-
-    // Calculate arrow length based on wind speed (min 15, max 40)
-    final baseLength = math.min(40, math.max(15, windSpeed * 1.5));
-    final arrowLength = baseLength;
-
-    // Draw main arrow shaft
-    final arrowEnd = Offset(center.dx, center.dy - arrowLength);
-    canvas.drawLine(center, arrowEnd, paint);
-
-    // Draw arrowhead
-    final arrowHeadLength = 8.0;
-    final arrowHeadAngle = math.pi / 6; // 30 degrees
-
-    final leftArrowHead = Offset(
-      arrowEnd.dx - arrowHeadLength * math.sin(arrowHeadAngle),
-      arrowEnd.dy + arrowHeadLength * math.cos(arrowHeadAngle),
-    );
-
-    final rightArrowHead = Offset(
-      arrowEnd.dx + arrowHeadLength * math.sin(arrowHeadAngle),
-      arrowEnd.dy + arrowHeadLength * math.cos(arrowHeadAngle),
-    );
-
-    canvas.drawLine(arrowEnd, leftArrowHead, paint);
-    canvas.drawLine(arrowEnd, rightArrowHead, paint);
-
-    // Draw wind barbs for speed indication
-    _drawWindBarbs(canvas, center, arrowEnd, windSpeed, paint);
-
-    // If there are gusts, draw them with a different color
-    if (gustSpeed != null && gustSpeed! > windSpeed) {
-      final gustPaint = Paint()
-        ..color = Colors.red
-        ..strokeWidth = 1.5
-        ..style = PaintingStyle.stroke;
-
-      // Draw additional barbs for gust speed
-      _drawWindBarbs(
-        canvas,
-        center,
-        arrowEnd,
-        gustSpeed!,
-        gustPaint,
-        isGust: true,
-      );
-    }
-  }
-
-  void _drawWindBarbs(
-    Canvas canvas,
-    Offset center,
-    Offset arrowEnd,
-    int speed,
-    Paint paint, {
-    bool isGust = false,
-  }) {
-    // Wind barbs: full barb = 10 knots, half barb = 5 knots, pennant = 50 knots
-    final barbLength = isGust ? 6.0 : 8.0;
-    final barbAngle = math.pi / 3; // 60 degrees
-
-    int remainingSpeed = speed;
-    double barbPosition = 0.7; // Start barbs at 70% of arrow length
-
-    // Draw pennants (50 knots each)
-    while (remainingSpeed >= 50 && barbPosition > 0.2) {
-      final barbCenter = Offset(
-        center.dx,
-        center.dy - (arrowEnd.dy - center.dy) * barbPosition,
-      );
-
-      // Draw pennant (triangle)
-      final pennantTip = Offset(
-        barbCenter.dx + barbLength * 1.5 * math.sin(barbAngle),
-        barbCenter.dy - barbLength * 1.5 * math.cos(barbAngle),
-      );
-
-      final pennantBase = Offset(
-        barbCenter.dx,
-        barbCenter.dy - barbLength * 0.7,
-      );
-
-      final path = ui.Path()
-        ..moveTo(barbCenter.dx, barbCenter.dy)
-        ..lineTo(pennantTip.dx, pennantTip.dy)
-        ..lineTo(pennantBase.dx, pennantBase.dy)
-        ..close();
-
-      canvas.drawPath(path, paint..style = PaintingStyle.fill);
-      paint.style = PaintingStyle.stroke;
-
-      remainingSpeed -= 50;
-      barbPosition -= 0.15;
-    }
-
-    // Draw full barbs (10 knots each)
-    while (remainingSpeed >= 10 && barbPosition > 0.2) {
-      final barbCenter = Offset(
-        center.dx,
-        center.dy - (arrowEnd.dy - center.dy) * barbPosition,
-      );
-
-      final barbEnd = Offset(
-        barbCenter.dx + barbLength * math.sin(barbAngle),
-        barbCenter.dy - barbLength * math.cos(barbAngle),
-      );
-
-      canvas.drawLine(barbCenter, barbEnd, paint);
-
-      remainingSpeed -= 10;
-      barbPosition -= 0.1;
-    }
-
-    // Draw half barb (5 knots)
-    if (remainingSpeed >= 5 && barbPosition > 0.2) {
-      final barbCenter = Offset(
-        center.dx,
-        center.dy - (arrowEnd.dy - center.dy) * barbPosition,
-      );
-
-      final barbEnd = Offset(
-        barbCenter.dx + (barbLength * 0.6) * math.sin(barbAngle),
-        barbCenter.dy - (barbLength * 0.6) * math.cos(barbAngle),
-      );
-
-      canvas.drawLine(barbCenter, barbEnd, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}

@@ -265,12 +265,10 @@ class CacheService extends ChangeNotifier {
       developer.log('✅ Cleared existing airspaces');
 
       // Cache airspaces as maps
-      int cached = 0;
       for (final airspace in airspaces) {
         try {
           final json = airspace.toJson();
           await _airspacesBox.put(airspace.id, json);
-          cached++;
         } catch (e) {
           developer.log('⚠️ Error caching airspace ${airspace.id}: $e');
         }
@@ -280,13 +278,6 @@ class CacheService extends ChangeNotifier {
       await _metadataBox.put(
         _airspacesLastFetchKey,
         DateTime.now().toIso8601String(),
-      );
-
-      developer.log(
-        '✅ Cached $cached/${airspaces.length} airspaces successfully',
-      );
-      developer.log(
-        '📊 Final box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}',
       );
 
       // Notify listeners about data change
@@ -309,14 +300,11 @@ class CacheService extends ChangeNotifier {
       );
 
       // Cache airspaces as maps without clearing
-      int cached = 0;
-      int updated = 0;
       Set<String> uniqueIds = {};
 
       for (final airspace in airspaces) {
         try {
           final json = airspace.toJson();
-          final exists = _airspacesBox.containsKey(airspace.id);
 
           // Check for duplicate IDs in this batch
           if (uniqueIds.contains(airspace.id)) {
@@ -327,12 +315,6 @@ class CacheService extends ChangeNotifier {
           uniqueIds.add(airspace.id);
 
           await _airspacesBox.put(airspace.id, json);
-          if (exists) {
-            updated++;
-            developer.log('📝 Updated existing airspace: ${airspace.id}');
-          } else {
-            cached++;
-          }
         } catch (e) {
           developer.log('⚠️ Error caching airspace ${airspace.id}: $e');
         }
@@ -342,13 +324,6 @@ class CacheService extends ChangeNotifier {
       await _metadataBox.put(
         _airspacesLastFetchKey,
         DateTime.now().toIso8601String(),
-      );
-
-      developer.log(
-        '✅ Added $cached new airspaces, updated $updated existing ones',
-      );
-      developer.log(
-        '📊 Final box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}',
       );
 
       // Notify listeners about data change
@@ -588,10 +563,6 @@ class CacheService extends ChangeNotifier {
     await _ensureInitialized();
 
     try {
-      developer.log(
-        '📊 Airspaces box info: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}',
-      );
-
       final airspaces = <Airspace>[];
 
       for (final key in _airspacesBox.keys) {
@@ -605,8 +576,6 @@ class CacheService extends ChangeNotifier {
           }
         }
       }
-
-      developer.log('✅ Loaded ${airspaces.length} airspaces from cache');
       return airspaces;
     } catch (e) {
       developer.log('❌ Error loading cached airspaces: $e');
@@ -644,12 +613,7 @@ class CacheService extends ChangeNotifier {
       if (Platform.isIOS) {
         await _reportingPointsBox.flush();
         await _metadataBox.flush();
-        developer.log(
-          '🍎 iOS: Forced flush after caching ${reportingPoints.length} reporting points',
-        );
       }
-
-      developer.log('✅ Cached ${reportingPoints.length} reporting points');
 
       // Notify listeners about data change
       notifyListeners();
@@ -674,17 +638,9 @@ class CacheService extends ChangeNotifier {
       );
 
       // Cache reporting points as maps without clearing
-      int cached = 0;
-      int updated = 0;
       for (final point in reportingPoints) {
         try {
-          final exists = _reportingPointsBox.containsKey(point.id);
           await _reportingPointsBox.put(point.id, point.toJson());
-          if (exists) {
-            updated++;
-          } else {
-            cached++;
-          }
         } catch (e) {
           developer.log('⚠️ Error caching reporting point ${point.id}: $e');
         }
@@ -700,15 +656,8 @@ class CacheService extends ChangeNotifier {
       if (Platform.isIOS) {
         await _reportingPointsBox.flush();
         await _metadataBox.flush();
-        developer.log('🍎 iOS: Forced flush of reporting points to disk');
       }
 
-      developer.log(
-        '✅ Added $cached new reporting points, updated $updated existing ones',
-      );
-      developer.log(
-        '📊 Final box status: isOpen=${_reportingPointsBox.isOpen}, length=${_reportingPointsBox.length}',
-      );
 
       // Notify listeners about data change
       notifyListeners();
@@ -724,16 +673,6 @@ class CacheService extends ChangeNotifier {
     await _ensureInitialized();
 
     try {
-      // Add iOS-specific debugging
-      if (Platform.isIOS) {
-        developer.log(
-          '🍎 iOS: Getting reporting points - Box isOpen: ${_reportingPointsBox.isOpen}, isEmpty: ${_reportingPointsBox.isEmpty}, length: ${_reportingPointsBox.length}',
-        );
-        if (_reportingPointsBox.path != null) {
-          developer.log('🍎 iOS: Box path: ${_reportingPointsBox.path}');
-        }
-      }
-
       final reportingPoints = <ReportingPoint>[];
 
       for (final key in _reportingPointsBox.keys) {
@@ -746,20 +685,9 @@ class CacheService extends ChangeNotifier {
         }
       }
 
-      if (Platform.isIOS &&
-          reportingPoints.isEmpty &&
-          _reportingPointsBox.isNotEmpty) {
-        developer.log(
-          '🍎 iOS: WARNING - Box has ${_reportingPointsBox.length} entries but parsed 0 points!',
-        );
-      }
-
       return reportingPoints;
     } catch (e) {
       developer.log('❌ Error loading cached reporting points: $e');
-      if (Platform.isIOS) {
-        developer.log('🍎 iOS: Stack trace: ${StackTrace.current}');
-      }
       return [];
     }
   }

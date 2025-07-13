@@ -121,12 +121,10 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
             final futures = <Future>[];
 
             if (cachedPoints.isEmpty) {
-              // debugPrint('📍 Loading reporting points...');
               futures.add(_openAIPService.fetchAllReportingPoints());
             }
 
             if (cachedAirspaces.isEmpty) {
-              // debugPrint('🌍 Loading airspaces...');
               futures.add(_openAIPService.fetchAllAirspaces());
             }
 
