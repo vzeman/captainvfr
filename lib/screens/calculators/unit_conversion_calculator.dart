@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/form_theme_helper.dart';
 
 class UnitConversionCalculator extends StatefulWidget {
   const UnitConversionCalculator({super.key});
@@ -234,12 +235,15 @@ class _UnitConversionCalculatorState extends State<UnitConversionCalculator> {
     final units = _conversions[_selectedCategory]!.keys.toList();
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: FormThemeHelper.backgroundColor,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        title: const Text('Unit Conversion'),
+        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        title: const Text(
+          'Unit Conversion',
+          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: FormThemeHelper.primaryTextColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -248,78 +252,45 @@ class _UnitConversionCalculatorState extends State<UnitConversionCalculator> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Category',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: _selectedCategory,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                      ),
-                      items: _conversions.keys.map((category) {
-                        return DropdownMenuItem(
-                          value: category,
-                          child: Text(category),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedCategory = value!;
-                          _updateUnits();
-                        });
-                      },
-                    ),
-                  ],
+            FormThemeHelper.buildSection(
+              title: 'Category',
+              children: [
+                FormThemeHelper.buildDropdownField<String>(
+                  value: _selectedCategory,
+                  labelText: 'Select Category',
+                  items: _conversions.keys.map((category) {
+                    return DropdownMenuItem(
+                      value: category,
+                      child: Text(category),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedCategory = value!;
+                      _updateUnits();
+                    });
+                  },
                 ),
-              ),
+              ],
             ),
             const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Convert',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _inputController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Value',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
+            FormThemeHelper.buildSection(
+              title: 'Convert',
+              children: [
+                FormThemeHelper.buildFormField(
+                  controller: _inputController,
+                  labelText: 'Value',
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<String>(
+                          child: FormThemeHelper.buildDropdownField<String>(
                             value: _fromUnit,
-                            decoration: const InputDecoration(
-                              labelText: 'From',
-                              border: OutlineInputBorder(),
-                            ),
-                            isExpanded: true,
+                            labelText: 'From',
                             items: units.map((unit) {
                               return DropdownMenuItem(
                                 value: unit,
@@ -337,18 +308,14 @@ class _UnitConversionCalculatorState extends State<UnitConversionCalculator> {
                             },
                           ),
                         ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8),
-                          child: Icon(Icons.arrow_forward),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Icon(Icons.arrow_forward, color: FormThemeHelper.primaryAccent),
                         ),
                         Expanded(
-                          child: DropdownButtonFormField<String>(
+                          child: FormThemeHelper.buildDropdownField<String>(
                             value: _toUnit,
-                            decoration: const InputDecoration(
-                              labelText: 'To',
-                              border: OutlineInputBorder(),
-                            ),
-                            isExpanded: true,
+                            labelText: 'To',
                             items: units.map((unit) {
                               return DropdownMenuItem(
                                 value: unit,
@@ -368,44 +335,45 @@ class _UnitConversionCalculatorState extends State<UnitConversionCalculator> {
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
+              ],
             ),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _convert,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              style: FormThemeHelper.getPrimaryButtonStyle().copyWith(
+                minimumSize: WidgetStateProperty.all(const Size(double.infinity, 48)),
               ),
               child: const Text('Convert', style: TextStyle(fontSize: 16)),
             ),
             if (_result != null) ...[
               const SizedBox(height: 24),
-              Card(
-                color: Theme.of(context).colorScheme.primaryContainer,
+              Container(
+                decoration: FormThemeHelper.getSectionDecoration(),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      const Text(
+                      Text(
                         'Result',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                        style: FormThemeHelper.sectionTitleStyle.copyWith(
+                          color: FormThemeHelper.primaryTextColor,
                         ),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         '${_inputController.text} $_fromUnit',
-                        style: const TextStyle(fontSize: 16),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: FormThemeHelper.primaryTextColor,
+                        ),
                       ),
-                      const Icon(Icons.arrow_downward, size: 32),
+                      Icon(Icons.arrow_downward, size: 32, color: FormThemeHelper.primaryAccent),
                       Text(
                         '${_result!.toStringAsFixed(4)} $_toUnit',
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
+                          color: FormThemeHelper.primaryAccent,
                         ),
                       ),
                     ],

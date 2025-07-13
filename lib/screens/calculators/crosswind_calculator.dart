@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/settings_service.dart';
+import '../../utils/form_theme_helper.dart';
 import 'dart:math' as math;
 
 class CrosswindCalculator extends StatefulWidget {
@@ -78,15 +79,17 @@ class _CrosswindCalculatorState extends State<CrosswindCalculator> {
     final isImperial = settingsService.units == 'imperial';
     final speedUnit = isImperial ? 'kts' : 'km/h';
 
-    return Card(
-      color: Theme.of(context).colorScheme.primaryContainer,
+    return Container(
+      decoration: FormThemeHelper.getSectionDecoration(),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            const Text(
+            Text(
               'Wind Components',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: FormThemeHelper.sectionTitleStyle.copyWith(
+                color: FormThemeHelper.primaryTextColor,
+              ),
             ),
             const SizedBox(height: 16),
             Row(
@@ -104,12 +107,19 @@ class _CrosswindCalculatorState extends State<CrosswindCalculator> {
                           : Colors.orange,
                     ),
                     const SizedBox(height: 8),
-                    Text(_windType ?? '', style: const TextStyle(fontSize: 14)),
+                    Text(
+                      _windType ?? '',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: FormThemeHelper.primaryTextColor,
+                      ),
+                    ),
                     Text(
                       '${_headwindComponent!.toStringAsFixed(1)} $speedUnit',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
+                        color: FormThemeHelper.primaryAccent,
                       ),
                     ),
                   ],
@@ -124,12 +134,19 @@ class _CrosswindCalculatorState extends State<CrosswindCalculator> {
                           : Colors.blue,
                     ),
                     const SizedBox(height: 8),
-                    const Text('Crosswind', style: TextStyle(fontSize: 14)),
+                    const Text(
+                      'Crosswind',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: FormThemeHelper.primaryTextColor,
+                      ),
+                    ),
                     Text(
                       '${_crosswindComponent!.toStringAsFixed(1)} $speedUnit',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
+                        color: FormThemeHelper.primaryAccent,
                       ),
                     ),
                   ],
@@ -166,12 +183,15 @@ class _CrosswindCalculatorState extends State<CrosswindCalculator> {
     final speedUnit = isImperial ? 'kts' : 'km/h';
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: FormThemeHelper.backgroundColor,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        title: const Text('Crosswind Calculator'),
+        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        title: const Text(
+          'Crosswind Calculator',
+          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: FormThemeHelper.primaryTextColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -180,63 +200,41 @@ class _CrosswindCalculatorState extends State<CrosswindCalculator> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Wind Information',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _runwayHeadingController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Runway Heading (°)',
-                        helperText: 'Magnetic heading of the runway',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _windDirectionController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Wind Direction (°)',
-                        helperText: 'Direction wind is coming FROM',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _windSpeedController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: 'Wind Speed ($speedUnit)',
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                  ],
+            FormThemeHelper.buildSection(
+              title: 'Wind Information',
+              children: [
+                FormThemeHelper.buildFormField(
+                  controller: _runwayHeadingController,
+                  labelText: 'Runway Heading (°)',
+                  hintText: 'Magnetic heading of the runway',
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                 ),
-              ),
+                const SizedBox(height: 16),
+                FormThemeHelper.buildFormField(
+                  controller: _windDirectionController,
+                  labelText: 'Wind Direction (°)',
+                  hintText: 'Direction wind is coming FROM',
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FormThemeHelper.buildFormField(
+                  controller: _windSpeedController,
+                  labelText: 'Wind Speed ($speedUnit)',
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _calculate,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              style: FormThemeHelper.getPrimaryButtonStyle().copyWith(
+                minimumSize: WidgetStateProperty.all(const Size(double.infinity, 48)),
               ),
               child: const Text('Calculate', style: TextStyle(fontSize: 16)),
             ),
@@ -244,28 +242,15 @@ class _CrosswindCalculatorState extends State<CrosswindCalculator> {
               const SizedBox(height: 24),
               _buildResultCard(),
               const SizedBox(height: 16),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Quick Reference',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text('• 15° off runway: ~25% crosswind'),
-                      const Text('• 30° off runway: ~50% crosswind'),
-                      const Text('• 45° off runway: ~70% crosswind'),
-                      const Text('• 60° off runway: ~85% crosswind'),
-                      const Text('• 90° off runway: 100% crosswind'),
-                    ],
-                  ),
-                ),
+              FormThemeHelper.buildSection(
+                title: 'Quick Reference',
+                children: [
+                  Text('• 15° off runway: ~25% crosswind', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                  Text('• 30° off runway: ~50% crosswind', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                  Text('• 45° off runway: ~70% crosswind', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                  Text('• 60° off runway: ~85% crosswind', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                  Text('• 90° off runway: 100% crosswind', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                ],
               ),
             ],
           ],

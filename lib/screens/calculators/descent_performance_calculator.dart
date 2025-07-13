@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../services/settings_service.dart';
 import '../../models/aircraft.dart';
 import '../../widgets/aircraft_selector_widget.dart';
+import '../../utils/form_theme_helper.dart';
 import 'dart:math';
 
 class DescentPerformanceCalculator extends StatefulWidget {
@@ -102,71 +103,49 @@ class _DescentPerformanceCalculatorState
     final isImperial = settings.units == 'imperial';
 
     return Scaffold(
+      backgroundColor: FormThemeHelper.backgroundColor,
       appBar: AppBar(
-        title: const Text('Descent Performance'),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: Colors.white,
+        title: const Text(
+          'Descent Performance',
+          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+        ),
+        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        foregroundColor: FormThemeHelper.primaryTextColor,
       ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Aircraft Selection',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    AircraftSelectorWidget(
-                      selectedAircraft: _selectedAircraft,
-                      onAircraftSelected: (aircraft) {
-                        setState(() {
-                          _selectedAircraft = aircraft;
-                          if (aircraft != null) {
-                            _currentWeightController.text = 
-                                (aircraft.maxTakeoffWeight * 0.85).toStringAsFixed(0);
-                            _airspeedController.text = 
-                                aircraft.cruiseSpeed.toString();
-                          }
-                        });
-                      },
-                    ),
-                  ],
+            FormThemeHelper.buildSection(
+              title: 'Aircraft Selection',
+              children: [
+                AircraftSelectorWidget(
+                  selectedAircraft: _selectedAircraft,
+                  onAircraftSelected: (aircraft) {
+                    setState(() {
+                      _selectedAircraft = aircraft;
+                      if (aircraft != null) {
+                        _currentWeightController.text = 
+                            (aircraft.maxTakeoffWeight * 0.85).toStringAsFixed(0);
+                        _airspeedController.text = 
+                            aircraft.cruiseSpeed.toString();
+                      }
+                    });
+                  },
                 ),
-              ),
+              ],
             ),
             const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Descent Parameters',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+            FormThemeHelper.buildSection(
+              title: 'Descent Parameters',
+              children: [
                     Row(
                       children: [
                         Expanded(
-                          child: TextFormField(
+                          child: FormThemeHelper.buildFormField(
                             controller: _currentAltitudeController,
-                            decoration: InputDecoration(
-                              labelText:
-                                  'Current Altitude (${isImperial ? "ft" : "m"})',
-                              border: const OutlineInputBorder(),
-                            ),
+                            labelText: 'Current Altitude (${isImperial ? "ft" : "m"})',
                             keyboardType: TextInputType.number,
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -181,13 +160,9 @@ class _DescentPerformanceCalculatorState
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: TextFormField(
+                          child: FormThemeHelper.buildFormField(
                             controller: _targetAltitudeController,
-                            decoration: InputDecoration(
-                              labelText:
-                                  'Target Altitude (${isImperial ? "ft" : "m"})',
-                              border: const OutlineInputBorder(),
-                            ),
+                            labelText: 'Target Altitude (${isImperial ? "ft" : "m"})',
                             keyboardType: TextInputType.number,
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -212,12 +187,9 @@ class _DescentPerformanceCalculatorState
                     Row(
                       children: [
                         Expanded(
-                          child: TextFormField(
+                          child: FormThemeHelper.buildFormField(
                             controller: _descentRateController,
-                            decoration: const InputDecoration(
-                              labelText: 'Descent Rate (fpm)',
-                              border: OutlineInputBorder(),
-                            ),
+                            labelText: 'Descent Rate (fpm)',
                             keyboardType: TextInputType.number,
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -237,13 +209,9 @@ class _DescentPerformanceCalculatorState
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: TextFormField(
+                          child: FormThemeHelper.buildFormField(
                             controller: _airspeedController,
-                            decoration: InputDecoration(
-                              labelText:
-                                  'Descent Airspeed (${isImperial ? "kt" : "km/h"})',
-                              border: const OutlineInputBorder(),
-                            ),
+                            labelText: 'Descent Airspeed (${isImperial ? "kt" : "km/h"})',
                             keyboardType: TextInputType.number,
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -263,13 +231,9 @@ class _DescentPerformanceCalculatorState
                     Row(
                       children: [
                         Expanded(
-                          child: TextFormField(
+                          child: FormThemeHelper.buildFormField(
                             controller: _currentWeightController,
-                            decoration: InputDecoration(
-                              labelText:
-                                  'Current Weight (${isImperial ? "lbs" : "kg"})',
-                              border: const OutlineInputBorder(),
-                            ),
+                            labelText: 'Current Weight (${isImperial ? "lbs" : "kg"})',
                             keyboardType: TextInputType.number,
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -285,14 +249,10 @@ class _DescentPerformanceCalculatorState
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: TextFormField(
+                          child: FormThemeHelper.buildFormField(
                             controller: _windController,
-                            decoration: InputDecoration(
-                              labelText:
-                                  'Wind Component (${isImperial ? "kt" : "km/h"})',
-                              helperText: 'Positive = tailwind, Negative = headwind',
-                              border: const OutlineInputBorder(),
-                            ),
+                            labelText: 'Wind Component (${isImperial ? "kt" : "km/h"})',
+                            hintText: 'Positive = tailwind, Negative = headwind',
                             keyboardType: const TextInputType.numberWithOptions(
                               signed: true,
                               decimal: true,
@@ -306,20 +266,18 @@ class _DescentPerformanceCalculatorState
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: _selectedAircraft == null ? null : _calculate,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.all(16),
+                        style: FormThemeHelper.getPrimaryButtonStyle().copyWith(
+                          minimumSize: WidgetStateProperty.all(const Size(double.infinity, 48)),
                         ),
                         child: const Text('Calculate Descent Performance'),
                       ),
                     ),
-                  ],
-                ),
-              ),
+              ],
             ),
             if (_descentTime != null) ...[
               const SizedBox(height: 16),
-              Card(
-                color: theme.colorScheme.secondaryContainer,
+              Container(
+                decoration: FormThemeHelper.getSectionDecoration(),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -327,8 +285,8 @@ class _DescentPerformanceCalculatorState
                     children: [
                       Text(
                         'Descent Performance Results',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                        style: FormThemeHelper.sectionTitleStyle.copyWith(
+                          color: FormThemeHelper.primaryTextColor,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -361,21 +319,22 @@ class _DescentPerformanceCalculatorState
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.tertiaryContainer,
+                          color: FormThemeHelper.fillColor,
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: FormThemeHelper.borderColor),
                         ),
                         child: Row(
                           children: [
                             Icon(
                               Icons.info_outline,
-                              color: theme.colorScheme.onTertiaryContainer,
+                              color: FormThemeHelper.primaryAccent,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 'Descent calculations assume constant rate and airspeed. Actual performance may vary with atmospheric conditions.',
                                 style: TextStyle(
-                                  color: theme.colorScheme.onTertiaryContainer,
+                                  color: FormThemeHelper.primaryTextColor,
                                   fontSize: 12,
                                 ),
                               ),
@@ -402,12 +361,17 @@ class _DescentPerformanceCalculatorState
         children: [
           Text(
             label,
-            style: theme.textTheme.bodyMedium,
+            style: TextStyle(
+              color: FormThemeHelper.primaryTextColor,
+              fontSize: theme.textTheme.bodyMedium?.fontSize,
+            ),
           ),
           Text(
             value,
-            style: theme.textTheme.bodyLarge?.copyWith(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
+              color: FormThemeHelper.primaryAccent,
+              fontSize: theme.textTheme.bodyLarge?.fontSize,
             ),
           ),
         ],

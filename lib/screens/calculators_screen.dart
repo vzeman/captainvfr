@@ -9,6 +9,7 @@ import 'calculators/wind_correction_calculator.dart';
 import 'calculators/climb_performance_calculator.dart';
 import 'calculators/cruise_performance_calculator.dart';
 import 'calculators/descent_performance_calculator.dart';
+import '../utils/form_theme_helper.dart';
 
 class CalculatorsScreen extends StatelessWidget {
   const CalculatorsScreen({super.key});
@@ -16,14 +17,14 @@ class CalculatorsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: FormThemeHelper.backgroundColor,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        title: const Text('Pilot Calculators'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        title: const Text(
+          'Pilot Calculators',
+          style: TextStyle(color: FormThemeHelper.primaryTextColor),
         ),
+        foregroundColor: FormThemeHelper.primaryTextColor,
       ),
       body: GridView.count(
         crossAxisCount: 2,
@@ -152,11 +153,15 @@ class CalculatorsScreen extends StatelessWidget {
     IconData icon,
     VoidCallback onTap,
   ) {
-    return Card(
-      elevation: 2,
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0x1A448AFF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0x7F448AFF)),
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -165,7 +170,7 @@ class CalculatorsScreen extends StatelessWidget {
               Icon(
                 icon,
                 size: 48,
-                color: Theme.of(context).colorScheme.primary,
+                color: const Color(0xFF448AFF),
               ),
               const SizedBox(height: 12),
               Text(
@@ -174,6 +179,7 @@ class CalculatorsScreen extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
+                  color: Colors.white,
                 ),
               ),
             ],

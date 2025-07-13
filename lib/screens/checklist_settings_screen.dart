@@ -5,6 +5,7 @@ import '../services/aircraft_settings_service.dart';
 import '../models/checklist.dart';
 import '../widgets/checklist_form_dialog.dart';
 import '../widgets/checklist_run_dialog.dart';
+import '../utils/form_theme_helper.dart';
 
 /// Screen to view and manage checklists.
 class ChecklistSettingsScreen extends StatefulWidget {
@@ -28,7 +29,12 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Checklists'),
+        title: const Text(
+          'Checklists',
+          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+        ),
+        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        foregroundColor: FormThemeHelper.primaryTextColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -37,17 +43,16 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
           ),
         ],
       ),
+      backgroundColor: FormThemeHelper.backgroundColor,
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            TextField(
+            TextFormField(
               controller: _searchController,
-              decoration: const InputDecoration(
-                labelText: 'Search',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
+              style: FormThemeHelper.inputTextStyle,
+              decoration: FormThemeHelper.getInputDecoration('Search')
+                  .copyWith(prefixIcon: Icon(Icons.search, color: FormThemeHelper.secondaryTextColor)),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 16),
@@ -67,7 +72,12 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
                         mdl.name.toLowerCase().contains(query);
                   }).toList();
                   if (lists.isEmpty) {
-                    return const Center(child: Text('No matching checklists'));
+                    return Center(
+                      child: Text(
+                        'No matching checklists',
+                        style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                      ),
+                    );
                   }
                   return ListView.builder(
                     itemCount: lists.length,
@@ -79,16 +89,33 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
                       final mdl = aircraftSvc.models.firstWhere(
                         (md) => md.id == c.modelId,
                       );
-                      return Card(
+                      return Container(
                         margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: FormThemeHelper.sectionBackgroundColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: FormThemeHelper.sectionBorderColor),
+                        ),
                         child: ListTile(
-                          title: Text(c.name),
-                          subtitle: Text('${mfr.name} • ${mdl.name}'),
+                          title: Text(
+                            c.name,
+                            style: TextStyle(
+                              color: FormThemeHelper.primaryTextColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${mfr.name} • ${mdl.name}',
+                            style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                          ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.play_arrow),
+                                icon: Icon(
+                                  Icons.play_arrow,
+                                  color: FormThemeHelper.primaryAccent,
+                                ),
                                 tooltip: 'Start',
                                 onPressed: () => showDialog(
                                   context: context,
@@ -99,7 +126,10 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.edit),
+                                icon: Icon(
+                                  Icons.edit,
+                                  color: FormThemeHelper.secondaryTextColor,
+                                ),
                                 tooltip: 'Edit',
                                 onPressed: () => _openForm(checklist: c),
                               ),

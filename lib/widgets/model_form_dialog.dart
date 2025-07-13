@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../services/aircraft_settings_service.dart';
 import '../models/model.dart';
 import '../models/manufacturer.dart';
+import '../utils/form_theme_helper.dart';
 
 class ModelFormDialog extends StatefulWidget {
   final Model? model;
@@ -82,111 +83,83 @@ class _ModelFormDialogState extends State<ModelFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        height: MediaQuery.of(context).size.height * 0.8,
+    return FormThemeHelper.buildDialog(
+      context: context,
+      title: widget.model == null ? 'Add Model' : 'Edit Model',
+      width: MediaQuery.of(context).size.width * 0.9,
+      height: MediaQuery.of(context).size.height * 0.8,
+      content: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            AppBar(
-              title: Text(widget.model == null ? 'Add Model' : 'Edit Model'),
-              centerTitle: true,
-              automaticallyImplyLeading: false,
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop(),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FormThemeHelper.buildSection(
+                title: 'Basic Information',
+                children: [
+                FormThemeHelper.buildFormField(
+                  controller: _nameController,
+                  labelText: 'Model Name *',
+                  hintText: 'e.g., C172, PA-28',
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter a model name';
+                    }
+                    return null;
+                  },
                 ),
-              ],
-            ),
-            Expanded(
-              child: Form(
-                key: _formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 16),
-
-                      // Name field
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Model Name',
-                          hintText: 'e.g., C172, PA-28',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter a model name';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Manufacturer dropdown
-                      Consumer<AircraftSettingsService>(
-                        builder: (context, service, child) {
-                          return DropdownButtonFormField<String>(
-                            value: _selectedManufacturerId,
-                            decoration: const InputDecoration(
-                              labelText: 'Manufacturer',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: service.manufacturers.map((manufacturer) {
-                              return DropdownMenuItem(
-                                value: manufacturer.id,
-                                child: Text(manufacturer.name),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedManufacturerId = value;
-                              });
-                            },
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please select a manufacturer';
-                              }
-                              return null;
-                            },
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Category dropdown
-                      DropdownButtonFormField<AircraftCategory>(
-                        value: _selectedCategory,
-                        decoration: const InputDecoration(
-                          labelText: 'Aircraft Category',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: AircraftCategory.values.map((category) {
-                          return DropdownMenuItem(
-                            value: category,
-                            child: Text(_getCategoryDisplayName(category)),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _selectedCategory = value;
-                            });
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Engine Count
-                      TextFormField(
+                const SizedBox(height: 16),
+                Consumer<AircraftSettingsService>(
+                  builder: (context, service, child) {
+                    return FormThemeHelper.buildDropdownField<String>(
+                      value: _selectedManufacturerId,
+                      labelText: 'Manufacturer *',
+                      items: service.manufacturers.map((manufacturer) {
+                        return DropdownMenuItem(
+                          value: manufacturer.id,
+                          child: Text(manufacturer.name, style: FormThemeHelper.inputTextStyle),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedManufacturerId = value;
+                        });
+                      },
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please select a manufacturer';
+                        }
+                        return null;
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                FormThemeHelper.buildDropdownField<AircraftCategory>(
+                  value: _selectedCategory,
+                  labelText: 'Aircraft Category *',
+                  items: AircraftCategory.values.map((category) {
+                    return DropdownMenuItem(
+                      value: category,
+                      child: Text(_getCategoryDisplayName(category), style: FormThemeHelper.inputTextStyle),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _selectedCategory = value;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FormThemeHelper.buildFormField(
                         controller: _engineCountController,
-                        decoration: const InputDecoration(
-                          labelText: 'Engine Count',
-                          border: OutlineInputBorder(),
-                        ),
+                        labelText: 'Engine Count *',
                         keyboardType: TextInputType.number,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -199,15 +172,12 @@ class _ModelFormDialogState extends State<ModelFormDialog> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
-
-                      // Max Seats
-                      TextFormField(
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: FormThemeHelper.buildFormField(
                         controller: _maxSeatsController,
-                        decoration: const InputDecoration(
-                          labelText: 'Maximum Seats',
-                          border: OutlineInputBorder(),
-                        ),
+                        labelText: 'Maximum Seats *',
                         keyboardType: TextInputType.number,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -220,15 +190,16 @@ class _ModelFormDialogState extends State<ModelFormDialog> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
-
-                      // Typical Cruise Speed
-                      TextFormField(
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FormThemeHelper.buildFormField(
                         controller: _typicalCruiseSpeedController,
-                        decoration: const InputDecoration(
-                          labelText: 'Typical Cruise Speed (knots)',
-                          border: OutlineInputBorder(),
-                        ),
+                        labelText: 'Typical Cruise Speed (kts) *',
                         keyboardType: TextInputType.number,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -241,15 +212,12 @@ class _ModelFormDialogState extends State<ModelFormDialog> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
-
-                      // Typical Service Ceiling
-                      TextFormField(
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: FormThemeHelper.buildFormField(
                         controller: _typicalServiceCeilingController,
-                        decoration: const InputDecoration(
-                          labelText: 'Typical Service Ceiling (feet)',
-                          border: OutlineInputBorder(),
-                        ),
+                        labelText: 'Service Ceiling (ft) *',
                         keyboardType: TextInputType.number,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -262,112 +230,95 @@ class _ModelFormDialogState extends State<ModelFormDialog> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
-
-                      // Optional fields header
-                      const Text(
-                        'Optional Performance Data',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                    ),
+                  ],
+                ),
+                FormThemeHelper.buildFormField(
+                  controller: _descriptionController,
+                  labelText: 'Description',
+                  maxLines: 3,
+                ),
+              ],
+              ),
+              const SizedBox(height: 16),
+              FormThemeHelper.buildSection(
+                title: 'Optional Performance Data',
+                children: [
+                  FormThemeHelper.buildFormField(
+                    controller: _fuelConsumptionController,
+                    labelText: 'Fuel Consumption (gph)',
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FormThemeHelper.buildFormField(
+                          controller: _maximumClimbRateController,
+                          labelText: 'Max Climb Rate (fpm)',
+                          keyboardType: TextInputType.number,
                         ),
                       ),
-                      const SizedBox(height: 8),
-
-                      // Fuel Consumption
-                      TextFormField(
-                        controller: _fuelConsumptionController,
-                        decoration: const InputDecoration(
-                          labelText: 'Fuel Consumption (gph)',
-                          border: OutlineInputBorder(),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: FormThemeHelper.buildFormField(
+                          controller: _maximumDescentRateController,
+                          labelText: 'Max Descent Rate (fpm)',
+                          keyboardType: TextInputType.number,
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Maximum Climb Rate
-                      TextFormField(
-                        controller: _maximumClimbRateController,
-                        decoration: const InputDecoration(
-                          labelText: 'Maximum Climb Rate (fpm)',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Maximum Descent Rate
-                      TextFormField(
-                        controller: _maximumDescentRateController,
-                        decoration: const InputDecoration(
-                          labelText: 'Maximum Descent Rate (fpm)',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Max Takeoff Weight
-                      TextFormField(
-                        controller: _maxTakeoffWeightController,
-                        decoration: const InputDecoration(
-                          labelText: 'Max Takeoff Weight (lbs)',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Max Landing Weight
-                      TextFormField(
-                        controller: _maxLandingWeightController,
-                        decoration: const InputDecoration(
-                          labelText: 'Max Landing Weight (lbs)',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Fuel Capacity
-                      TextFormField(
-                        controller: _fuelCapacityController,
-                        decoration: const InputDecoration(
-                          labelText: 'Fuel Capacity (gallons)',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Description
-                      TextFormField(
-                        controller: _descriptionController,
-                        decoration: const InputDecoration(
-                          labelText: 'Description',
-                          border: OutlineInputBorder(),
-                        ),
-                        maxLines: 3,
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Save button
-                      ElevatedButton(
-                        onPressed: _isLoading ? null : _saveModel,
-                        child: _isLoading
-                            ? const CircularProgressIndicator()
-                            : Text(widget.model == null ? 'Add' : 'Save'),
                       ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FormThemeHelper.buildFormField(
+                          controller: _maxTakeoffWeightController,
+                          labelText: 'Max Takeoff Weight (lbs)',
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: FormThemeHelper.buildFormField(
+                          controller: _maxLandingWeightController,
+                          labelText: 'Max Landing Weight (lbs)',
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  FormThemeHelper.buildFormField(
+                    controller: _fuelCapacityController,
+                    labelText: 'Fuel Capacity (gallons)',
+                    keyboardType: TextInputType.number,
+                  ),
+                ],
               ),
-            ),
           ],
         ),
       ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+          style: FormThemeHelper.getSecondaryButtonStyle(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _isLoading ? null : _saveModel,
+          style: FormThemeHelper.getPrimaryButtonStyle(),
+          child: _isLoading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(widget.model == null ? 'Add' : 'Save'),
+        ),
+      ],
     );
   }
 

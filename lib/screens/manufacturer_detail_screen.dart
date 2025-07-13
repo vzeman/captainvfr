@@ -5,6 +5,7 @@ import '../models/manufacturer.dart';
 import '../models/model.dart';
 import '../widgets/manufacturer_form_dialog.dart';
 import '../widgets/model_form_dialog.dart';
+import '../utils/form_theme_helper.dart';
 
 class ManufacturerDetailScreen extends StatelessWidget {
   final Manufacturer manufacturer;
@@ -14,8 +15,14 @@ class ManufacturerDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: FormThemeHelper.backgroundColor,
       appBar: AppBar(
-        title: Text(manufacturer.name),
+        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        title: Text(
+          manufacturer.name,
+          style: const TextStyle(color: FormThemeHelper.primaryTextColor),
+        ),
+        foregroundColor: FormThemeHelper.primaryTextColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
@@ -38,9 +45,14 @@ class ManufacturerDetailScreen extends StatelessWidget {
 
           return Column(
             children: [
-              // Manufacturer Info Card
-              Card(
+              // Manufacturer Info Section
+              Container(
                 margin: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: FormThemeHelper.sectionBackgroundColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: FormThemeHelper.sectionBorderColor),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -49,7 +61,7 @@ class ManufacturerDetailScreen extends StatelessWidget {
                       Row(
                         children: [
                           CircleAvatar(
-                            backgroundColor: Theme.of(context).primaryColor,
+                            backgroundColor: FormThemeHelper.primaryAccent,
                             radius: 30,
                             child: Text(
                               currentManufacturer.name.isNotEmpty
@@ -69,9 +81,11 @@ class ManufacturerDetailScreen extends StatelessWidget {
                               children: [
                                 Text(
                                   currentManufacturer.name,
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.headlineSmall,
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: FormThemeHelper.primaryTextColor,
+                                  ),
                                 ),
                               ],
                             ),
@@ -83,7 +97,10 @@ class ManufacturerDetailScreen extends StatelessWidget {
                         const SizedBox(height: 16),
                         Text(
                           currentManufacturer.description ?? '',
-                          style: Theme.of(context).textTheme.bodyMedium,
+                          style: TextStyle(
+                            color: FormThemeHelper.secondaryTextColor,
+                            fontSize: 16,
+                          ),
                         ),
                       ],
                       const SizedBox(height: 16),
@@ -91,14 +108,16 @@ class ManufacturerDetailScreen extends StatelessWidget {
                         children: [
                           Icon(
                             Icons.category,
-                            color: Colors.grey[600],
+                            color: FormThemeHelper.primaryAccent,
                             size: 20,
                           ),
                           const SizedBox(width: 8),
                           Text(
                             '${manufacturerModels.length} model(s)',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: Colors.grey[600]),
+                            style: TextStyle(
+                              color: FormThemeHelper.secondaryTextColor,
+                              fontSize: 14,
+                            ),
                           ),
                         ],
                       ),
@@ -115,12 +134,17 @@ class ManufacturerDetailScreen extends StatelessWidget {
                     Expanded(
                       child: Text(
                         'Models',
-                        style: Theme.of(context).textTheme.titleLarge,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: FormThemeHelper.primaryTextColor,
+                        ),
                       ),
                     ),
                     ElevatedButton.icon(
                       onPressed: () =>
                           _showModelForm(context, currentManufacturer),
+                      style: FormThemeHelper.getPrimaryButtonStyle(),
                       icon: const Icon(Icons.add),
                       label: const Text('Add Model'),
                     ),
@@ -140,26 +164,27 @@ class ManufacturerDetailScreen extends StatelessWidget {
                             Icon(
                               Icons.category_outlined,
                               size: 64,
-                              color: Colors.grey[400],
+                              color: FormThemeHelper.primaryAccent.withValues(alpha: 0.5),
                             ),
                             const SizedBox(height: 16),
                             Text(
                               'No models yet',
                               style: TextStyle(
                                 fontSize: 18,
-                                color: Colors.grey[600],
+                                color: FormThemeHelper.primaryTextColor,
                               ),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               'Add the first model for ${currentManufacturer.name}',
-                              style: TextStyle(color: Colors.grey[500]),
+                              style: TextStyle(color: FormThemeHelper.secondaryTextColor),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 16),
                             ElevatedButton.icon(
                               onPressed: () =>
                                   _showModelForm(context, currentManufacturer),
+                              style: FormThemeHelper.getPrimaryButtonStyle(),
                               icon: const Icon(Icons.add),
                               label: const Text('Add First Model'),
                             ),
@@ -171,34 +196,53 @@ class ManufacturerDetailScreen extends StatelessWidget {
                         itemCount: manufacturerModels.length,
                         itemBuilder: (context, index) {
                           final model = manufacturerModels[index];
-                          return Card(
+                          return Container(
                             margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: FormThemeHelper.sectionBackgroundColor,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: FormThemeHelper.sectionBorderColor),
+                            ),
                             child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               leading: CircleAvatar(
-                                backgroundColor: Theme.of(
-                                  context,
-                                ).primaryColor.withValues(alpha: 0.1),
+                                backgroundColor: FormThemeHelper.primaryAccent.withValues(alpha: 0.2),
                                 child: Text(
                                   model.name.isNotEmpty
                                       ? model.name[0].toUpperCase()
                                       : 'M',
                                   style: TextStyle(
-                                    color: Theme.of(context).primaryColor,
+                                    color: FormThemeHelper.primaryAccent,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
-                              title: Text(model.name),
+                              title: Text(
+                                model.name,
+                                style: TextStyle(
+                                  color: FormThemeHelper.primaryTextColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     'Category: ${_getCategoryDisplayName(model.category)}',
+                                    style: TextStyle(color: FormThemeHelper.secondaryTextColor),
                                   ),
-                                  Text('${model.engineCount} engine(s)'),
+                                  Text(
+                                    '${model.engineCount} engine(s)',
+                                    style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                                  ),
                                 ],
                               ),
                               trailing: PopupMenuButton<String>(
+                                icon: Icon(
+                                  Icons.more_vert,
+                                  color: FormThemeHelper.primaryTextColor,
+                                ),
+                                color: FormThemeHelper.dialogBackgroundColor,
                                 onSelected: (value) {
                                   if (value == 'edit') {
                                     _showModelForm(
@@ -215,13 +259,13 @@ class ManufacturerDetailScreen extends StatelessWidget {
                                   }
                                 },
                                 itemBuilder: (context) => [
-                                  const PopupMenuItem(
+                                  PopupMenuItem(
                                     value: 'edit',
                                     child: Row(
                                       children: [
-                                        Icon(Icons.edit, size: 20),
-                                        SizedBox(width: 8),
-                                        Text('Edit'),
+                                        Icon(Icons.edit, size: 20, color: FormThemeHelper.primaryTextColor),
+                                        const SizedBox(width: 8),
+                                        Text('Edit', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
                                       ],
                                     ),
                                   ),

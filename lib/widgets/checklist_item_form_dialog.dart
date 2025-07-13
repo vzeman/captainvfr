@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/checklist_item.dart';
+import '../utils/form_theme_helper.dart';
 
 /// Dialog to add or edit a checklist item.
 class ChecklistItemFormDialog extends StatefulWidget {
@@ -37,65 +38,53 @@ class _ChecklistItemFormDialogState extends State<ChecklistItemFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AppBar(
-            title: Text(widget.item == null ? 'Add Item' : 'Edit Item'),
-            automaticallyImplyLeading: false,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(context).pop(),
+    return FormThemeHelper.buildDialog(
+      context: context,
+      title: widget.item == null ? 'Add Item' : 'Edit Item',
+      content: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FormThemeHelper.buildFormField(
+                controller: _nameController,
+                labelText: 'Name',
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter item name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              FormThemeHelper.buildFormField(
+                controller: _descriptionController,
+                labelText: 'Description',
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+              FormThemeHelper.buildFormField(
+                controller: _targetValueController,
+                labelText: 'Target Value',
               ),
             ],
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Name',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter item name';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _descriptionController,
-                    decoration: const InputDecoration(
-                      labelText: 'Description',
-                      border: OutlineInputBorder(),
-                    ),
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _targetValueController,
-                    decoration: const InputDecoration(
-                      labelText: 'Target Value',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(onPressed: _save, child: const Text('Save')),
-                ],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          style: FormThemeHelper.getSecondaryButtonStyle(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _save,
+          style: FormThemeHelper.getPrimaryButtonStyle(),
+          child: const Text('Save'),
+        ),
+      ],
     );
   }
 

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../services/settings_service.dart';
 import '../../models/aircraft.dart';
 import '../../widgets/aircraft_selector_widget.dart';
+import '../../utils/form_theme_helper.dart';
 
 class ClimbPerformanceCalculator extends StatefulWidget {
   const ClimbPerformanceCalculator({super.key});
@@ -104,69 +105,47 @@ class _ClimbPerformanceCalculatorState
     final settings = Provider.of<SettingsService>(context);
 
     return Scaffold(
+      backgroundColor: FormThemeHelper.backgroundColor,
       appBar: AppBar(
-        title: const Text('Climb Performance'),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: Colors.white,
+        title: const Text(
+          'Climb Performance',
+          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+        ),
+        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        foregroundColor: FormThemeHelper.primaryTextColor,
       ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Aircraft Selection',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    AircraftSelectorWidget(
-                      selectedAircraft: _selectedAircraft,
-                      onAircraftSelected: (aircraft) {
-                        setState(() {
-                          _selectedAircraft = aircraft;
-                          if (aircraft != null) {
-                            _currentWeightController.text = 
-                                aircraft.maxTakeoffWeight.toString();
-                          }
-                        });
-                      },
-                    ),
-                  ],
+            FormThemeHelper.buildSection(
+              title: 'Aircraft Selection',
+              children: [
+                AircraftSelectorWidget(
+                  selectedAircraft: _selectedAircraft,
+                  onAircraftSelected: (aircraft) {
+                    setState(() {
+                      _selectedAircraft = aircraft;
+                      if (aircraft != null) {
+                        _currentWeightController.text = 
+                            aircraft.maxTakeoffWeight.toString();
+                      }
+                    });
+                  },
                 ),
-              ),
+              ],
             ),
             const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Climb Parameters',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+            FormThemeHelper.buildSection(
+              title: 'Climb Parameters',
+              children: [
                     Row(
                       children: [
                         Expanded(
-                          child: TextFormField(
+                          child: FormThemeHelper.buildFormField(
                             controller: _currentAltitudeController,
-                            decoration: InputDecoration(
-                              labelText:
-                                  'Current Altitude (${settings.altitudeUnit})',
-                              border: const OutlineInputBorder(),
-                            ),
+                            labelText: 'Current Altitude (${settings.altitudeUnit})',
                             keyboardType: TextInputType.number,
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -181,13 +160,9 @@ class _ClimbPerformanceCalculatorState
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: TextFormField(
+                          child: FormThemeHelper.buildFormField(
                             controller: _targetAltitudeController,
-                            decoration: InputDecoration(
-                              labelText:
-                                  'Target Altitude (${settings.altitudeUnit})',
-                              border: const OutlineInputBorder(),
-                            ),
+                            labelText: 'Target Altitude (${settings.altitudeUnit})',
                             keyboardType: TextInputType.number,
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -212,13 +187,9 @@ class _ClimbPerformanceCalculatorState
                     Row(
                       children: [
                         Expanded(
-                          child: TextFormField(
+                          child: FormThemeHelper.buildFormField(
                             controller: _currentWeightController,
-                            decoration: InputDecoration(
-                              labelText:
-                                  'Current Weight (${settings.weightUnit})',
-                              border: const OutlineInputBorder(),
-                            ),
+                            labelText: 'Current Weight (${settings.weightUnit})',
                             keyboardType: TextInputType.number,
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -238,12 +209,9 @@ class _ClimbPerformanceCalculatorState
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: TextFormField(
+                          child: FormThemeHelper.buildFormField(
                             controller: _temperatureController,
-                            decoration: InputDecoration(
-                              labelText: 'Temperature (°${settings.temperatureUnit})',
-                              border: const OutlineInputBorder(),
-                            ),
+                            labelText: 'Temperature (°${settings.temperatureUnit})',
                             keyboardType: const TextInputType.numberWithOptions(
                               signed: true,
                               decimal: true,
@@ -262,14 +230,10 @@ class _ClimbPerformanceCalculatorState
                       ],
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
+                    FormThemeHelper.buildFormField(
                       controller: _headwindController,
-                      decoration: InputDecoration(
-                        labelText:
-                            'Headwind Component (${settings.windUnit})',
-                        helperText: 'Use negative value for tailwind',
-                        border: const OutlineInputBorder(),
-                      ),
+                      labelText: 'Headwind Component (${settings.windUnit})',
+                      hintText: 'Use negative value for tailwind',
                       keyboardType: const TextInputType.numberWithOptions(
                         signed: true,
                         decimal: true,
@@ -280,20 +244,18 @@ class _ClimbPerformanceCalculatorState
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: _selectedAircraft == null ? null : _calculate,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.all(16),
+                        style: FormThemeHelper.getPrimaryButtonStyle().copyWith(
+                          minimumSize: WidgetStateProperty.all(const Size(double.infinity, 48)),
                         ),
                         child: const Text('Calculate Climb Performance'),
                       ),
                     ),
-                  ],
-                ),
-              ),
+              ],
             ),
             if (_climbTime != null) ...[
               const SizedBox(height: 16),
-              Card(
-                color: theme.colorScheme.secondaryContainer,
+              Container(
+                decoration: FormThemeHelper.getSectionDecoration(),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -301,8 +263,8 @@ class _ClimbPerformanceCalculatorState
                     children: [
                       Text(
                         'Climb Performance Results',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                        style: FormThemeHelper.sectionTitleStyle.copyWith(
+                          color: FormThemeHelper.primaryTextColor,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -330,21 +292,22 @@ class _ClimbPerformanceCalculatorState
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.tertiaryContainer,
+                          color: FormThemeHelper.fillColor,
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: FormThemeHelper.borderColor),
                         ),
                         child: Row(
                           children: [
                             Icon(
                               Icons.info_outline,
-                              color: theme.colorScheme.onTertiaryContainer,
+                              color: FormThemeHelper.primaryAccent,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 'Performance based on density altitude and weight adjustments',
                                 style: TextStyle(
-                                  color: theme.colorScheme.onTertiaryContainer,
+                                  color: FormThemeHelper.primaryTextColor,
                                   fontSize: 12,
                                 ),
                               ),
@@ -371,12 +334,17 @@ class _ClimbPerformanceCalculatorState
         children: [
           Text(
             label,
-            style: theme.textTheme.bodyMedium,
+            style: TextStyle(
+              color: FormThemeHelper.primaryTextColor,
+              fontSize: theme.textTheme.bodyMedium?.fontSize,
+            ),
           ),
           Text(
             value,
-            style: theme.textTheme.bodyLarge?.copyWith(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
+              color: FormThemeHelper.primaryAccent,
+              fontSize: theme.textTheme.bodyLarge?.fontSize,
             ),
           ),
         ],

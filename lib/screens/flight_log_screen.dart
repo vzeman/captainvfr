@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../services/flight_service.dart';
 import '../models/flight.dart';
 import '../widgets/themed_dialog.dart';
+import '../utils/form_theme_helper.dart';
 import 'flight_detail_screen.dart';
 
 class FlightLogScreen extends StatelessWidget {
@@ -12,19 +13,30 @@ class FlightLogScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Flight Log'),
+        title: const Text(
+          'Flight Log',
+          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+        ),
+        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        foregroundColor: FormThemeHelper.primaryTextColor,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
+      backgroundColor: FormThemeHelper.backgroundColor,
       body: Consumer<FlightService>(
         builder: (context, flightService, child) {
           final flights = flightService.flights.reversed
               .toList(); // Reverse to show newest first
 
           if (flights.isEmpty) {
-            return const Center(child: Text('No flights recorded yet.'));
+            return Center(
+              child: Text(
+                'No flights recorded yet.',
+                style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+              ),
+            );
           }
 
           return ListView.builder(
@@ -48,9 +60,15 @@ class FlightLogScreen extends StatelessWidget {
     final hours = duration.inHours.toString().padLeft(2, '0');
     final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+      decoration: BoxDecoration(
+        color: FormThemeHelper.sectionBackgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: FormThemeHelper.sectionBorderColor),
+      ),
       child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onTap: () {
           Navigator.push(
             context,
@@ -70,7 +88,11 @@ class FlightLogScreen extends StatelessWidget {
                   Expanded(
                     child: Text(
                       dateStr,
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: FormThemeHelper.primaryTextColor,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -79,17 +101,17 @@ class FlightLogScreen extends StatelessWidget {
                     children: [
                       Text(
                         '$hours:${minutes}h',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: FormThemeHelper.primaryAccent,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       IconButton(
-                        icon: Icon(
+                        icon: const Icon(
                           Icons.delete_outline,
-                          color: Theme.of(context).colorScheme.error,
+                          color: Colors.red,
                           size: 20,
                         ),
                         onPressed: () =>
@@ -141,8 +163,12 @@ class FlightLogScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: FormThemeHelper.primaryAccent.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: FormThemeHelper.primaryAccent.withValues(alpha: 0.3),
+          width: 0.5,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -150,13 +176,14 @@ class FlightLogScreen extends StatelessWidget {
           Icon(
             icon,
             size: 16,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            color: FormThemeHelper.secondaryTextColor,
           ),
           const SizedBox(width: 4),
           Text(
             label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            style: TextStyle(
+              fontSize: 12,
+              color: FormThemeHelper.secondaryTextColor,
             ),
           ),
         ],

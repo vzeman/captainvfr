@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/settings_service.dart';
+import '../../utils/form_theme_helper.dart';
 
 class DensityAltitudeCalculator extends StatefulWidget {
   const DensityAltitudeCalculator({super.key});
@@ -93,183 +94,134 @@ class _DensityAltitudeCalculatorState extends State<DensityAltitudeCalculator> {
     final pressureUnit = settingsService.pressureUnit;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: FormThemeHelper.backgroundColor,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        title: const Text('Density Altitude Calculator'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        title: const Text(
+          'Density Altitude Calculator',
+          style: TextStyle(color: FormThemeHelper.primaryTextColor),
         ),
+        foregroundColor: FormThemeHelper.primaryTextColor,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Input Method',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    RadioListTile<bool>(
-                      title: const Text('Field Elevation + Altimeter'),
-                      value: true,
-                      groupValue: _useFieldElevation,
-                      onChanged: (value) {
-                        setState(() {
-                          _useFieldElevation = value!;
-                          _densityAltitude = null;
-                          _pressureAltitude = null;
-                        });
-                      },
-                    ),
-                    RadioListTile<bool>(
-                      title: const Text('Pressure Altitude'),
-                      value: false,
-                      groupValue: _useFieldElevation,
-                      onChanged: (value) {
-                        setState(() {
-                          _useFieldElevation = value!;
-                          _densityAltitude = null;
-                          _pressureAltitude = null;
-                        });
-                      },
-                    ),
-                  ],
+            FormThemeHelper.buildSection(
+              title: 'Input Method',
+              children: [
+                RadioListTile<bool>(
+                  title: const Text('Field Elevation + Altimeter', style: FormThemeHelper.inputTextStyle),
+                  value: true,
+                  groupValue: _useFieldElevation,
+                  activeColor: FormThemeHelper.primaryAccent,
+                  onChanged: (value) {
+                    setState(() {
+                      _useFieldElevation = value!;
+                      _densityAltitude = null;
+                      _pressureAltitude = null;
+                    });
+                  },
                 ),
-              ),
+                RadioListTile<bool>(
+                  title: const Text('Pressure Altitude', style: FormThemeHelper.inputTextStyle),
+                  value: false,
+                  groupValue: _useFieldElevation,
+                  activeColor: FormThemeHelper.primaryAccent,
+                  onChanged: (value) {
+                    setState(() {
+                      _useFieldElevation = value!;
+                      _densityAltitude = null;
+                      _pressureAltitude = null;
+                    });
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Inputs',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (_useFieldElevation) ...[
-                      TextField(
-                        controller: _fieldElevationController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: InputDecoration(
-                          labelText:
-                              'Field Elevation (${isImperial ? "ft" : "m"})',
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _altimeterController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: InputDecoration(
-                          labelText: 'Altimeter Setting ($pressureUnit)',
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                    ] else ...[
-                      TextField(
-                        controller: _pressureAltitudeController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: InputDecoration(
-                          labelText:
-                              'Pressure Altitude (${isImperial ? "ft" : "m"})',
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _temperatureController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: 'Temperature (${isImperial ? "°F" : "°C"})',
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                  ],
+            FormThemeHelper.buildSection(
+              title: 'Inputs',
+              children: [
+                if (_useFieldElevation) ...[
+                  FormThemeHelper.buildFormField(
+                    controller: _fieldElevationController,
+                    labelText: 'Field Elevation (${isImperial ? "ft" : "m"})',
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  ),
+                  const SizedBox(height: 16),
+                  FormThemeHelper.buildFormField(
+                    controller: _altimeterController,
+                    labelText: 'Altimeter Setting ($pressureUnit)',
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  ),
+                ] else ...[
+                  FormThemeHelper.buildFormField(
+                    controller: _pressureAltitudeController,
+                    labelText: 'Pressure Altitude (${isImperial ? "ft" : "m"})',
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                FormThemeHelper.buildFormField(
+                  controller: _temperatureController,
+                  labelText: 'Temperature (${isImperial ? "°F" : "°C"})',
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 ),
-              ),
+              ],
             ),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _calculate,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              style: FormThemeHelper.getPrimaryButtonStyle().copyWith(
+                minimumSize: WidgetStateProperty.all(const Size(double.infinity, 48)),
               ),
               child: const Text('Calculate', style: TextStyle(fontSize: 16)),
             ),
             if (_densityAltitude != null) ...[
               const SizedBox(height: 24),
-              Card(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      const Text(
-                        'Results',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      if (_useFieldElevation && _pressureAltitude != null) ...[
-                        Text(
-                          'Pressure Altitude: ${isImperial ? _pressureAltitude!.toStringAsFixed(0) : (_pressureAltitude! / 3.28084).toStringAsFixed(0)} ${isImperial ? "ft" : "m"}',
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                      Text(
-                        'Density Altitude: ${isImperial ? _densityAltitude!.toStringAsFixed(0) : (_densityAltitude! / 3.28084).toStringAsFixed(0)} ${isImperial ? "ft" : "m"}',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      if (_densityAltitude! > 8000) ...[
-                        const Row(
-                          children: [
-                            Icon(Icons.warning, color: Colors.orange),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'High density altitude! Aircraft performance will be significantly reduced.',
-                                style: TextStyle(color: Colors.orange),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
+              FormThemeHelper.buildSection(
+                title: 'Results',
+                children: [
+                  if (_useFieldElevation && _pressureAltitude != null) ...[
+                    Text(
+                      'Pressure Altitude: ${isImperial ? _pressureAltitude!.toStringAsFixed(0) : (_pressureAltitude! / 3.28084).toStringAsFixed(0)} ${isImperial ? "ft" : "m"}',
+                      style: const TextStyle(fontSize: 16, color: Colors.white),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  Text(
+                    'Density Altitude: ${isImperial ? _densityAltitude!.toStringAsFixed(0) : (_densityAltitude! / 3.28084).toStringAsFixed(0)} ${isImperial ? "ft" : "m"}',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: FormThemeHelper.primaryAccent,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  if (_densityAltitude! > 8000) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.warning, color: Colors.orange),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'High density altitude! Aircraft performance will be significantly reduced.',
+                              style: TextStyle(color: Colors.orange),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ],

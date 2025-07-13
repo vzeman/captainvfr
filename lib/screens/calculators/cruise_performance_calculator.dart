@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../services/settings_service.dart';
 import '../../models/aircraft.dart';
 import '../../widgets/aircraft_selector_widget.dart';
+import '../../utils/form_theme_helper.dart';
 import 'dart:math';
 
 class CruisePerformanceCalculator extends StatefulWidget {
@@ -115,69 +116,47 @@ class _CruisePerformanceCalculatorState
     final isImperial = settings.units == 'imperial';
 
     return Scaffold(
+      backgroundColor: FormThemeHelper.backgroundColor,
       appBar: AppBar(
-        title: const Text('Cruise Performance'),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: Colors.white,
+        title: const Text(
+          'Cruise Performance',
+          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+        ),
+        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        foregroundColor: FormThemeHelper.primaryTextColor,
       ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Aircraft Selection',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    AircraftSelectorWidget(
-                      selectedAircraft: _selectedAircraft,
-                      onAircraftSelected: (aircraft) {
-                        setState(() {
-                          _selectedAircraft = aircraft;
-                          if (aircraft != null) {
-                            _currentWeightController.text = 
-                                (aircraft.maxTakeoffWeight * 0.85).toStringAsFixed(0);
-                          }
-                        });
-                      },
-                    ),
-                  ],
+            FormThemeHelper.buildSection(
+              title: 'Aircraft Selection',
+              children: [
+                AircraftSelectorWidget(
+                  selectedAircraft: _selectedAircraft,
+                  onAircraftSelected: (aircraft) {
+                    setState(() {
+                      _selectedAircraft = aircraft;
+                      if (aircraft != null) {
+                        _currentWeightController.text = 
+                            (aircraft.maxTakeoffWeight * 0.85).toStringAsFixed(0);
+                      }
+                    });
+                  },
                 ),
-              ),
+              ],
             ),
             const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Flight Parameters',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+            FormThemeHelper.buildSection(
+              title: 'Flight Parameters',
+              children: [
                     Row(
                       children: [
                         Expanded(
-                          child: TextFormField(
+                          child: FormThemeHelper.buildFormField(
                             controller: _cruiseAltitudeController,
-                            decoration: InputDecoration(
-                              labelText:
-                                  'Cruise Altitude (${isImperial ? "ft" : "m"})',
-                              border: const OutlineInputBorder(),
-                            ),
+                            labelText: 'Cruise Altitude (${isImperial ? "ft" : "m"})',
                             keyboardType: TextInputType.number,
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -197,13 +176,9 @@ class _CruisePerformanceCalculatorState
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: TextFormField(
+                          child: FormThemeHelper.buildFormField(
                             controller: _currentWeightController,
-                            decoration: InputDecoration(
-                              labelText:
-                                  'Current Weight (${isImperial ? "lbs" : "kg"})',
-                              border: const OutlineInputBorder(),
-                            ),
+                            labelText: 'Current Weight (${isImperial ? "lbs" : "kg"})',
                             keyboardType: TextInputType.number,
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -227,12 +202,9 @@ class _CruisePerformanceCalculatorState
                     Row(
                       children: [
                         Expanded(
-                          child: TextFormField(
+                          child: FormThemeHelper.buildFormField(
                             controller: _temperatureController,
-                            decoration: const InputDecoration(
-                              labelText: 'Temperature (°C)',
-                              border: OutlineInputBorder(),
-                            ),
+                            labelText: 'Temperature (°C)',
                             keyboardType: const TextInputType.numberWithOptions(
                               signed: true,
                               decimal: true,
@@ -250,14 +222,10 @@ class _CruisePerformanceCalculatorState
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: TextFormField(
+                          child: FormThemeHelper.buildFormField(
                             controller: _windController,
-                            decoration: InputDecoration(
-                              labelText:
-                                  'Wind Component (${isImperial ? "kt" : "km/h"})',
-                              helperText: 'Positive = tailwind, Negative = headwind',
-                              border: const OutlineInputBorder(),
-                            ),
+                            labelText: 'Wind Component (${isImperial ? "kt" : "km/h"})',
+                            hintText: 'Positive = tailwind, Negative = headwind',
                             keyboardType: const TextInputType.numberWithOptions(
                               signed: true,
                               decimal: true,
@@ -267,13 +235,9 @@ class _CruisePerformanceCalculatorState
                       ],
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
+                    FormThemeHelper.buildFormField(
                       controller: _distanceController,
-                      decoration: InputDecoration(
-                        labelText:
-                            'Distance to Fly (${isImperial ? "nm" : "km"})',
-                        border: const OutlineInputBorder(),
-                      ),
+                      labelText: 'Distance to Fly (${isImperial ? "nm" : "km"})',
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
@@ -293,20 +257,18 @@ class _CruisePerformanceCalculatorState
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: _selectedAircraft == null ? null : _calculate,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.all(16),
+                        style: FormThemeHelper.getPrimaryButtonStyle().copyWith(
+                          minimumSize: WidgetStateProperty.all(const Size(double.infinity, 48)),
                         ),
                         child: const Text('Calculate Cruise Performance'),
                       ),
                     ),
-                  ],
-                ),
-              ),
+              ],
             ),
             if (_trueAirspeed != null) ...[
               const SizedBox(height: 16),
-              Card(
-                color: theme.colorScheme.secondaryContainer,
+              Container(
+                decoration: FormThemeHelper.getSectionDecoration(),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -314,8 +276,8 @@ class _CruisePerformanceCalculatorState
                     children: [
                       Text(
                         'Cruise Performance Results',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                        style: FormThemeHelper.sectionTitleStyle.copyWith(
+                          color: FormThemeHelper.primaryTextColor,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -353,21 +315,22 @@ class _CruisePerformanceCalculatorState
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.tertiaryContainer,
+                          color: FormThemeHelper.fillColor,
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: FormThemeHelper.borderColor),
                         ),
                         child: Row(
                           children: [
                             Icon(
                               Icons.info_outline,
-                              color: theme.colorScheme.onTertiaryContainer,
+                              color: FormThemeHelper.primaryAccent,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 'Performance calculated for cruise conditions with density altitude and weight adjustments',
                                 style: TextStyle(
-                                  color: theme.colorScheme.onTertiaryContainer,
+                                  color: FormThemeHelper.primaryTextColor,
                                   fontSize: 12,
                                 ),
                               ),
@@ -394,12 +357,17 @@ class _CruisePerformanceCalculatorState
         children: [
           Text(
             label,
-            style: theme.textTheme.bodyMedium,
+            style: TextStyle(
+              color: FormThemeHelper.primaryTextColor,
+              fontSize: theme.textTheme.bodyMedium?.fontSize,
+            ),
           ),
           Text(
             value,
-            style: theme.textTheme.bodyLarge?.copyWith(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
+              color: FormThemeHelper.primaryAccent,
+              fontSize: theme.textTheme.bodyLarge?.fontSize,
             ),
           ),
         ],

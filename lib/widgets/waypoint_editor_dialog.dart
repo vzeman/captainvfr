@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/flight_plan.dart';
 import '../services/flight_plan_service.dart';
 import '../services/settings_service.dart';
+import '../utils/form_theme_helper.dart';
 
 class WaypointEditorDialog extends StatefulWidget {
   final int waypointIndex;
@@ -77,17 +78,23 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Delete Waypoint'),
-          content: Text(
-            'Are you sure you want to delete waypoint "${widget.waypoint.name ?? 'WP${widget.waypointIndex + 1}'}"?',
+        return FormThemeHelper.buildDialog(
+          context: context,
+          title: 'Delete Waypoint',
+          content: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Are you sure you want to delete waypoint "${widget.waypoint.name ?? 'WP${widget.waypointIndex + 1}'}"?',
+              style: TextStyle(color: FormThemeHelper.primaryTextColor),
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
+              style: FormThemeHelper.getSecondaryButtonStyle(),
               child: const Text('Cancel'),
             ),
-            TextButton(
+            ElevatedButton(
               onPressed: () {
                 final flightPlanService = Provider.of<FlightPlanService>(
                   context,
@@ -97,7 +104,10 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
                 Navigator.of(context).pop(); // Close confirmation dialog
                 Navigator.of(context).pop(); // Close editor dialog
               },
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
               child: const Text('Delete'),
             ),
           ],
@@ -121,9 +131,11 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
           _altitudeController.text = displayAltitude.toStringAsFixed(0);
         }
 
-        return AlertDialog(
-          title: Text('Edit Waypoint ${widget.waypointIndex + 1}'),
+        return FormThemeHelper.buildDialog(
+          context: context,
+          title: 'Edit Waypoint ${widget.waypointIndex + 1}',
           content: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,52 +143,51 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
                 // Waypoint coordinates (read-only)
                 Text(
                   'Position: ${widget.waypoint.latitude.toStringAsFixed(6)}, ${widget.waypoint.longitude.toStringAsFixed(6)}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 16),
-
-                // Name field
-                TextField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    hintText: 'Enter waypoint name',
-                    border: OutlineInputBorder(),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: FormThemeHelper.secondaryTextColor,
                   ),
                 ),
                 const SizedBox(height: 16),
 
+                // Name field
+                FormThemeHelper.buildFormField(
+                  controller: _nameController,
+                  labelText: 'Name',
+                  hintText: 'Enter waypoint name',
+                ),
+                const SizedBox(height: 16),
+
                 // Altitude field
-                TextField(
+                TextFormField(
                   controller: _altitudeController,
+                  style: FormThemeHelper.inputTextStyle,
                   keyboardType: TextInputType.number,
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(
                       RegExp(r'^\d+\.?\d{0,1}'),
                     ),
                   ],
-                  decoration: InputDecoration(
-                    labelText: isMetric
+                  decoration: FormThemeHelper.getInputDecoration(
+                    isMetric
                         ? 'Altitude (m MSL)'
                         : 'Altitude (ft MSL)',
                     hintText: isMetric
                         ? 'Enter altitude in meters'
                         : 'Enter altitude in feet',
-                    border: const OutlineInputBorder(),
+                  ).copyWith(
                     suffixText: isMetric ? 'm' : 'ft',
+                    suffixStyle: TextStyle(color: FormThemeHelper.secondaryTextColor),
                   ),
                 ),
                 const SizedBox(height: 16),
 
                 // Notes field
-                TextField(
+                FormThemeHelper.buildFormField(
                   controller: _notesController,
+                  labelText: 'Notes',
+                  hintText: 'Enter waypoint notes',
                   maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Notes',
-                    hintText: 'Enter waypoint notes',
-                    border: OutlineInputBorder(),
-                  ),
                 ),
                 const SizedBox(height: 16),
 
@@ -214,9 +225,14 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
+              style: FormThemeHelper.getSecondaryButtonStyle(),
               child: const Text('Cancel'),
             ),
-            ElevatedButton(onPressed: _saveChanges, child: const Text('Save')),
+            ElevatedButton(
+              onPressed: _saveChanges,
+              style: FormThemeHelper.getPrimaryButtonStyle(),
+              child: const Text('Save'),
+            ),
           ],
         );
       },

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../services/settings_service.dart';
 import '../../models/aircraft.dart';
 import '../../widgets/aircraft_selector_widget.dart';
+import '../../utils/form_theme_helper.dart';
 
 class TakeoffLandingCalculator extends StatefulWidget {
   const TakeoffLandingCalculator({super.key});
@@ -170,12 +171,15 @@ class _TakeoffLandingCalculatorState extends State<TakeoffLandingCalculator> {
     final pressureUnit = settingsService.pressureUnit;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: FormThemeHelper.backgroundColor,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        title: const Text('Takeoff & Landing Calculator'),
+        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        title: const Text(
+          'Takeoff & Landing Calculator',
+          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: FormThemeHelper.primaryTextColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -202,148 +206,114 @@ class _TakeoffLandingCalculatorState extends State<TakeoffLandingCalculator> {
               },
             ),
             const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Environmental Conditions',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _fieldElevationController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: InputDecoration(
-                        labelText:
-                            'Field Elevation (${isImperial ? "ft" : "m"})',
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
+            FormThemeHelper.buildSection(
+              title: 'Environmental Conditions',
+              children: [
+                FormThemeHelper.buildFormField(
+                  controller: _fieldElevationController,
+                  labelText: 'Field Elevation (${isImperial ? "ft" : "m"})',
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                ),
                     const SizedBox(height: 12),
-                    TextField(
+                    FormThemeHelper.buildFormField(
                       controller: _temperatureController,
+                      labelText: 'Temperature (${isImperial ? "°F" : "°C"})',
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      decoration: InputDecoration(
-                        labelText: 'Temperature (${isImperial ? "°F" : "°C"})',
-                        border: const OutlineInputBorder(),
-                      ),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    FormThemeHelper.buildFormField(
                       controller: _altimeterController,
+                      labelText: 'Altimeter Setting ($pressureUnit)',
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      decoration: InputDecoration(
-                        labelText: 'Altimeter Setting ($pressureUnit)',
-                        border: const OutlineInputBorder(),
-                      ),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    FormThemeHelper.buildFormField(
                       controller: _headwindController,
+                      labelText: 'Headwind Component (${isImperial ? "kts" : "km/h"})',
+                      hintText: 'Use negative value for tailwind',
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                         signed: true,
                       ),
-                      decoration: InputDecoration(
-                        labelText:
-                            'Headwind Component (${isImperial ? "kts" : "km/h"})',
-                        helperText: 'Use negative value for tailwind',
-                        border: const OutlineInputBorder(),
-                      ),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    FormThemeHelper.buildFormField(
                       controller: _runwayConditionController,
+                      labelText: 'Runway Contamination (%)',
+                      hintText: '0 = Dry, 100 = Standing water/slush',
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Runway Contamination (%)',
-                        helperText: '0 = Dry, 100 = Standing water/slush',
-                        border: OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    FormThemeHelper.buildFormField(
                       controller: _weightController,
+                      labelText: 'Aircraft Weight (${isImperial ? "lbs" : "kg"})',
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      decoration: InputDecoration(
-                        labelText:
-                            'Aircraft Weight (${isImperial ? "lbs" : "kg"})',
-                        border: const OutlineInputBorder(),
-                      ),
                     ),
-                  ],
-                ),
-              ),
+              ],
             ),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _calculate,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              style: FormThemeHelper.getPrimaryButtonStyle().copyWith(
+                minimumSize: WidgetStateProperty.all(const Size(double.infinity, 48)),
               ),
               child: const Text('Calculate', style: TextStyle(fontSize: 16)),
             ),
             if (_takeoffGroundRoll != null) ...[
               const SizedBox(height: 24),
-              Card(
-                color: Theme.of(context).colorScheme.primaryContainer,
+              Container(
+                decoration: FormThemeHelper.getSectionDecoration(),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      const Text(
+                      Text(
                         'Performance Results',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                        style: FormThemeHelper.sectionTitleStyle.copyWith(
+                          color: FormThemeHelper.primaryTextColor,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Density Altitude: ${isImperial ? _densityAltitude!.toStringAsFixed(0) : (_densityAltitude! / 3.28084).toStringAsFixed(0)} ${isImperial ? "ft" : "m"}',
-                        style: const TextStyle(fontSize: 14),
+                        style: TextStyle(fontSize: 14, color: FormThemeHelper.primaryTextColor),
                       ),
-                      const Divider(height: 24),
+                      Divider(height: 24, color: FormThemeHelper.borderColor),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           Column(
                             children: [
-                              const Icon(Icons.flight_takeoff, size: 40),
+                              Icon(Icons.flight_takeoff, size: 40, color: FormThemeHelper.primaryAccent),
                               const SizedBox(height: 8),
-                              const Text(
+                              Text(
                                 'TAKEOFF',
-                                style: TextStyle(fontWeight: FontWeight.bold),
+                                style: TextStyle(fontWeight: FontWeight.bold, color: FormThemeHelper.primaryTextColor),
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 'Ground Roll',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey[600],
+                                  color: FormThemeHelper.secondaryTextColor,
                                 ),
                               ),
                               Text(
                                 '${isImperial ? _takeoffGroundRoll!.toStringAsFixed(0) : (_takeoffGroundRoll! / 3.28084).toStringAsFixed(0)} ${isImperial ? "ft" : "m"}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
+                                  color: FormThemeHelper.primaryAccent,
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -351,39 +321,41 @@ class _TakeoffLandingCalculatorState extends State<TakeoffLandingCalculator> {
                                 'Over 50ft',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey[600],
+                                  color: FormThemeHelper.secondaryTextColor,
                                 ),
                               ),
                               Text(
                                 '${isImperial ? _takeoffOver50ft!.toStringAsFixed(0) : (_takeoffOver50ft! / 3.28084).toStringAsFixed(0)} ${isImperial ? "ft" : "m"}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
+                                  color: FormThemeHelper.primaryAccent,
                                 ),
                               ),
                             ],
                           ),
                           Column(
                             children: [
-                              const Icon(Icons.flight_land, size: 40),
+                              Icon(Icons.flight_land, size: 40, color: FormThemeHelper.primaryAccent),
                               const SizedBox(height: 8),
-                              const Text(
+                              Text(
                                 'LANDING',
-                                style: TextStyle(fontWeight: FontWeight.bold),
+                                style: TextStyle(fontWeight: FontWeight.bold, color: FormThemeHelper.primaryTextColor),
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 'Ground Roll',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey[600],
+                                  color: FormThemeHelper.secondaryTextColor,
                                 ),
                               ),
                               Text(
                                 '${isImperial ? _landingGroundRoll!.toStringAsFixed(0) : (_landingGroundRoll! / 3.28084).toStringAsFixed(0)} ${isImperial ? "ft" : "m"}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
+                                  color: FormThemeHelper.primaryAccent,
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -391,14 +363,15 @@ class _TakeoffLandingCalculatorState extends State<TakeoffLandingCalculator> {
                                 'Over 50ft',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey[600],
+                                  color: FormThemeHelper.secondaryTextColor,
                                 ),
                               ),
                               Text(
                                 '${isImperial ? _landingOver50ft!.toStringAsFixed(0) : (_landingOver50ft! / 3.28084).toStringAsFixed(0)} ${isImperial ? "ft" : "m"}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
+                                  color: FormThemeHelper.primaryAccent,
                                 ),
                               ),
                             ],

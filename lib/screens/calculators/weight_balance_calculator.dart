@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/settings_service.dart';
+import '../../utils/form_theme_helper.dart';
 
 class WeightBalanceCalculator extends StatefulWidget {
   const WeightBalanceCalculator({super.key});
@@ -171,32 +172,18 @@ class _WeightBalanceCalculatorState extends State<WeightBalanceCalculator> {
       children: [
         Expanded(
           flex: 2,
-          child: TextField(
+          child: FormThemeHelper.buildFormField(
             controller: weightController,
+            labelText: '$label (${isImperial ? "lbs" : "kg"})',
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              labelText: '$label (${isImperial ? "lbs" : "kg"})',
-              border: const OutlineInputBorder(),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
-            ),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: TextField(
+          child: FormThemeHelper.buildFormField(
             controller: armController,
+            labelText: 'Arm (${isImperial ? "in" : "cm"})',
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              labelText: 'Arm (${isImperial ? "in" : "cm"})',
-              border: const OutlineInputBorder(),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
-            ),
           ),
         ),
       ],
@@ -209,21 +196,26 @@ class _WeightBalanceCalculatorState extends State<WeightBalanceCalculator> {
     final isImperial = settingsService.units == 'imperial';
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: FormThemeHelper.backgroundColor,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        title: const Text('Weight & Balance Calculator'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        title: const Text(
+          'Weight & Balance Calculator',
+          style: TextStyle(color: FormThemeHelper.primaryTextColor),
         ),
+        foregroundColor: FormThemeHelper.primaryTextColor,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0x1A448AFF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0x7F448AFF)),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -234,6 +226,7 @@ class _WeightBalanceCalculatorState extends State<WeightBalanceCalculator> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -285,20 +278,9 @@ class _WeightBalanceCalculatorState extends State<WeightBalanceCalculator> {
               ),
             ),
             const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Weight & Arm Inputs',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+            FormThemeHelper.buildSection(
+              title: 'Weight & Arm Inputs',
+              children: [
                     _buildWeightInput(
                       'Empty Weight',
                       _emptyWeightController,
@@ -347,27 +329,34 @@ class _WeightBalanceCalculatorState extends State<WeightBalanceCalculator> {
                       _fuelArmController,
                       isImperial,
                     ),
-                  ],
-                ),
-              ),
+              ],
             ),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _calculate,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              style: FormThemeHelper.getPrimaryButtonStyle().copyWith(
+                minimumSize: WidgetStateProperty.all(const Size(double.infinity, 48)),
               ),
               child: const Text('Calculate', style: TextStyle(fontSize: 16)),
             ),
             if (_totalWeight != null) ...[
               const SizedBox(height: 24),
-              Card(
-                color: _withinLimits == true
-                    ? Theme.of(context).colorScheme.primaryContainer
-                    : Theme.of(context).colorScheme.errorContainer,
+              Container(
+                decoration: BoxDecoration(
+                  color: _withinLimits == true
+                      ? FormThemeHelper.sectionBackgroundColor
+                      : Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _withinLimits == true
+                        ? FormThemeHelper.sectionBorderColor
+                        : Colors.red.withValues(alpha: 0.5),
+                  ),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Results',
@@ -375,14 +364,14 @@ class _WeightBalanceCalculatorState extends State<WeightBalanceCalculator> {
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: _withinLimits == true
-                              ? null
-                              : Theme.of(context).colorScheme.error,
+                              ? FormThemeHelper.primaryTextColor
+                              : Colors.red,
                         ),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         'Total Weight: ${isImperial ? _totalWeight!.toStringAsFixed(1) : (_totalWeight! / 2.20462).toStringAsFixed(1)} ${isImperial ? "lbs" : "kg"}',
-                        style: const TextStyle(fontSize: 16),
+                        style: const TextStyle(fontSize: 16, color: Colors.white),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -392,9 +381,10 @@ class _WeightBalanceCalculatorState extends State<WeightBalanceCalculator> {
                       const SizedBox(height: 8),
                       Text(
                         'Center of Gravity: ${isImperial ? _centerOfGravity!.toStringAsFixed(2) : (_centerOfGravity! * 2.54).toStringAsFixed(2)} ${isImperial ? "in" : "cm"}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
+                          color: _withinLimits == true ? FormThemeHelper.primaryAccent : Colors.red,
                         ),
                       ),
                       if (_withinLimits == false) ...[

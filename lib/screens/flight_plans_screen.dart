@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/flight_plan.dart';
 import '../services/flight_plan_service.dart';
+import '../utils/form_theme_helper.dart';
 
 class FlightPlansScreen extends StatefulWidget {
   const FlightPlansScreen({super.key});
@@ -28,9 +29,12 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Flight Plans'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        title: const Text(
+          'Flight Plans',
+          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+        ),
+        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        foregroundColor: FormThemeHelper.primaryTextColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -38,25 +42,26 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
           ),
         ],
       ),
+      backgroundColor: FormThemeHelper.backgroundColor,
       body: Consumer<FlightPlanService>(
         builder: (context, flightPlanService, child) {
           final flightPlans = flightPlanService.savedFlightPlans;
 
           if (flightPlans.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.flight_takeoff, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
+                  Icon(Icons.flight_takeoff, size: 64, color: FormThemeHelper.secondaryTextColor),
+                  const SizedBox(height: 16),
                   Text(
                     'No flight plans yet',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                    style: TextStyle(fontSize: 18, color: FormThemeHelper.secondaryTextColor),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     'Create your first flight plan to get started',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: FormThemeHelper.secondaryTextColor),
                   ),
                 ],
               ),
@@ -64,6 +69,7 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
           }
 
           return ListView.builder(
+            padding: const EdgeInsets.all(16),
             itemCount: flightPlans.length,
             itemBuilder: (context, index) {
               final flightPlan = flightPlans[index];
@@ -84,83 +90,114 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
     FlightPlan flightPlan,
     FlightPlanService flightPlanService,
   ) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListTile(
-        leading: const CircleAvatar(
-          backgroundColor: Colors.blue,
-          child: Icon(Icons.flight_takeoff, color: Colors.white),
-        ),
-        title: Text(
-          flightPlan.name,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(_getFlightPlanSummary(flightPlan)),
-            const SizedBox(height: 4),
-            Text(
-              'Created: ${_formatDate(flightPlan.createdAt)}',
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-            ),
-            if (flightPlan.modifiedAt != null)
-              Text(
-                'Modified: ${_formatDate(flightPlan.modifiedAt!)}',
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
-              ),
-          ],
-        ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) =>
-              _handleMenuAction(context, value, flightPlan, flightPlanService),
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'load',
-              child: Row(
-                children: [
-                  Icon(Icons.map, size: 20),
-                  SizedBox(width: 8),
-                  Text('Load to Map'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'edit',
-              child: Row(
-                children: [
-                  Icon(Icons.edit, size: 20),
-                  SizedBox(width: 8),
-                  Text('Edit Name'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'duplicate',
-              child: Row(
-                children: [
-                  Icon(Icons.copy, size: 20),
-                  SizedBox(width: 8),
-                  Text('Duplicate'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(Icons.delete, size: 20, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('Delete', style: TextStyle(color: Colors.red)),
-                ],
-              ),
-            ),
-          ],
-        ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: FormThemeHelper.sectionBackgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: FormThemeHelper.sectionBorderColor),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onTap: () => _loadFlightPlanAndNavigateBack(
           context,
           flightPlan,
           flightPlanService,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: FormThemeHelper.primaryAccent,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: const Icon(Icons.flight_takeoff, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      flightPlan.name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: FormThemeHelper.primaryTextColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _getFlightPlanSummary(flightPlan),
+                      style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Created: ${_formatDate(flightPlan.createdAt)}',
+                      style: TextStyle(color: FormThemeHelper.secondaryTextColor, fontSize: 12),
+                    ),
+                    if (flightPlan.modifiedAt != null)
+                      Text(
+                        'Modified: ${_formatDate(flightPlan.modifiedAt!)}',
+                        style: TextStyle(color: FormThemeHelper.secondaryTextColor, fontSize: 12),
+                      ),
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                color: FormThemeHelper.dialogBackgroundColor,
+                icon: Icon(Icons.more_vert, color: FormThemeHelper.secondaryTextColor),
+                onSelected: (value) =>
+                    _handleMenuAction(context, value, flightPlan, flightPlanService),
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'load',
+                    child: Row(
+                      children: [
+                        Icon(Icons.map, size: 20, color: FormThemeHelper.primaryTextColor),
+                        const SizedBox(width: 8),
+                        Text('Load to Map', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit, size: 20, color: FormThemeHelper.primaryTextColor),
+                        const SizedBox(width: 8),
+                        Text('Edit Name', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'duplicate',
+                    child: Row(
+                      children: [
+                        Icon(Icons.copy, size: 20, color: FormThemeHelper.primaryTextColor),
+                        const SizedBox(width: 8),
+                        Text('Duplicate', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, size: 20, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Delete', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -237,22 +274,24 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('New Flight Plan'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
+      builder: (context) => FormThemeHelper.buildDialog(
+        context: context,
+        title: 'New Flight Plan',
+        content: Padding(
+          padding: const EdgeInsets.all(16),
+          child: FormThemeHelper.buildFormField(
+            controller: controller,
             labelText: 'Flight Plan Name',
             hintText: 'Enter flight plan name',
           ),
-          autofocus: true,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
+            style: FormThemeHelper.getSecondaryButtonStyle(),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               final flightPlanService = Provider.of<FlightPlanService>(
                 context,
@@ -264,6 +303,7 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
               Navigator.of(context).pop();
               Navigator.of(context).pop(); // Go back to map
             },
+            style: FormThemeHelper.getPrimaryButtonStyle(),
             child: const Text('Create'),
           ),
         ],
@@ -279,19 +319,23 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
     final controller = TextEditingController(text: flightPlan.name);
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Flight Plan Name'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(labelText: 'Flight Plan Name'),
-          autofocus: true,
+      builder: (context) => FormThemeHelper.buildDialog(
+        context: context,
+        title: 'Edit Flight Plan Name',
+        content: Padding(
+          padding: const EdgeInsets.all(16),
+          child: FormThemeHelper.buildFormField(
+            controller: controller,
+            labelText: 'Flight Plan Name',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
+            style: FormThemeHelper.getSecondaryButtonStyle(),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () async {
               if (controller.text.trim().isNotEmpty) {
                 flightPlan.name = controller.text.trim();
@@ -302,6 +346,7 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
                 Navigator.of(context).pop();
               }
             },
+            style: FormThemeHelper.getPrimaryButtonStyle(),
             child: const Text('Save'),
           ),
         ],
@@ -329,15 +374,23 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
   ) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Flight Plan'),
-        content: Text('Are you sure you want to delete "${flightPlan.name}"?'),
+      builder: (context) => FormThemeHelper.buildDialog(
+        context: context,
+        title: 'Delete Flight Plan',
+        content: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'Are you sure you want to delete "${flightPlan.name}"?',
+            style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
+            style: FormThemeHelper.getSecondaryButtonStyle(),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               flightPlanService.deleteFlightPlan(flightPlan.id);
               Navigator.of(context).pop();
@@ -348,7 +401,10 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
                 ),
               );
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Delete'),
           ),
         ],

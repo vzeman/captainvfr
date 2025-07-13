@@ -8,6 +8,7 @@ import '../widgets/aircraft_form_dialog.dart';
 import '../widgets/manufacturer_form_dialog.dart';
 import 'aircraft_detail_screen.dart';
 import 'manufacturer_detail_screen.dart';
+import '../utils/form_theme_helper.dart';
 
 class AircraftSettingsScreen extends StatefulWidget {
   const AircraftSettingsScreen({super.key});
@@ -41,15 +42,24 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Aircraft Settings'),
+        title: const Text(
+          'Aircraft Settings',
+          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+        ),
+        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        foregroundColor: FormThemeHelper.primaryTextColor,
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: FormThemeHelper.primaryAccent,
+          labelColor: FormThemeHelper.primaryTextColor,
+          unselectedLabelColor: FormThemeHelper.secondaryTextColor,
           tabs: const [
             Tab(icon: Icon(Icons.airplanemode_active), text: 'Aircraft'),
             Tab(icon: Icon(Icons.business), text: 'Manufacturers'),
           ],
         ),
       ),
+      backgroundColor: FormThemeHelper.backgroundColor,
       body: TabBarView(
         controller: _tabController,
         children: [_buildAircraftTab(), _buildManufacturersTab()],
@@ -68,18 +78,22 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
                 const Icon(
                   Icons.airplanemode_inactive,
                   size: 64,
-                  color: Colors.grey,
+                  color: Colors.white54,
                 ),
                 const SizedBox(height: 16),
                 const Text(
                   'No aircraft configured',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                  style: TextStyle(fontSize: 18, color: Colors.white70),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: () => _showAircraftForm(),
                   icon: const Icon(Icons.add),
                   label: const Text('Add First Aircraft'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF448AFF),
+                    foregroundColor: Colors.white,
+                  ),
                 ),
               ],
             ),
@@ -95,13 +109,21 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
                   Expanded(
                     child: Text(
                       '${service.aircrafts.length} aircraft configured',
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                   ElevatedButton.icon(
                     onPressed: () => _showAircraftForm(),
                     icon: const Icon(Icons.add),
                     label: const Text('Add Aircraft'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF448AFF),
+                      foregroundColor: Colors.white,
+                    ),
                   ),
                 ],
               ),
@@ -111,14 +133,19 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
                 itemCount: service.aircrafts.length,
                 itemBuilder: (context, index) {
                   final aircraft = service.aircrafts[index];
-                  return Card(
+                  return Container(
                     margin: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 4,
                     ),
+                    decoration: BoxDecoration(
+                      color: const Color(0x1A448AFF),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0x7F448AFF)),
+                    ),
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: Theme.of(context).primaryColor,
+                        backgroundColor: const Color(0xFF448AFF),
                         child: Text(
                           aircraft.name.isNotEmpty
                               ? aircraft.name[0].toUpperCase()
@@ -129,17 +156,26 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
                           ),
                         ),
                       ),
-                      title: Text(aircraft.name),
+                      title: Text(
+                        aircraft.name,
+                        style: const TextStyle(color: Colors.white),
+                      ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(_getAircraftDisplayText(aircraft, service)),
+                          Text(
+                            _getAircraftDisplayText(aircraft, service),
+                            style: const TextStyle(color: Colors.white70),
+                          ),
                           Text(
                             '${_getCategoryDisplayName(aircraft.category)} • ${aircraft.cruiseSpeed} kts',
+                            style: const TextStyle(color: Colors.white70),
                           ),
                         ],
                       ),
                       trailing: PopupMenuButton<String>(
+                        iconColor: Colors.white70,
+                        color: const Color(0xE6000000),
                         onSelected: (value) {
                           if (value == 'edit') {
                             _showAircraftForm(aircraft: aircraft);
@@ -152,9 +188,12 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
                             value: 'edit',
                             child: Row(
                               children: [
-                                Icon(Icons.edit, size: 20),
+                                Icon(Icons.edit, size: 20, color: Colors.white70),
                                 SizedBox(width: 8),
-                                Text('Edit'),
+                                Text(
+                                  'Edit',
+                                  style: TextStyle(color: Colors.white),
+                                ),
                               ],
                             ),
                           ),
@@ -193,15 +232,23 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.business, size: 64, color: Colors.grey),
+                Icon(
+                  Icons.business,
+                  size: 64,
+                  color: FormThemeHelper.primaryAccent.withValues(alpha: 0.5),
+                ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'No manufacturers configured',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: FormThemeHelper.primaryTextColor,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: () => _showManufacturerForm(),
+                  style: FormThemeHelper.getPrimaryButtonStyle(),
                   icon: const Icon(Icons.add),
                   label: const Text('Add First Manufacturer'),
                 ),
@@ -219,11 +266,15 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
                   Expanded(
                     child: Text(
                       '${service.manufacturers.length} manufacturer(s) configured',
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: FormThemeHelper.primaryTextColor,
+                      ),
                     ),
                   ),
                   ElevatedButton.icon(
                     onPressed: () => _showManufacturerForm(),
+                    style: FormThemeHelper.getPrimaryButtonStyle(),
                     icon: const Icon(Icons.add),
                     label: const Text('Add Manufacturer'),
                   ),
@@ -235,14 +286,20 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
                 itemCount: service.manufacturers.length,
                 itemBuilder: (context, index) {
                   final manufacturer = service.manufacturers[index];
-                  return Card(
+                  return Container(
                     margin: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 4,
                     ),
+                    decoration: BoxDecoration(
+                      color: FormThemeHelper.sectionBackgroundColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: FormThemeHelper.sectionBorderColor),
+                    ),
                     child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       leading: CircleAvatar(
-                        backgroundColor: Theme.of(context).primaryColor,
+                        backgroundColor: FormThemeHelper.primaryAccent,
                         child: Text(
                           manufacturer.name.isNotEmpty
                               ? manufacturer.name[0].toUpperCase()
@@ -253,9 +310,23 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
                           ),
                         ),
                       ),
-                      title: Text(manufacturer.name),
-                      subtitle: Text('${manufacturer.models.length} models'),
+                      title: Text(
+                        manufacturer.name,
+                        style: TextStyle(
+                          color: FormThemeHelper.primaryTextColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${manufacturer.models.length} models',
+                        style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                      ),
                       trailing: PopupMenuButton<String>(
+                        icon: Icon(
+                          Icons.more_vert,
+                          color: FormThemeHelper.primaryTextColor,
+                        ),
+                        color: FormThemeHelper.dialogBackgroundColor,
                         onSelected: (value) {
                           if (value == 'edit') {
                             _showManufacturerForm(manufacturer: manufacturer);
@@ -264,13 +335,13 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
                           }
                         },
                         itemBuilder: (context) => [
-                          const PopupMenuItem(
+                          PopupMenuItem(
                             value: 'edit',
                             child: Row(
                               children: [
-                                Icon(Icons.edit, size: 20),
-                                SizedBox(width: 8),
-                                Text('Edit'),
+                                Icon(Icons.edit, size: 20, color: FormThemeHelper.primaryTextColor),
+                                const SizedBox(width: 8),
+                                Text('Edit', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
                               ],
                             ),
                           ),

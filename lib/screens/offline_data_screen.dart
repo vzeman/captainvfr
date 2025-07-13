@@ -8,6 +8,7 @@ import '../services/runway_service.dart';
 import '../services/frequency_service.dart';
 import '../services/weather_service.dart';
 import '../services/openaip_service.dart';
+import '../utils/form_theme_helper.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 /// Screen for managing all offline data and caches
@@ -395,21 +396,28 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
           context: context,
           barrierDismissible: false,
           builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Loading Airspaces'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 16),
-                  const Text('Fetching airspaces in tiles...'),
-                  const SizedBox(height: 8),
-                  Text(
-                    'This process fetches data in 20 tiles to avoid timeouts.\nIt may take a few minutes.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+            return FormThemeHelper.buildDialog(
+              context: context,
+              title: 'Loading Airspaces',
+              content: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Fetching airspaces in tiles...',
+                      style: TextStyle(color: FormThemeHelper.primaryTextColor),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'This process fetches data in 20 tiles to avoid timeouts.\nIt may take a few minutes.',
+                      style: TextStyle(fontSize: 12, color: FormThemeHelper.secondaryTextColor),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -473,21 +481,28 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
           context: context,
           barrierDismissible: false,
           builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Loading Reporting Points'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 16),
-                  const Text('Fetching reporting points in tiles...'),
-                  const SizedBox(height: 8),
-                  Text(
-                    'This process fetches data in 20 tiles to avoid timeouts.\nIt may take a few minutes.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+            return FormThemeHelper.buildDialog(
+              context: context,
+              title: 'Loading Reporting Points',
+              content: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Fetching reporting points in tiles...',
+                      style: TextStyle(color: FormThemeHelper.primaryTextColor),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'This process fetches data in 20 tiles to avoid timeouts.\nIt may take a few minutes.',
+                      style: TextStyle(fontSize: 12, color: FormThemeHelper.secondaryTextColor),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -599,60 +614,70 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
     }
   }
 
-  Future<void> _clearSpecificCache(String cacheType) async {
-    final confirmed = await showDialog<bool>(
+  Future<void> _clearSpecificCache(String cacheName) async {
+    final bool? confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Clear $cacheType Cache'),
-        content: Text('Are you sure you want to clear the $cacheType cache?'),
+      builder: (context) => FormThemeHelper.buildDialog(
+        context: context,
+        title: 'Clear $cacheName Cache',
+        content: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'Are you sure you want to clear the $cacheName cache? This data will be re-downloaded when needed.',
+            style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          ),
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.of(context).pop(false),
+            style: FormThemeHelper.getSecondaryButtonStyle(),
             child: const Text('Cancel'),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Clear'),
           ),
         ],
       ),
     );
 
-    if (confirmed == true) {
+    if (confirm == true) {
       try {
-        switch (cacheType.toLowerCase()) {
-          case 'airports':
+        switch (cacheName) {
+          case 'Airports':
             await _cacheService.clearAirportsCache();
             break;
-          case 'navaids':
+          case 'Navaids':
             await _cacheService.clearNavaidsCache();
             break;
-          case 'runways':
+          case 'Runways':
             await _cacheService.clearRunwaysCache();
             break;
-          case 'frequencies':
+          case 'Frequencies':
             await _cacheService.clearFrequenciesCache();
             break;
-          case 'airspaces':
+          case 'Airspaces':
             await _cacheService.clearAirspacesCache();
             break;
-          case 'reporting points':
+          case 'Reporting Points':
             await _cacheService.clearReportingPointsCache();
             break;
-          case 'weather':
+          case 'Weather':
             await _cacheService.clearWeatherCache();
             break;
-          case 'map tiles':
+          case 'Map Tiles':
             await _offlineMapService.clearCache();
             break;
         }
-
         await _loadAllCacheStats();
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('$cacheType cache cleared successfully'),
+              content: Text('$cacheName cache cleared successfully'),
               backgroundColor: Colors.green,
             ),
           );
@@ -660,7 +685,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error clearing $cacheType cache: $e')),
+            SnackBar(content: Text('Error clearing $cacheName cache: $e')),
           );
         }
       }
@@ -668,32 +693,43 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
   }
 
   Future<void> _clearAllCaches() async {
-    final confirmed = await showDialog<bool>(
+    final bool? confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear All Caches'),
-        content: const Text(
-          'Are you sure you want to clear all cached data? This includes map tiles and all aviation data.',
+      builder: (context) => FormThemeHelper.buildDialog(
+        context: context,
+        title: 'Clear All Caches',
+        content: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'Are you sure you want to clear all caches? This will delete all offline data including map tiles, aviation data, and weather information.',
+            style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.of(context).pop(false),
+            style: FormThemeHelper.getSecondaryButtonStyle(),
             child: const Text('Cancel'),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Clear All'),
           ),
         ],
       ),
     );
 
-    if (confirmed == true) {
+    if (confirm == true) {
       try {
-        await _cacheService.clearAllCaches();
-        await _offlineMapService.clearCache();
+        await Future.wait([
+          _cacheService.clearAllCaches(),
+          _offlineMapService.clearCache(),
+        ]);
         await _loadAllCacheStats();
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -721,8 +757,12 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
     String? subtitle,
     VoidCallback? onRefresh,
   }) {
-    return Card(
-      elevation: 2,
+    return Container(
+      decoration: BoxDecoration(
+        color: FormThemeHelper.sectionBackgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: FormThemeHelper.sectionBorderColor),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -730,20 +770,21 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
           children: [
             Row(
               children: [
-                Icon(icon, size: 24, color: Colors.blue[700]),
+                Icon(icon, size: 24, color: FormThemeHelper.primaryAccent),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
+                      color: FormThemeHelper.primaryTextColor,
                     ),
                   ),
                 ),
                 if (onRefresh != null)
                   IconButton(
-                    icon: const Icon(Icons.refresh, color: Colors.blue),
+                    icon: Icon(Icons.refresh, color: FormThemeHelper.primaryAccent),
                     onPressed: _isRefreshing ? null : onRefresh,
                     tooltip: 'Refresh $title',
                   ),
@@ -758,18 +799,21 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                style: TextStyle(fontSize: 14, color: FormThemeHelper.secondaryTextColor),
               ),
             ],
             const SizedBox(height: 8),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Entries: $count', style: const TextStyle(fontSize: 16)),
+                Text(
+                  'Entries: $count',
+                  style: TextStyle(fontSize: 16, color: FormThemeHelper.primaryTextColor),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   'Updated: $lastFetch',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 14, color: FormThemeHelper.secondaryTextColor),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                 ),
@@ -809,17 +853,26 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         minZoom: _minZoom,
         maxZoom: _maxZoom,
         onProgress: (current, total, skipped, downloaded) {
-          setState(() {
-            _currentTiles = current;
-            _totalTiles = total;
-            _skippedTiles = skipped;
-            _downloadedTiles = downloaded;
-            _downloadProgress = total > 0 ? current / total : 0.0;
-          });
+          // Update internal values without setState
+          _currentTiles = current;
+          _totalTiles = total;
+          _skippedTiles = skipped;
+          _downloadedTiles = downloaded;
+          _downloadProgress = total > 0 ? current / total : 0.0;
 
-          // Update cache statistics periodically, preserving scroll position
-          if (current % 50 == 0 ||
-              (total > 0 && (current / total * 100).round() % 5 == 0)) {
+          // Only update UI every 10 tiles or at 5% intervals to reduce rebuilds
+          final shouldUpdateUI = current % 10 == 0 || 
+              (total > 0 && (current / total * 100).round() % 5 == 0) ||
+              current == total;
+          
+          if (shouldUpdateUI && mounted) {
+            setState(() {
+              // Trigger UI update
+            });
+          }
+
+          // Update cache statistics every 25 tiles, preserving scroll position
+          if (current % 25 == 0 || current == total) {
             _loadAllCacheStats(preserveScroll: true);
           }
         },
@@ -865,9 +918,12 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Offline Data Management'),
-        backgroundColor: Colors.blue[900],
-        foregroundColor: Colors.white,
+        title: const Text(
+          'Offline Data',
+          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+        ),
+        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        foregroundColor: FormThemeHelper.primaryTextColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -881,22 +937,25 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
           ),
         ],
       ),
+      backgroundColor: FormThemeHelper.backgroundColor,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: () => _loadAllCacheStats(),
               child: SingleChildScrollView(
                 controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Data Caches Section
-                    const Text(
+                    Text(
                       'Aviation Data Caches',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
+                        color: FormThemeHelper.primaryTextColor,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -992,8 +1051,12 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                     const SizedBox(height: 8),
 
                     // Weather cache
-                    Card(
-                      elevation: 2,
+                    Container(
+                      decoration: BoxDecoration(
+                        color: FormThemeHelper.sectionBackgroundColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: FormThemeHelper.sectionBorderColor),
+                      ),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
@@ -1001,211 +1064,167 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                           children: [
                             Row(
                               children: [
-                                Icon(
-                                  Icons.cloud,
-                                  size: 24,
-                                  color: Colors.blue[700],
-                                ),
+                                Icon(Icons.cloud, size: 24, color: FormThemeHelper.primaryAccent),
                                 const SizedBox(width: 8),
-                                const Expanded(
+                                Expanded(
                                   child: Text(
                                     'Weather Data',
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
+                                      color: FormThemeHelper.primaryTextColor,
                                     ),
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(
-                                    Icons.refresh,
-                                    color: Colors.blue,
-                                  ),
-                                  onPressed: _isRefreshing
-                                      ? null
-                                      : () => _refreshWeatherData(),
+                                  icon: Icon(Icons.refresh, color: FormThemeHelper.primaryAccent),
+                                  onPressed: _isRefreshing ? null : _refreshWeatherData,
                                   tooltip: 'Refresh weather data',
                                 ),
                                 IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.red,
-                                  ),
-                                  onPressed: () =>
-                                      _clearSpecificCache('Weather'),
+                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                  onPressed: () => _clearSpecificCache('Weather'),
                                   tooltip: 'Clear cache',
                                 ),
                               ],
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'METAR and TAF weather reports',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
-                              ),
+                              'METARs, TAFs, and weather information',
+                              style: TextStyle(fontSize: 14, color: FormThemeHelper.secondaryTextColor),
                             ),
                             const SizedBox(height: 8),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  'METARs: ${_cacheStats['weather']?['metars'] ?? 0}',
-                                  style: const TextStyle(fontSize: 16),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'METARs: ${_cacheStats['weather']?['metars'] ?? 0}',
+                                      style: TextStyle(fontSize: 16, color: FormThemeHelper.primaryTextColor),
+                                    ),
+                                    Text(
+                                      'TAFs: ${_cacheStats['weather']?['tafs'] ?? 0}',
+                                      style: TextStyle(fontSize: 16, color: FormThemeHelper.primaryTextColor),
+                                    ),
+                                  ],
                                 ),
                                 Text(
-                                  'TAFs: ${_cacheStats['weather']?['tafs'] ?? 0}',
-                                  style: const TextStyle(fontSize: 16),
+                                  'Updated: ${_formatLastFetch(_cacheStats['weather']?['lastFetch'])}',
+                                  style: TextStyle(fontSize: 14, color: FormThemeHelper.secondaryTextColor),
                                 ),
                               ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Updated: ${_formatLastFetch(_cacheStats['weather']?['lastFetch'])}',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
-                              ),
                             ),
                           ],
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 16),
-
-                    // OpenAIP API Configuration
-                    Card(
-                      elevation: 2,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(height: 24),
+                    
+                    // OpenAIP Configuration
+                    FormThemeHelper.buildSection(
+                      title: 'OpenAIP Configuration',
+                      children: [
+                        FormThemeHelper.buildFormField(
+                          controller: _apiKeyController,
+                          labelText: 'API Key',
+                          hintText: 'Enter your OpenAIP API key',
+                          obscureText: true,
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
                           children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.key,
-                                  size: 24,
-                                  color: Colors.blue[700],
-                                ),
-                                const SizedBox(width: 8),
-                                const Expanded(
-                                  child: Text(
-                                    'OpenAIP Configuration',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
+                            ElevatedButton.icon(
+                              onPressed: () => _saveApiKey(_apiKeyController.text),
+                              style: FormThemeHelper.getPrimaryButtonStyle(),
+                              icon: const Icon(Icons.save),
+                              label: const Text('Save'),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton(
+                              onPressed: () async {
+                                if (_apiKeyController.text.isNotEmpty) {
+                                  final nav = Navigator.of(context);
+                                  final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                  
+                                  showDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    builder: (context) => FormThemeHelper.buildDialog(
+                                      context: context,
+                                      title: 'Testing API Key',
+                                      content: const Padding(
+                                        padding: EdgeInsets.all(16),
+                                        child: CircularProgressIndicator(),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Enter your OpenAIP API key to fetch airspaces data',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            TextField(
-                              controller: _apiKeyController,
-                              obscureText: true,
-                              decoration: const InputDecoration(
-                                labelText: 'API Key',
-                                hintText: 'Enter your OpenAIP API key',
-                                border: OutlineInputBorder(),
-                              ),
-                              onChanged: (value) {
-                                // Auto-save when user types
-                                _saveApiKey(value.trim());
-                              },
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.info_outline,
-                                  size: 16,
-                                  color: Colors.grey[600],
-                                ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    'Get your API key from openaip.net',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            if (_openAIPApiKey.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              ElevatedButton.icon(
-                                onPressed: () async {
-                                  // Test the API key by fetching some airspaces
+                                  );
+                                  
                                   try {
-                                    final airspaces = await _openAIPService
-                                        .fetchAirspaces(limit: 1);
-                                    if (!mounted) return;
-                                    // ignore: use_build_context_synchronously
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          airspaces.isNotEmpty
-                                              ? 'API key is valid and working!'
-                                              : 'API key seems valid but no airspaces found',
+                                    _openAIPService.setApiKey(_apiKeyController.text);
+                                    // Try to fetch a small amount of data to test the API key
+                                    await _openAIPService.getCachedAirspaces();
+                                    if (mounted) {
+                                      nav.pop();
+                                      scaffoldMessenger.showSnackBar(
+                                        const SnackBar(
+                                          content: Text('API key is valid!'),
+                                          backgroundColor: Colors.green,
                                         ),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
+                                      );
+                                    }
                                   } catch (e) {
-                                    if (!mounted) return;
-                                    // ignore: use_build_context_synchronously
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'API key validation failed. Please check your key.',
+                                    if (mounted) {
+                                      nav.pop();
+                                      scaffoldMessenger.showSnackBar(
+                                        SnackBar(
+                                          content: Text('API key test failed: $e'),
+                                          backgroundColor: Colors.red,
                                         ),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
+                                      );
+                                    }
                                   }
-                                },
-                                icon: const Icon(Icons.check_circle, size: 16),
-                                label: const Text('Test API Key'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  foregroundColor: Colors.white,
-                                ),
-                              ),
-                            ],
+                                }
+                              },
+                              style: FormThemeHelper.getOutlinedButtonStyle(),
+                              child: const Text('Test API Key'),
+                            ),
                           ],
                         ),
-                      ),
+                        if (_openAIPApiKey.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'Auto-loading of airspaces and reporting points enabled',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: FormThemeHelper.secondaryTextColor,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
 
                     const SizedBox(height: 24),
-                    const Divider(),
-                    const SizedBox(height: 24),
 
-                    // Map Tiles Section
-                    const Text(
+                    // Offline Map Tiles Section
+                    Text(
                       'Offline Map Tiles',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
+                        color: FormThemeHelper.primaryTextColor,
                       ),
                     ),
                     const SizedBox(height: 16),
 
-                    // Map cache statistics
-                    Card(
-                      elevation: 2,
+                    Container(
+                      decoration: BoxDecoration(
+                        color: FormThemeHelper.sectionBackgroundColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: FormThemeHelper.sectionBorderColor),
+                      ),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
@@ -1213,49 +1232,76 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                           children: [
                             Row(
                               children: [
-                                Icon(
-                                  Icons.map,
-                                  size: 24,
-                                  color: Colors.blue[700],
-                                ),
+                                Icon(Icons.map, size: 24, color: FormThemeHelper.primaryAccent),
                                 const SizedBox(width: 8),
-                                const Expanded(
+                                Expanded(
                                   child: Text(
-                                    'Map Tile Cache',
+                                    'Map Tiles Cache',
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
+                                      color: FormThemeHelper.primaryTextColor,
                                     ),
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.red,
-                                  ),
-                                  onPressed: () =>
-                                      _clearSpecificCache('Map tiles'),
-                                  tooltip: 'Clear cache',
+                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                  onPressed: () => _clearSpecificCache('Map Tiles'),
+                                  tooltip: 'Clear map cache',
                                 ),
                               ],
                             ),
                             const SizedBox(height: 8),
-                            if (_mapCacheStats != null) ...[
+                            if (_mapCacheStats != null && (_mapCacheStats!['tileCount'] ?? 0) > 0) ...[
                               Text(
-                                'Total Tiles: ${_mapCacheStats!['totalTiles']}',
+                                'Total tiles: ${_mapCacheStats!['tileCount'] ?? 0}',
+                                style: TextStyle(fontSize: 16, color: FormThemeHelper.primaryTextColor),
                               ),
+                              const SizedBox(height: 4),
                               Text(
-                                'Total Size: ${_mapCacheStats!['totalSizeMB']} MB',
+                                'Total size: ${((_mapCacheStats!['totalSizeBytes'] ?? 0) / 1024 / 1024).toStringAsFixed(2)} MB',
+                                style: TextStyle(fontSize: 16, color: FormThemeHelper.primaryTextColor),
                               ),
-                              const SizedBox(height: 8),
-                              const Text('Zoom Levels:'),
-                              ...(_mapCacheStats!['zoomLevels'] as List).map(
-                                (level) => Text(
-                                  '  Level ${level['z']}: ${level['count']} tiles',
+                              const SizedBox(height: 16),
+                              Text(
+                                'Tiles by zoom level:',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: FormThemeHelper.primaryTextColor,
                                 ),
                               ),
+                              const SizedBox(height: 8),
+                              if (_mapCacheStats!['tilesByZoom'] != null)
+                                ...((_mapCacheStats!['tilesByZoom'] as Map<int, Map<String, int>>?) ?? {})
+                                    .entries
+                                    .map((entry) {
+                                final zoom = entry.key;
+                                final count = entry.value['count'] ?? 0;
+                                final sizeBytes = entry.value['sizeBytes'] ?? 0;
+                                final sizeMB = sizeBytes / 1024 / 1024;
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 2),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Zoom $zoom:',
+                                        style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                                      ),
+                                      Text(
+                                        '$count tiles (${sizeMB.toStringAsFixed(2)} MB)',
+                                        style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                }),
                             ] else
-                              const Text('No cached tiles'),
+                              Text(
+                                'No cached tiles',
+                                style: TextStyle(fontSize: 16, color: FormThemeHelper.secondaryTextColor),
+                              ),
                           ],
                         ),
                       ),
@@ -1263,154 +1309,141 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
 
                     const SizedBox(height: 16),
 
-                    // Download Progress Card
-                    if (_isDownloading)
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            children: [
-                              const Text(
-                                'Downloading...',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                    // Download controls
+                    FormThemeHelper.buildSection(
+                      title: 'Download Map Tiles',
+                      children: [
+                        Text(
+                          'Download map tiles for offline use',
+                          style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Min Zoom: $_minZoom',
+                                    style: TextStyle(color: FormThemeHelper.primaryTextColor),
+                                  ),
+                                  Slider(
+                                    value: _minZoom.toDouble(),
+                                    min: 1,
+                                    max: 18,
+                                    divisions: 17,
+                                    label: _minZoom.toString(),
+                                    activeColor: FormThemeHelper.primaryAccent,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _minZoom = value.toInt();
+                                        if (_minZoom > _maxZoom) {
+                                          _maxZoom = _minZoom;
+                                        }
+                                      });
+                                    },
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 8),
-                              LinearProgressIndicator(value: _downloadProgress),
-                              const SizedBox(height: 8),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Max Zoom: $_maxZoom',
+                                    style: TextStyle(color: FormThemeHelper.primaryTextColor),
+                                  ),
+                                  Slider(
+                                    value: _maxZoom.toDouble(),
+                                    min: 1,
+                                    max: 18,
+                                    divisions: 17,
+                                    label: _maxZoom.toString(),
+                                    activeColor: FormThemeHelper.primaryAccent,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _maxZoom = value.toInt();
+                                        if (_maxZoom < _minZoom) {
+                                          _minZoom = _maxZoom;
+                                        }
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        if (_isDownloading) ...[
+                          LinearProgressIndicator(
+                            value: _downloadProgress,
+                            backgroundColor: FormThemeHelper.borderColor.withValues(alpha: 0.3),
+                            valueColor: AlwaysStoppedAnimation<Color>(FormThemeHelper.primaryAccent),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
                               Text(
                                 'Progress: $_currentTiles / $_totalTiles tiles',
+                                style: TextStyle(color: FormThemeHelper.secondaryTextColor),
                               ),
-                              const SizedBox(height: 4),
                               Text(
-                                'Downloaded: $_downloadedTiles | Skipped (cached): $_skippedTiles',
-                                style: const TextStyle(fontSize: 13),
-                              ),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: _stopDownload,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
-                                  foregroundColor: Colors.white,
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.stop, size: 18),
-                                    SizedBox(width: 8),
-                                    Text('Stop Download'),
-                                  ],
+                                '${(_downloadProgress * 100).toStringAsFixed(1)}%',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: FormThemeHelper.primaryAccent,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                      ),
-
-                    // Quick Download Card
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Download Map Tiles',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Downloaded: $_downloadedTiles',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: FormThemeHelper.secondaryTextColor,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text('Download tiles for current map area'),
-                            const SizedBox(height: 16),
-
-                            // Zoom level sliders
-                            Text('Min Zoom Level: $_minZoom'),
-                            Slider(
-                              value: _minZoom.toDouble(),
-                              min: 4,
-                              max: 16,
-                              divisions: 12,
-                              onChanged: (value) {
-                                setState(() {
-                                  _minZoom = value.round();
-                                  if (_minZoom > _maxZoom) _maxZoom = _minZoom;
-                                });
-                              },
-                            ),
-                            Text('Max Zoom Level: $_maxZoom'),
-                            Slider(
-                              value: _maxZoom.toDouble(),
-                              min: 4,
-                              max: 16,
-                              divisions: 12,
-                              onChanged: (value) {
-                                setState(() {
-                                  _maxZoom = value.round();
-                                  if (_maxZoom < _minZoom) _minZoom = _maxZoom;
-                                });
-                              },
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: _isDownloading
-                                    ? null
-                                    : _downloadCurrentArea,
-                                child: const Text('Download Current Area'),
+                              Text(
+                                'Skipped: $_skippedTiles',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: FormThemeHelper.secondaryTextColor,
+                                ),
                               ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: _stopDownload,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Information Card
-                    Card(
-                      color: Colors.blue[50],
-                      child: const Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Information',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              '• All aviation data is cached for offline use\n'
-                              '• Weather data is updated every 30 minutes when online\n'
-                              '• Map tiles are cached automatically when viewed\n'
-                              '• Download map areas before flights for offline navigation\n'
-                              '• Use "Refresh all data" to update all caches from the internet',
-                            ),
-                          ],
-                        ),
-                      ),
+                            icon: const Icon(Icons.stop),
+                            label: const Text('Stop Download'),
+                          ),
+                        ] else
+                          ElevatedButton.icon(
+                            onPressed: _downloadCurrentArea,
+                            style: FormThemeHelper.getPrimaryButtonStyle(),
+                            icon: const Icon(Icons.download),
+                            label: const Text('Download Current Area'),
+                          ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
     );
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    _apiKeyController.dispose();
-    super.dispose();
   }
 }

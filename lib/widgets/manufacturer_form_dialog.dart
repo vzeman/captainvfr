@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/aircraft_settings_service.dart';
 import '../models/manufacturer.dart';
+import '../utils/form_theme_helper.dart';
 
 class ManufacturerFormDialog extends StatefulWidget {
   final Manufacturer? manufacturer;
@@ -45,74 +46,63 @@ class _ManufacturerFormDialogState extends State<ManufacturerFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(
-        widget.manufacturer == null ? 'Add Manufacturer' : 'Edit Manufacturer',
-      ),
-      content: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.8,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Manufacturer Name *',
-                    hintText: 'e.g., Cessna Aircraft Company',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter a manufacturer name';
+    return FormThemeHelper.buildDialog(
+      context: context,
+      title: widget.manufacturer == null ? 'Add Manufacturer' : 'Edit Manufacturer',
+      width: MediaQuery.of(context).size.width * 0.8,
+      content: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FormThemeHelper.buildFormField(
+                controller: _nameController,
+                labelText: 'Manufacturer Name *',
+                hintText: 'e.g., Cessna Aircraft Company',
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter a manufacturer name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              FormThemeHelper.buildFormField(
+                controller: _websiteController,
+                labelText: 'Website',
+                hintText: 'e.g., https://www.cessna.com',
+                validator: (value) {
+                  if (value != null && value.isNotEmpty) {
+                    final uri = Uri.tryParse(value);
+                    if (uri == null || (!uri.scheme.startsWith('http'))) {
+                      return 'Please enter a valid URL';
                     }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  controller: _websiteController,
-                  decoration: const InputDecoration(
-                    labelText: 'Website',
-                    hintText: 'e.g., https://www.cessna.com',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value != null && value.isNotEmpty) {
-                      final uri = Uri.tryParse(value);
-                      if (uri == null || (!uri.scheme.startsWith('http'))) {
-                        return 'Please enter a valid URL';
-                      }
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  controller: _descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    hintText: 'Brief description of the manufacturer',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 3,
-                ),
-              ],
-            ),
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              FormThemeHelper.buildFormField(
+                controller: _descriptionController,
+                labelText: 'Description',
+                hintText: 'Brief description of the manufacturer',
+                maxLines: 3,
+              ),
+            ],
           ),
         ),
       ),
       actions: [
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.pop(context),
+          style: FormThemeHelper.getSecondaryButtonStyle(),
           child: const Text('Cancel'),
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : _saveManufacturer,
+          style: FormThemeHelper.getPrimaryButtonStyle(),
           child: _isLoading
               ? const SizedBox(
                   width: 16,

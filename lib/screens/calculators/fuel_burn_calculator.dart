@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/settings_service.dart';
+import '../../utils/form_theme_helper.dart';
 
 class FuelBurnCalculator extends StatefulWidget {
   const FuelBurnCalculator({super.key});
@@ -90,12 +91,15 @@ class _FuelBurnCalculatorState extends State<FuelBurnCalculator> {
     final flowUnit = isImperial ? 'gal/hr' : 'L/hr';
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: FormThemeHelper.backgroundColor,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        title: const Text('Fuel Burn Calculator'),
+        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        title: const Text(
+          'Fuel Burn Calculator',
+          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: FormThemeHelper.primaryTextColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -104,112 +108,91 @@ class _FuelBurnCalculatorState extends State<FuelBurnCalculator> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Flight Parameters',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _fuelFlowController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: 'Fuel Flow Rate ($flowUnit)',
-                        helperText: 'Average cruise fuel consumption',
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
+            FormThemeHelper.buildSection(
+              title: 'Flight Parameters',
+              children: [
+                FormThemeHelper.buildFormField(
+                  controller: _fuelFlowController,
+                  labelText: 'Fuel Flow Rate ($flowUnit)',
+                  hintText: 'Average cruise fuel consumption',
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
                         Expanded(
-                          child: TextField(
+                          child: FormThemeHelper.buildFormField(
                             controller: _flightTimeHoursController,
+                            labelText: 'Flight Time (Hours)',
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: false,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'Flight Time (Hours)',
-                              border: OutlineInputBorder(),
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: TextField(
+                          child: FormThemeHelper.buildFormField(
                             controller: _flightTimeMinutesController,
+                            labelText: 'Minutes',
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: false,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'Minutes',
-                              border: OutlineInputBorder(),
                             ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
-                    TextField(
+                    FormThemeHelper.buildFormField(
                       controller: _reserveTimeController,
+                      labelText: 'Reserve Time (Minutes)',
+                      hintText: 'FAA minimum: 30 min VFR, 45 min IFR',
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: false,
                       ),
-                      decoration: const InputDecoration(
-                        labelText: 'Reserve Time (Minutes)',
-                        helperText: 'FAA minimum: 30 min VFR, 45 min IFR',
-                        border: OutlineInputBorder(),
-                      ),
                     ),
                     const SizedBox(height: 16),
-                    TextField(
+                    FormThemeHelper.buildFormField(
                       controller: _totalFuelController,
+                      labelText: 'Available Fuel ($fuelUnit) - Optional',
+                      hintText: 'Total usable fuel on board',
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      decoration: InputDecoration(
-                        labelText: 'Available Fuel ($fuelUnit) - Optional',
-                        helperText: 'Total usable fuel on board',
-                        border: const OutlineInputBorder(),
-                      ),
                     ),
-                  ],
-                ),
-              ),
+              ],
             ),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _calculate,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              style: FormThemeHelper.getPrimaryButtonStyle().copyWith(
+                minimumSize: WidgetStateProperty.all(const Size(double.infinity, 48)),
               ),
               child: const Text('Calculate', style: TextStyle(fontSize: 16)),
             ),
             if (_fuelRequired != null) ...[
               const SizedBox(height: 24),
-              Card(
-                color: _isSafe == false
-                    ? Theme.of(context).colorScheme.errorContainer
-                    : Theme.of(context).colorScheme.primaryContainer,
+              Container(
+                decoration: BoxDecoration(
+                  color: _isSafe == false
+                      ? Colors.red.withValues(alpha: 0.1)
+                      : FormThemeHelper.sectionBackgroundColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _isSafe == false
+                        ? Colors.red
+                        : FormThemeHelper.sectionBorderColor,
+                  ),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      const Text(
+                      Text(
                         'Fuel Requirements',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                        style: FormThemeHelper.sectionTitleStyle.copyWith(
+                          color: FormThemeHelper.primaryTextColor,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -266,8 +249,8 @@ class _FuelBurnCalculatorState extends State<FuelBurnCalculator> {
                           style: TextStyle(
                             fontSize: 16,
                             color: _remainingFuel! < 0
-                                ? Theme.of(context).colorScheme.error
-                                : null,
+                                ? Colors.red
+                                : FormThemeHelper.primaryTextColor,
                           ),
                         ),
                         if (_isSafe == false) ...[
@@ -275,15 +258,15 @@ class _FuelBurnCalculatorState extends State<FuelBurnCalculator> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.warning,
-                                color: Theme.of(context).colorScheme.error,
+                                color: Colors.red,
                               ),
                               const SizedBox(width: 8),
-                              Text(
+                              const Text(
                                 'INSUFFICIENT FUEL!',
                                 style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error,
+                                  color: Colors.red,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),

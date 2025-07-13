@@ -123,12 +123,15 @@ class _LicensesScreenState extends State<LicensesScreen> {
                 Icon(
                   Icons.calendar_today,
                   size: 14,
-                  color: Colors.grey.shade600,
+                  color: Colors.white70,
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  'Issued: ${_formatDate(license.issueDate)}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                Expanded(
+                  child: Text(
+                    'Issued: ${_formatDate(license.issueDate)}',
+                    style: const TextStyle(fontSize: 12, color: Colors.white70),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Icon(
@@ -137,12 +140,15 @@ class _LicensesScreenState extends State<LicensesScreen> {
                   color: isExpired ? Colors.red : Colors.grey.shade600,
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  'Expires: ${_formatDate(license.expirationDate)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isExpired ? Colors.red : Colors.grey.shade600,
-                    fontWeight: isExpired ? FontWeight.bold : FontWeight.normal,
+                Expanded(
+                  child: Text(
+                    'Expires: ${_formatDate(license.expirationDate)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isExpired ? Colors.red : Colors.grey.shade600,
+                      fontWeight: isExpired ? FontWeight.bold : FontWeight.normal,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],

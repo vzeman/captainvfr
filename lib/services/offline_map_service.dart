@@ -296,7 +296,7 @@ class OfflineMapService {
       'SELECT SUM(LENGTH(tile_data)) as size FROM $_tableName',
     );
     final zoomStats = await _database!.rawQuery('''
-      SELECT z, COUNT(*) as count 
+      SELECT z, COUNT(*) as count, SUM(LENGTH(tile_data)) as sizeBytes
       FROM $_tableName 
       GROUP BY z 
       ORDER BY z
@@ -305,10 +305,22 @@ class OfflineMapService {
     final totalCount = totalTiles.first['count'] as int;
     final totalSize = sizeResult.first['size'] as int? ?? 0;
 
+    // Convert zoom stats to the expected format
+    final Map<int, Map<String, int>> tilesByZoom = {};
+    for (final row in zoomStats) {
+      final zoom = row['z'] as int;
+      final count = row['count'] as int;
+      final sizeBytes = row['sizeBytes'] as int? ?? 0;
+      tilesByZoom[zoom] = {
+        'count': count,
+        'sizeBytes': sizeBytes,
+      };
+    }
+
     return {
-      'totalTiles': totalCount,
-      'totalSizeMB': (totalSize / (1024 * 1024)).toStringAsFixed(2),
-      'zoomLevels': zoomStats,
+      'tileCount': totalCount,
+      'totalSizeBytes': totalSize,
+      'tilesByZoom': tilesByZoom,
     };
   }
 

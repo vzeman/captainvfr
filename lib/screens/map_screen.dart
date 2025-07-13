@@ -2040,32 +2040,41 @@ class MapScreenState extends State<MapScreen>
                 ),
               // Current position marker
               if (_currentPosition != null)
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: LatLng(
-                        _currentPosition!.latitude,
-                        _currentPosition!.longitude,
-                      ),
-                      width: 30,
-                      height: 30,
-                      child: Transform.rotate(
-                        angle: (_currentPosition?.heading ?? 0) * pi / 180,
-                        child: const Icon(
-                          Icons.flight,
-                          color: Colors.blue,
-                          size: 30,
-                          shadows: [
-                            Shadow(
-                              offset: Offset(1, 1),
-                              blurRadius: 2,
-                              color: Colors.black54,
+                Consumer<SettingsService>(
+                  builder: (context, settings, child) {
+                    // When rotateMapWithHeading is ON: map rotates, so aircraft marker stays pointing north (no rotation)
+                    // When rotateMapWithHeading is OFF: map stays north, so aircraft marker rotates to show heading
+                    final shouldRotateMarker = !settings.rotateMapWithHeading;
+                    final markerRotation = shouldRotateMarker ? (_currentPosition?.heading ?? 0) * pi / 180 : 0.0;
+                    
+                    return MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: LatLng(
+                            _currentPosition!.latitude,
+                            _currentPosition!.longitude,
+                          ),
+                          width: 30,
+                          height: 30,
+                          child: Transform.rotate(
+                            angle: markerRotation,
+                            child: const Icon(
+                              Icons.flight,
+                              color: Colors.blue,
+                              size: 30,
+                              shadows: [
+                                Shadow(
+                                  offset: Offset(1, 1),
+                                  blurRadius: 2,
+                                  color: Colors.black54,
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
             ],
           ),
@@ -2582,16 +2591,6 @@ class MapScreenState extends State<MapScreen>
                         ),
                       ),
                       const PopupMenuItem(
-                        value: 'offline_maps',
-                        child: Row(
-                          children: [
-                            Icon(Icons.map, size: 20),
-                            SizedBox(width: 8),
-                            Text('Offline Data'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
                         value: 'checklists',
                         child: Row(
                           children: [
@@ -2628,6 +2627,16 @@ class MapScreenState extends State<MapScreen>
                             Icon(Icons.calculate, size: 20),
                             SizedBox(width: 8),
                             Text('Calculators'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'offline_maps',
+                        child: Row(
+                          children: [
+                            Icon(Icons.map, size: 20),
+                            SizedBox(width: 8),
+                            Text('Offline Data'),
                           ],
                         ),
                       ),
