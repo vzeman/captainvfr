@@ -161,6 +161,10 @@ class FrequencyService {
         .where((frequency) => frequency.airportIdent == airportIdent)
         .toList();
 
+    if (exactMatches.isNotEmpty) {
+      return exactMatches;
+    }
+
     // Try case-insensitive match
     final caseInsensitiveMatches = _frequencies
         .where(
@@ -169,23 +173,6 @@ class FrequencyService {
               airportIdent.toUpperCase(),
         )
         .toList();
-
-    if (caseInsensitiveMatches.isNotEmpty) {
-      return caseInsensitiveMatches;
-    } else {
-      // Try partial matches to see if there are similar airport codes
-      final partialMatches = _frequencies
-          .where(
-            (frequency) =>
-                frequency.airportIdent.toUpperCase().contains(
-                  airportIdent.toUpperCase(),
-                ) ||
-                airportIdent.toUpperCase().contains(
-                  frequency.airportIdent.toUpperCase(),
-                ),
-          )
-          .toList();
-    }
 
     return caseInsensitiveMatches;
   }

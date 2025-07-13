@@ -196,6 +196,31 @@ class MapScreenState extends State<MapScreen>
           context,
           listen: false,
         );
+        
+        // Set up callback to focus map on first waypoint when flight plan is loaded
+        _flightPlanService.onFlightPlanLoaded = (flightPlan) {
+          if (flightPlan.waypoints.isNotEmpty) {
+            final firstWaypoint = flightPlan.waypoints.first;
+            _mapController.move(
+              LatLng(firstWaypoint.latitude, firstWaypoint.longitude),
+              12.0, // Good zoom level to see waypoint and surrounding area
+            );
+            
+            // Load data for the new area
+            _loadAirports();
+            if (_showNavaids) {
+              _loadNavaids();
+            }
+            if (_showAirspaces) {
+              _loadAirspaces();
+              _loadReportingPoints();
+            }
+            if (_showMetar) {
+              _loadWeatherForVisibleAirports();
+            }
+          }
+        };
+        
         _cacheService = Provider.of<CacheService>(context, listen: false);
 
         // Try to get OpenAIPService, but don't fail if it's not available yet
@@ -1579,6 +1604,12 @@ class MapScreenState extends State<MapScreen>
 
   // Handle reporting point selection
   Future<void> _onReportingPointSelected(ReportingPoint point) async {
+    // If in flight planning mode and panel is visible, add reporting point as waypoint instead of showing details
+    if (_flightPlanService.isPlanning && _showFlightPlanning) {
+      _flightPlanService.addReportingPointWaypoint(point);
+      return;
+    }
+    
     if (!mounted) {
       return;
     }
@@ -3077,46 +3108,6 @@ class MapScreenState extends State<MapScreen>
     );
   }
 
-  Widget _buildLoadingAirspacePanel() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xE6000000),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Text(
-            'Getting location...',
-            style: TextStyle(color: Colors.white70, fontSize: 12),
-          ),
-          const SizedBox(width: 12),
-          IconButton(
-            icon: const Icon(Icons.close, size: 16),
-            color: Colors.white54,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-            onPressed: () {
-              setState(() {
-                _showCurrentAirspacePanel = false;
-              });
-            },
-          ),
-        ],
-      ),
-    );
-  }
 
   Color _getSegmentColor(String segmentType) {
     switch (segmentType) {

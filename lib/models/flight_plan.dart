@@ -146,6 +146,8 @@ enum WaypointType {
   navaid,
   @HiveField(3)
   fix,
+  @HiveField(4)
+  reportingPoint,
 }
 
 @HiveType(typeId: 13)

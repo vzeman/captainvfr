@@ -221,6 +221,8 @@ class WaypointListTile extends StatelessWidget {
         return Colors.orange;
       case WaypointType.user:
         return Colors.blue;
+      case WaypointType.reportingPoint:
+        return Colors.red;
     }
   }
 
@@ -234,6 +236,8 @@ class WaypointListTile extends StatelessWidget {
         return 'FIX';
       case WaypointType.user:
         return 'USR';
+      case WaypointType.reportingPoint:
+        return 'RPT';
     }
   }
 }

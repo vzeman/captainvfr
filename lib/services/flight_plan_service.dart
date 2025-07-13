@@ -5,6 +5,7 @@ import '../models/flight_plan.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
 import '../models/aircraft.dart';
+import '../models/reporting_point.dart';
 import '../services/aircraft_service.dart';
 
 class FlightPlanService extends ChangeNotifier {
@@ -15,6 +16,9 @@ class FlightPlanService extends ChangeNotifier {
   List<FlightPlan> _savedFlightPlans = [];
   Box<FlightPlan>? _flightPlanBox;
   final AircraftService? _aircraftService;
+  
+  // Callback for when a flight plan is loaded
+  void Function(FlightPlan)? onFlightPlanLoaded;
 
   FlightPlan? get currentFlightPlan => _currentFlightPlan;
   bool get isPlanning => _isPlanning;
@@ -76,6 +80,11 @@ class FlightPlanService extends ChangeNotifier {
     _isPlanning = false;
     _waypointCounter = flightPlan.waypoints.length + 1;
     notifyListeners();
+    
+    // Call the callback if it's set (to focus map on first waypoint)
+    if (onFlightPlanLoaded != null) {
+      onFlightPlanLoaded!(flightPlan);
+    }
   }
 
   // Delete a flight plan from storage
@@ -233,6 +242,28 @@ class FlightPlanService extends ChangeNotifier {
       name: navaid.name,
       notes: navaid.ident,
       type: WaypointType.navaid,
+    );
+
+    _currentFlightPlan!.waypoints.add(waypoint);
+    _currentFlightPlan!.modifiedAt = DateTime.now();
+    notifyListeners();
+  }
+
+  // Add waypoint from reporting point
+  void addReportingPointWaypoint(ReportingPoint reportingPoint, {double altitude = 3000.0}) {
+    if (_currentFlightPlan == null || !_isPlanning) {
+      // Don't add waypoints if there's no flight plan or planning mode is disabled
+      return;
+    }
+
+    final waypoint = Waypoint(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      latitude: reportingPoint.position.latitude,
+      longitude: reportingPoint.position.longitude,
+      altitude: altitude,
+      name: reportingPoint.displayName,
+      notes: reportingPoint.type ?? 'Reporting Point',
+      type: WaypointType.reportingPoint,
     );
 
     _currentFlightPlan!.waypoints.add(waypoint);

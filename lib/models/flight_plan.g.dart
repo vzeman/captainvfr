@@ -131,6 +131,8 @@ class WaypointTypeAdapter extends TypeAdapter<WaypointType> {
         return WaypointType.navaid;
       case 3:
         return WaypointType.fix;
+      case 4:
+        return WaypointType.reportingPoint;
       default:
         return WaypointType.user;
     }
@@ -150,6 +152,9 @@ class WaypointTypeAdapter extends TypeAdapter<WaypointType> {
         break;
       case WaypointType.fix:
         writer.writeByte(3);
+        break;
+      case WaypointType.reportingPoint:
+        writer.writeByte(4);
         break;
     }
   }
