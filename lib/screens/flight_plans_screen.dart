@@ -16,7 +16,10 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
     super.initState();
     // Initialize flight plan service if not already done
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final flightPlanService = Provider.of<FlightPlanService>(context, listen: false);
+      final flightPlanService = Provider.of<FlightPlanService>(
+        context,
+        listen: false,
+      );
       flightPlanService.initialize();
     });
   }
@@ -44,25 +47,16 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.flight_takeoff,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
+                  Icon(Icons.flight_takeoff, size: 64, color: Colors.grey),
                   SizedBox(height: 16),
                   Text(
                     'No flight plans yet',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey,
-                    ),
+                    style: TextStyle(fontSize: 18, color: Colors.grey),
                   ),
                   SizedBox(height: 8),
                   Text(
                     'Create your first flight plan to get started',
-                    style: TextStyle(
-                      color: Colors.grey,
-                    ),
+                    style: TextStyle(color: Colors.grey),
                   ),
                 ],
               ),
@@ -73,7 +67,11 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
             itemCount: flightPlans.length,
             itemBuilder: (context, index) {
               final flightPlan = flightPlans[index];
-              return _buildFlightPlanCard(context, flightPlan, flightPlanService);
+              return _buildFlightPlanCard(
+                context,
+                flightPlan,
+                flightPlanService,
+              );
             },
           );
         },
@@ -81,7 +79,11 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
     );
   }
 
-  Widget _buildFlightPlanCard(BuildContext context, FlightPlan flightPlan, FlightPlanService flightPlanService) {
+  Widget _buildFlightPlanCard(
+    BuildContext context,
+    FlightPlan flightPlan,
+    FlightPlanService flightPlanService,
+  ) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
@@ -100,23 +102,18 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
             const SizedBox(height: 4),
             Text(
               'Created: ${_formatDate(flightPlan.createdAt)}',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
             ),
             if (flightPlan.modifiedAt != null)
               Text(
                 'Modified: ${_formatDate(flightPlan.modifiedAt!)}',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
               ),
           ],
         ),
         trailing: PopupMenuButton<String>(
-          onSelected: (value) => _handleMenuAction(context, value, flightPlan, flightPlanService),
+          onSelected: (value) =>
+              _handleMenuAction(context, value, flightPlan, flightPlanService),
           itemBuilder: (context) => [
             const PopupMenuItem(
               value: 'load',
@@ -160,7 +157,11 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
             ),
           ],
         ),
-        onTap: () => _loadFlightPlanAndNavigateBack(context, flightPlan, flightPlanService),
+        onTap: () => _loadFlightPlanAndNavigateBack(
+          context,
+          flightPlan,
+          flightPlanService,
+        ),
       ),
     );
   }
@@ -185,7 +186,12 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
     return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-  void _handleMenuAction(BuildContext context, String action, FlightPlan flightPlan, FlightPlanService flightPlanService) {
+  void _handleMenuAction(
+    BuildContext context,
+    String action,
+    FlightPlan flightPlan,
+    FlightPlanService flightPlanService,
+  ) {
     switch (action) {
       case 'load':
         _loadFlightPlanAndNavigateBack(context, flightPlan, flightPlanService);
@@ -202,7 +208,11 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
     }
   }
 
-  void _loadFlightPlanAndNavigateBack(BuildContext context, FlightPlan flightPlan, FlightPlanService flightPlanService) {
+  void _loadFlightPlanAndNavigateBack(
+    BuildContext context,
+    FlightPlan flightPlan,
+    FlightPlanService flightPlanService,
+  ) {
     flightPlanService.loadFlightPlan(flightPlan.id);
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -218,13 +228,13 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
     final randomNum = DateTime.now().millisecondsSinceEpoch % 1000;
     final defaultName = 'Flight Plan $randomNum';
     final controller = TextEditingController(text: defaultName);
-    
+
     // Select all text when dialog opens
     controller.selection = TextSelection(
       baseOffset: 0,
       extentOffset: controller.text.length,
     );
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -244,8 +254,13 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
           ),
           TextButton(
             onPressed: () {
-              final flightPlanService = Provider.of<FlightPlanService>(context, listen: false);
-              flightPlanService.startNewFlightPlan(name: controller.text.trim());
+              final flightPlanService = Provider.of<FlightPlanService>(
+                context,
+                listen: false,
+              );
+              flightPlanService.startNewFlightPlan(
+                name: controller.text.trim(),
+              );
               Navigator.of(context).pop();
               Navigator.of(context).pop(); // Go back to map
             },
@@ -256,7 +271,11 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
     );
   }
 
-  void _showEditNameDialog(BuildContext context, FlightPlan flightPlan, FlightPlanService flightPlanService) {
+  void _showEditNameDialog(
+    BuildContext context,
+    FlightPlan flightPlan,
+    FlightPlanService flightPlanService,
+  ) {
     final controller = TextEditingController(text: flightPlan.name);
     showDialog(
       context: context,
@@ -264,9 +283,7 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
         title: const Text('Edit Flight Plan Name'),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'Flight Plan Name',
-          ),
+          decoration: const InputDecoration(labelText: 'Flight Plan Name'),
           autofocus: true,
         ),
         actions: [
@@ -292,7 +309,10 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
     );
   }
 
-  void _duplicateFlightPlan(FlightPlan flightPlan, FlightPlanService flightPlanService) {
+  void _duplicateFlightPlan(
+    FlightPlan flightPlan,
+    FlightPlanService flightPlanService,
+  ) {
     flightPlanService.duplicateFlightPlan(flightPlan.id);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -302,7 +322,11 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
     );
   }
 
-  void _showDeleteConfirmDialog(BuildContext context, FlightPlan flightPlan, FlightPlanService flightPlanService) {
+  void _showDeleteConfirmDialog(
+    BuildContext context,
+    FlightPlan flightPlan,
+    FlightPlanService flightPlanService,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

@@ -11,11 +11,7 @@ class FlightPlanOverlay {
     if (flightPlan.waypoints.length < 2) return [];
     final points = flightPlan.waypoints.map((wp) => wp.latLng).toList();
     return [
-      Polyline(
-        points: points,
-        strokeWidth: 5.0,
-        color: Colors.green.shade600,
-      ),
+      Polyline(points: points, strokeWidth: 5.0, color: Colors.green.shade600),
     ];
   }
 
@@ -53,7 +49,7 @@ class FlightPlanOverlay {
 
     for (int i = 0; i < flightPlan.waypoints.length; i++) {
       final waypoint = flightPlan.waypoints[i];
-      
+
       markers.add(
         Marker(
           point: waypoint.latLng,
@@ -77,13 +73,16 @@ class FlightPlanOverlay {
   }
 
   // Build waypoint name labels
-  static List<Marker> buildWaypointLabels(FlightPlan flightPlan, int? selectedWaypointIndex) {
+  static List<Marker> buildWaypointLabels(
+    FlightPlan flightPlan,
+    int? selectedWaypointIndex,
+  ) {
     List<Marker> markers = [];
 
     for (int i = 0; i < flightPlan.waypoints.length; i++) {
       final waypoint = flightPlan.waypoints[i];
       final isSelected = selectedWaypointIndex == i;
-      
+
       markers.add(
         Marker(
           point: waypoint.latLng,
@@ -94,7 +93,7 @@ class FlightPlanOverlay {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
-                color: isSelected 
+                color: isSelected
                     ? Colors.yellow.withValues(alpha: 0.9)
                     : Colors.white.withValues(alpha: 0.85),
                 borderRadius: BorderRadius.circular(3),
@@ -130,7 +129,10 @@ class FlightPlanOverlay {
   }
 
   // Build segment information labels (distance, heading, time)
-  static List<Marker> buildSegmentLabels(FlightPlan flightPlan, BuildContext context) {
+  static List<Marker> buildSegmentLabels(
+    FlightPlan flightPlan,
+    BuildContext context,
+  ) {
     List<Marker> markers = [];
 
     if (flightPlan.waypoints.length < 2) return markers;
@@ -138,7 +140,7 @@ class FlightPlanOverlay {
     for (int i = 0; i < flightPlan.waypoints.length - 1; i++) {
       final from = flightPlan.waypoints[i];
       final to = flightPlan.waypoints[i + 1];
-      
+
       // Calculate midpoint
       final lat = (from.latitude + to.latitude) / 2;
       final lng = (from.longitude + to.longitude) / 2;
@@ -148,12 +150,12 @@ class FlightPlanOverlay {
       final distance = from.distanceTo(to);
       final bearing = from.bearingTo(to);
       final segment = flightPlan.segments[i];
-      
+
       // Build label parts
       List<String> labelParts = [];
       labelParts.add('${distance.toStringAsFixed(1)}nm');
       labelParts.add('${bearing.toStringAsFixed(0)}°');
-      
+
       if (segment.flightTime > 0) {
         final minutes = segment.flightTime.round();
         if (minutes < 60) {
@@ -164,9 +166,9 @@ class FlightPlanOverlay {
           labelParts.add('${hours}h${mins > 0 ? mins.toString() : ''}');
         }
       }
-      
+
       final labelText = labelParts.join(' ');
-      
+
       // Calculate dynamic width based on text length
       final labelWidth = labelText.length * 5.0 + 10.0;
 
@@ -184,7 +186,10 @@ class FlightPlanOverlay {
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.85),
                 borderRadius: BorderRadius.circular(3),
-                border: Border.all(color: Colors.blue.withValues(alpha: 0.7), width: 0.5),
+                border: Border.all(
+                  color: Colors.blue.withValues(alpha: 0.7),
+                  width: 0.5,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.2),
@@ -211,7 +216,6 @@ class FlightPlanOverlay {
 
     return markers;
   }
-
 }
 
 // Widget that shows/hides label based on rendered segment length
@@ -237,22 +241,24 @@ class _SegmentLabel extends StatelessWidget {
       // Try to get screen points - this will depend on flutter_map version
       // For flutter_map 8.x, we need to use a different approach
       // Since direct coordinate conversion isn't working, we'll use a simpler heuristic
-      
+
       // Calculate approximate pixel distance based on zoom level
       // At higher zoom levels, segments appear longer on screen
       final zoom = mapCamera.zoom;
-      final distance = const Distance().as(LengthUnit.Meter, from, to) / 1852.0; // Convert meters to nautical miles
-      
+      final distance =
+          const Distance().as(LengthUnit.Meter, from, to) /
+          1852.0; // Convert meters to nautical miles
+
       // Rough approximation: at zoom 10, 1 NM ≈ 20 pixels
       // This scales exponentially with zoom level
       final pixelsPerNM = 20 * math.pow(2, zoom - 10);
       final estimatedPixelLength = distance * pixelsPerNM;
-      
+
       // Hide label if estimated pixel length is less than 2x label width
       if (estimatedPixelLength < labelWidth * 2) {
         return const SizedBox.shrink();
       }
-      
+
       return child;
     } catch (e) {
       // If there's any error, show the label by default

@@ -124,8 +124,12 @@ class Model extends HiveObject {
       typicalCruiseSpeed: (map['typical_cruise_speed'] ?? 0).toInt(),
       typicalServiceCeiling: (map['typical_service_ceiling'] ?? 0).toInt(),
       description: map['description'],
-      createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
-      updatedAt: DateTime.parse(map['updated_at'] ?? DateTime.now().toIso8601String()),
+      createdAt: DateTime.parse(
+        map['created_at'] ?? DateTime.now().toIso8601String(),
+      ),
+      updatedAt: DateTime.parse(
+        map['updated_at'] ?? DateTime.now().toIso8601String(),
+      ),
       fuelConsumption: map['fuel_consumption']?.toDouble(),
       maximumClimbRate: map['maximum_climb_rate']?.toInt(),
       maximumDescentRate: map['maximum_descent_rate']?.toInt(),
@@ -162,7 +166,8 @@ class Model extends HiveObject {
       engineCount: engineCount ?? this.engineCount,
       maxSeats: maxSeats ?? this.maxSeats,
       typicalCruiseSpeed: typicalCruiseSpeed ?? this.typicalCruiseSpeed,
-      typicalServiceCeiling: typicalServiceCeiling ?? this.typicalServiceCeiling,
+      typicalServiceCeiling:
+          typicalServiceCeiling ?? this.typicalServiceCeiling,
       description: description ?? this.description,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

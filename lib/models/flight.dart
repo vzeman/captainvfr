@@ -3,7 +3,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:hive/hive.dart';
 import 'flight_point.dart';
 import 'moving_segment.dart';
-import 'flight_segment.dart' as fs;
+import 'flight_segment.dart';
 import 'flight_plan.dart';
 
 part 'flight.g.dart';
@@ -59,7 +59,7 @@ class Flight extends HiveObject {
   final List<MovingSegment> movingSegments;
 
   @HiveField(14)
-  final List<fs.FlightSegment> flightSegments;
+  final List<FlightSegment> flightSegments;
 
   @HiveField(15)
   FlightRules? flightRules;
@@ -79,7 +79,7 @@ class Flight extends HiveObject {
     this.movingStartedZulu,
     this.movingStoppedZulu,
     List<MovingSegment>? movingSegments,
-    List<fs.FlightSegment>? flightSegments,
+    List<FlightSegment>? flightSegments,
     this.flightRules,
   }) : movingSegments = movingSegments ?? [],
        flightSegments = flightSegments ?? [];
@@ -96,9 +96,10 @@ class Flight extends HiveObject {
 
   // Get speeds for charts
   List<double> get speeds => path.map((point) => point.speed).toList();
-  
+
   // Get vertical speeds for charts (in m/s)
-  List<double> get verticalSpeeds => path.map((point) => point.verticalSpeed).toList();
+  List<double> get verticalSpeeds =>
+      path.map((point) => point.verticalSpeed).toList();
 
   // Get accelerometer data for vibration analysis
   List<double> get vibrationData {
@@ -106,7 +107,9 @@ class Flight extends HiveObject {
       final x = point.xAcceleration;
       final y = point.yAcceleration;
       final z = point.zAcceleration;
-      return math.sqrt(x * x + y * y + z * z); // Magnitude of acceleration in G's
+      return math.sqrt(
+        x * x + y * y + z * z,
+      ); // Magnitude of acceleration in G's
     }).toList();
   }
 
@@ -117,8 +120,12 @@ class Flight extends HiveObject {
     segments.addAll(flightSegments);
     // Sort by start time
     segments.sort((a, b) {
-      final aStart = a is MovingSegment ? a.start : (a as fs.FlightSegment).startTime;
-      final bStart = b is MovingSegment ? b.start : (b as fs.FlightSegment).startTime;
+      final aStart = a is MovingSegment
+          ? a.start
+          : (a as FlightSegment).startTime;
+      final bStart = b is MovingSegment
+          ? b.start
+          : (b as FlightSegment).startTime;
       return aStart.compareTo(bStart);
     });
     return segments;
@@ -155,7 +162,7 @@ class Flight extends HiveObject {
     DateTime? movingStartedZulu,
     DateTime? movingStoppedZulu,
     List<MovingSegment>? movingSegments,
-    List<fs.FlightSegment>? flightSegments,
+    List<FlightSegment>? flightSegments,
     FlightRules? flightRules,
   }) {
     return Flight(

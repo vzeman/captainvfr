@@ -73,18 +73,21 @@ class OfflineMapService {
     required LatLng southWest,
     required int minZoom,
     required int maxZoom,
-    required Function(int current, int total, int skipped, int downloaded) onProgress,
+    required Function(int current, int total, int skipped, int downloaded)
+    onProgress,
     String tileServerUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   }) async {
     await initialize();
-    
+
     // Reset cancellation flag at start of new download
     _resetCancellation();
 
     if (minZoom < _minZoomLevel) minZoom = _minZoomLevel;
     if (maxZoom > _maxZoomLevel) maxZoom = _maxZoomLevel;
 
-    _logger.i('🔄 Starting tile download for area: $southWest to $northEast, zoom: $minZoom-$maxZoom');
+    _logger.i(
+      '🔄 Starting tile download for area: $southWest to $northEast, zoom: $minZoom-$maxZoom',
+    );
 
     int totalTiles = 0;
     int processedTiles = 0;
@@ -94,7 +97,8 @@ class OfflineMapService {
     // Calculate total number of tiles to download
     for (int zoom = minZoom; zoom <= maxZoom; zoom++) {
       final bounds = _getTileBounds(northEast, southWest, zoom);
-      totalTiles += (bounds.maxX - bounds.minX + 1) * (bounds.maxY - bounds.minY + 1);
+      totalTiles +=
+          (bounds.maxX - bounds.minX + 1) * (bounds.maxY - bounds.minY + 1);
     }
 
     _logger.i('📊 Total tiles to process: $totalTiles');
@@ -106,7 +110,7 @@ class OfflineMapService {
         _logger.i('🛑 Download cancelled by user at zoom level $zoom');
         throw Exception('Download cancelled by user');
       }
-      
+
       final bounds = _getTileBounds(northEast, southWest, zoom);
 
       for (int x = bounds.minX; x <= bounds.maxX; x++) {
@@ -115,14 +119,19 @@ class OfflineMapService {
           _logger.i('🛑 Download cancelled by user');
           throw Exception('Download cancelled by user');
         }
-        
+
         for (int y = bounds.minY; y <= bounds.maxY; y++) {
           try {
             // Check if tile already exists
             if (await _tileExists(zoom, x, y)) {
               processedTiles++;
               skippedTiles++;
-              onProgress(processedTiles, totalTiles, skippedTiles, downloadedTiles);
+              onProgress(
+                processedTiles,
+                totalTiles,
+                skippedTiles,
+                downloadedTiles,
+              );
               // No delay needed for skipped tiles
               continue;
             }
@@ -131,22 +140,33 @@ class OfflineMapService {
             await _downloadAndStoreTile(zoom, x, y, tileServerUrl);
             processedTiles++;
             downloadedTiles++;
-            onProgress(processedTiles, totalTiles, skippedTiles, downloadedTiles);
+            onProgress(
+              processedTiles,
+              totalTiles,
+              skippedTiles,
+              downloadedTiles,
+            );
 
             // Add small delay to avoid overwhelming the server (only for actual downloads)
             await Future.delayed(const Duration(milliseconds: 50));
-
           } catch (e) {
             _logger.w('⚠️ Failed to download tile $zoom/$x/$y: $e');
             processedTiles++;
-            onProgress(processedTiles, totalTiles, skippedTiles, downloadedTiles);
+            onProgress(
+              processedTiles,
+              totalTiles,
+              skippedTiles,
+              downloadedTiles,
+            );
           }
         }
       }
     }
 
-    _logger.i('✅ Tile download completed: Downloaded $downloadedTiles, Skipped $skippedTiles (already cached), Total $processedTiles/$totalTiles');
-    
+    _logger.i(
+      '✅ Tile download completed: Downloaded $downloadedTiles, Skipped $skippedTiles (already cached), Total $processedTiles/$totalTiles',
+    );
+
     return {
       'total': totalTiles,
       'downloaded': downloadedTiles,
@@ -157,8 +177,16 @@ class OfflineMapService {
 
   /// Get tile bounds for a geographic area at a specific zoom level
   TileBounds _getTileBounds(LatLng northEast, LatLng southWest, int zoom) {
-    final nePoint = _latLngToTileCoordinates(northEast.latitude, northEast.longitude, zoom);
-    final swPoint = _latLngToTileCoordinates(southWest.latitude, southWest.longitude, zoom);
+    final nePoint = _latLngToTileCoordinates(
+      northEast.latitude,
+      northEast.longitude,
+      zoom,
+    );
+    final swPoint = _latLngToTileCoordinates(
+      southWest.latitude,
+      southWest.longitude,
+      zoom,
+    );
 
     return TileBounds(
       minX: swPoint.x.floor(),
@@ -191,7 +219,12 @@ class OfflineMapService {
   }
 
   /// Download and store a single tile
-  Future<void> _downloadAndStoreTile(int z, int x, int y, String urlTemplate) async {
+  Future<void> _downloadAndStoreTile(
+    int z,
+    int x,
+    int y,
+    String urlTemplate,
+  ) async {
     final url = urlTemplate
         .replaceAll('{z}', z.toString())
         .replaceAll('{x}', x.toString())
@@ -203,37 +236,34 @@ class OfflineMapService {
     );
 
     if (response.statusCode == 200) {
-      await _database!.insert(
-        _tableName,
-        {
-          'z': z,
-          'x': x,
-          'y': y,
-          'tile_data': response.bodyBytes,
-          'download_time': DateTime.now().millisecondsSinceEpoch,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      await _database!.insert(_tableName, {
+        'z': z,
+        'x': x,
+        'y': y,
+        'tile_data': response.bodyBytes,
+        'download_time': DateTime.now().millisecondsSinceEpoch,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     } else {
       throw Exception('HTTP ${response.statusCode}: Failed to download tile');
     }
   }
 
   /// Store a tile directly (used by tile provider)
-  Future<void> storeTileDirectly(int z, int x, int y, Uint8List tileData) async {
+  Future<void> storeTileDirectly(
+    int z,
+    int x,
+    int y,
+    Uint8List tileData,
+  ) async {
     await initialize();
 
-    await _database!.insert(
-      _tableName,
-      {
-        'z': z,
-        'x': x,
-        'y': y,
-        'tile_data': tileData,
-        'download_time': DateTime.now().millisecondsSinceEpoch,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await _database!.insert(_tableName, {
+      'z': z,
+      'x': x,
+      'y': y,
+      'tile_data': tileData,
+      'download_time': DateTime.now().millisecondsSinceEpoch,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// Get a cached tile from the database
@@ -259,8 +289,12 @@ class OfflineMapService {
   Future<Map<String, dynamic>> getCacheStatistics() async {
     await initialize();
 
-    final totalTiles = await _database!.rawQuery('SELECT COUNT(*) as count FROM $_tableName');
-    final sizeResult = await _database!.rawQuery('SELECT SUM(LENGTH(tile_data)) as size FROM $_tableName');
+    final totalTiles = await _database!.rawQuery(
+      'SELECT COUNT(*) as count FROM $_tableName',
+    );
+    final sizeResult = await _database!.rawQuery(
+      'SELECT SUM(LENGTH(tile_data)) as size FROM $_tableName',
+    );
     final zoomStats = await _database!.rawQuery('''
       SELECT z, COUNT(*) as count 
       FROM $_tableName 
@@ -289,7 +323,9 @@ class OfflineMapService {
   Future<void> clearOldTiles(int daysOld) async {
     await initialize();
 
-    final cutoffTime = DateTime.now().subtract(Duration(days: daysOld)).millisecondsSinceEpoch;
+    final cutoffTime = DateTime.now()
+        .subtract(Duration(days: daysOld))
+        .millisecondsSinceEpoch;
     final deletedCount = await _database!.delete(
       _tableName,
       where: 'download_time < ?',

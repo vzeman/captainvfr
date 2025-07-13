@@ -8,11 +8,8 @@ import 'package:permission_handler/permission_handler.dart';
 
 class LicensePhotosWidget extends StatefulWidget {
   final License license;
-  
-  const LicensePhotosWidget({
-    super.key,
-    required this.license,
-  });
+
+  const LicensePhotosWidget({super.key, required this.license});
 
   @override
   State<LicensePhotosWidget> createState() => _LicensePhotosWidgetState();
@@ -21,11 +18,11 @@ class LicensePhotosWidget extends StatefulWidget {
 class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
   final MediaService _mediaService = MediaService();
   bool _isLoading = false;
-  
+
   @override
   Widget build(BuildContext context) {
     final photos = widget.license.imagePaths ?? [];
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -36,10 +33,7 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
             children: [
               const Text(
                 'License Images',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               Row(
                 children: [
@@ -58,7 +52,7 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
             ],
           ),
         ),
-        
+
         if (_isLoading)
           const Center(
             child: Padding(
@@ -66,7 +60,7 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
               child: CircularProgressIndicator(),
             ),
           ),
-        
+
         if (photos.isEmpty && !_isLoading)
           const Center(
             child: Padding(
@@ -81,24 +75,18 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
                   SizedBox(height: 16),
                   Text(
                     'No images yet',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                    ),
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                   SizedBox(height: 8),
                   Text(
                     'Add photos of your license',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                 ],
               ),
             ),
           ),
-        
+
         if (photos.isNotEmpty)
           GridView.builder(
             shrinkWrap: true,
@@ -113,18 +101,18 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
             itemBuilder: (context, index) {
               final photoPath = photos[index];
               final file = _mediaService.getFile(photoPath);
-              
+
               if (file == null) {
                 return _buildErrorPhoto(photoPath);
               }
-              
+
               return _buildPhotoTile(file, photoPath, index);
             },
           ),
       ],
     );
   }
-  
+
   Widget _buildPhotoTile(File file, String photoPath, int index) {
     return GestureDetector(
       onTap: () => _viewPhoto(file, index),
@@ -139,10 +127,7 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
               errorBuilder: (context, error, stackTrace) {
                 return Container(
                   color: Colors.grey.shade300,
-                  child: const Icon(
-                    Icons.broken_image,
-                    color: Colors.grey,
-                  ),
+                  child: const Icon(Icons.broken_image, color: Colors.grey),
                 );
               },
             ),
@@ -156,11 +141,7 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: IconButton(
-                icon: const Icon(
-                  Icons.delete,
-                  color: Colors.white,
-                  size: 20,
-                ),
+                icon: const Icon(Icons.delete, color: Colors.white, size: 20),
                 onPressed: () => _deletePhoto(photoPath),
                 padding: const EdgeInsets.all(4),
                 constraints: const BoxConstraints(),
@@ -171,7 +152,7 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
       ),
     );
   }
-  
+
   Widget _buildErrorPhoto(String photoPath) {
     return Container(
       decoration: BoxDecoration(
@@ -181,10 +162,7 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          const Icon(
-            Icons.broken_image,
-            color: Colors.grey,
-          ),
+          const Icon(Icons.broken_image, color: Colors.grey),
           Positioned(
             top: 4,
             right: 4,
@@ -194,11 +172,7 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: IconButton(
-                icon: const Icon(
-                  Icons.delete,
-                  color: Colors.white,
-                  size: 20,
-                ),
+                icon: const Icon(Icons.delete, color: Colors.white, size: 20),
                 onPressed: () => _deletePhoto(photoPath),
                 padding: const EdgeInsets.all(4),
                 constraints: const BoxConstraints(),
@@ -209,10 +183,10 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
       ),
     );
   }
-  
+
   Future<void> _pickFromGallery() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final photoPath = await _mediaService.pickLicenseImageFromGallery();
       if (photoPath != null) {
@@ -237,10 +211,10 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
       }
     }
   }
-  
+
   Future<void> _takePhoto() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final photoPath = await _mediaService.takeLicensePhoto();
       if (photoPath != null) {
@@ -265,25 +239,23 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
       }
     }
   }
-  
+
   Future<void> _addPhotoToLicense(String photoPath) async {
     final licenseService = context.read<LicenseService>();
     final updatedPhotos = List<String>.from(widget.license.imagePaths ?? []);
     updatedPhotos.add(photoPath);
-    
-    final updatedLicense = widget.license.copyWith(
-      imagePaths: updatedPhotos,
-    );
-    
+
+    final updatedLicense = widget.license.copyWith(imagePaths: updatedPhotos);
+
     await licenseService.updateLicense(widget.license.id, updatedLicense);
-    
+
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Photo added successfully')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Photo added successfully')));
     }
   }
-  
+
   Future<void> _deletePhoto(String photoPath) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -303,30 +275,32 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
         ],
       ),
     );
-    
+
     if (confirmed == true) {
       setState(() => _isLoading = true);
-      
+
       try {
         // Delete from storage
         await _mediaService.deleteLicensePhoto(photoPath);
-        
+
         // Update license
         if (!mounted) return;
         final licenseService = context.read<LicenseService>();
-        final updatedPhotos = List<String>.from(widget.license.imagePaths ?? []);
+        final updatedPhotos = List<String>.from(
+          widget.license.imagePaths ?? [],
+        );
         updatedPhotos.remove(photoPath);
-        
+
         final updatedLicense = widget.license.copyWith(
           imagePaths: updatedPhotos,
         );
-        
+
         await licenseService.updateLicense(widget.license.id, updatedLicense);
-        
+
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Photo deleted')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Photo deleted')));
         }
       } catch (e) {
         if (mounted) {
@@ -344,7 +318,7 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
       }
     }
   }
-  
+
   void _viewPhoto(File file, int index) {
     Navigator.push(
       context,
@@ -357,7 +331,7 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
       ),
     );
   }
-  
+
   void _showPermissionError(PermissionException e) {
     showDialog(
       context: context,
@@ -387,14 +361,14 @@ class LicensePhotoViewScreen extends StatelessWidget {
   final List<String> photos;
   final int initialIndex;
   final MediaService mediaService;
-  
+
   const LicensePhotoViewScreen({
     super.key,
     required this.photos,
     required this.initialIndex,
     required this.mediaService,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -412,24 +386,15 @@ class LicensePhotoViewScreen extends StatelessWidget {
         itemCount: photos.length,
         itemBuilder: (context, index) {
           final file = mediaService.getFile(photos[index]);
-          
+
           if (file == null) {
             return const Center(
-              child: Icon(
-                Icons.broken_image,
-                color: Colors.white,
-                size: 64,
-              ),
+              child: Icon(Icons.broken_image, color: Colors.white, size: 64),
             );
           }
-          
+
           return InteractiveViewer(
-            child: Center(
-              child: Image.file(
-                file,
-                fit: BoxFit.contain,
-              ),
-            ),
+            child: Center(child: Image.file(file, fit: BoxFit.contain)),
           );
         },
       ),

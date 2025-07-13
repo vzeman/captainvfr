@@ -16,7 +16,8 @@ class AircraftSettingsScreen extends StatefulWidget {
   State<AircraftSettingsScreen> createState() => _AircraftSettingsScreenState();
 }
 
-class _AircraftSettingsScreenState extends State<AircraftSettingsScreen> with SingleTickerProviderStateMixin {
+class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late AircraftSettingsService _aircraftService;
 
@@ -24,7 +25,10 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen> with Si
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _aircraftService = Provider.of<AircraftSettingsService>(context, listen: false);
+    _aircraftService = Provider.of<AircraftSettingsService>(
+      context,
+      listen: false,
+    );
   }
 
   @override
@@ -48,10 +52,7 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen> with Si
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildAircraftTab(),
-          _buildManufacturersTab(),
-        ],
+        children: [_buildAircraftTab(), _buildManufacturersTab()],
       ),
     );
   }
@@ -64,9 +65,16 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen> with Si
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.airplanemode_inactive, size: 64, color: Colors.grey),
+                const Icon(
+                  Icons.airplanemode_inactive,
+                  size: 64,
+                  color: Colors.grey,
+                ),
                 const SizedBox(height: 16),
-                const Text('No aircraft configured', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                const Text(
+                  'No aircraft configured',
+                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: () => _showAircraftForm(),
@@ -104,13 +112,21 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen> with Si
                 itemBuilder: (context, index) {
                   final aircraft = service.aircrafts[index];
                   return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                     child: ListTile(
                       leading: CircleAvatar(
                         backgroundColor: Theme.of(context).primaryColor,
                         child: Text(
-                          aircraft.name.isNotEmpty ? aircraft.name[0].toUpperCase() : 'A',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          aircraft.name.isNotEmpty
+                              ? aircraft.name[0].toUpperCase()
+                              : 'A',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       title: Text(aircraft.name),
@@ -118,7 +134,9 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen> with Si
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(_getAircraftDisplayText(aircraft, service)),
-                          Text('${_getCategoryDisplayName(aircraft.category)} • ${aircraft.cruiseSpeed} kts'),
+                          Text(
+                            '${_getCategoryDisplayName(aircraft.category)} • ${aircraft.cruiseSpeed} kts',
+                          ),
                         ],
                       ),
                       trailing: PopupMenuButton<String>(
@@ -146,7 +164,10 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen> with Si
                               children: [
                                 Icon(Icons.delete, size: 20, color: Colors.red),
                                 SizedBox(width: 8),
-                                Text('Delete', style: TextStyle(color: Colors.red)),
+                                Text(
+                                  'Delete',
+                                  style: TextStyle(color: Colors.red),
+                                ),
                               ],
                             ),
                           ),
@@ -174,7 +195,10 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen> with Si
               children: [
                 const Icon(Icons.business, size: 64, color: Colors.grey),
                 const SizedBox(height: 16),
-                const Text('No manufacturers configured', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                const Text(
+                  'No manufacturers configured',
+                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: () => _showManufacturerForm(),
@@ -212,13 +236,21 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen> with Si
                 itemBuilder: (context, index) {
                   final manufacturer = service.manufacturers[index];
                   return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                     child: ListTile(
                       leading: CircleAvatar(
                         backgroundColor: Theme.of(context).primaryColor,
                         child: Text(
-                          manufacturer.name.isNotEmpty ? manufacturer.name[0].toUpperCase() : 'M',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          manufacturer.name.isNotEmpty
+                              ? manufacturer.name[0].toUpperCase()
+                              : 'M',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       title: Text(manufacturer.name),
@@ -248,7 +280,10 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen> with Si
                               children: [
                                 Icon(Icons.delete, size: 20, color: Colors.red),
                                 SizedBox(width: 8),
-                                Text('Delete', style: TextStyle(color: Colors.red)),
+                                Text(
+                                  'Delete',
+                                  style: TextStyle(color: Colors.red),
+                                ),
                               ],
                             ),
                           ),
@@ -321,7 +356,9 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen> with Si
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Manufacturer'),
-        content: Text('Are you sure you want to delete "${manufacturer.name}"? This will also delete all associated models.'),
+        content: Text(
+          'Are you sure you want to delete "${manufacturer.name}"? This will also delete all associated models.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -347,13 +384,20 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen> with Si
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ManufacturerDetailScreen(manufacturer: manufacturer),
+        builder: (context) =>
+            ManufacturerDetailScreen(manufacturer: manufacturer),
       ),
     );
   }
 
-  String _getAircraftDisplayText(Aircraft aircraft, AircraftSettingsService service) {
-    final manufacturer = service.manufacturers.firstWhere((m) => m.id == aircraft.manufacturerId, orElse: () => Manufacturer.empty());
+  String _getAircraftDisplayText(
+    Aircraft aircraft,
+    AircraftSettingsService service,
+  ) {
+    final manufacturer = service.manufacturers.firstWhere(
+      (m) => m.id == aircraft.manufacturerId,
+      orElse: () => Manufacturer.empty(),
+    );
     return '${manufacturer.name} ${aircraft.model}';
   }
 

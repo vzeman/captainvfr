@@ -54,8 +54,12 @@ class Manufacturer extends HiveObject {
       website: map['website'],
       description: map['description'], // Extract description from map
       models: map['models']?.split(',') ?? [],
-      createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
-      updatedAt: DateTime.parse(map['updated_at'] ?? DateTime.now().toIso8601String()),
+      createdAt: DateTime.parse(
+        map['created_at'] ?? DateTime.now().toIso8601String(),
+      ),
+      updatedAt: DateTime.parse(
+        map['updated_at'] ?? DateTime.now().toIso8601String(),
+      ),
     );
   }
 
@@ -72,7 +76,8 @@ class Manufacturer extends HiveObject {
       id: id ?? this.id,
       name: name ?? this.name,
       website: website ?? this.website,
-      description: description ?? this.description, // Include description in copyWith
+      description:
+          description ?? this.description, // Include description in copyWith
       models: models ?? this.models,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

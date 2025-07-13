@@ -9,12 +9,9 @@ import '../../services/notam_service_v3.dart';
 
 class AirportNotamsTab extends StatefulWidget {
   final Airport airport;
-  
-  const AirportNotamsTab({
-    super.key,
-    required this.airport,
-  });
-  
+
+  const AirportNotamsTab({super.key, required this.airport});
+
   @override
   State<AirportNotamsTab> createState() => _AirportNotamsTabState();
 }
@@ -29,7 +26,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
   bool _isRefreshing = false;
   String? _error;
   DateTime? _lastFetch;
-  
+
   @override
   void initState() {
     super.initState();
@@ -37,24 +34,26 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
     _notamService = NotamService();
     _notamServiceV2 = NotamServiceV2();
     _notamServiceV3 = NotamServiceV3();
-    
+
     // Clear any existing NOTAMs to prevent showing stale data
     _notams = [];
     _error = null;
     _lastFetch = null;
-    
+
     // Add a small delay to ensure the widget is properly mounted
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadNotams(forceRefresh: true); // Force refresh on initial load
     });
   }
-  
+
   @override
   void didUpdateWidget(AirportNotamsTab oldWidget) {
     super.didUpdateWidget(oldWidget);
     // If the airport changed, reload NOTAMs
     if (oldWidget.airport.icao != widget.airport.icao) {
-      developer.log('📋 Airport changed from ${oldWidget.airport.icao} to ${widget.airport.icao}, reloading NOTAMs');
+      developer.log(
+        '📋 Airport changed from ${oldWidget.airport.icao} to ${widget.airport.icao}, reloading NOTAMs',
+      );
       // Clear existing NOTAMs immediately to prevent showing wrong data
       setState(() {
         _notams = [];
@@ -64,18 +63,20 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
       _loadNotams(forceRefresh: true);
     }
   }
-  
+
   @override
   void dispose() {
     // Clean up any pending operations
     super.dispose();
   }
-  
+
   Future<void> _loadNotams({bool forceRefresh = false}) async {
     if (!mounted) return;
-    
-    developer.log('📋 Loading NOTAMs for ${widget.airport.icao} (forceRefresh: $forceRefresh)');
-    
+
+    developer.log(
+      '📋 Loading NOTAMs for ${widget.airport.icao} (forceRefresh: $forceRefresh)',
+    );
+
     setState(() {
       _isLoading = !forceRefresh;
       _isRefreshing = forceRefresh;
@@ -85,7 +86,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
         _notams = [];
       }
     });
-    
+
     try {
       // Use V3 service which provides realistic mock data
       // In production, this would connect to a real NOTAM API
@@ -93,7 +94,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
         widget.airport.icao,
         forceRefresh: forceRefresh,
       );
-      
+
       // If V3 fails or returns empty, try other services
       if (notams.isEmpty) {
         developer.log('📋 V3 returned no NOTAMs, trying V2...');
@@ -111,7 +112,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
           );
         }
       }
-      
+
       if (mounted) {
         setState(() {
           _notams = notams;
@@ -130,26 +131,22 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
       }
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
-    
+
     return RefreshIndicator(
       onRefresh: () => _loadNotams(forceRefresh: true),
       child: Stack(
         children: [
           // Main content
-          _notams.isEmpty
-              ? _buildEmptyState()
-              : _buildNotamsList(),
-          
+          _notams.isEmpty ? _buildEmptyState() : _buildNotamsList(),
+
           // Refresh button overlay
           Positioned(
             top: 8,
@@ -159,7 +156,10 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
               children: [
                 if (_lastFetch != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(12),
@@ -180,16 +180,16 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
                   borderRadius: BorderRadius.circular(20),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(20),
-                    onTap: _isRefreshing ? null : () => _loadNotams(forceRefresh: true),
+                    onTap: _isRefreshing
+                        ? null
+                        : () => _loadNotams(forceRefresh: true),
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: _isRefreshing
                           ? const SizedBox(
                               width: 16,
                               height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                              ),
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : Icon(
                               Icons.refresh,
@@ -206,7 +206,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
       ),
     );
   }
-  
+
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -215,7 +215,9 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
           Icon(
             Icons.description_outlined,
             size: 64,
-            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
@@ -238,7 +240,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
       ),
     );
   }
-  
+
   Widget _buildNotamsList() {
     // Group NOTAMs by category
     final groupedNotams = <String, List<Notam>>{};
@@ -246,7 +248,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
       final category = notam.category ?? NotamCategory.other;
       groupedNotams.putIfAbsent(category, () => []).add(notam);
     }
-    
+
     // Sort categories by importance
     final sortedCategories = groupedNotams.keys.toList()
       ..sort((a, b) {
@@ -262,22 +264,22 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
         ];
         return categoryOrder.indexOf(a).compareTo(categoryOrder.indexOf(b));
       });
-    
+
     return ListView.builder(
       padding: const EdgeInsets.only(top: 48, bottom: 16),
       itemCount: sortedCategories.length,
       itemBuilder: (context, index) {
         final category = sortedCategories[index];
         final categoryNotams = groupedNotams[category]!;
-        
+
         return _buildCategorySection(category, categoryNotams);
       },
     );
   }
-  
+
   Widget _buildCategorySection(String category, List<Notam> notams) {
     final theme = Theme.of(context);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -319,14 +321,14 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
       ],
     );
   }
-  
+
   Widget _buildNotamCard(Notam notam) {
     final theme = Theme.of(context);
     final isExpired = notam.isExpired;
-    
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      color: isExpired 
+      color: isExpired
           ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
           : theme.colorScheme.surface,
       child: ExpansionTile(
@@ -350,7 +352,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: isExpired 
+            color: isExpired
                 ? theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5)
                 : theme.colorScheme.onSurfaceVariant,
           ),
@@ -366,27 +368,27 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
                   _buildDetailRow('Plain Language', notam.decodedText!),
                   const SizedBox(height: 12),
                 ],
-                
+
                 // ICAO format text
                 _buildDetailRow('ICAO Format', notam.text),
                 const SizedBox(height: 12),
-                
+
                 // Validity period
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: notam.isActive 
+                    color: notam.isActive
                         ? Colors.green.withValues(alpha: 0.1)
-                        : notam.isFuture 
-                            ? Colors.blue.withValues(alpha: 0.1)
-                            : Colors.red.withValues(alpha: 0.1),
+                        : notam.isFuture
+                        ? Colors.blue.withValues(alpha: 0.1)
+                        : Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: notam.isActive 
+                      color: notam.isActive
                           ? Colors.green.withValues(alpha: 0.3)
-                          : notam.isFuture 
-                              ? Colors.blue.withValues(alpha: 0.3)
-                              : Colors.red.withValues(alpha: 0.3),
+                          : notam.isFuture
+                          ? Colors.blue.withValues(alpha: 0.3)
+                          : Colors.red.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
@@ -401,7 +403,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
                       Expanded(
                         child: _buildDetailRow(
                           'Until',
-                          notam.effectiveUntil != null 
+                          notam.effectiveUntil != null
                               ? _formatDateTime(notam.effectiveUntil!)
                               : 'PERMANENT',
                         ),
@@ -409,13 +411,13 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
                     ],
                   ),
                 ),
-                
+
                 // Schedule if available
                 if (notam.schedule.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   _buildDetailRow('Schedule', notam.schedule),
                 ],
-                
+
                 // Additional info
                 const SizedBox(height: 12),
                 Row(
@@ -440,11 +442,11 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
       ),
     );
   }
-  
+
   Widget _buildImportanceIndicator(Notam notam) {
     Color color;
     IconData icon;
-    
+
     switch (notam.importance) {
       case NotamImportance.critical:
         color = Colors.red;
@@ -463,15 +465,15 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
         icon = Icons.info_outline;
         break;
     }
-    
+
     return Icon(icon, color: color, size: 24);
   }
-  
+
   Widget _buildStatusChip(Notam notam) {
     final theme = Theme.of(context);
     Color backgroundColor;
     Color textColor;
-    
+
     if (notam.isExpired) {
       backgroundColor = theme.colorScheme.errorContainer;
       textColor = theme.colorScheme.onErrorContainer;
@@ -482,7 +484,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
       backgroundColor = theme.colorScheme.primaryContainer;
       textColor = theme.colorScheme.onPrimaryContainer;
     }
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
@@ -498,10 +500,10 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
       ),
     );
   }
-  
+
   Widget _buildDetailRow(String label, String value) {
     final theme = Theme.of(context);
-    
+
     // Special formatting for ICAO format NOTAMs
     if (label == 'ICAO Format') {
       return Column(
@@ -517,7 +519,9 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.3,
+              ),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: theme.colorScheme.outline.withValues(alpha: 0.2),
@@ -536,7 +540,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
         ],
       );
     }
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -547,23 +551,20 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
           ),
         ),
         const SizedBox(height: 2),
-        Text(
-          value,
-          style: theme.textTheme.bodySmall,
-        ),
+        Text(value, style: theme.textTheme.bodySmall),
       ],
     );
   }
-  
+
   String _formatNotamText(String text) {
     // Format NOTAM text for better readability
     // Each field on its own line, properly indented
     final lines = text.split('\n');
     final formattedLines = <String>[];
-    
+
     for (final line in lines) {
       if (line.trim().isEmpty) continue;
-      
+
       // Check if this is a field line (starts with letter followed by ))
       if (RegExp(r'^[A-Z]\)').hasMatch(line.trim())) {
         formattedLines.add(line.trim());
@@ -575,22 +576,25 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
         formattedLines.add('   ${line.trim()}');
       }
     }
-    
+
     return formattedLines.join('\n');
   }
-  
+
   String _getNotamPreview(Notam notam) {
     // If we have decoded text, use that
     if (notam.decodedText != null && notam.decodedText!.isNotEmpty) {
       return notam.decodedText!;
     }
-    
+
     // Otherwise, try to extract the E) field from ICAO format
-    final eFieldMatch = RegExp(r'E\)\s*(.+?)(?:\n|$)', multiLine: true).firstMatch(notam.text);
+    final eFieldMatch = RegExp(
+      r'E\)\s*(.+?)(?:\n|$)',
+      multiLine: true,
+    ).firstMatch(notam.text);
     if (eFieldMatch != null) {
       return eFieldMatch.group(1)?.trim() ?? notam.text;
     }
-    
+
     // Fallback to first meaningful line
     final lines = notam.text.split('\n');
     for (final line in lines) {
@@ -599,10 +603,10 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
         return trimmed;
       }
     }
-    
+
     return notam.text;
   }
-  
+
   Widget _buildInfoChip(String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -618,7 +622,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
       ),
     );
   }
-  
+
   IconData _getCategoryIcon(String category) {
     switch (category) {
       case NotamCategory.runway:
@@ -639,7 +643,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
         return Icons.description;
     }
   }
-  
+
   String _getTrafficLabel(String traffic) {
     switch (traffic) {
       case 'I':
@@ -652,16 +656,16 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
         return traffic;
     }
   }
-  
+
   String _formatDateTime(DateTime dateTime) {
     final formatter = DateFormat('dd MMM yyyy HH:mm');
     return '${formatter.format(dateTime.toLocal())} LCL';
   }
-  
+
   String _formatLastFetch(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
-    
+
     if (difference.inMinutes < 1) {
       return 'just now';
     } else if (difference.inMinutes < 60) {

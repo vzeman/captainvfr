@@ -34,10 +34,13 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
   }
 
   void _loadWaypointData() {
-    final flightPlanService = Provider.of<FlightPlanService>(context, listen: false);
+    final flightPlanService = Provider.of<FlightPlanService>(
+      context,
+      listen: false,
+    );
     final flightPlan = flightPlanService.currentFlightPlan;
-    if (flightPlan != null && 
-        widget.waypointIndex >= 0 && 
+    if (flightPlan != null &&
+        widget.waypointIndex >= 0 &&
         widget.waypointIndex < flightPlan.waypoints.length) {
       final waypoint = flightPlan.waypoints[widget.waypointIndex];
       _nameController.text = waypoint.name ?? '';
@@ -55,21 +58,39 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
   }
 
   void _updateWaypointName(String value) {
-    final flightPlanService = Provider.of<FlightPlanService>(context, listen: false);
-    flightPlanService.updateWaypointName(widget.waypointIndex, value.isEmpty ? null : value);
+    final flightPlanService = Provider.of<FlightPlanService>(
+      context,
+      listen: false,
+    );
+    flightPlanService.updateWaypointName(
+      widget.waypointIndex,
+      value.isEmpty ? null : value,
+    );
   }
 
   void _updateWaypointAltitude(String value) {
     final altitude = double.tryParse(value);
     if (altitude != null) {
-      final flightPlanService = Provider.of<FlightPlanService>(context, listen: false);
-      flightPlanService.updateWaypointAltitudeWithValidation(widget.waypointIndex, altitude);
+      final flightPlanService = Provider.of<FlightPlanService>(
+        context,
+        listen: false,
+      );
+      flightPlanService.updateWaypointAltitudeWithValidation(
+        widget.waypointIndex,
+        altitude,
+      );
     }
   }
 
   void _updateWaypointNotes(String value) {
-    final flightPlanService = Provider.of<FlightPlanService>(context, listen: false);
-    flightPlanService.updateWaypointNotes(widget.waypointIndex, value.isEmpty ? null : value);
+    final flightPlanService = Provider.of<FlightPlanService>(
+      context,
+      listen: false,
+    );
+    flightPlanService.updateWaypointNotes(
+      widget.waypointIndex,
+      value.isEmpty ? null : value,
+    );
   }
 
   String _getWaypointTypeString(WaypointType type) {
@@ -103,8 +124,8 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
     return Consumer<FlightPlanService>(
       builder: (context, flightPlanService, child) {
         final flightPlan = flightPlanService.currentFlightPlan;
-        if (flightPlan == null || 
-            widget.waypointIndex < 0 || 
+        if (flightPlan == null ||
+            widget.waypointIndex < 0 ||
             widget.waypointIndex >= flightPlan.waypoints.length) {
           return const SizedBox.shrink();
         }
@@ -121,8 +142,14 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
               if (_isDragging) {
                 setState(() {
                   _panelPosition = Offset(
-                    (_panelPosition.dx + details.delta.dx).clamp(0, screenSize.width - 320),
-                    (_panelPosition.dy + details.delta.dy).clamp(0, screenSize.height - 400),
+                    (_panelPosition.dx + details.delta.dx).clamp(
+                      0,
+                      screenSize.width - 320,
+                    ),
+                    (_panelPosition.dy + details.delta.dy).clamp(
+                      0,
+                      screenSize.height - 400,
+                    ),
                   );
                 });
               }
@@ -137,7 +164,9 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _getWaypointColor(waypoint.type).withValues(alpha: 0.3),
+                    color: _getWaypointColor(
+                      waypoint.type,
+                    ).withValues(alpha: 0.3),
                     width: 2,
                   ),
                 ),
@@ -147,10 +176,17 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
                     // Header with drag handle
                     Container(
                       decoration: BoxDecoration(
-                        color: _getWaypointColor(waypoint.type).withValues(alpha: 0.1),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                        color: _getWaypointColor(
+                          waypoint.type,
+                        ).withValues(alpha: 0.1),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(10),
+                        ),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       child: Row(
                         children: [
                           Icon(
@@ -177,7 +213,7 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
                         ],
                       ),
                     ),
-                    
+
                     // Content
                     Padding(
                       padding: const EdgeInsets.all(16),
@@ -192,16 +228,22 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
                               hintText: 'Enter waypoint name',
                               prefixIcon: Icon(Icons.label, size: 20),
                               isDense: true,
-                              contentPadding: EdgeInsets.symmetric(vertical: 12),
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 12,
+                              ),
                             ),
                             onChanged: _updateWaypointName,
                           ),
                           const SizedBox(height: 12),
-                          
+
                           // Coordinates (read-only)
                           Row(
                             children: [
-                              const Icon(Icons.location_on, size: 20, color: Colors.grey),
+                              const Icon(
+                                Icons.location_on,
+                                size: 20,
+                                color: Colors.grey,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -215,7 +257,7 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          
+
                           // Altitude field
                           TextField(
                             controller: _altitudeController,
@@ -224,13 +266,15 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
                               hintText: 'Enter altitude',
                               prefixIcon: Icon(Icons.flight, size: 20),
                               isDense: true,
-                              contentPadding: EdgeInsets.symmetric(vertical: 12),
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 12,
+                              ),
                             ),
                             keyboardType: TextInputType.number,
                             onChanged: _updateWaypointAltitude,
                           ),
                           const SizedBox(height: 12),
-                          
+
                           // Notes field
                           TextField(
                             controller: _notesController,
@@ -239,14 +283,17 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
                               hintText: 'Add notes about this waypoint',
                               prefixIcon: Icon(Icons.note, size: 20),
                               isDense: true,
-                              contentPadding: EdgeInsets.symmetric(vertical: 12),
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 12,
+                              ),
                             ),
                             maxLines: 2,
                             onChanged: _updateWaypointNotes,
                           ),
-                          
+
                           // Segment info if not the last waypoint
-                          if (widget.waypointIndex < flightPlan.waypoints.length - 1) ...[
+                          if (widget.waypointIndex <
+                              flightPlan.waypoints.length - 1) ...[
                             const SizedBox(height: 16),
                             const Divider(),
                             const SizedBox(height: 8),
@@ -272,7 +319,8 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
                                   '${waypoint.bearingTo(flightPlan.waypoints[widget.waypointIndex + 1]).toStringAsFixed(0)}°',
                                   'Bearing',
                                 ),
-                                if (flightPlan.segments.length > widget.waypointIndex)
+                                if (flightPlan.segments.length >
+                                    widget.waypointIndex)
                                   _buildSegmentInfo(
                                     Icons.timer,
                                     '${flightPlan.segments[widget.waypointIndex].flightTime.toStringAsFixed(0)} min',
@@ -301,17 +349,11 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
         ),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 11,
-            color: Colors.grey.shade600,
-          ),
+          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
         ),
       ],
     );

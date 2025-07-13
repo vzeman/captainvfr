@@ -4,11 +4,7 @@ class StatusChip extends StatelessWidget {
   final String label;
   final Color color;
 
-  const StatusChip({
-    super.key,
-    required this.label,
-    required this.color,
-  });
+  const StatusChip({super.key, required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {

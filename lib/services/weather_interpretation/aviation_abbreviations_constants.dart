@@ -56,8 +56,10 @@ class AviationAbbreviations {
     'ALQDS': 'All quadrants',
     'ALS': 'Approach light system',
     'ALSEC': 'All sectors',
-    'ALSF-1': 'Standard 2400\' high-intensity approach lighting system with sequenced flashers (Category I configuration)',
-    'ALSF-2': 'Standard 2400\' high-intensity approach lighting system with sequenced flashers (Category II configuration)',
+    'ALSF-1':
+        'Standard 2400\' high-intensity approach lighting system with sequenced flashers (Category I configuration)',
+    'ALSF-2':
+        'Standard 2400\' high-intensity approach lighting system with sequenced flashers (Category II configuration)',
     'ALSTG': 'Altimeter setting',
     'ALT': 'Altitude',
     'ALTA': 'Alberta',
@@ -69,8 +71,10 @@ class AviationAbbreviations {
     'AMSL': 'Above mean sea level',
     'ANCPT': 'Anticipate',
     'ANLYS': 'Analysis',
-    'AO1': 'ASOS automated observation without precipitation discriminator (rain/snow)',
-    'AO2': 'ASOS automated observation with precipitation discriminator (rain/snow)',
+    'AO1':
+        'ASOS automated observation without precipitation discriminator (rain/snow)',
+    'AO2':
+        'ASOS automated observation with precipitation discriminator (rain/snow)',
     'AOA': 'At or above',
     'AOB': 'At or below',
     'AOE': 'Airport of entry',

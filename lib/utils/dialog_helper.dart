@@ -3,7 +3,6 @@ import '../widgets/themed_dialog.dart';
 
 /// Helper class to convert existing dialogs to themed dialogs
 class DialogHelper {
-  
   /// Shows a themed alert dialog that replaces the standard AlertDialog
   static Future<T?> showAlertDialog<T>({
     required BuildContext context,
@@ -125,10 +124,14 @@ class DialogHelper {
                   return Container(
                     margin: const EdgeInsets.symmetric(vertical: 4),
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0x1A448AFF) : Colors.transparent,
+                      color: isSelected
+                          ? const Color(0x1A448AFF)
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: isSelected ? const Color(0x7F448AFF) : Colors.transparent,
+                        color: isSelected
+                            ? const Color(0x7F448AFF)
+                            : Colors.transparent,
                       ),
                     ),
                     child: ListTile(
@@ -137,11 +140,16 @@ class DialogHelper {
                         itemBuilder(item),
                         style: TextStyle(
                           color: isSelected ? Colors.white : Colors.white70,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
                       ),
                       trailing: isSelected
-                          ? const Icon(Icons.check_circle, color: Color(0xFF448AFF))
+                          ? const Icon(
+                              Icons.check_circle,
+                              color: Color(0xFF448AFF),
+                            )
                           : trailingBuilder?.call(item),
                       onTap: () => Navigator.of(context).pop(item),
                     ),

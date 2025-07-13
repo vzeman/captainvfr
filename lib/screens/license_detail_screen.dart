@@ -26,10 +26,16 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.license?.name ?? '');
-    _descriptionController = TextEditingController(text: widget.license?.description ?? '');
-    _licenseNumberController = TextEditingController(text: widget.license?.licenseNumber ?? '');
+    _descriptionController = TextEditingController(
+      text: widget.license?.description ?? '',
+    );
+    _licenseNumberController = TextEditingController(
+      text: widget.license?.licenseNumber ?? '',
+    );
     _issueDate = widget.license?.issueDate ?? DateTime.now();
-    _expirationDate = widget.license?.expirationDate ?? DateTime.now().add(const Duration(days: 365));
+    _expirationDate =
+        widget.license?.expirationDate ??
+        DateTime.now().add(const Duration(days: 365));
   }
 
   @override
@@ -45,9 +51,7 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
     final isEditing = widget.license != null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Edit License' : 'Add License'),
-      ),
+      appBar: AppBar(title: Text(isEditing ? 'Edit License' : 'Add License')),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -177,10 +181,7 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
           prefixIcon: Icon(icon),
           suffixIcon: const Icon(Icons.arrow_drop_down),
         ),
-        child: Text(
-          _formatDate(value),
-          style: const TextStyle(fontSize: 16),
-        ),
+        child: Text(_formatDate(value), style: const TextStyle(fontSize: 16)),
       ),
     );
   }
@@ -251,13 +252,15 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
 
     try {
       final licenseService = context.read<LicenseService>();
-      
+
       if (widget.license != null) {
         // Update existing license
         final updatedLicense = widget.license!.copyWith(
           name: _nameController.text.trim(),
           description: _descriptionController.text.trim(),
-          licenseNumber: _licenseNumberController.text.trim().isEmpty ? null : _licenseNumberController.text.trim(),
+          licenseNumber: _licenseNumberController.text.trim().isEmpty
+              ? null
+              : _licenseNumberController.text.trim(),
           issueDate: _issueDate,
           expirationDate: _expirationDate,
         );
@@ -267,7 +270,9 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
         final newLicense = License(
           name: _nameController.text.trim(),
           description: _descriptionController.text.trim(),
-          licenseNumber: _licenseNumberController.text.trim().isEmpty ? null : _licenseNumberController.text.trim(),
+          licenseNumber: _licenseNumberController.text.trim().isEmpty
+              ? null
+              : _licenseNumberController.text.trim(),
           issueDate: _issueDate,
           expirationDate: _expirationDate,
         );

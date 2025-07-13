@@ -27,7 +27,8 @@ class CacheService extends ChangeNotifier {
   static const String _runwaysLastFetchKey = 'runways_last_fetch';
   static const String _frequenciesLastFetchKey = 'frequencies_last_fetch';
   static const String _airspacesLastFetchKey = 'airspaces_last_fetch';
-  static const String _reportingPointsLastFetchKey = 'reporting_points_last_fetch';
+  static const String _reportingPointsLastFetchKey =
+      'reporting_points_last_fetch';
   static const String _weatherLastFetchKey = 'weather_last_fetch';
 
   late Box<Map> _airportsBox;
@@ -151,7 +152,10 @@ class CacheService extends ChangeNotifier {
       }
 
       // Update last fetch timestamp
-      await _metadataBox.put(_airportsLastFetchKey, DateTime.now().toIso8601String());
+      await _metadataBox.put(
+        _airportsLastFetchKey,
+        DateTime.now().toIso8601String(),
+      );
 
       developer.log('✅ Cached ${airports.length} airports successfully');
     } catch (e) {
@@ -176,7 +180,10 @@ class CacheService extends ChangeNotifier {
       }
 
       // Update last fetch timestamp
-      await _metadataBox.put(_runwaysLastFetchKey, DateTime.now().toIso8601String());
+      await _metadataBox.put(
+        _runwaysLastFetchKey,
+        DateTime.now().toIso8601String(),
+      );
 
       developer.log('✅ Cached ${runways.length} runways successfully');
     } catch (e) {
@@ -201,7 +208,10 @@ class CacheService extends ChangeNotifier {
       }
 
       // Update last fetch timestamp
-      await _metadataBox.put(_navaidsLastFetchKey, DateTime.now().toIso8601String());
+      await _metadataBox.put(
+        _navaidsLastFetchKey,
+        DateTime.now().toIso8601String(),
+      );
 
       developer.log('✅ Cached ${navaids.length} navaids successfully');
     } catch (e) {
@@ -226,7 +236,10 @@ class CacheService extends ChangeNotifier {
       }
 
       // Update last fetch timestamp
-      await _metadataBox.put(_frequenciesLastFetchKey, DateTime.now().toIso8601String());
+      await _metadataBox.put(
+        _frequenciesLastFetchKey,
+        DateTime.now().toIso8601String(),
+      );
 
       developer.log('✅ Cached ${frequencies.length} frequencies successfully');
     } catch (e) {
@@ -240,8 +253,12 @@ class CacheService extends ChangeNotifier {
     await _ensureInitialized();
 
     try {
-      developer.log('💾 Caching ${airspaces.length} airspaces (replacing all)...');
-      developer.log('📊 Current box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}');
+      developer.log(
+        '💾 Caching ${airspaces.length} airspaces (replacing all)...',
+      );
+      developer.log(
+        '📊 Current box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}',
+      );
 
       // Clear existing data
       await _airspacesBox.clear();
@@ -260,11 +277,18 @@ class CacheService extends ChangeNotifier {
       }
 
       // Update last fetch timestamp
-      await _metadataBox.put(_airspacesLastFetchKey, DateTime.now().toIso8601String());
+      await _metadataBox.put(
+        _airspacesLastFetchKey,
+        DateTime.now().toIso8601String(),
+      );
 
-      developer.log('✅ Cached $cached/${airspaces.length} airspaces successfully');
-      developer.log('📊 Final box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}');
-      
+      developer.log(
+        '✅ Cached $cached/${airspaces.length} airspaces successfully',
+      );
+      developer.log(
+        '📊 Final box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}',
+      );
+
       // Notify listeners about data change
       notifyListeners();
     } catch (e) {
@@ -280,24 +304,28 @@ class CacheService extends ChangeNotifier {
 
     try {
       developer.log('💾 Appending ${airspaces.length} airspaces to cache...');
-      developer.log('📊 Current box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}');
+      developer.log(
+        '📊 Current box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}',
+      );
 
       // Cache airspaces as maps without clearing
       int cached = 0;
       int updated = 0;
       Set<String> uniqueIds = {};
-      
+
       for (final airspace in airspaces) {
         try {
           final json = airspace.toJson();
           final exists = _airspacesBox.containsKey(airspace.id);
-          
+
           // Check for duplicate IDs in this batch
           if (uniqueIds.contains(airspace.id)) {
-            developer.log('⚠️ Duplicate airspace ID found in batch: ${airspace.id}');
+            developer.log(
+              '⚠️ Duplicate airspace ID found in batch: ${airspace.id}',
+            );
           }
           uniqueIds.add(airspace.id);
-          
+
           await _airspacesBox.put(airspace.id, json);
           if (exists) {
             updated++;
@@ -311,11 +339,18 @@ class CacheService extends ChangeNotifier {
       }
 
       // Update last fetch timestamp
-      await _metadataBox.put(_airspacesLastFetchKey, DateTime.now().toIso8601String());
+      await _metadataBox.put(
+        _airspacesLastFetchKey,
+        DateTime.now().toIso8601String(),
+      );
 
-      developer.log('✅ Added $cached new airspaces, updated $updated existing ones');
-      developer.log('📊 Final box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}');
-      
+      developer.log(
+        '✅ Added $cached new airspaces, updated $updated existing ones',
+      );
+      developer.log(
+        '📊 Final box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}',
+      );
+
       // Notify listeners about data change
       notifyListeners();
     } catch (e) {
@@ -338,11 +373,16 @@ class CacheService extends ChangeNotifier {
   }
 
   /// Cache bulk weather data (METARs and TAFs)
-  Future<void> cacheWeatherBulk(Map<String, String> metars, Map<String, String> tafs) async {
+  Future<void> cacheWeatherBulk(
+    Map<String, String> metars,
+    Map<String, String> tafs,
+  ) async {
     await _ensureInitialized();
 
     try {
-      developer.log('💾 Caching ${metars.length} METARs and ${tafs.length} TAFs...');
+      developer.log(
+        '💾 Caching ${metars.length} METARs and ${tafs.length} TAFs...',
+      );
 
       // Cache METARs with prefix
       for (final entry in metars.entries) {
@@ -355,9 +395,14 @@ class CacheService extends ChangeNotifier {
       }
 
       // Update last fetch timestamp
-      await _metadataBox.put(_weatherLastFetchKey, DateTime.now().toIso8601String());
+      await _metadataBox.put(
+        _weatherLastFetchKey,
+        DateTime.now().toIso8601String(),
+      );
 
-      developer.log('✅ Cached ${metars.length} METARs and ${tafs.length} TAFs successfully');
+      developer.log(
+        '✅ Cached ${metars.length} METARs and ${tafs.length} TAFs successfully',
+      );
     } catch (e) {
       developer.log('❌ Error caching weather data: $e');
       rethrow;
@@ -543,8 +588,10 @@ class CacheService extends ChangeNotifier {
     await _ensureInitialized();
 
     try {
-      developer.log('📊 Airspaces box info: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}');
-      
+      developer.log(
+        '📊 Airspaces box info: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}',
+      );
+
       final airspaces = <Airspace>[];
 
       for (final key in _airspacesBox.keys) {
@@ -569,11 +616,15 @@ class CacheService extends ChangeNotifier {
   }
 
   /// Cache reporting points data (replaces all existing data)
-  Future<void> cacheReportingPoints(List<ReportingPoint> reportingPoints) async {
+  Future<void> cacheReportingPoints(
+    List<ReportingPoint> reportingPoints,
+  ) async {
     await _ensureInitialized();
 
     try {
-      developer.log('💾 Caching ${reportingPoints.length} reporting points (replacing all)...');
+      developer.log(
+        '💾 Caching ${reportingPoints.length} reporting points (replacing all)...',
+      );
 
       // Clear existing data
       await _reportingPointsBox.clear();
@@ -584,17 +635,22 @@ class CacheService extends ChangeNotifier {
       }
 
       // Update last fetch timestamp
-      await _metadataBox.put(_reportingPointsLastFetchKey, DateTime.now().toIso8601String());
-      
+      await _metadataBox.put(
+        _reportingPointsLastFetchKey,
+        DateTime.now().toIso8601String(),
+      );
+
       // iOS-specific: Force flush to disk
       if (Platform.isIOS) {
         await _reportingPointsBox.flush();
         await _metadataBox.flush();
-        developer.log('🍎 iOS: Forced flush after caching ${reportingPoints.length} reporting points');
+        developer.log(
+          '🍎 iOS: Forced flush after caching ${reportingPoints.length} reporting points',
+        );
       }
 
       developer.log('✅ Cached ${reportingPoints.length} reporting points');
-      
+
       // Notify listeners about data change
       notifyListeners();
     } catch (e) {
@@ -604,12 +660,18 @@ class CacheService extends ChangeNotifier {
   }
 
   /// Append reporting points data (adds to existing data without clearing)
-  Future<void> appendReportingPoints(List<ReportingPoint> reportingPoints) async {
+  Future<void> appendReportingPoints(
+    List<ReportingPoint> reportingPoints,
+  ) async {
     await _ensureInitialized();
 
     try {
-      developer.log('💾 Appending ${reportingPoints.length} reporting points to cache...');
-      developer.log('📊 Current box status: isOpen=${_reportingPointsBox.isOpen}, length=${_reportingPointsBox.length}');
+      developer.log(
+        '💾 Appending ${reportingPoints.length} reporting points to cache...',
+      );
+      developer.log(
+        '📊 Current box status: isOpen=${_reportingPointsBox.isOpen}, length=${_reportingPointsBox.length}',
+      );
 
       // Cache reporting points as maps without clearing
       int cached = 0;
@@ -629,8 +691,11 @@ class CacheService extends ChangeNotifier {
       }
 
       // Update last fetch timestamp
-      await _metadataBox.put(_reportingPointsLastFetchKey, DateTime.now().toIso8601String());
-      
+      await _metadataBox.put(
+        _reportingPointsLastFetchKey,
+        DateTime.now().toIso8601String(),
+      );
+
       // iOS-specific: Force flush to disk
       if (Platform.isIOS) {
         await _reportingPointsBox.flush();
@@ -638,9 +703,13 @@ class CacheService extends ChangeNotifier {
         developer.log('🍎 iOS: Forced flush of reporting points to disk');
       }
 
-      developer.log('✅ Added $cached new reporting points, updated $updated existing ones');
-      developer.log('📊 Final box status: isOpen=${_reportingPointsBox.isOpen}, length=${_reportingPointsBox.length}');
-      
+      developer.log(
+        '✅ Added $cached new reporting points, updated $updated existing ones',
+      );
+      developer.log(
+        '📊 Final box status: isOpen=${_reportingPointsBox.isOpen}, length=${_reportingPointsBox.length}',
+      );
+
       // Notify listeners about data change
       notifyListeners();
     } catch (e) {
@@ -657,24 +726,32 @@ class CacheService extends ChangeNotifier {
     try {
       // Add iOS-specific debugging
       if (Platform.isIOS) {
-        developer.log('🍎 iOS: Getting reporting points - Box isOpen: ${_reportingPointsBox.isOpen}, isEmpty: ${_reportingPointsBox.isEmpty}, length: ${_reportingPointsBox.length}');
+        developer.log(
+          '🍎 iOS: Getting reporting points - Box isOpen: ${_reportingPointsBox.isOpen}, isEmpty: ${_reportingPointsBox.isEmpty}, length: ${_reportingPointsBox.length}',
+        );
         if (_reportingPointsBox.path != null) {
           developer.log('🍎 iOS: Box path: ${_reportingPointsBox.path}');
         }
       }
-      
+
       final reportingPoints = <ReportingPoint>[];
 
       for (final key in _reportingPointsBox.keys) {
         final data = _reportingPointsBox.get(key);
         if (data != null) {
-          final point = ReportingPoint.fromJson(Map<String, dynamic>.from(data));
+          final point = ReportingPoint.fromJson(
+            Map<String, dynamic>.from(data),
+          );
           reportingPoints.add(point);
         }
       }
-      
-      if (Platform.isIOS && reportingPoints.isEmpty && _reportingPointsBox.isNotEmpty) {
-        developer.log('🍎 iOS: WARNING - Box has ${_reportingPointsBox.length} entries but parsed 0 points!');
+
+      if (Platform.isIOS &&
+          reportingPoints.isEmpty &&
+          _reportingPointsBox.isNotEmpty) {
+        developer.log(
+          '🍎 iOS: WARNING - Box has ${_reportingPointsBox.length} entries but parsed 0 points!',
+        );
       }
 
       return reportingPoints;
@@ -784,7 +861,10 @@ class CacheService extends ChangeNotifier {
   /// Set frequencies last fetch timestamp
   Future<void> setFrequenciesLastFetch(DateTime timestamp) async {
     await _ensureInitialized();
-    await _metadataBox.put(_frequenciesLastFetchKey, timestamp.toIso8601String());
+    await _metadataBox.put(
+      _frequenciesLastFetchKey,
+      timestamp.toIso8601String(),
+    );
   }
 
   /// Set airspaces last fetch timestamp
@@ -830,10 +910,14 @@ class CacheService extends ChangeNotifier {
   /// Clear airspaces cache
   Future<void> clearAirspacesCache() async {
     await _ensureInitialized();
-    developer.log('🗑️ Clearing airspaces cache - current count: ${_airspacesBox.length}');
+    developer.log(
+      '🗑️ Clearing airspaces cache - current count: ${_airspacesBox.length}',
+    );
     await _airspacesBox.clear();
     await _metadataBox.delete(_airspacesLastFetchKey);
-    developer.log('✅ Airspaces cache cleared - new count: ${_airspacesBox.length}');
+    developer.log(
+      '✅ Airspaces cache cleared - new count: ${_airspacesBox.length}',
+    );
   }
 
   /// Clear reporting points cache
@@ -875,21 +959,24 @@ class CacheService extends ChangeNotifier {
       rethrow;
     }
   }
-  
+
   // Generic cache methods for other data types
-  
+
   /// Cache generic data with a key
   Future<void> cacheData(String key, String data) async {
     await _ensureInitialized();
     try {
       await _metadataBox.put(key, data);
-      await _metadataBox.put('${key}_timestamp', DateTime.now().toIso8601String());
+      await _metadataBox.put(
+        '${key}_timestamp',
+        DateTime.now().toIso8601String(),
+      );
     } catch (e) {
       developer.log('❌ Error caching data for $key: $e');
       rethrow;
     }
   }
-  
+
   /// Get cached generic data
   Future<String?> getCachedData(String key) async {
     await _ensureInitialized();
@@ -900,7 +987,7 @@ class CacheService extends ChangeNotifier {
       return null;
     }
   }
-  
+
   /// Get timestamp for cached data
   Future<DateTime?> getCachedDataTimestamp(String key) async {
     await _ensureInitialized();
@@ -914,7 +1001,7 @@ class CacheService extends ChangeNotifier {
     }
     return null;
   }
-  
+
   /// Clear specific cached data
   Future<void> clearCachedData(String key) async {
     await _ensureInitialized();

@@ -29,10 +29,18 @@ class AltitudeChart extends StatelessWidget {
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     // Calculate min and max for the Y axis
-    final minY = minAltitude ?? (altitudeData.isNotEmpty ? altitudeData.reduce((a, b) => a < b ? a : b) - 50 : 0);
-    final maxY = maxAltitude ?? (altitudeData.isNotEmpty ? altitudeData.reduce((a, b) => a > b ? a : b) + 50 : 1000);
+    final minY =
+        minAltitude ??
+        (altitudeData.isNotEmpty
+            ? altitudeData.reduce((a, b) => a < b ? a : b) - 50
+            : 0);
+    final maxY =
+        maxAltitude ??
+        (altitudeData.isNotEmpty
+            ? altitudeData.reduce((a, b) => a > b ? a : b) + 50
+            : 1000);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -49,17 +57,16 @@ class AltitudeChart extends StatelessWidget {
           ),
           titlesData: FlTitlesData(
             show: true,
-            rightTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            topTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
+            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 30,
-                interval: (altitudeData.length / 4).ceilToDouble().clamp(1, double.infinity),
+                interval: (altitudeData.length / 4).ceilToDouble().clamp(
+                  1,
+                  double.infinity,
+                ),
                 getTitlesWidget: (value, meta) {
                   final index = value.toInt();
                   if (index >= 0 && index < altitudeData.length) {
@@ -92,7 +99,9 @@ class AltitudeChart extends StatelessWidget {
             ),
           ),
           minX: 0,
-          maxX: altitudeData.isNotEmpty ? (altitudeData.length - 1).toDouble() : 1,
+          maxX: altitudeData.isNotEmpty
+              ? (altitudeData.length - 1).toDouble()
+              : 1,
           minY: minY,
           maxY: maxY,
           lineBarsData: [
@@ -109,8 +118,12 @@ class AltitudeChart extends StatelessWidget {
                 show: true,
                 gradient: LinearGradient(
                   colors: [
-                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                    Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.3),
+                    Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.1),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,

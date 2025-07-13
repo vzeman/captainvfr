@@ -42,27 +42,28 @@ import 'models/reporting_point.dart';
 void main() async {
   // Ensure Flutter binding is initialized
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Show loading screen immediately
-  runApp(const MaterialApp(
-    debugShowCheckedModeBanner: false,
-    home: LoadingScreen(),
-  ));
-  
+  runApp(
+    const MaterialApp(debugShowCheckedModeBanner: false, home: LoadingScreen()),
+  );
+
   try {
     // Initialize Hive and register adapters
     await Hive.initFlutter();
-    
+
     // Migration: One-time clear of old cache format
     try {
       // Open or create migrations tracking box
       final migrationBox = await Hive.openBox('migrations');
-      
-      // Check if we've already done this migration
-      final hasMigratedCaches = migrationBox.get('cache_migration_v1', defaultValue: false);
-      
-      if (!hasMigratedCaches) {
 
+      // Check if we've already done this migration
+      final hasMigratedCaches = migrationBox.get(
+        'cache_migration_v1',
+        defaultValue: false,
+      );
+
+      if (!hasMigratedCaches) {
         // Clear old format boxes if they exist
         if (await Hive.boxExists('airspaces')) {
           await Hive.deleteBoxFromDisk('airspaces');
@@ -70,7 +71,7 @@ void main() async {
         if (await Hive.boxExists('reportingPoints')) {
           await Hive.deleteBoxFromDisk('reportingPoints');
         }
-        
+
         // Mark migration as complete
         await migrationBox.put('cache_migration_v1', true);
       }
@@ -101,10 +102,10 @@ void main() async {
     // Register checklist adapters
     Hive.registerAdapter(ChecklistItemAdapter());
     Hive.registerAdapter(ChecklistAdapter());
-    
+
     // Register airspace adapter
     Hive.registerAdapter(AirspaceAdapter());
-    
+
     // Register reporting point adapter
     Hive.registerAdapter(ReportingPointAdapter());
 
@@ -119,12 +120,14 @@ void main() async {
 
     // Log network diagnostics for Android 12+ debugging
     await PlatformServices.logNetworkState();
-    
+
     // Initialize vibration measurement service (using accelerometer)
     final vibrationMeasurementService = VibrationMeasurementService();
     try {
       await vibrationMeasurementService.initialize();
     } catch (e) {
+      // Vibration measurement is optional, continue without it
+      debugPrint('Vibration measurement initialization failed: $e');
     }
 
     // Initialize services with error handling
@@ -141,33 +144,31 @@ void main() async {
     try {
       await flightPlanService.initialize();
     } catch (e) {
+      // Flight plan service initialization is optional, continue without it
+      debugPrint('Flight plan service initialization failed: $e');
     }
 
-    final flightService = FlightService(
-      barometerService: barometerService,
-    );
+    final flightService = FlightService(barometerService: barometerService);
 
     // Initialize aircraft settings service with comprehensive error handling
     final aircraftSettingsService = AircraftSettingsService();
 
     // Initialize checklist service
     final checklistService = ChecklistService();
-    
+
     // Initialize license service
     final licenseService = LicenseService();
-    
+
     // Initialize OpenAIP service
     final openAIPService = OpenAIPService();
-    
+
     // Initialize OpenAIP service without blocking
     // The service will load data in background after initialization
-    openAIPService.initialize().then((_) {
-    }).catchError((e) {
-    });
-    
+    openAIPService.initialize().then((_) {}).catchError((e) {});
+
     // Initialize Settings service
     final settingsService = SettingsService();
-    
+
     // Initialize background data service
     final backgroundDataService = BackgroundDataService();
     await backgroundDataService.initialize(
@@ -181,10 +182,10 @@ void main() async {
     try {
       await aircraftSettingsService.initialize();
     } catch (e) {
-
       // Check for various Hive data corruption issues
       final errorString = e.toString();
-      final isDataCorruption = errorString.contains('unknown typeId') ||
+      final isDataCorruption =
+          errorString.contains('unknown typeId') ||
           errorString.contains('is not a subtype of type') ||
           errorString.contains('type cast') ||
           errorString.contains('Null') ||
@@ -208,7 +209,7 @@ void main() async {
 
     // Initialize checklist service
     await checklistService.initialize();
-    
+
     // Initialize license service
     await licenseService.initialize();
     runApp(
@@ -219,9 +220,7 @@ void main() async {
           ),
           Provider<LocationService>.value(value: locationService),
           Provider<BarometerService>.value(value: barometerService),
-          ChangeNotifierProvider<FlightService>.value(
-            value: flightService,
-          ),
+          ChangeNotifierProvider<FlightService>.value(value: flightService),
           ChangeNotifierProvider<FlightPlanService>.value(
             value: flightPlanService,
           ),
@@ -231,12 +230,8 @@ void main() async {
           ChangeNotifierProvider<ChecklistService>.value(
             value: checklistService,
           ),
-          ChangeNotifierProvider<LicenseService>.value(
-            value: licenseService,
-          ),
-          ChangeNotifierProvider<SettingsService>.value(
-            value: settingsService,
-          ),
+          ChangeNotifierProvider<LicenseService>.value(value: licenseService),
+          ChangeNotifierProvider<SettingsService>.value(value: settingsService),
           Provider<AirportService>.value(value: airportService),
           ChangeNotifierProvider<CacheService>.value(value: cacheService),
           Provider<RunwayService>.value(value: runwayService),
@@ -244,7 +239,9 @@ void main() async {
           Provider<WeatherService>.value(value: weatherService),
           Provider<FrequencyService>.value(value: frequencyService),
           Provider<OpenAIPService>.value(value: openAIPService),
-          Provider<VibrationMeasurementService>.value(value: vibrationMeasurementService),
+          Provider<VibrationMeasurementService>.value(
+            value: vibrationMeasurementService,
+          ),
           ChangeNotifierProvider<BackgroundDataService>.value(
             value: backgroundDataService,
           ),
@@ -260,18 +257,18 @@ void main() async {
       } catch (e) {
         // Don't crash the app if flight service fails
       }
-      
+
       // Start loading data in the background
       backgroundDataService.loadDataInBackground();
     });
-
   } catch (e) {
     // debugPrint('❌ Critical error during app initialization: $e');
     // debugPrint('Stack trace: $stackTrace');
 
     // Try to clear corrupted data and start with minimal functionality
     final errorString = e.toString();
-    final isDataCorruption = errorString.contains('unknown typeId') ||
+    final isDataCorruption =
+        errorString.contains('unknown typeId') ||
         errorString.contains('is not a subtype of type') ||
         errorString.contains('type cast') ||
         errorString.contains('Null') ||
@@ -303,10 +300,9 @@ void _runMinimalApp() {
   // debugPrint('🚀 Starting app with minimal functionality...');
 
   // Show loading screen first
-  runApp(const MaterialApp(
-    debugShowCheckedModeBanner: false,
-    home: LoadingScreen(),
-  ));
+  runApp(
+    const MaterialApp(debugShowCheckedModeBanner: false, home: LoadingScreen()),
+  );
 
   // Create minimal services
   final connectivityService = ConnectivityService();
@@ -324,7 +320,7 @@ void _runMinimalApp() {
   final settingsService = SettingsService();
   final cacheService = CacheService();
   final flightService = FlightService(barometerService: barometerService);
-  
+
   // Initialize connectivity service even in minimal mode
   connectivityService.initialize().then((_) {
     connectivityService.startPeriodicChecks();
@@ -333,12 +329,18 @@ void _runMinimalApp() {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider<ConnectivityService>.value(value: connectivityService),
+        ChangeNotifierProvider<ConnectivityService>.value(
+          value: connectivityService,
+        ),
         Provider<LocationService>.value(value: locationService),
         Provider<BarometerService>.value(value: barometerService),
         ChangeNotifierProvider<FlightService>.value(value: flightService),
-        ChangeNotifierProvider<FlightPlanService>.value(value: flightPlanService),
-        ChangeNotifierProvider<AircraftSettingsService>.value(value: aircraftSettingsService),
+        ChangeNotifierProvider<FlightPlanService>.value(
+          value: flightPlanService,
+        ),
+        ChangeNotifierProvider<AircraftSettingsService>.value(
+          value: aircraftSettingsService,
+        ),
         ChangeNotifierProvider<ChecklistService>.value(value: checklistService),
         ChangeNotifierProvider<LicenseService>.value(value: licenseService),
         ChangeNotifierProvider<SettingsService>.value(value: settingsService),
@@ -353,7 +355,6 @@ void _runMinimalApp() {
     ),
   );
 }
-
 
 /// Clear Hive boxes to resolve typeId mismatch issues
 Future<void> _clearHiveBoxes() async {
@@ -405,7 +406,6 @@ Future<void> _clearHiveBoxes() async {
     } catch (e) {
       // debugPrint('⚠️ Error with global Hive clear: $e');
     }
-
   } catch (e) {
     // debugPrint('❌ Error clearing Hive boxes: $e');
     // Last resort - try to clear everything
@@ -435,14 +435,10 @@ class _CaptainVFRAppState extends State<CaptainVFRApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _navigatorKey.currentState?.pushReplacement(
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const ConnectivityBanner(
-            child: MapScreen(),
-          ),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const ConnectivityBanner(child: MapScreen()),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
+            return FadeTransition(opacity: animation, child: child);
           },
           transitionDuration: const Duration(milliseconds: 500),
         ),
@@ -462,10 +458,7 @@ class _CaptainVFRAppState extends State<CaptainVFRApp> {
           brightness: Brightness.light,
         ),
         useMaterial3: true,
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
-          elevation: 2,
-        ),
+        appBarTheme: const AppBarTheme(centerTitle: true, elevation: 2),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
           backgroundColor: Color(0xFF1E88E5),
           foregroundColor: Colors.white,
@@ -497,9 +490,7 @@ class _CaptainVFRAppState extends State<CaptainVFRApp> {
       ),
       themeMode: ThemeMode.system,
       home: const LoadingScreen(),
-      routes: {
-        '/offline_data': (context) => const OfflineDataScreen(),
-      },
+      routes: {'/offline_data': (context) => const OfflineDataScreen()},
     );
   }
 }

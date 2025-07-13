@@ -27,7 +27,8 @@ class ManufacturerService with ChangeNotifier {
         final manufacturer = _box!.get(key);
         if (manufacturer != null) {
           // Check if this is a corrupted manufacturer with placeholder data
-          if (manufacturer.id.startsWith('corrupted-') || manufacturer.name == 'Unknown Manufacturer') {
+          if (manufacturer.id.startsWith('corrupted-') ||
+              manufacturer.name == 'Unknown Manufacturer') {
             corruptedKeys.add(key.toString());
           } else {
             validManufacturers.add(manufacturer);
@@ -71,7 +72,9 @@ class ManufacturerService with ChangeNotifier {
 
     await _box!.put(updatedManufacturer.id, updatedManufacturer);
 
-    final index = _manufacturers.indexWhere((m) => m.id == updatedManufacturer.id);
+    final index = _manufacturers.indexWhere(
+      (m) => m.id == updatedManufacturer.id,
+    );
     if (index != -1) {
       _manufacturers[index] = updatedManufacturer;
       _manufacturers.sort((a, b) => a.name.compareTo(b.name));
@@ -96,9 +99,11 @@ class ManufacturerService with ChangeNotifier {
 
     final lowerQuery = query.toLowerCase();
     return _manufacturers
-        .where((m) =>
-            m.name.toLowerCase().contains(lowerQuery) ||
-            (m.description?.toLowerCase().contains(lowerQuery) ?? false))
+        .where(
+          (m) =>
+              m.name.toLowerCase().contains(lowerQuery) ||
+              (m.description?.toLowerCase().contains(lowerQuery) ?? false),
+        )
         .toList();
   }
 

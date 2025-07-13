@@ -31,7 +31,7 @@ class FlightAdapter extends TypeAdapter<Flight> {
       movingStartedZulu: fields[11] as DateTime?,
       movingStoppedZulu: fields[12] as DateTime?,
       movingSegments: (fields[13] as List?)?.cast<MovingSegment>(),
-      flightSegments: (fields[14] as List?)?.cast<fs.FlightSegment>(),
+      flightSegments: (fields[14] as List?)?.cast<FlightSegment>(),
       flightRules: fields[15] as FlightRules?,
     );
   }

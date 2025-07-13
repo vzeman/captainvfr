@@ -71,7 +71,8 @@ class MovingSegment extends HiveObject {
   }
 
   // Additional formatting methods for the UI
-  String get formattedAverageSpeed => '${averageSpeedKmh.toStringAsFixed(1)} km/h';
+  String get formattedAverageSpeed =>
+      '${averageSpeedKmh.toStringAsFixed(1)} km/h';
 
   String get formattedHeading => '${averageHeading.toStringAsFixed(0)}°';
 
@@ -79,7 +80,8 @@ class MovingSegment extends HiveObject {
 
   String get formattedEndAltitude => '${endAltitude.toStringAsFixed(0)} m';
 
-  String get formattedAverageAltitude => '${averageAltitude.toStringAsFixed(0)} m';
+  String get formattedAverageAltitude =>
+      '${averageAltitude.toStringAsFixed(0)} m';
 
   String get formattedMaxAltitude => '${maxAltitude.toStringAsFixed(0)} m';
 
@@ -96,14 +98,14 @@ class MovingSegment extends HiveObject {
   String get startZuluFormatted {
     final utc = start.toUtc();
     return '${utc.hour.toString().padLeft(2, '0')}:'
-           '${utc.minute.toString().padLeft(2, '0')}:'
-           '${utc.second.toString().padLeft(2, '0')}Z';
+        '${utc.minute.toString().padLeft(2, '0')}:'
+        '${utc.second.toString().padLeft(2, '0')}Z';
   }
 
   String get endZuluFormatted {
     final utc = end.toUtc();
     return '${utc.hour.toString().padLeft(2, '0')}:'
-           '${utc.minute.toString().padLeft(2, '0')}:'
-           '${utc.second.toString().padLeft(2, '0')}Z';
+        '${utc.minute.toString().padLeft(2, '0')}:'
+        '${utc.second.toString().padLeft(2, '0')}Z';
   }
 }

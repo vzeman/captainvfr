@@ -19,13 +19,9 @@ class _LoadingScreenState extends State<LoadingScreen>
       duration: const Duration(seconds: 2),
       vsync: this,
     );
-    _fadeAnimation = Tween<double>(
-      begin: 0.5,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
     _animationController.repeat(reverse: true);
   }
 
@@ -97,7 +93,9 @@ class _LoadingScreenState extends State<LoadingScreen>
               child: CircularProgressIndicator(
                 strokeWidth: 3,
                 valueColor: AlwaysStoppedAnimation<Color>(
-                  isDarkMode ? const Color(0xFF90CAF9) : const Color(0xFF1E88E5),
+                  isDarkMode
+                      ? const Color(0xFF90CAF9)
+                      : const Color(0xFF1E88E5),
                 ),
               ),
             ),

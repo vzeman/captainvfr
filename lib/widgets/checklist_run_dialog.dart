@@ -6,9 +6,14 @@ import '../services/aircraft_settings_service.dart';
 /// Dialog to run through a checklist.
 class ChecklistRunDialog extends StatefulWidget {
   final Checklist checklist;
+
   /// Optional display name of the aircraft running this checklist.
   final String? aircraftName;
-  const ChecklistRunDialog({super.key, required this.checklist, this.aircraftName});
+  const ChecklistRunDialog({
+    super.key,
+    required this.checklist,
+    this.aircraftName,
+  });
 
   @override
   State<ChecklistRunDialog> createState() => _ChecklistRunDialogState();
@@ -22,13 +27,23 @@ class _ChecklistRunDialogState extends State<ChecklistRunDialog> {
   @override
   void initState() {
     super.initState();
-    _itemKeys = List.generate(widget.checklist.items.length, (_) => GlobalKey());
+    _itemKeys = List.generate(
+      widget.checklist.items.length,
+      (_) => GlobalKey(),
+    );
     // Scroll to first incomplete item on open
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final next = widget.checklist.items.indexWhere((it) => !_completed.contains(it.id));
+      final next = widget.checklist.items.indexWhere(
+        (it) => !_completed.contains(it.id),
+      );
       if (next != -1) {
         final ctx = _itemKeys[next].currentContext;
-        if (ctx != null) Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 300));
+        if (ctx != null) {
+          Scrollable.ensureVisible(
+            ctx,
+            duration: const Duration(milliseconds: 300),
+          );
+        }
       }
     });
   }
@@ -49,17 +64,30 @@ class _ChecklistRunDialogState extends State<ChecklistRunDialog> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(widget.checklist.name),
-                if (widget.aircraftName != null) ...[
+                  if (widget.aircraftName != null) ...[
                     const SizedBox(height: 4),
-                    Text(widget.aircraftName!, style: Theme.of(context).textTheme.bodySmall),
+                    Text(
+                      widget.aircraftName!,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ] else ...[
                     const SizedBox(height: 4),
                     Consumer<AircraftSettingsService>(
                       builder: (context, svc, _) {
-                        final mfrList = svc.manufacturers.where((m) => m.id == widget.checklist.manufacturerId).toList();
-                        final mdlList = svc.models.where((md) => md.id == widget.checklist.modelId).toList();
-                        final mfrName = mfrList.isNotEmpty ? mfrList.first.name : '';
-                        final mdlName = mdlList.isNotEmpty ? mdlList.first.name : '';
+                        final mfrList = svc.manufacturers
+                            .where(
+                              (m) => m.id == widget.checklist.manufacturerId,
+                            )
+                            .toList();
+                        final mdlList = svc.models
+                            .where((md) => md.id == widget.checklist.modelId)
+                            .toList();
+                        final mfrName = mfrList.isNotEmpty
+                            ? mfrList.first.name
+                            : '';
+                        final mdlName = mdlList.isNotEmpty
+                            ? mdlList.first.name
+                            : '';
                         return Text(
                           '$mfrName $mdlName',
                           style: Theme.of(context).textTheme.bodySmall,
@@ -101,7 +129,9 @@ class _ChecklistRunDialogState extends State<ChecklistRunDialog> {
                     key: _itemKeys[index],
                     child: ListTile(
                       leading: Icon(
-                        completed ? Icons.check_box : Icons.check_box_outline_blank,
+                        completed
+                            ? Icons.check_box
+                            : Icons.check_box_outline_blank,
                         color: completed ? Colors.green : null,
                       ),
                       title: Text(item.name),
@@ -109,7 +139,8 @@ class _ChecklistRunDialogState extends State<ChecklistRunDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (item.description != null) Text(item.description!),
-                          if (item.targetValue != null) Text('Target: ${item.targetValue!}'),
+                          if (item.targetValue != null)
+                            Text('Target: ${item.targetValue!}'),
                         ],
                       ),
                       onTap: () {
@@ -121,10 +152,17 @@ class _ChecklistRunDialogState extends State<ChecklistRunDialog> {
                           }
                         });
                         WidgetsBinding.instance.addPostFrameCallback((_) {
-                          final next = widget.checklist.items.indexWhere((it) => !_completed.contains(it.id));
+                          final next = widget.checklist.items.indexWhere(
+                            (it) => !_completed.contains(it.id),
+                          );
                           if (next != -1) {
                             final ctx = _itemKeys[next].currentContext;
-                            if (ctx != null) Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 300));
+                            if (ctx != null) {
+                              Scrollable.ensureVisible(
+                                ctx,
+                                duration: const Duration(milliseconds: 300),
+                              );
+                            }
                           }
                         });
                       },

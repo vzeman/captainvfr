@@ -9,9 +9,13 @@ import 'cache_service.dart';
 /// Service for fetching and managing weather data for airports
 
 class WeatherService {
-  static const String _metarUrl = 'https://aviationweather.gov/data/cache/metars.cache.csv.gz';
-  static const String _tafUrl = 'https://aviationweather.gov/data/cache/tafs.cache.csv.gz';
-  static const Duration cacheDuration = Duration(minutes: 5); // Keep for backwards compatibility
+  static const String _metarUrl =
+      'https://aviationweather.gov/data/cache/metars.cache.csv.gz';
+  static const String _tafUrl =
+      'https://aviationweather.gov/data/cache/tafs.cache.csv.gz';
+  static const Duration cacheDuration = Duration(
+    minutes: 5,
+  ); // Keep for backwards compatibility
 
   final _logger = Logger(
     level: Level.warning, // Only log warnings and errors in production
@@ -21,8 +25,10 @@ class WeatherService {
 
   Map<String, String> _metarCache = {};
   Map<String, String> _tafCache = {};
-  final Map<String, DateTime> _metarTimestamps = {}; // Track when each METAR was fetched
-  final Map<String, DateTime> _tafTimestamps = {}; // Track when each TAF was fetched
+  final Map<String, DateTime> _metarTimestamps =
+      {}; // Track when each METAR was fetched
+  final Map<String, DateTime> _tafTimestamps =
+      {}; // Track when each TAF was fetched
   DateTime? _lastFetch;
   Future<void>? _ongoingFetch;
   bool _isReloading = false; // Prevent multiple simultaneous reloads
@@ -46,7 +52,9 @@ class WeatherService {
         _metarCache = cachedMetars;
         _tafCache = cachedTafs;
         _lastFetch = lastFetch;
-        _logger.d('📦 Loaded ${cachedMetars.length} METARs and ${cachedTafs.length} TAFs from cache');
+        _logger.d(
+          '📦 Loaded ${cachedMetars.length} METARs and ${cachedTafs.length} TAFs from cache',
+        );
 
         if (lastFetch != null) {
           final age = DateTime.now().difference(lastFetch);
@@ -76,13 +84,17 @@ class WeatherService {
       final timeSinceLastFetch = DateTime.now().difference(_lastFetch!);
       // Extended cache time to 30 minutes to reduce network requests
       if (timeSinceLastFetch < const Duration(minutes: 30)) {
-        _logger.d('🕒 Using cached weather data (${timeSinceLastFetch.inMinutes} minutes old)');
+        _logger.d(
+          '🕒 Using cached weather data (${timeSinceLastFetch.inMinutes} minutes old)',
+        );
         return;
       }
     }
 
     // Only fetch if we have no data at all or data is very stale (30+ minutes)
-    _logger.d('🌍 Starting weather fetch (cache age: ${_lastFetch != null ? DateTime.now().difference(_lastFetch!).inMinutes : "unknown"} minutes)...');
+    _logger.d(
+      '🌍 Starting weather fetch (cache age: ${_lastFetch != null ? DateTime.now().difference(_lastFetch!).inMinutes : "unknown"} minutes)...',
+    );
     _ongoingFetch = _fetchAllWeather();
     try {
       await _ongoingFetch;
@@ -114,7 +126,6 @@ class WeatherService {
 
       // Save to persistent cache
       await _saveToPersistentCache();
-
     } catch (e, st) {
       _logger.e('❌ Error fetching global weather', error: e, stackTrace: st);
     }
@@ -137,7 +148,9 @@ class WeatherService {
       final lines = csv.split('\n');
       final map = <String, String>{};
 
-      _logger.d('📊 Parsing ${isMetar ? 'METAR' : 'TAF'} CSV with ${lines.length} lines');
+      _logger.d(
+        '📊 Parsing ${isMetar ? 'METAR' : 'TAF'} CSV with ${lines.length} lines',
+      );
 
       // Skip header lines and find where actual data starts
       int dataStartIndex = 0;
@@ -148,7 +161,9 @@ class WeatherService {
         // Look for lines that start with 4-letter ICAO codes
         if (RegExp(r'^[A-Z]{4}[\s,]').hasMatch(line)) {
           dataStartIndex = i;
-          _logger.d('📍 Found data starting at line $i: ${line.substring(0, math.min(50, line.length))}...');
+          _logger.d(
+            '📍 Found data starting at line $i: ${line.substring(0, math.min(50, line.length))}...',
+          );
           break;
         }
 
@@ -198,7 +213,9 @@ class WeatherService {
       _logger.d('✅ Parsed ${map.length} ${isMetar ? 'METAR' : 'TAF'} entries');
       if (map.isNotEmpty) {
         final firstEntry = map.entries.first;
-        _logger.d('Sample entry: ${firstEntry.key} -> ${firstEntry.value.substring(0, math.min(100, firstEntry.value.length))}...');
+        _logger.d(
+          'Sample entry: ${firstEntry.key} -> ${firstEntry.value.substring(0, math.min(100, firstEntry.value.length))}...',
+        );
       }
 
       return map;
@@ -279,7 +296,9 @@ class WeatherService {
     if (timestamp != null) {
       final age = DateTime.now().difference(timestamp);
       if (age > const Duration(minutes: 15)) {
-        _logger.d('🕒 Weather data for $icaoCode is ${age.inMinutes} minutes old, triggering reload');
+        _logger.d(
+          '🕒 Weather data for $icaoCode is ${age.inMinutes} minutes old, triggering reload',
+        );
         return true;
       }
     } else {
@@ -321,13 +340,15 @@ class WeatherService {
     _logger.d('🔄 Triggering background weather data reload');
 
     // Start background reload
-    _backgroundReload().then((_) {
-      _isReloading = false;
-      _logger.d('✅ Background weather data reload completed');
-    }).catchError((error) {
-      _isReloading = false;
-      _logger.e('❌ Background weather data reload failed: $error');
-    });
+    _backgroundReload()
+        .then((_) {
+          _isReloading = false;
+          _logger.d('✅ Background weather data reload completed');
+        })
+        .catchError((error) {
+          _isReloading = false;
+          _logger.e('❌ Background weather data reload failed: $error');
+        });
   }
 
   /// Background reload of weather data
@@ -343,9 +364,12 @@ class WeatherService {
       for (final icao in _tafCache.keys) {
         _tafTimestamps[icao] = fetchTime;
       }
-
     } catch (e, st) {
-      _logger.e('❌ Error in background weather reload', error: e, stackTrace: st);
+      _logger.e(
+        '❌ Error in background weather reload',
+        error: e,
+        stackTrace: st,
+      );
     }
   }
 
@@ -370,7 +394,7 @@ class WeatherService {
   }
 
   DateTime? get lastFetch => _lastFetch;
-  
+
   /// Get cache statistics
   Map<String, dynamic> getCacheStatistics() {
     return {
@@ -397,7 +421,9 @@ class WeatherService {
 
   /// Fetch weather data ONLY from cached/bulk data - NO individual API requests
   /// This method is optimized to minimize network requests and serve from local memory
-  Future<Map<String, String>> getMetarsForAirports(List<String> icaoCodes) async {
+  Future<Map<String, String>> getMetarsForAirports(
+    List<String> icaoCodes,
+  ) async {
     if (icaoCodes.isEmpty) {
       _logger.d('🚫 No airports provided for weather fetch - skipping');
       return {};
@@ -425,7 +451,9 @@ class WeatherService {
       }
     }
 
-    _logger.d('🌤️ Returning ${results.length}/${icaoCodes.length} METARs from cache');
+    _logger.d(
+      '🌤️ Returning ${results.length}/${icaoCodes.length} METARs from cache',
+    );
     return results;
   }
 
@@ -455,7 +483,9 @@ class WeatherService {
       }
     }
 
-    _logger.d('🌤️ Returning ${results.length}/${icaoCodes.length} TAFs from cache');
+    _logger.d(
+      '🌤️ Returning ${results.length}/${icaoCodes.length} TAFs from cache',
+    );
     return results;
   }
 }

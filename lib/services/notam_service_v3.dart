@@ -11,37 +11,41 @@ class NotamServiceV3 {
 
   final CacheService _cacheService = CacheService();
   static const Duration _cacheExpiry = Duration(hours: 6);
-  
+
   /// Prefetch NOTAMs for multiple airports in parallel
   Future<void> prefetchNotamsForAirports(List<String> icaoCodes) async {
     if (icaoCodes.isEmpty) return;
-    
+
     developer.log('📋 V3: Prefetching NOTAMs for ${icaoCodes.length} airports');
-    
+
     // Process in batches to avoid overwhelming the cache
     const batchSize = 10; // V3 is just mock data, so we can handle more
     for (int i = 0; i < icaoCodes.length; i += batchSize) {
       final batch = icaoCodes.skip(i).take(batchSize).toList();
-      
+
       // Fetch NOTAMs in parallel for this batch
       await Future.wait(
-        batch.map((icao) => getNotamsForAirport(icao, forceRefresh: false)
-          .catchError((e) {
-            developer.log('⚠️ V3: Failed to prefetch NOTAMs for $icao: $e');
-            return <Notam>[];
-          })
+        batch.map(
+          (icao) =>
+              getNotamsForAirport(icao, forceRefresh: false).catchError((e) {
+                developer.log('⚠️ V3: Failed to prefetch NOTAMs for $icao: $e');
+                return <Notam>[];
+              }),
         ),
       );
     }
-    
+
     developer.log('✅ V3: Prefetch complete for ${icaoCodes.length} airports');
   }
-  
+
   /// Mock NOTAM data for demonstration
   /// In a real implementation, this would fetch from ICAO API or other sources
-  Future<List<Notam>> getNotamsForAirport(String icaoCode, {bool forceRefresh = false}) async {
+  Future<List<Notam>> getNotamsForAirport(
+    String icaoCode, {
+    bool forceRefresh = false,
+  }) async {
     developer.log('📋 Fetching NOTAMs for $icaoCode using V3 service');
-    
+
     // Try cache first
     if (!forceRefresh) {
       try {
@@ -54,24 +58,24 @@ class NotamServiceV3 {
         developer.log('⚠️ Cache error: $e');
       }
     }
-    
+
     // Generate realistic NOTAMs for demonstration
     // In production, replace this with actual API calls
     final notams = _generateRealisticNotams(icaoCode);
-    
+
     // Cache the results
     if (notams.isNotEmpty) {
       await _cacheNotams(icaoCode, notams);
     }
-    
+
     return notams;
   }
-  
+
   /// Generate realistic NOTAM data for demonstration
   List<Notam> _generateRealisticNotams(String icaoCode) {
     final now = DateTime.now().toUtc();
     final notams = <Notam>[];
-    
+
     // Common NOTAM scenarios based on airport code
     if (icaoCode == 'KEWR' || icaoCode == 'KJFK' || icaoCode == 'KLGA') {
       // New York area airports - common NOTAMs
@@ -84,7 +88,8 @@ class NotamServiceV3 {
           effectiveFrom: now.subtract(const Duration(days: 2)),
           effectiveUntil: now.add(const Duration(days: 5)),
           schedule: 'DLY 0600-1400',
-          text: 'A2156/24 NOTAMN\nQ) ZNY/QMXLC/IV/NBO/A/000/999/4038N07347W005\nA) $icaoCode\nB) 2401151200\nC) 2401252359\nE) TWY A BTN TWY B AND TWY C CLSD',
+          text:
+              'A2156/24 NOTAMN\nQ) ZNY/QMXLC/IV/NBO/A/000/999/4038N07347W005\nA) $icaoCode\nB) 2401151200\nC) 2401252359\nE) TWY A BTN TWY B AND TWY C CLSD',
           decodedText: 'Taxiway A between Taxiway B and Taxiway C closed',
           purpose: 'NBO',
           scope: 'A',
@@ -113,14 +118,16 @@ class NotamServiceV3 {
           effectiveFrom: now.subtract(const Duration(days: 1)),
           effectiveUntil: now.add(const Duration(days: 14)),
           schedule: 'MON-FRI 1300-2100',
-          text: 'A2198/24 NOTAMN\nE) CRANE ERECTED 1500FT SE OF RWY 04R THR, 180FT AGL/223FT MSL, LGTD',
-          decodedText: 'Crane erected 1500 feet southeast of Runway 04R threshold, 180 feet above ground level/223 feet mean sea level, lighted',
+          text:
+              'A2198/24 NOTAMN\nE) CRANE ERECTED 1500FT SE OF RWY 04R THR, 180FT AGL/223FT MSL, LGTD',
+          decodedText:
+              'Crane erected 1500 feet southeast of Runway 04R threshold, 180 feet above ground level/223 feet mean sea level, lighted',
           fetchedAt: now,
           category: NotamCategory.obstacle,
         ),
       ]);
     }
-    
+
     // Add NOTAMs for other major airports
     if (icaoCode == 'KORD' || icaoCode == 'KATL' || icaoCode == 'KLAX') {
       // Major US airports might have operational NOTAMs
@@ -140,7 +147,7 @@ class NotamServiceV3 {
         ),
       );
     }
-    
+
     // Add NOTAMs for some European airports
     if (icaoCode == 'EGLL' || icaoCode == 'LFPG' || icaoCode == 'EDDF') {
       notams.add(
@@ -159,42 +166,46 @@ class NotamServiceV3 {
         ),
       );
     }
-    
+
     // Small airfields like LZDV typically don't have NOTAMs
     // Return empty list for most airports
-    
+
     // Sort by importance and date
     notams.sort((a, b) {
-      final importanceCompare = b.importance.index.compareTo(a.importance.index);
+      final importanceCompare = b.importance.index.compareTo(
+        a.importance.index,
+      );
       if (importanceCompare != 0) return importanceCompare;
       return b.effectiveFrom.compareTo(a.effectiveFrom);
     });
-    
+
     return notams;
   }
-  
+
   bool _isCacheValid(List<Notam> notams) {
     if (notams.isEmpty) return false;
-    
+
     final oldestFetch = notams
         .map((n) => n.fetchedAt)
         .reduce((a, b) => a.isBefore(b) ? a : b);
-    
+
     return DateTime.now().difference(oldestFetch) < _cacheExpiry;
   }
-  
+
   Future<List<Notam>> _getCachedNotams(String icaoCode) async {
     final cacheKey = 'notams_$icaoCode';
     developer.log('📋 Checking cache for key: $cacheKey');
     final cachedData = await _cacheService.getCachedData(cacheKey);
-    
+
     if (cachedData != null) {
       try {
         final List<dynamic> jsonList = json.decode(cachedData);
         final notams = jsonList.map((json) {
           // Ensure the JSON data is properly typed
-          final Map<String, dynamic> notamJson = Map<String, dynamic>.from(json);
-          
+          final Map<String, dynamic> notamJson = Map<String, dynamic>.from(
+            json,
+          );
+
           // Clean up any corrupted NOTAM IDs
           if (notamJson['notamId'] != null) {
             String notamId = notamJson['notamId'].toString();
@@ -204,14 +215,16 @@ class NotamServiceV3 {
             notamId = notamId.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
             notamJson['notamId'] = notamId.trim();
           }
-          
+
           return Notam.fromJson(notamJson);
         }).toList();
-        
+
         developer.log('📋 Found ${notams.length} cached NOTAMs for $icaoCode');
         // Log first NOTAM ID to debug
         if (notams.isNotEmpty) {
-          developer.log('📋 First cached NOTAM ID: ${notams.first.notamId} for ${notams.first.icaoCode}');
+          developer.log(
+            '📋 First cached NOTAM ID: ${notams.first.notamId} for ${notams.first.icaoCode}',
+          );
         }
         return notams;
       } catch (e) {
@@ -221,22 +234,26 @@ class NotamServiceV3 {
         return [];
       }
     }
-    
+
     developer.log('📋 No cached NOTAMs found for $icaoCode');
     return [];
   }
-  
+
   Future<void> _cacheNotams(String icaoCode, List<Notam> notams) async {
     final cacheKey = 'notams_$icaoCode';
-    developer.log('📋 Caching ${notams.length} NOTAMs for $icaoCode with key: $cacheKey');
+    developer.log(
+      '📋 Caching ${notams.length} NOTAMs for $icaoCode with key: $cacheKey',
+    );
     if (notams.isNotEmpty) {
-      developer.log('📋 First NOTAM to cache: ${notams.first.notamId} for ${notams.first.icaoCode}');
+      developer.log(
+        '📋 First NOTAM to cache: ${notams.first.notamId} for ${notams.first.icaoCode}',
+      );
     }
-    
+
     // Clean up NOTAM data before caching to prevent corruption
     final cleanedNotams = notams.map((notam) {
       final json = notam.toJson();
-      
+
       // Ensure NOTAM ID is clean
       if (json['notamId'] != null) {
         String notamId = json['notamId'].toString();
@@ -246,10 +263,10 @@ class NotamServiceV3 {
         notamId = notamId.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
         json['notamId'] = notamId.trim();
       }
-      
+
       return json;
     }).toList();
-    
+
     final jsonData = json.encode(cleanedNotams);
     await _cacheService.cacheData(cacheKey, jsonData);
   }

@@ -17,7 +17,8 @@ class AltitudeCalibrationWidget extends StatefulWidget {
   });
 
   @override
-  State<AltitudeCalibrationWidget> createState() => _AltitudeCalibrationWidgetState();
+  State<AltitudeCalibrationWidget> createState() =>
+      _AltitudeCalibrationWidgetState();
 }
 
 class _AltitudeCalibrationWidgetState extends State<AltitudeCalibrationWidget> {
@@ -64,7 +65,9 @@ class _AltitudeCalibrationWidgetState extends State<AltitudeCalibrationWidget> {
     }
 
     if (_currentPressure == null) {
-      _showError('No pressure data available. Please wait for sensor readings.');
+      _showError(
+        'No pressure data available. Please wait for sensor readings.',
+      );
       return;
     }
 
@@ -82,8 +85,9 @@ class _AltitudeCalibrationWidgetState extends State<AltitudeCalibrationWidget> {
 
       widget.onCalibrationChanged?.call(qnh);
 
-      _showSuccess('Altimeter calibrated to ${groundAlt.toStringAsFixed(1)}m\nQNH set to ${qnh.toStringAsFixed(2)} hPa');
-
+      _showSuccess(
+        'Altimeter calibrated to ${groundAlt.toStringAsFixed(1)}m\nQNH set to ${qnh.toStringAsFixed(2)} hPa',
+      );
     } catch (e) {
       _showError('Calibration failed: $e');
     } finally {
@@ -93,7 +97,10 @@ class _AltitudeCalibrationWidgetState extends State<AltitudeCalibrationWidget> {
     }
   }
 
-  double _calculateQNHForKnownAltitude(double currentPressure, double knownAltitude) {
+  double _calculateQNHForKnownAltitude(
+    double currentPressure,
+    double knownAltitude,
+  ) {
     // Using the inverse barometric formula to calculate sea level pressure
     // P0 = P * ((T0 - L*h)/T0)^(-g*M/(R*L))
     const double temperatureLapseRate = 0.0065; // K/m
@@ -102,8 +109,11 @@ class _AltitudeCalibrationWidgetState extends State<AltitudeCalibrationWidget> {
     const double molarMass = 0.0289644; // kg/mol
     const double gravity = 9.80665; // m/s²
 
-    final exponent = -gravity * molarMass / (gasConstant * temperatureLapseRate);
-    final tempRatio = (temperatureSeaLevel - temperatureLapseRate * knownAltitude) / temperatureSeaLevel;
+    final exponent =
+        -gravity * molarMass / (gasConstant * temperatureLapseRate);
+    final tempRatio =
+        (temperatureSeaLevel - temperatureLapseRate * knownAltitude) /
+        temperatureSeaLevel;
     final qnh = currentPressure * math.pow(tempRatio, exponent);
 
     return qnh;
@@ -173,7 +183,9 @@ class _AltitudeCalibrationWidgetState extends State<AltitudeCalibrationWidget> {
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8.0),
                 border: Border.all(
-                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.2),
                 ),
               ),
               child: Column(
@@ -225,9 +237,9 @@ class _AltitudeCalibrationWidgetState extends State<AltitudeCalibrationWidget> {
             // Ground Level Calibration
             Text(
               'Calibrate to Known Ground Altitude',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
 
@@ -236,9 +248,14 @@ class _AltitudeCalibrationWidgetState extends State<AltitudeCalibrationWidget> {
                 Expanded(
                   child: TextField(
                     controller: _groundAltController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                      signed: true,
+                    ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^-?\d+\.?\d{0,1}')),
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^-?\d+\.?\d{0,1}'),
+                      ),
                     ],
                     decoration: const InputDecoration(
                       labelText: 'Known Ground Altitude',
@@ -291,7 +308,9 @@ class _AltitudeCalibrationWidgetState extends State<AltitudeCalibrationWidget> {
             Container(
               padding: const EdgeInsets.all(8.0),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                color: Theme.of(
+                  context,
+                ).colorScheme.primaryContainer.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(6.0),
               ),
               child: Column(
@@ -308,10 +327,11 @@ class _AltitudeCalibrationWidgetState extends State<AltitudeCalibrationWidget> {
                       Expanded(
                         child: Text(
                           'Calibration Tips:',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
                         ),
                       ),
                     ],
@@ -322,7 +342,9 @@ class _AltitudeCalibrationWidgetState extends State<AltitudeCalibrationWidget> {
                     '• Calibrate when stationary on the ground\n'
                     '• Check local weather for current QNH setting',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.8),
                     ),
                   ),
                 ],

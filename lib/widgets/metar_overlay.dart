@@ -29,23 +29,23 @@ class MetarOverlay extends StatelessWidget {
     final bounds = mapController.camera.visibleBounds;
     // Add padding to bounds
     final paddedBounds = LatLngBounds(
-      LatLng(
-        bounds.southWest.latitude - 0.1,
-        bounds.southWest.longitude - 0.1,
-      ),
-      LatLng(
-        bounds.northEast.latitude + 0.1,
-        bounds.northEast.longitude + 0.1,
-      ),
+      LatLng(bounds.southWest.latitude - 0.1, bounds.southWest.longitude - 0.1),
+      LatLng(bounds.northEast.latitude + 0.1, bounds.northEast.longitude + 0.1),
     );
 
     final visibleAirportsWithMetar = airports
-        .where((airport) => airport.rawMetar != null && paddedBounds.contains(airport.position))
+        .where(
+          (airport) =>
+              airport.rawMetar != null &&
+              paddedBounds.contains(airport.position),
+        )
         .toList();
 
     return MarkerLayer(
       markers: [
-        ...visibleAirportsWithMetar.map((airport) => _buildMetarMarker(airport)),
+        ...visibleAirportsWithMetar.map(
+          (airport) => _buildMetarMarker(airport),
+        ),
       ],
     );
   }
@@ -82,7 +82,10 @@ class MetarOverlay extends StatelessWidget {
             // Wind arrow
             if (windData != null)
               Transform.rotate(
-                angle: (windData.direction - 90) * math.pi / 180, // Rotate to point in wind direction
+                angle:
+                    (windData.direction - 90) *
+                    math.pi /
+                    180, // Rotate to point in wind direction
                 child: CustomPaint(
                   size: const Size(50, 50),
                   painter: WindArrowPainter(
@@ -94,9 +97,13 @@ class MetarOverlay extends StatelessWidget {
             // Wind speed text - positioned below the weather indicator
             if (windData != null)
               Positioned(
-                top: 54, // Position below the 24px circle (starts at 28px, ends at 52px)
+                top:
+                    54, // Position below the 24px circle (starts at 28px, ends at 52px)
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 3,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(3),
@@ -137,23 +144,35 @@ class MetarOverlay extends StatelessWidget {
     if (metar.contains('TS')) return Icons.flash_on; // Thunderstorm
     if (metar.contains('SN')) return Icons.ac_unit; // Snow
     if (metar.contains('RA')) return Icons.grain; // Rain
-    if (metar.contains('FG') || metar.contains('BR')) return Icons.cloud; // Fog/Mist
-    if (metar.contains('OVC') || metar.contains('BKN')) return Icons.cloud; // Overcast/Broken
-    if (metar.contains('SCT') || metar.contains('FEW')) return Icons.wb_cloudy; // Scattered/Few
+    if (metar.contains('FG') || metar.contains('BR')) {
+      return Icons.cloud; // Fog/Mist
+    }
+    if (metar.contains('OVC') || metar.contains('BKN')) {
+      return Icons.cloud; // Overcast/Broken
+    }
+    if (metar.contains('SCT') || metar.contains('FEW')) {
+      return Icons.wb_cloudy; // Scattered/Few
+    }
     return Icons.wb_sunny; // Clear
   }
 
   WindData? _parseWindFromMetar(String metar) {
     // Parse wind from METAR string (e.g., "36010KT" or "36010G20KT")
-    final windMatch = RegExp(r'\b(\d{3}|VRB)(\d{2,3})(G(\d{2,3}))?KT\b').firstMatch(metar);
+    final windMatch = RegExp(
+      r'\b(\d{3}|VRB)(\d{2,3})(G(\d{2,3}))?KT\b',
+    ).firstMatch(metar);
     if (windMatch == null) return null;
 
     final directionStr = windMatch.group(1);
-    if (directionStr == 'VRB') return null; // Skip variable wind for arrow display
+    if (directionStr == 'VRB') {
+      return null; // Skip variable wind for arrow display
+    }
 
     final direction = int.tryParse(directionStr!);
     final speed = int.tryParse(windMatch.group(2)!);
-    final gust = windMatch.group(4) != null ? int.tryParse(windMatch.group(4)!) : null;
+    final gust = windMatch.group(4) != null
+        ? int.tryParse(windMatch.group(4)!)
+        : null;
 
     if (direction == null || speed == null) return null;
 
@@ -220,11 +239,25 @@ class WindArrowPainter extends CustomPainter {
         ..style = PaintingStyle.stroke;
 
       // Draw additional barbs for gust speed
-      _drawWindBarbs(canvas, center, arrowEnd, gustSpeed!, gustPaint, isGust: true);
+      _drawWindBarbs(
+        canvas,
+        center,
+        arrowEnd,
+        gustSpeed!,
+        gustPaint,
+        isGust: true,
+      );
     }
   }
 
-  void _drawWindBarbs(Canvas canvas, Offset center, Offset arrowEnd, int speed, Paint paint, {bool isGust = false}) {
+  void _drawWindBarbs(
+    Canvas canvas,
+    Offset center,
+    Offset arrowEnd,
+    int speed,
+    Paint paint, {
+    bool isGust = false,
+  }) {
     // Wind barbs: full barb = 10 knots, half barb = 5 knots, pennant = 50 knots
     final barbLength = isGust ? 6.0 : 8.0;
     final barbAngle = math.pi / 3; // 60 degrees

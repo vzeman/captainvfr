@@ -19,8 +19,6 @@ class AirportMarker extends StatelessWidget {
     this.isSelected = false,
     this.mapZoom = 10,
   });
-  
-
 
   @override
   Widget build(BuildContext context) {
@@ -28,16 +26,16 @@ class AirportMarker extends StatelessWidget {
     final color = _getAirportColor(airport.type);
     final borderColor = isSelected ? Colors.amber : color;
     final borderWidth = isSelected ? 3.0 : 2.0;
-    
+
     // Removed debug prints for performance
-    
+
     // The visual size of the marker based on zoom
     // Use the size parameter which is already adjusted for zoom
     final visualSize = size;
-    
+
     // Weather indicator dot size
     final weatherDotSize = visualSize * 0.3;
-    
+
     return GestureDetector(
       onTap: () {
         onTap?.call();
@@ -55,14 +53,11 @@ class AirportMarker extends StatelessWidget {
                 width: visualSize,
                 height: visualSize,
                 decoration: BoxDecoration(
-                  color: isSelected 
-                      ? Colors.amber.withAlpha(51) 
+                  color: isSelected
+                      ? Colors.amber.withAlpha(51)
                       : Colors.white.withAlpha(230),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: borderColor,
-                    width: borderWidth,
-                  ),
+                  border: Border.all(color: borderColor, width: borderWidth),
                   boxShadow: [
                     BoxShadow(
                       color: const Color(0x33000000),
@@ -71,31 +66,25 @@ class AirportMarker extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Icon(
-                  icon,
-                  size: visualSize * 0.6,
-                  color: color,
-                ),
+                child: Icon(icon, size: visualSize * 0.6, color: color),
               ),
             ),
-            
+
             // Weather indicator dot (top-right corner)
-            if (airport.hasWeatherData) Positioned(
-              right: 0,
-              top: 0,
-              child: Container(
-                width: weatherDotSize,
-                height: weatherDotSize,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.9),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white,
-                    width: 1.5,
+            if (airport.hasWeatherData)
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  width: weatherDotSize,
+                  height: weatherDotSize,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.9),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.5),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -137,7 +126,7 @@ class AirportMarker extends StatelessWidget {
           break;
       }
     }
-    
+
     // Fall back to airport type if no weather data
     switch (type) {
       case 'large_airport':
@@ -176,31 +165,28 @@ class AirportMarkersLayer extends StatelessWidget {
   Widget build(BuildContext context) {
     // Base marker size based on zoom
     final baseMarkerSize = mapZoom >= 12 ? 40.0 : 28.0;
-    
-    final markers = airports
-        .map(
-          (airport) {
-            // Small airports get 25% smaller markers (75% of base size)
-            final airportMarkerSize = airport.type == 'small_airport' 
-                ? baseMarkerSize * 0.75 
-                : baseMarkerSize;
-            
-            return Marker(
-              width: airportMarkerSize,
-              height: airportMarkerSize,
-              point: airport.position,
-              child: AirportMarker(
-                airport: airport,
-                onTap: onAirportTap != null ? () => onAirportTap!(airport) : null,
-                size: airportMarkerSize,
-                showLabel: showLabels,
-                isSelected: false, // Default to false, can be set based on selection state
-                mapZoom: mapZoom,
-              ),
-            );
-          },
-        )
-        .toList();
+
+    final markers = airports.map((airport) {
+      // Small airports get 25% smaller markers (75% of base size)
+      final airportMarkerSize = airport.type == 'small_airport'
+          ? baseMarkerSize * 0.75
+          : baseMarkerSize;
+
+      return Marker(
+        width: airportMarkerSize,
+        height: airportMarkerSize,
+        point: airport.position,
+        child: AirportMarker(
+          airport: airport,
+          onTap: onAirportTap != null ? () => onAirportTap!(airport) : null,
+          size: airportMarkerSize,
+          showLabel: showLabels,
+          isSelected:
+              false, // Default to false, can be set based on selection state
+          mapZoom: mapZoom,
+        ),
+      );
+    }).toList();
 
     return MarkerLayer(markers: markers);
   }

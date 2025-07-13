@@ -11,7 +11,8 @@ class ChecklistSettingsScreen extends StatefulWidget {
   const ChecklistSettingsScreen({super.key});
 
   @override
-  State<ChecklistSettingsScreen> createState() => _ChecklistSettingsScreenState();
+  State<ChecklistSettingsScreen> createState() =>
+      _ChecklistSettingsScreenState();
 }
 
 class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
@@ -55,8 +56,12 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
                 builder: (context, checklistSvc, aircraftSvc, child) {
                   final query = _searchController.text.toLowerCase();
                   final lists = checklistSvc.checklists.where((c) {
-                    final m = aircraftSvc.manufacturers.firstWhere((m) => m.id == c.manufacturerId);
-                    final mdl = aircraftSvc.models.firstWhere((md) => md.id == c.modelId);
+                    final m = aircraftSvc.manufacturers.firstWhere(
+                      (m) => m.id == c.manufacturerId,
+                    );
+                    final mdl = aircraftSvc.models.firstWhere(
+                      (md) => md.id == c.modelId,
+                    );
                     return c.name.toLowerCase().contains(query) ||
                         m.name.toLowerCase().contains(query) ||
                         mdl.name.toLowerCase().contains(query);
@@ -68,8 +73,12 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
                     itemCount: lists.length,
                     itemBuilder: (context, index) {
                       final c = lists[index];
-                      final mfr = aircraftSvc.manufacturers.firstWhere((m) => m.id == c.manufacturerId);
-                      final mdl = aircraftSvc.models.firstWhere((md) => md.id == c.modelId);
+                      final mfr = aircraftSvc.manufacturers.firstWhere(
+                        (m) => m.id == c.manufacturerId,
+                      );
+                      final mdl = aircraftSvc.models.firstWhere(
+                        (md) => md.id == c.modelId,
+                      );
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
@@ -95,7 +104,10 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
                                 onPressed: () => _openForm(checklist: c),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
                                 tooltip: 'Delete',
                                 onPressed: () => _confirmDelete(c.id),
                               ),
@@ -128,10 +140,16 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
         title: const Text('Delete Checklist'),
         content: const Text('Are you sure you want to delete this checklist?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () {
-              Provider.of<ChecklistService>(context, listen: false).deleteChecklist(id);
+              Provider.of<ChecklistService>(
+                context,
+                listen: false,
+              ).deleteChecklist(id);
               Navigator.of(ctx).pop();
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),

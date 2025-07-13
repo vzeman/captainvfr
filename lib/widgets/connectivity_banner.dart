@@ -4,11 +4,8 @@ import '../services/connectivity_service.dart';
 
 class ConnectivityBanner extends StatefulWidget {
   final Widget child;
-  
-  const ConnectivityBanner({
-    super.key,
-    required this.child,
-  });
+
+  const ConnectivityBanner({super.key, required this.child});
 
   @override
   State<ConnectivityBanner> createState() => _ConnectivityBannerState();
@@ -21,14 +18,16 @@ class _ConnectivityBannerState extends State<ConnectivityBanner> {
   Widget build(BuildContext context) {
     // Calculate responsive font size based on screen width
     final screenWidth = MediaQuery.of(context).size.width;
-    final fontSize = screenWidth < 400 ? 12.0 : (screenWidth < 600 ? 13.0 : 14.0);
+    final fontSize = screenWidth < 400
+        ? 12.0
+        : (screenWidth < 600 ? 13.0 : 14.0);
     final iconSize = screenWidth < 400 ? 18.0 : 20.0;
-    
+
     return Consumer<ConnectivityService>(
       builder: (context, connectivityService, _) {
         final hasInternet = connectivityService.hasInternetConnection;
         final isChecking = connectivityService.isCheckingConnection;
-        
+
         // Reset dismissed state when internet comes back
         if (hasInternet && _isBannerDismissed) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -39,7 +38,7 @@ class _ConnectivityBannerState extends State<ConnectivityBanner> {
             }
           });
         }
-        
+
         return Stack(
           children: [
             // Main content fills the entire area
@@ -51,7 +50,9 @@ class _ConnectivityBannerState extends State<ConnectivityBanner> {
               bottom: 0,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
-                height: !hasInternet && !isChecking && !_isBannerDismissed ? null : 0,
+                height: !hasInternet && !isChecking && !_isBannerDismissed
+                    ? null
+                    : 0,
                 child: Material(
                   color: Colors.red.shade700,
                   elevation: 8,

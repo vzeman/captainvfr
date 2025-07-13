@@ -21,8 +21,9 @@ class Notam {
   final LatLng? coordinates; // Location coordinates if applicable
   final double? radius; // Radius in NM if applicable
   final DateTime fetchedAt; // When this NOTAM was fetched
-  final String? category; // Category for grouping (runway, taxiway, navaid, etc.)
-  
+  final String?
+  category; // Category for grouping (runway, taxiway, navaid, etc.)
+
   // Importance level based on purpose/scope
   NotamImportance get importance {
     if (purpose?.contains('M') == true) return NotamImportance.critical;
@@ -30,7 +31,7 @@ class Notam {
     if (traffic == 'IV') return NotamImportance.medium;
     return NotamImportance.low;
   }
-  
+
   // Check if NOTAM is currently active
   bool get isActive {
     final now = DateTime.now().toUtc();
@@ -38,18 +39,18 @@ class Notam {
     if (effectiveUntil != null && now.isAfter(effectiveUntil!)) return false;
     return true;
   }
-  
+
   // Check if NOTAM is expired
   bool get isExpired {
     if (effectiveUntil == null) return false;
     return DateTime.now().toUtc().isAfter(effectiveUntil!);
   }
-  
+
   // Check if NOTAM is future
   bool get isFuture {
     return DateTime.now().toUtc().isBefore(effectiveFrom);
   }
-  
+
   // Get status string
   String get status {
     if (isExpired) return 'Expired';
@@ -92,8 +93,8 @@ class Notam {
       year: json['year'],
       type: json['type'],
       effectiveFrom: DateTime.parse(json['effectiveFrom']),
-      effectiveUntil: json['effectiveUntil'] != null 
-          ? DateTime.parse(json['effectiveUntil']) 
+      effectiveUntil: json['effectiveUntil'] != null
+          ? DateTime.parse(json['effectiveUntil'])
           : null,
       schedule: json['schedule'] ?? '',
       text: json['text'] ?? '',
@@ -103,7 +104,7 @@ class Notam {
       traffic: json['traffic'],
       lowerLimit: json['lowerLimit'],
       upperLimit: json['upperLimit'],
-      coordinates: json['coordinates'] != null 
+      coordinates: json['coordinates'] != null
           ? LatLng(
               json['coordinates']['latitude'],
               json['coordinates']['longitude'],
@@ -134,7 +135,7 @@ class Notam {
       'traffic': traffic,
       'lowerLimit': lowerLimit,
       'upperLimit': upperLimit,
-      'coordinates': coordinates != null 
+      'coordinates': coordinates != null
           ? {
               'latitude': coordinates!.latitude,
               'longitude': coordinates!.longitude,
@@ -149,9 +150,9 @@ class Notam {
 
 enum NotamImportance {
   critical, // Safety critical (mandatory)
-  high,     // Important operational
-  medium,   // Standard operational
-  low,      // Informational
+  high, // Important operational
+  medium, // Standard operational
+  low, // Informational
 }
 
 // Helper to categorize NOTAMs
@@ -164,29 +165,34 @@ class NotamCategory {
   static const String obstacle = 'Obstacle';
   static const String services = 'Services';
   static const String other = 'Other';
-  
+
   static String categorizeFromText(String text) {
     final upperText = text.toUpperCase();
-    
+
     if (upperText.contains('RWY') || upperText.contains('RUNWAY')) {
       return runway;
     } else if (upperText.contains('TWY') || upperText.contains('TAXIWAY')) {
       return taxiway;
     } else if (upperText.contains('APRON') || upperText.contains('STAND')) {
       return apron;
-    } else if (upperText.contains('VOR') || upperText.contains('ILS') || 
-               upperText.contains('NDB') || upperText.contains('DME')) {
+    } else if (upperText.contains('VOR') ||
+        upperText.contains('ILS') ||
+        upperText.contains('NDB') ||
+        upperText.contains('DME')) {
       return navaid;
-    } else if (upperText.contains('AIRSPACE') || upperText.contains('TMA') || 
-               upperText.contains('CTR') || upperText.contains('ATZ')) {
+    } else if (upperText.contains('AIRSPACE') ||
+        upperText.contains('TMA') ||
+        upperText.contains('CTR') ||
+        upperText.contains('ATZ')) {
       return airspace;
     } else if (upperText.contains('OBST') || upperText.contains('CRANE')) {
       return obstacle;
-    } else if (upperText.contains('FUEL') || upperText.contains('CUSTOMS') || 
-               upperText.contains('IMMIGRATION')) {
+    } else if (upperText.contains('FUEL') ||
+        upperText.contains('CUSTOMS') ||
+        upperText.contains('IMMIGRATION')) {
       return services;
     }
-    
+
     return other;
   }
 }

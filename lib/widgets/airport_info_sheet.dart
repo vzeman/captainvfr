@@ -36,7 +36,8 @@ class AirportInfoSheet extends StatefulWidget {
   State<AirportInfoSheet> createState() => _AirportInfoSheetState();
 }
 
-class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerProviderStateMixin {
+class _AirportInfoSheetState extends State<AirportInfoSheet>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoadingWeather = false;
   bool _isLoadingRunways = false;
@@ -66,7 +67,10 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
     super.didChangeDependencies();
     // Get services from Provider and initialize data fetcher
     final runwayService = Provider.of<RunwayService>(context, listen: false);
-    final frequencyService = Provider.of<FrequencyService>(context, listen: false);
+    final frequencyService = Provider.of<FrequencyService>(
+      context,
+      listen: false,
+    );
 
     _dataFetcher = AirportDataFetcher(
       weatherService: widget.weatherService,
@@ -205,7 +209,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       key: kAirportInfoSheetKey,
       height: MediaQuery.of(context).size.height * 0.8,
@@ -220,7 +224,9 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withAlpha(13), // 5% opacity
@@ -272,7 +278,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet> with SingleTickerPr
               Tab(text: 'NOTAMs', icon: Icon(Icons.description)),
             ],
           ),
-          
+
           // Tab Content
           Expanded(
             child: TabBarView(

@@ -43,7 +43,7 @@ class AircraftDetailScreen extends StatelessWidget {
               builder: (context, service, _) {
                 final items = service.checklists.where((c) {
                   return c.manufacturerId == aircraft.manufacturerId &&
-                         c.modelId == aircraft.modelId;
+                      c.modelId == aircraft.modelId;
                 }).toList();
                 if (items.isEmpty) {
                   return const Center(
@@ -58,7 +58,9 @@ class AircraftDetailScreen extends StatelessWidget {
                       margin: const EdgeInsets.all(8),
                       child: ListTile(
                         title: Text(checklist.name),
-                        subtitle: checklist.description != null ? Text(checklist.description!) : null,
+                        subtitle: checklist.description != null
+                            ? Text(checklist.description!)
+                            : null,
                         trailing: IconButton(
                           icon: const Icon(Icons.play_arrow),
                           onPressed: () {
@@ -83,7 +85,7 @@ class AircraftDetailScreen extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildInfoTab(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -98,14 +100,14 @@ class AircraftDetailScreen extends StatelessWidget {
                 children: [
                   const Text(
                     'Aircraft Information',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
                   _buildInfoRow('Registration', aircraft.registration ?? 'N/A'),
-                  _buildInfoRow('Call Sign', aircraft.callSign ?? aircraft.name),
+                  _buildInfoRow(
+                    'Call Sign',
+                    aircraft.callSign ?? aircraft.name,
+                  ),
                   _buildInfoRow('Manufacturer', aircraft.manufacturer ?? 'N/A'),
                   _buildInfoRow('Model', aircraft.model ?? 'N/A'),
                   _buildInfoRow('Category', aircraft.category?.name ?? 'N/A'),
@@ -122,17 +124,29 @@ class AircraftDetailScreen extends StatelessWidget {
                 children: [
                   const Text(
                     'Performance',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
-                  _buildInfoRow('Cruise Speed', '${aircraft.cruiseSpeed} knots'),
-                  _buildInfoRow('Fuel Consumption', '${aircraft.fuelConsumption} gal/hr'),
-                  _buildInfoRow('Maximum Altitude', '${aircraft.maximumAltitude} ft'),
-                  _buildInfoRow('Max Climb Rate', '${aircraft.maximumClimbRate} ft/min'),
-                  _buildInfoRow('Max Descent Rate', '${aircraft.maximumDescentRate} ft/min'),
+                  _buildInfoRow(
+                    'Cruise Speed',
+                    '${aircraft.cruiseSpeed} knots',
+                  ),
+                  _buildInfoRow(
+                    'Fuel Consumption',
+                    '${aircraft.fuelConsumption} gal/hr',
+                  ),
+                  _buildInfoRow(
+                    'Maximum Altitude',
+                    '${aircraft.maximumAltitude} ft',
+                  ),
+                  _buildInfoRow(
+                    'Max Climb Rate',
+                    '${aircraft.maximumClimbRate} ft/min',
+                  ),
+                  _buildInfoRow(
+                    'Max Descent Rate',
+                    '${aircraft.maximumDescentRate} ft/min',
+                  ),
                 ],
               ),
             ),
@@ -146,20 +160,27 @@ class AircraftDetailScreen extends StatelessWidget {
                 children: [
                   const Text(
                     'Weight & Fuel',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
-                  _buildInfoRow('Max Takeoff Weight', '${aircraft.maxTakeoffWeight} lbs'),
-                  _buildInfoRow('Max Landing Weight', '${aircraft.maxLandingWeight} lbs'),
-                  _buildInfoRow('Fuel Capacity', '${aircraft.fuelCapacity} gal'),
+                  _buildInfoRow(
+                    'Max Takeoff Weight',
+                    '${aircraft.maxTakeoffWeight} lbs',
+                  ),
+                  _buildInfoRow(
+                    'Max Landing Weight',
+                    '${aircraft.maxLandingWeight} lbs',
+                  ),
+                  _buildInfoRow(
+                    'Fuel Capacity',
+                    '${aircraft.fuelCapacity} gal',
+                  ),
                 ],
               ),
             ),
           ),
-          if (aircraft.description != null && aircraft.description!.isNotEmpty) ...[
+          if (aircraft.description != null &&
+              aircraft.description!.isNotEmpty) ...[
             const SizedBox(height: 16),
             Card(
               child: Padding(
@@ -185,7 +206,7 @@ class AircraftDetailScreen extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -199,12 +220,7 @@ class AircraftDetailScreen extends StatelessWidget {
               color: Colors.grey,
             ),
           ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
     );

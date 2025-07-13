@@ -24,14 +24,16 @@ class AirspacesOverlay extends StatelessWidget {
     }
 
     return PolygonLayer(
-      polygons: airspaces.map((airspace) => _buildAirspacePolygon(airspace)).toList(),
+      polygons: airspaces
+          .map((airspace) => _buildAirspacePolygon(airspace))
+          .toList(),
     );
   }
 
   Polygon _buildAirspacePolygon(Airspace airspace) {
     final isAtCurrentAltitude = airspace.isAtAltitude(currentAltitude);
     final color = _getAirspaceColor(airspace.type, airspace.icaoClass);
-    
+
     return Polygon(
       points: airspace.geometry,
       color: color.withValues(alpha: isAtCurrentAltitude ? 0.3 : 0.1),
@@ -44,7 +46,7 @@ class AirspacesOverlay extends StatelessWidget {
   Color _getAirspaceColor(String? type, String? icaoClass) {
     // Color coding based on airspace type and class
     final typeName = AirspaceUtils.getAirspaceTypeName(type);
-    
+
     switch (typeName.toUpperCase()) {
       case 'CTR': // Control Zone
         return Colors.red;

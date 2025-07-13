@@ -7,7 +7,8 @@ class ChecklistItemFormDialog extends StatefulWidget {
   const ChecklistItemFormDialog({super.key, this.item});
 
   @override
-  State<ChecklistItemFormDialog> createState() => _ChecklistItemFormDialogState();
+  State<ChecklistItemFormDialog> createState() =>
+      _ChecklistItemFormDialogState();
 }
 
 class _ChecklistItemFormDialogState extends State<ChecklistItemFormDialog> {
@@ -59,7 +60,10 @@ class _ChecklistItemFormDialogState extends State<ChecklistItemFormDialog> {
                 children: [
                   TextFormField(
                     controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Name',
+                      border: OutlineInputBorder(),
+                    ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter item name';
@@ -70,19 +74,22 @@ class _ChecklistItemFormDialogState extends State<ChecklistItemFormDialog> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _descriptionController,
-                    decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Description',
+                      border: OutlineInputBorder(),
+                    ),
                     maxLines: 3,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _targetValueController,
-                    decoration: const InputDecoration(labelText: 'Target Value', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Target Value',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _save,
-                    child: const Text('Save'),
-                  ),
+                  ElevatedButton(onPressed: _save, child: const Text('Save')),
                 ],
               ),
             ),
@@ -98,8 +105,12 @@ class _ChecklistItemFormDialogState extends State<ChecklistItemFormDialog> {
     final newItem = ChecklistItem(
       id: id,
       name: _nameController.text.trim(),
-      description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
-      targetValue: _targetValueController.text.trim().isEmpty ? null : _targetValueController.text.trim(),
+      description: _descriptionController.text.trim().isEmpty
+          ? null
+          : _descriptionController.text.trim(),
+      targetValue: _targetValueController.text.trim().isEmpty
+          ? null
+          : _targetValueController.text.trim(),
     );
     Navigator.of(context).pop(newItem);
   }

@@ -11,13 +11,13 @@ class PermissionException implements Exception {
   final String title;
   final String message;
   final bool isPermanentlyDenied;
-  
+
   PermissionException(
     this.title,
     this.message, {
     this.isPermanentlyDenied = false,
   });
-  
+
   @override
   String toString() => message;
 }
@@ -26,16 +26,16 @@ class MediaService {
   static const String photosDirectory = 'aircraft_photos';
   static const String documentsDirectory = 'aircraft_documents';
   static const String licensePhotosDirectory = 'license_photos';
-  
+
   final ImagePicker _imagePicker = ImagePicker();
   final Uuid _uuid = const Uuid();
-  
+
   // Get app's documents directory
   Future<Directory> _getAppDirectory() async {
     final directory = await getApplicationDocumentsDirectory();
     return directory;
   }
-  
+
   // Get photos directory
   Future<Directory> _getPhotosDirectory() async {
     final appDir = await _getAppDirectory();
@@ -45,7 +45,7 @@ class MediaService {
     }
     return photosDir;
   }
-  
+
   // Get documents directory
   Future<Directory> _getDocumentsDirectory() async {
     final appDir = await _getAppDirectory();
@@ -55,23 +55,25 @@ class MediaService {
     }
     return docsDir;
   }
-  
+
   // Get license photos directory
   Future<Directory> _getLicensePhotosDirectory() async {
     final appDir = await _getAppDirectory();
-    final licensePhotosDir = Directory(path.join(appDir.path, licensePhotosDirectory));
+    final licensePhotosDir = Directory(
+      path.join(appDir.path, licensePhotosDirectory),
+    );
     if (!await licensePhotosDir.exists()) {
       await licensePhotosDir.create(recursive: true);
     }
     return licensePhotosDir;
   }
-  
+
   // Request camera permission
   Future<PermissionStatus> _requestCameraPermission() async {
     final status = await Permission.camera.request();
     return status;
   }
-  
+
   // Request photo library permission
   Future<PermissionStatus> _requestPhotoPermission() async {
     if (Platform.isAndroid) {
@@ -79,7 +81,7 @@ class MediaService {
       if (await Permission.photos.isGranted) {
         return PermissionStatus.granted;
       }
-      
+
       // For Android 13+, request photos permission
       final androidInfo = await _getAndroidInfo();
       if (androidInfo != null && androidInfo.version.sdkInt >= 33) {
@@ -93,7 +95,7 @@ class MediaService {
     }
     return PermissionStatus.granted;
   }
-  
+
   // Get Android device info
   Future<AndroidDeviceInfo?> _getAndroidInfo() async {
     if (!Platform.isAndroid) return null;
@@ -105,9 +107,12 @@ class MediaService {
       return null;
     }
   }
-  
+
   // Check and explain permission denial
-  Future<bool> _handlePermissionDenied(PermissionStatus status, String feature) async {
+  Future<bool> _handlePermissionDenied(
+    PermissionStatus status,
+    String feature,
+  ) async {
     if (status.isDenied) {
       throw PermissionException(
         'Permission denied',
@@ -122,14 +127,14 @@ class MediaService {
     }
     return status.isGranted;
   }
-  
+
   // Pick image from gallery
   Future<String?> pickImageFromGallery() async {
     final status = await _requestPhotoPermission();
     if (!await _handlePermissionDenied(status, 'access photos')) {
       return null;
     }
-    
+
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -137,7 +142,7 @@ class MediaService {
         maxHeight: 1080,
         imageQuality: 85,
       );
-      
+
       if (image != null) {
         return await _saveImageToStorage(image);
       }
@@ -147,14 +152,14 @@ class MediaService {
       rethrow;
     }
   }
-  
+
   // Take photo with camera
   Future<String?> takePhoto() async {
     final status = await _requestCameraPermission();
     if (!await _handlePermissionDenied(status, 'use camera')) {
       return null;
     }
-    
+
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.camera,
@@ -162,7 +167,7 @@ class MediaService {
         maxHeight: 1080,
         imageQuality: 85,
       );
-      
+
       if (image != null) {
         return await _saveImageToStorage(image);
       }
@@ -172,14 +177,14 @@ class MediaService {
       rethrow;
     }
   }
-  
+
   // Save image to app storage
   Future<String> _saveImageToStorage(XFile image) async {
     try {
       final photosDir = await _getPhotosDirectory();
       final fileName = '${_uuid.v4()}${path.extension(image.path)}';
       final filePath = path.join(photosDir.path, fileName);
-      
+
       await image.saveTo(filePath);
       return filePath;
     } catch (e) {
@@ -187,7 +192,7 @@ class MediaService {
       rethrow;
     }
   }
-  
+
   // Delete photo
   Future<void> deletePhoto(String photoPath) async {
     try {
@@ -200,14 +205,14 @@ class MediaService {
       rethrow;
     }
   }
-  
+
   // Delete multiple photos
   Future<void> deletePhotos(List<String> photoPaths) async {
     for (final photoPath in photoPaths) {
       await deletePhoto(photoPath);
     }
   }
-  
+
   // Get file from path
   File? getFile(String filePath) {
     try {
@@ -221,16 +226,15 @@ class MediaService {
       return null;
     }
   }
-  
+
   // Pick document file - REMOVED: file_picker dependency was removed
   // Users can still add images using pickImageFromGallery() method
   Future<String?> pickDocument() async {
     throw UnimplementedError(
-      'Document picking is not available. Use pickImageFromGallery() for image documents.'
+      'Document picking is not available. Use pickImageFromGallery() for image documents.',
     );
   }
-  
-  
+
   // Delete document
   Future<void> deleteDocument(String documentPath) async {
     try {
@@ -243,55 +247,58 @@ class MediaService {
       rethrow;
     }
   }
-  
+
   // Delete multiple documents
   Future<void> deleteDocuments(List<String> documentPaths) async {
     for (final docPath in documentPaths) {
       await deleteDocument(docPath);
     }
   }
-  
+
   // Get file name from path
   String getFileName(String filePath) {
     return path.basename(filePath);
   }
-  
+
   // Get file extension
   String getFileExtension(String filePath) {
     return path.extension(filePath).toLowerCase();
   }
-  
+
   // Check if file is an image
   bool isImage(String filePath) {
     final ext = getFileExtension(filePath);
     return ['.jpg', '.jpeg', '.png', '.gif', '.bmp'].contains(ext);
   }
-  
+
   // Check if file is a document
   bool isDocument(String filePath) {
     final ext = getFileExtension(filePath);
     return ['.pdf', '.doc', '.docx', '.txt'].contains(ext);
   }
-  
+
   // Clean up orphaned files (files not referenced by any aircraft)
   Future<void> cleanupOrphanedFiles(List<String> referencedPaths) async {
     try {
       final photosDir = await _getPhotosDirectory();
       final docsDir = await _getDocumentsDirectory();
-      
+
       // Clean photos directory
       await _cleanupDirectory(photosDir, referencedPaths);
-      
+
       // Clean documents directory
       await _cleanupDirectory(docsDir, referencedPaths);
     } catch (e) {
       // debugPrint('Error cleaning up orphaned files: $e');
     }
   }
-  
-  Future<void> _cleanupDirectory(Directory dir, List<String> referencedPaths) async {
+
+  Future<void> _cleanupDirectory(
+    Directory dir,
+    List<String> referencedPaths,
+  ) async {
     if (!await dir.exists()) return;
-    
+
     final files = dir.listSync();
     for (final file in files) {
       if (file is File && !referencedPaths.contains(file.path)) {
@@ -303,14 +310,14 @@ class MediaService {
       }
     }
   }
-  
+
   // License photo methods
   Future<String?> pickLicenseImageFromGallery() async {
     final status = await _requestPhotoPermission();
     if (!await _handlePermissionDenied(status, 'access photos')) {
       return null;
     }
-    
+
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -318,7 +325,7 @@ class MediaService {
         maxHeight: 1080,
         imageQuality: 85,
       );
-      
+
       if (image != null) {
         return await _saveLicenseImageToStorage(image);
       }
@@ -328,13 +335,13 @@ class MediaService {
       rethrow;
     }
   }
-  
+
   Future<String?> takeLicensePhoto() async {
     final status = await _requestCameraPermission();
     if (!await _handlePermissionDenied(status, 'use camera')) {
       return null;
     }
-    
+
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.camera,
@@ -342,7 +349,7 @@ class MediaService {
         maxHeight: 1080,
         imageQuality: 85,
       );
-      
+
       if (image != null) {
         return await _saveLicenseImageToStorage(image);
       }
@@ -352,13 +359,13 @@ class MediaService {
       rethrow;
     }
   }
-  
+
   Future<String> _saveLicenseImageToStorage(XFile image) async {
     try {
       final licensePhotosDir = await _getLicensePhotosDirectory();
       final fileName = '${_uuid.v4()}${path.extension(image.path)}';
       final filePath = path.join(licensePhotosDir.path, fileName);
-      
+
       await image.saveTo(filePath);
       return filePath;
     } catch (e) {
@@ -366,7 +373,7 @@ class MediaService {
       rethrow;
     }
   }
-  
+
   Future<void> deleteLicensePhoto(String photoPath) async {
     try {
       final file = File(photoPath);

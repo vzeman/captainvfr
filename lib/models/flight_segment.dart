@@ -85,8 +85,10 @@ class FlightSegment extends HiveObject {
       if (i > 0) {
         final prevPoint = segmentPoints[i - 1];
         final distance = _calculateDistance(
-          prevPoint.latitude, prevPoint.longitude,
-          point.latitude, point.longitude,
+          prevPoint.latitude,
+          prevPoint.longitude,
+          point.latitude,
+          point.longitude,
         );
         totalDistance += distance;
       }
@@ -110,14 +112,22 @@ class FlightSegment extends HiveObject {
     );
   }
 
-  static double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  static double _calculateDistance(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
     const double earthRadius = 6371000; // Earth's radius in meters
     final double dLat = _degreesToRadians(lat2 - lat1);
     final double dLon = _degreesToRadians(lon2 - lon1);
 
-    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(_degreesToRadians(lat1)) * math.cos(_degreesToRadians(lat2)) *
-        math.sin(dLon / 2) * math.sin(dLon / 2);
+    final double a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_degreesToRadians(lat1)) *
+            math.cos(_degreesToRadians(lat2)) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
     final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
 
     return earthRadius * c;
@@ -150,7 +160,9 @@ class FlightSegment extends HiveObject {
 
   // Get LatLng coordinates for map display
   List<LatLng> get coordinates {
-    return points.map((point) => LatLng(point.latitude, point.longitude)).toList();
+    return points
+        .map((point) => LatLng(point.latitude, point.longitude))
+        .toList();
   }
 
   // Get start and end LatLng for markers

@@ -50,14 +50,20 @@ class OfflineTileImageProvider extends ImageProvider<OfflineTileImageProvider> {
   }
 
   @override
-  ImageStreamCompleter loadImage(OfflineTileImageProvider key, ImageDecoderCallback decode) {
+  ImageStreamCompleter loadImage(
+    OfflineTileImageProvider key,
+    ImageDecoderCallback decode,
+  ) {
     return MultiFrameImageStreamCompleter(
       codec: _loadAsync(key, decode),
       scale: 1.0,
     );
   }
 
-  Future<ui.Codec> _loadAsync(OfflineTileImageProvider key, ImageDecoderCallback decode) async {
+  Future<ui.Codec> _loadAsync(
+    OfflineTileImageProvider key,
+    ImageDecoderCallback decode,
+  ) async {
     final Logger logger = Logger();
 
     try {
@@ -79,12 +85,15 @@ class OfflineTileImageProvider extends ImageProvider<OfflineTileImageProvider> {
           .replaceAll('{x}', coordinates.x.toString())
           .replaceAll('{y}', coordinates.y.toString());
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          if (userAgentPackageName != null) 'User-Agent': userAgentPackageName!,
-        },
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse(url),
+            headers: {
+              if (userAgentPackageName != null)
+                'User-Agent': userAgentPackageName!,
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final bytes = response.bodyBytes;
@@ -98,7 +107,9 @@ class OfflineTileImageProvider extends ImageProvider<OfflineTileImageProvider> {
         throw Exception('HTTP ${response.statusCode}');
       }
     } catch (e) {
-      logger.w('⚠️ Failed to load tile ${coordinates.z}/${coordinates.x}/${coordinates.y}: $e');
+      logger.w(
+        '⚠️ Failed to load tile ${coordinates.z}/${coordinates.x}/${coordinates.y}: $e',
+      );
 
       // Return a placeholder tile or rethrow the error
       throw Exception('Failed to load map tile: $e');

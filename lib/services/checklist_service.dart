@@ -26,12 +26,12 @@ class ChecklistService extends ChangeNotifier {
     await _box.delete(id);
     notifyListeners();
   }
-  
+
   /// Get checklists for a specific model
   List<Checklist> getChecklistsForModel(String modelId) {
     return checklists.where((c) => c.modelId == modelId).toList();
   }
-  
+
   /// Get checklists for a specific aircraft (by model ID)
   List<Checklist> getChecklistsForAircraft(String aircraftModelId) {
     return getChecklistsForModel(aircraftModelId);

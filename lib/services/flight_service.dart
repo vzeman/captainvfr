@@ -29,7 +29,7 @@ class FlightService with ChangeNotifier {
   DateTime? _startTime;
   double _totalDistance = 0.0;
   double _averageSpeed = 0.0;
-  
+
   // New comprehensive time tracking variables
   DateTime? _recordingStartedZulu;
   DateTime? _recordingStoppedZulu;
@@ -57,13 +57,12 @@ class FlightService with ChangeNotifier {
   // Services
   final BarometerService? _barometerService;
   final AltitudeService _altitudeService = AltitudeService();
-  
+
   // Altitude tracking
   final List<double> _altitudeHistory = [];
-  
+
   // Callback for when flight path updates
   final Function()? onFlightPathUpdated;
-  
 
   // Selected aircraft (for fuel consumption)
   Aircraft? _selectedAircraft;
@@ -85,15 +84,15 @@ class FlightService with ChangeNotifier {
     final hrs = movingTime.inMilliseconds / 3600000.0;
     return _selectedAircraft!.fuelConsumption * hrs;
   }
-  
+
   // Flight history
   List<Flight> _flights = [];
   List<Flight> get flights => List.unmodifiable(_flights);
-  
+
   // Sensor data streams
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
-  
+
   // Current sensor values
   double _currentXAccel = 0.0;
   double _currentYAccel = 0.0;
@@ -101,16 +100,16 @@ class FlightService with ChangeNotifier {
   double _currentXGyro = 0.0;
   double _currentYGyro = 0.0;
   double _currentZGyro = 0.0;
-  
+
   // Compass subscription
   StreamSubscription<CompassEvent>? _compassSubscription;
-  
+
   // Initialize with required services
-  FlightService({this.onFlightPathUpdated, BarometerService? barometerService}) 
-      : _barometerService = barometerService ?? BarometerService() {
+  FlightService({this.onFlightPathUpdated, BarometerService? barometerService})
+    : _barometerService = barometerService ?? BarometerService() {
     _initializeStorage();
   }
-  
+
   Future<void> _initializeStorage() async {
     await FlightStorageService.init();
     await _loadFlights();
@@ -120,31 +119,40 @@ class FlightService with ChangeNotifier {
   void _startSensors() {
     // Accelerometer with reduced sampling rate
     try {
-      _accelerometerSubscription = accelerometerEventStream(
-        samplingPeriod: const Duration(milliseconds: 100), // 10Hz instead of max
-      ).listen((AccelerometerEvent event) {
-        // Convert from m/s² to g's
-        _currentXAccel = event.x / _gravity;
-        _currentYAccel = event.y / _gravity;
-        _currentZAccel = event.z / _gravity;
-        // Don't call notifyListeners here - too frequent
-      }, onError: (error) {
-        // debugPrint('Accelerometer error: $error');
-      });
+      _accelerometerSubscription =
+          accelerometerEventStream(
+            samplingPeriod: const Duration(
+              milliseconds: 100,
+            ), // 10Hz instead of max
+          ).listen(
+            (AccelerometerEvent event) {
+              // Convert from m/s² to g's
+              _currentXAccel = event.x / _gravity;
+              _currentYAccel = event.y / _gravity;
+              _currentZAccel = event.z / _gravity;
+              // Don't call notifyListeners here - too frequent
+            },
+            onError: (error) {
+              // debugPrint('Accelerometer error: $error');
+            },
+          );
     } catch (e) {
       // debugPrint('Failed to initialize accelerometer: $e');
     }
-    
+
     // Gyroscope with reduced sampling rate
-    _gyroscopeSubscription = gyroscopeEventStream(
-      samplingPeriod: const Duration(milliseconds: 100), // 10Hz instead of max
-    ).listen((GyroscopeEvent event) {
-      _currentXGyro = event.x;
-      _currentYGyro = event.y;
-      _currentZGyro = event.z;
-      // Don't call notifyListeners here - too frequent
-    });
-    
+    _gyroscopeSubscription =
+        gyroscopeEventStream(
+          samplingPeriod: const Duration(
+            milliseconds: 100,
+          ), // 10Hz instead of max
+        ).listen((GyroscopeEvent event) {
+          _currentXGyro = event.x;
+          _currentYGyro = event.y;
+          _currentZGyro = event.z;
+          // Don't call notifyListeners here - too frequent
+        });
+
     // Compass - throttle updates
     DateTime? lastCompassUpdate;
     _compassSubscription = FlutterCompass.events?.listen((CompassEvent event) {
@@ -152,7 +160,7 @@ class FlightService with ChangeNotifier {
         _currentHeading = event.heading;
         // Throttle compass updates to max 2 per second
         final now = DateTime.now();
-        if (lastCompassUpdate == null || 
+        if (lastCompassUpdate == null ||
             now.difference(lastCompassUpdate!).inMilliseconds > 500) {
           lastCompassUpdate = now;
           notifyListeners();
@@ -160,11 +168,11 @@ class FlightService with ChangeNotifier {
       }
     });
   }
-  
+
   Future<void> initialize() async {
     await _loadFlights();
   }
-  
+
   // Load saved flights from storage
   Future<void> _loadFlights() async {
     try {
@@ -174,22 +182,20 @@ class FlightService with ChangeNotifier {
       // debugPrint('Error loading flights: $e');
     }
   }
-  
 
-  
   // Get all flights
   Future<List<Flight>> getFlights() async {
     await _loadFlights(); // Ensure we have the latest data
     return _flights;
   }
-  
+
   // Add a new flight to the history
   Future<void> addFlight(Flight flight) async {
     _flights.add(flight);
     await FlightStorageService.saveFlight(flight);
     notifyListeners();
   }
-  
+
   // Delete a specific flight from the history
   Future<void> deleteFlight(Flight flight) async {
     _flights.remove(flight);
@@ -206,24 +212,24 @@ class FlightService with ChangeNotifier {
     _flights.clear();
     notifyListeners();
   }
-  
+
   // Start tracking flight
   void startTracking() {
     if (_isTracking) return;
     _isTracking = true;
-    
+
     // Enable wakelock to keep screen on during tracking
     WakelockPlus.enable();
-    
+
     // Start sensors only when tracking begins
     _startSensors();
-    
+
     _flightPath.clear();
     _altitudeHistory.clear();
     _startTime = DateTime.now();
     _totalDistance = 0.0;
     _averageSpeed = 0.0;
-    
+
     // Initialize comprehensive time tracking
     _recordingStartedZulu = DateTime.now().toUtc();
     _recordingStoppedZulu = null;
@@ -242,13 +248,13 @@ class FlightService with ChangeNotifier {
     // Start barometer service if available
     _barometerService?.startListening();
     _altitudeService.startTracking();
-    
+
     // Listen to barometer updates
     _barometerSubscription = _barometerService?.onBarometerUpdate.listen((_) {
       _currentBaroAltitude = _barometerService.altitudeMeters;
       notifyListeners();
     });
-    
+
     // Listen to altitude updates
     _altitudeService.altitudeStream.listen((altitude) {
       _altitudeHistory.add(altitude);
@@ -257,7 +263,7 @@ class FlightService with ChangeNotifier {
         _altitudeHistory.removeAt(0);
       }
     });
-    
+
     // Start listening to position updates
     // Configure location settings for background tracking
     late LocationSettings locationSettings;
@@ -265,7 +271,9 @@ class FlightService with ChangeNotifier {
       locationSettings = AndroidSettings(
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 10, // meters - increased to reduce updates
-        intervalDuration: const Duration(seconds: 2), // faster updates but with distance filter
+        intervalDuration: const Duration(
+          seconds: 2,
+        ), // faster updates but with distance filter
         // Enable background location updates
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationText: "Captain VFR is tracking your flight",
@@ -288,12 +296,12 @@ class FlightService with ChangeNotifier {
         distanceFilter: 10, // meters
       );
     }
-    
+
     _positionSubscription = Geolocator.getPositionStream(
       locationSettings: locationSettings,
     ).listen(_onPositionChanged);
   }
-  
+
   void _onPositionChanged(Position position) {
     if (!_isTracking) return;
 
@@ -302,13 +310,13 @@ class FlightService with ChangeNotifier {
       _processPositionUpdate(position);
     });
   }
-  
+
   void _processPositionUpdate(Position position) {
     if (!_isTracking) return;
-    
+
     // Get the best available altitude measurement
     final bestAltitude = _getBestAltitude(position.altitude);
-    
+
     // Calculate heading from GPS movement
     double heading = _currentHeading ?? 0.0;
     if (_flightPath.isNotEmpty) {
@@ -320,7 +328,7 @@ class FlightService with ChangeNotifier {
         position.latitude,
         position.longitude,
       );
-      
+
       // Only update heading if we've moved more than 5 meters
       if (distance > 5.0) {
         final computedHeading = Geolocator.bearingBetween(
@@ -331,7 +339,7 @@ class FlightService with ChangeNotifier {
         );
         // Convert from [-180, 180] to [0, 360]
         heading = computedHeading < 0 ? computedHeading + 360 : computedHeading;
-        
+
         // Always update GPS-based heading if compass is not available
         if (FlutterCompass.events == null || _currentHeading == null) {
           _currentHeading = heading;
@@ -339,19 +347,21 @@ class FlightService with ChangeNotifier {
         }
       }
     }
-    
+
     // Calculate vertical speed in m/s
     double calculatedVerticalSpeed = 0.0;
     if (_flightPath.isNotEmpty) {
       final lastPoint = _flightPath.last;
       final altitudeDiff = bestAltitude - lastPoint.altitude;
-      final timeDiff = DateTime.now().difference(lastPoint.timestamp).inMilliseconds / 1000.0;
-      
+      final timeDiff =
+          DateTime.now().difference(lastPoint.timestamp).inMilliseconds /
+          1000.0;
+
       if (timeDiff > 0) {
         calculatedVerticalSpeed = altitudeDiff / timeDiff; // m/s
       }
     }
-    
+
     // Get smoothed speed to avoid GPS zero jumps
     double smoothedSpeed = _getSmoothedSpeed(position.speed);
 
@@ -362,9 +372,11 @@ class FlightService with ChangeNotifier {
       speed: smoothedSpeed,
       heading: heading,
       accuracy: position.accuracy,
-      verticalAccuracy: 0.0, // position.verticalAccuracy not available in current geolocator
+      verticalAccuracy:
+          0.0, // position.verticalAccuracy not available in current geolocator
       speedAccuracy: position.speedAccuracy,
-      headingAccuracy: 0.0, // position.headingAccuracy not available in current geolocator
+      headingAccuracy:
+          0.0, // position.headingAccuracy not available in current geolocator
       xAcceleration: _currentXAccel,
       yAcceleration: _currentYAccel,
       zAcceleration: _currentZAccel,
@@ -384,7 +396,7 @@ class FlightService with ChangeNotifier {
     _updateFlightSegments(point);
 
     _updateFlightStats();
-    
+
     // Throttle notifications to avoid excessive UI updates
     _throttledNotifyListeners();
     onFlightPathUpdated?.call();
@@ -396,16 +408,16 @@ class FlightService with ChangeNotifier {
     if (_flightPath.length < 3) {
       return gpsSpeed;
     }
-    
+
     // If GPS reports zero but we've been moving, calculate speed from position change
     if (gpsSpeed == 0.0) {
       final recentPoints = _flightPath.reversed.take(3).toList();
-      
+
       if (recentPoints.length >= 2) {
         // Calculate speed from last few position changes
         double totalDistance = 0.0;
         double totalTime = 0.0;
-        
+
         for (int i = 0; i < recentPoints.length - 1; i++) {
           final distance = Geolocator.distanceBetween(
             recentPoints[i].latitude,
@@ -413,14 +425,17 @@ class FlightService with ChangeNotifier {
             recentPoints[i + 1].latitude,
             recentPoints[i + 1].longitude,
           );
-          final timeDiff = recentPoints[i].timestamp.difference(recentPoints[i + 1].timestamp).inSeconds.abs();
-          
+          final timeDiff = recentPoints[i].timestamp
+              .difference(recentPoints[i + 1].timestamp)
+              .inSeconds
+              .abs();
+
           if (timeDiff > 0) {
             totalDistance += distance;
             totalTime += timeDiff;
           }
         }
-        
+
         if (totalTime > 0) {
           final calculatedSpeed = totalDistance / totalTime;
           // Only use calculated speed if it's reasonable (less than 100 m/s for small aircraft)
@@ -430,17 +445,22 @@ class FlightService with ChangeNotifier {
         }
       }
     }
-    
+
     // If GPS speed seems reasonable, use weighted average with recent speeds
     if (gpsSpeed > 0.0 && gpsSpeed < 100.0) {
-      final recentSpeeds = _flightPath.reversed.take(3).map((p) => p.speed).where((s) => s > 0).toList();
+      final recentSpeeds = _flightPath.reversed
+          .take(3)
+          .map((p) => p.speed)
+          .where((s) => s > 0)
+          .toList();
       if (recentSpeeds.isNotEmpty) {
         // Weighted average: current reading gets 50% weight, recent average gets 50%
-        final avgRecentSpeed = recentSpeeds.reduce((a, b) => a + b) / recentSpeeds.length;
+        final avgRecentSpeed =
+            recentSpeeds.reduce((a, b) => a + b) / recentSpeeds.length;
         return (gpsSpeed * 0.5) + (avgRecentSpeed * 0.5);
       }
     }
-    
+
     return gpsSpeed;
   }
 
@@ -455,7 +475,8 @@ class FlightService with ChangeNotifier {
     // 3. GPS altitude (fallback, with smoothing)
 
     // Use barometric altitude if available and reasonable
-    if (barometricAltitude != null && _isAltitudeReasonable(barometricAltitude)) {
+    if (barometricAltitude != null &&
+        _isAltitudeReasonable(barometricAltitude)) {
       // Add altitude to history for smoothing
       _altitudeHistory.add(barometricAltitude);
       if (_altitudeHistory.length > 10) {
@@ -465,7 +486,8 @@ class FlightService with ChangeNotifier {
     }
 
     // Use altitude service if available
-    if (altitudeFromService != null && _isAltitudeReasonable(altitudeFromService)) {
+    if (altitudeFromService != null &&
+        _isAltitudeReasonable(altitudeFromService)) {
       _altitudeHistory.add(altitudeFromService);
       if (_altitudeHistory.length > 10) {
         _altitudeHistory.removeAt(0);
@@ -500,14 +522,15 @@ class FlightService with ChangeNotifier {
     // Use median of last few values to filter out outliers
     final recentValues = _altitudeHistory.reversed.take(5).toList()..sort();
     final median = recentValues[recentValues.length ~/ 2];
-    
+
     // If current value is too far from median, use weighted average
     final deviation = (currentAltitude - median).abs();
-    if (deviation > 50.0) { // More than 50m deviation is suspicious
+    if (deviation > 50.0) {
+      // More than 50m deviation is suspicious
       // Use 30% current, 70% median
       return (currentAltitude * 0.3) + (median * 0.7);
     }
-    
+
     // Otherwise use weighted average of recent values
     double sum = 0.0;
     double weight = 0.0;
@@ -516,7 +539,7 @@ class FlightService with ChangeNotifier {
       sum += _altitudeHistory[_altitudeHistory.length - 1 - i] * w;
       weight += w;
     }
-    
+
     return sum / weight;
   }
 
@@ -549,16 +572,20 @@ class FlightService with ChangeNotifier {
       _movingStoppedZulu = now;
 
       // Finalize the current moving segment
-      if (_currentMovingSegmentStart != null && _currentMovingSegmentStartPoint != null) {
+      if (_currentMovingSegmentStart != null &&
+          _currentMovingSegmentStartPoint != null) {
         // Calculate averages for the segment
         final avgSpeed = _currentMovingSegmentSpeeds.isNotEmpty
-            ? _currentMovingSegmentSpeeds.reduce((a, b) => a + b) / _currentMovingSegmentSpeeds.length
+            ? _currentMovingSegmentSpeeds.reduce((a, b) => a + b) /
+                  _currentMovingSegmentSpeeds.length
             : 0.0;
         final avgHeading = _currentMovingSegmentHeadings.isNotEmpty
-            ? _currentMovingSegmentHeadings.reduce((a, b) => a + b) / _currentMovingSegmentHeadings.length
+            ? _currentMovingSegmentHeadings.reduce((a, b) => a + b) /
+                  _currentMovingSegmentHeadings.length
             : 0.0;
         final avgAltitude = _currentMovingSegmentAltitudes.isNotEmpty
-            ? _currentMovingSegmentAltitudes.reduce((a, b) => a + b) / _currentMovingSegmentAltitudes.length
+            ? _currentMovingSegmentAltitudes.reduce((a, b) => a + b) /
+                  _currentMovingSegmentAltitudes.length
             : _currentMovingSegmentStartPoint!.altitude;
 
         // Calculate min/max altitudes
@@ -633,7 +660,8 @@ class FlightService with ChangeNotifier {
     final headingChange = (_lastSegmentPoint!.heading - point.heading).abs();
     final altitudeChange = (_lastSegmentPoint!.altitude - point.altitude).abs();
 
-    if (headingChange > _significantHeadingChange || altitudeChange > _significantAltitudeChange) {
+    if (headingChange > _significantHeadingChange ||
+        altitudeChange > _significantAltitudeChange) {
       // Significant change detected, create a new segment
       // Create a list of points for this segment (from last segment point to current point)
       final segmentPoints = <FlightPoint>[];
@@ -666,10 +694,10 @@ class FlightService with ChangeNotifier {
   Future<void> stopTracking() async {
     if (!_isTracking) return;
     _isTracking = false;
-    
+
     // Stop sensors to save battery
     _stopSensors();
-    
+
     // Disable wakelock when tracking stops
     WakelockPlus.disable();
 
@@ -677,16 +705,21 @@ class FlightService with ChangeNotifier {
     _recordingStoppedZulu = DateTime.now().toUtc();
 
     // Finalize any ongoing moving segment
-    if (_isCurrentlyMoving && _currentMovingSegmentStart != null && _currentMovingSegmentStartPoint != null) {
+    if (_isCurrentlyMoving &&
+        _currentMovingSegmentStart != null &&
+        _currentMovingSegmentStartPoint != null) {
       // Calculate averages for final segment
       final avgSpeed = _currentMovingSegmentSpeeds.isNotEmpty
-          ? _currentMovingSegmentSpeeds.reduce((a, b) => a + b) / _currentMovingSegmentSpeeds.length
+          ? _currentMovingSegmentSpeeds.reduce((a, b) => a + b) /
+                _currentMovingSegmentSpeeds.length
           : 0.0;
       final avgHeading = _currentMovingSegmentHeadings.isNotEmpty
-          ? _currentMovingSegmentHeadings.reduce((a, b) => a + b) / _currentMovingSegmentHeadings.length
+          ? _currentMovingSegmentHeadings.reduce((a, b) => a + b) /
+                _currentMovingSegmentHeadings.length
           : 0.0;
       final avgAltitude = _currentMovingSegmentAltitudes.isNotEmpty
-          ? _currentMovingSegmentAltitudes.reduce((a, b) => a + b) / _currentMovingSegmentAltitudes.length
+          ? _currentMovingSegmentAltitudes.reduce((a, b) => a + b) /
+                _currentMovingSegmentAltitudes.length
           : _currentMovingSegmentStartPoint!.altitude;
 
       // Calculate min/max altitudes
@@ -700,12 +733,16 @@ class FlightService with ChangeNotifier {
       final segment = MovingSegment(
         start: _currentMovingSegmentStart!,
         end: _recordingStoppedZulu!,
-        duration: _recordingStoppedZulu!.difference(_currentMovingSegmentStart!),
+        duration: _recordingStoppedZulu!.difference(
+          _currentMovingSegmentStart!,
+        ),
         distance: _currentMovingSegmentDistance,
         averageSpeed: avgSpeed,
         averageHeading: avgHeading,
         startAltitude: _currentMovingSegmentStartPoint!.altitude,
-        endAltitude: _flightPath.isNotEmpty ? _flightPath.last.altitude : _currentMovingSegmentStartPoint!.altitude,
+        endAltitude: _flightPath.isNotEmpty
+            ? _flightPath.last.altitude
+            : _currentMovingSegmentStartPoint!.altitude,
         averageAltitude: avgAltitude,
         maxAltitude: maxAlt,
         minAltitude: minAlt,
@@ -717,13 +754,13 @@ class FlightService with ChangeNotifier {
     _barometerSubscription?.cancel();
     _barometerService?.stopListening();
     _altitudeService.stopTracking();
-    
+
     // Create a flight from the current path
     if (_flightPath.isNotEmpty) {
       Flight flight = _createFlight();
       await addFlight(flight);
     }
-    
+
     // Reset tracking state
     _resetTrackingState();
 
@@ -750,14 +787,14 @@ class FlightService with ChangeNotifier {
     _currentMovingSegmentStartPoint = null;
     _pausePoints.clear();
   }
-  
+
   // Optimize G-force data by keeping only max values per minute
   List<FlightPoint> _optimizeGForceData(List<FlightPoint> points) {
     if (points.isEmpty) return points;
-    
+
     final optimizedPoints = <FlightPoint>[];
     Map<DateTime, List<FlightPoint>> minuteGroups = {};
-    
+
     // Group points by minute
     for (final point in points) {
       final minuteKey = DateTime(
@@ -769,11 +806,11 @@ class FlightService with ChangeNotifier {
       );
       minuteGroups.putIfAbsent(minuteKey, () => []).add(point);
     }
-    
+
     // For each minute, keep the point with the highest G-force
     for (final entry in minuteGroups.entries) {
       final pointsInMinute = entry.value;
-      
+
       if (pointsInMinute.length == 1) {
         // Only one point in this minute, keep it as is
         optimizedPoints.add(pointsInMinute.first);
@@ -781,24 +818,26 @@ class FlightService with ChangeNotifier {
         // Find the point with maximum total G-force
         FlightPoint? maxGPoint;
         double maxTotalG = 0.0;
-        
+
         for (final point in pointsInMinute) {
           final totalG = math.sqrt(
             point.xAcceleration * point.xAcceleration +
-            point.yAcceleration * point.yAcceleration +
-            point.zAcceleration * point.zAcceleration
+                point.yAcceleration * point.yAcceleration +
+                point.zAcceleration * point.zAcceleration,
           );
-          
+
           if (totalG > maxTotalG) {
             maxTotalG = totalG;
             maxGPoint = point;
           }
         }
-        
+
         // Keep the point with max G-force, but also keep first and last points of the minute
         // to maintain accurate position tracking
         optimizedPoints.add(pointsInMinute.first);
-        if (maxGPoint != null && maxGPoint != pointsInMinute.first && maxGPoint != pointsInMinute.last) {
+        if (maxGPoint != null &&
+            maxGPoint != pointsInMinute.first &&
+            maxGPoint != pointsInMinute.last) {
           optimizedPoints.add(maxGPoint);
         }
         if (pointsInMinute.last != pointsInMinute.first) {
@@ -806,43 +845,42 @@ class FlightService with ChangeNotifier {
         }
       }
     }
-    
+
     // Sort by timestamp to maintain chronological order
     optimizedPoints.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    
+
     return optimizedPoints;
   }
-  
+
   // Create a flight from the current tracking data
   Flight _createFlight() {
     if (_flightPath.isEmpty) {
       throw Exception('No flight data to save');
     }
-    
+
     // Optimize G-force data before saving
     final optimizedPath = _optimizeGForceData(_flightPath);
-    
+
     final startTime = optimizedPath.first.timestamp;
     final endTime = optimizedPath.last.timestamp;
-    
+
     // Calculate max altitude and speed
     double maxAltitude = 0.0;
     double maxSpeed = 0.0;
-    
+
     // Calculate stats from optimized path
     for (final point in optimizedPath) {
       maxAltitude = math.max(maxAltitude, point.altitude);
       maxSpeed = math.max(maxSpeed, point.speed);
     }
-    
+
     // Calculate moving time (time spent moving > 1 m/s)
     final movingTime = optimizedPath.fold<Duration>(
       Duration.zero,
-      (total, point) => point.speed > 1.0 
-          ? total + Duration(seconds: 1) 
-          : total,
+      (total, point) =>
+          point.speed > 1.0 ? total + Duration(seconds: 1) : total,
     );
-    
+
     return Flight(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       startTime: startTime,
@@ -867,7 +905,7 @@ class FlightService with ChangeNotifier {
     _flightPath.clear();
     onFlightPathUpdated?.call();
   }
-  
+
   // Update flight statistics
   void _updateFlightStats() {
     // Calculate distance from last point if available
@@ -881,23 +919,24 @@ class FlightService with ChangeNotifier {
         currentPoint.position.longitude,
       );
       _totalDistance += distance;
-      
+
       // Calculate speed based on distance and time
       final timeDiff = currentPoint.timestamp.difference(prevPoint.timestamp);
       final seconds = timeDiff.inMilliseconds / 1000.0;
-      
+
       if (seconds > 0) {
         final currentSpeed = distance / seconds;
-        _averageSpeed = _flightPath.length > 1 
-            ? ((_averageSpeed * (_flightPath.length - 2)) + currentSpeed) / (_flightPath.length - 1)
+        _averageSpeed = _flightPath.length > 1
+            ? ((_averageSpeed * (_flightPath.length - 2)) + currentSpeed) /
+                  (_flightPath.length - 1)
             : currentSpeed;
       }
     }
-    
+
     // Notify listeners
     notifyListeners();
   }
-  
+
   // Format duration as HH:MM:SS
   String get formattedFlightTime {
     final duration = movingTime;
@@ -906,29 +945,29 @@ class FlightService with ChangeNotifier {
     final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$hours:$minutes:$seconds';
   }
-  
+
   // Get the maximum speed from the current flight in m/s
   double get maxSpeed {
     if (_flightPath.isEmpty) return 0.0;
     return _flightPath.map((p) => p.speed).reduce((a, b) => a > b ? a : b);
   }
-  
+
   // Get the current speed in m/s
   double get currentSpeed => _flightPath.isEmpty ? 0.0 : _flightPath.last.speed;
-  
+
   // Get the current heading in degrees
   double? get currentHeading => _currentHeading;
-  
+
   // Get the barometric altitude in meters
   double? get barometricAltitude => _currentBaroAltitude;
-  
+
   // Get the barometric pressure in hPa if available
   double? get barometricPressure => _barometerService?.pressureHPa;
-  
+
   // Get the total distance of the flight in meters
   double get totalDistance {
     if (_flightPath.length < 2) return 0.0;
-    
+
     double distance = 0.0;
     for (int i = 1; i < _flightPath.length; i++) {
       final prev = _flightPath[i - 1];
@@ -948,33 +987,43 @@ class FlightService with ChangeNotifier {
     if (_startTime == null) return Duration.zero;
     if (_flightPath.isEmpty) {
       // If no flight path data, return time since start if tracking, otherwise zero
-      return _isTracking ? DateTime.now().difference(_startTime!) : Duration.zero;
+      return _isTracking
+          ? DateTime.now().difference(_startTime!)
+          : Duration.zero;
     }
     final endTime = _isTracking ? DateTime.now() : _flightPath.last.timestamp;
     return endTime.difference(_startTime!);
   }
-  
+
   // Get the flight duration as a Duration object (alias for movingTime)
   Duration get flightDuration => movingTime;
-  
+
   // Get the vertical speed in feet per minute (fpm)
   double get verticalSpeed {
     if (_flightPath.length < 2) return 0.0;
-    
+
     // Use up to last 3 points for smoothing
     int pointsToUse = math.min(3, _flightPath.length);
     if (pointsToUse < 2) return 0.0;
-    
+
     double totalVerticalSpeed = 0.0;
     int validMeasurements = 0;
-    
-    for (int i = _flightPath.length - 1; i > _flightPath.length - pointsToUse; i--) {
+
+    for (
+      int i = _flightPath.length - 1;
+      i > _flightPath.length - pointsToUse;
+      i--
+    ) {
       final currentPoint = _flightPath[i];
       final previousPoint = _flightPath[i - 1];
-      
+
       final altitudeDiff = currentPoint.altitude - previousPoint.altitude;
-      final timeDiff = currentPoint.timestamp.difference(previousPoint.timestamp).inMilliseconds / 1000.0; // Convert to seconds
-      
+      final timeDiff =
+          currentPoint.timestamp
+              .difference(previousPoint.timestamp)
+              .inMilliseconds /
+          1000.0; // Convert to seconds
+
       if (timeDiff > 0) {
         // Convert from m/s to feet/minute: 1 m/s = 196.85 ft/min
         final verticalSpeedMps = altitudeDiff / timeDiff;
@@ -983,22 +1032,22 @@ class FlightService with ChangeNotifier {
         validMeasurements++;
       }
     }
-    
+
     return validMeasurements > 0 ? totalVerticalSpeed / validMeasurements : 0.0;
   }
-  
+
   // Get current G-force
   double get currentGForce {
     // Calculate total acceleration magnitude
     final totalAccel = math.sqrt(
-      _currentXAccel * _currentXAccel + 
-      _currentYAccel * _currentYAccel + 
-      _currentZAccel * _currentZAccel
+      _currentXAccel * _currentXAccel +
+          _currentYAccel * _currentYAccel +
+          _currentZAccel * _currentZAccel,
     );
     // Already in G's since we divided by _gravity in _initSensors
     return totalAccel;
   }
-  
+
   // Get current barometric pressure in hPa
   double get currentPressure => _barometerService?.lastPressure ?? 1013.25;
 
@@ -1007,10 +1056,10 @@ class FlightService with ChangeNotifier {
   DateTime? _lastNotifyTime;
   Timer? _notifyTimer;
   static const _notifyThrottleMs = 250; // Max 4 updates per second
-  
+
   void _throttledNotifyListeners() {
     final now = DateTime.now();
-    if (_lastNotifyTime == null || 
+    if (_lastNotifyTime == null ||
         now.difference(_lastNotifyTime!).inMilliseconds > _notifyThrottleMs) {
       _lastNotifyTime = now;
       notifyListeners();
@@ -1023,7 +1072,7 @@ class FlightService with ChangeNotifier {
       });
     }
   }
-  
+
   // Stop sensor subscriptions
   void _stopSensors() {
     _compassSubscription?.cancel();
@@ -1033,7 +1082,7 @@ class FlightService with ChangeNotifier {
     _gyroscopeSubscription?.cancel();
     _gyroscopeSubscription = null;
   }
-  
+
   @override
   void dispose() {
     _stopSensors();

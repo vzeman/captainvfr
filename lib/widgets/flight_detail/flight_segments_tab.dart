@@ -33,9 +33,7 @@ class FlightSegmentsTab extends StatelessWidget {
             Center(
               child: Text(
                 'No segments data available',
-                style: TextStyle(
-                  color: Theme.of(context).disabledColor,
-                ),
+                style: TextStyle(color: Theme.of(context).disabledColor),
               ),
             )
           else ...[
@@ -48,7 +46,9 @@ class FlightSegmentsTab extends StatelessWidget {
                 child: InkWell(
                   onTap: () {
                     // Handle segment tap
-                    onSegmentSelected(selectedSegment == segment ? null : segment);
+                    onSegmentSelected(
+                      selectedSegment == segment ? null : segment,
+                    );
                   },
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -60,16 +60,18 @@ class FlightSegmentsTab extends StatelessWidget {
                           children: [
                             Text(
                               'Segment ${index + 1}',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             Text(
                               segment.formattedDuration,
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
                           ],
                         ),
@@ -83,13 +85,18 @@ class FlightSegmentsTab extends StatelessWidget {
                                 children: [
                                   Text(
                                     'Started',
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                    ),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        ),
                                   ),
                                   Text(
                                     segment.startZuluFormatted,
-                                    style: Theme.of(context).textTheme.bodySmall,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
                                   ),
                                 ],
                               ),
@@ -100,13 +107,18 @@ class FlightSegmentsTab extends StatelessWidget {
                                 children: [
                                   Text(
                                     'Stopped',
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                    ),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        ),
                                   ),
                                   Text(
                                     segment.endZuluFormatted,
-                                    style: Theme.of(context).textTheme.bodySmall,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
                                   ),
                                 ],
                               ),
@@ -176,8 +188,12 @@ class FlightSegmentsTab extends StatelessWidget {
                 context,
                 'Alt Change',
                 segment.formattedAltitudeChange,
-                segment.altitudeChange >= 0 ? Icons.trending_up : Icons.trending_down,
-                iconColor: segment.altitudeChange >= 0 ? Colors.green : Colors.red,
+                segment.altitudeChange >= 0
+                    ? Icons.trending_up
+                    : Icons.trending_down,
+                iconColor: segment.altitudeChange >= 0
+                    ? Colors.green
+                    : Colors.red,
               ),
             ),
           ],
@@ -270,9 +286,9 @@ class FlightSegmentsTab extends StatelessWidget {
           ),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
         ],
       ),

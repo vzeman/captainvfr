@@ -27,12 +27,14 @@ class VibrationChart extends StatelessWidget {
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     // Calculate min and max for the Y axis
     final minY = 0.0;
-    final maxY = maxVibration != null 
-        ? maxVibration! * 1.2 
-        : (vibrationData.isNotEmpty ? vibrationData.reduce((a, b) => a > b ? a : b) * 1.2 : 1.0);
+    final maxY = maxVibration != null
+        ? maxVibration! * 1.2
+        : (vibrationData.isNotEmpty
+              ? vibrationData.reduce((a, b) => a > b ? a : b) * 1.2
+              : 1.0);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -49,17 +51,16 @@ class VibrationChart extends StatelessWidget {
           ),
           titlesData: FlTitlesData(
             show: true,
-            rightTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            topTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
+            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 30,
-                interval: (vibrationData.length / 4).ceilToDouble().clamp(1, double.infinity),
+                interval: (vibrationData.length / 4).ceilToDouble().clamp(
+                  1,
+                  double.infinity,
+                ),
                 getTitlesWidget: (value, meta) {
                   final index = value.toInt();
                   if (index >= 0 && index < vibrationData.length) {
@@ -92,7 +93,9 @@ class VibrationChart extends StatelessWidget {
             ),
           ),
           minX: 0,
-          maxX: vibrationData.isNotEmpty ? (vibrationData.length - 1).toDouble() : 1,
+          maxX: vibrationData.isNotEmpty
+              ? (vibrationData.length - 1).toDouble()
+              : 1,
           minY: minY,
           maxY: maxY,
           lineBarsData: [

@@ -27,10 +27,7 @@ class AirportWeatherTab extends StatelessWidget {
     }
 
     if (error != null) {
-      return custom.ErrorWidget(
-        error: error!,
-        onRetry: onRetry,
-      );
+      return custom.ErrorWidget(error: error!, onRetry: onRetry);
     }
 
     // Display weather data if available
@@ -68,7 +65,8 @@ class AirportWeatherTab extends StatelessWidget {
 
   Widget _buildMetarSection(BuildContext context) {
     final theme = Theme.of(context);
-    final hasDangerousWeather = weatherInterpretationService.hasDangerousWeatherInMetar(airport.rawMetar!);
+    final hasDangerousWeather = weatherInterpretationService
+        .hasDangerousWeatherInMetar(airport.rawMetar!);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -85,10 +83,14 @@ class AirportWeatherTab extends StatelessWidget {
         // Human-readable interpretation
         _buildInterpretationCard(
           context,
-          interpretation: weatherInterpretationService.interpretMetar(airport.rawMetar!),
+          interpretation: weatherInterpretationService.interpretMetar(
+            airport.rawMetar!,
+          ),
           isDangerous: hasDangerousWeather,
           dangerousConditions: hasDangerousWeather
-              ? weatherInterpretationService.getDangerousWeatherInMetar(airport.rawMetar!)
+              ? weatherInterpretationService.getDangerousWeatherInMetar(
+                  airport.rawMetar!,
+                )
               : [],
           color: hasDangerousWeather ? Colors.red.shade700 : Colors.green,
         ),
@@ -102,7 +104,8 @@ class AirportWeatherTab extends StatelessWidget {
 
   Widget _buildTafSection(BuildContext context) {
     final theme = Theme.of(context);
-    final hasDangerousWeather = weatherInterpretationService.hasDangerousWeatherInTaf(airport.taf!);
+    final hasDangerousWeather = weatherInterpretationService
+        .hasDangerousWeatherInTaf(airport.taf!);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,10 +122,14 @@ class AirportWeatherTab extends StatelessWidget {
         // Human-readable interpretation
         _buildInterpretationCard(
           context,
-          interpretation: weatherInterpretationService.interpretTaf(airport.taf!),
+          interpretation: weatherInterpretationService.interpretTaf(
+            airport.taf!,
+          ),
           isDangerous: hasDangerousWeather,
           dangerousConditions: hasDangerousWeather
-              ? weatherInterpretationService.getDangerousWeatherInTaf(airport.taf!)
+              ? weatherInterpretationService.getDangerousWeatherInTaf(
+                  airport.taf!,
+                )
               : [],
           color: hasDangerousWeather ? Colors.red.shade700 : Colors.blue,
         ),
@@ -147,9 +154,7 @@ class AirportWeatherTab extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDangerous
-            ? Colors.red.shade50
-            : color.withValues(alpha: 0.1),
+        color: isDangerous ? Colors.red.shade50 : color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isDangerous
@@ -180,10 +185,7 @@ class AirportWeatherTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            interpretation,
-            style: theme.textTheme.bodyMedium,
-          ),
+          Text(interpretation, style: theme.textTheme.bodyMedium),
           // Add dangerous weather explanations if present
           if (isDangerous) ...[
             const SizedBox(height: 12),
@@ -223,9 +225,7 @@ class AirportWeatherTab extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.dividerColor,
-        ),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -258,16 +258,12 @@ class AirportWeatherTab extends StatelessWidget {
       children: [
         Text(
           'Last Updated',
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.hintColor,
-          ),
+          style: theme.textTheme.labelMedium?.copyWith(color: theme.hintColor),
         ),
         const SizedBox(height: 4),
         Text(
           airport.lastWeatherUpdate!.toLocal().toString().substring(0, 19),
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.hintColor,
-          ),
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
         ),
       ],
     );
@@ -279,17 +275,11 @@ class AirportWeatherTab extends StatelessWidget {
     return Center(
       child: Column(
         children: [
-          Icon(
-            Icons.cloud_off,
-            size: 48,
-            color: theme.hintColor,
-          ),
+          Icon(Icons.cloud_off, size: 48, color: theme.hintColor),
           const SizedBox(height: 16),
           Text(
             'No weather data available for ${airport.icao}',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.hintColor,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),

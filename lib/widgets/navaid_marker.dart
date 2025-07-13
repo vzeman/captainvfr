@@ -38,10 +38,7 @@ class NavaidMarker extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withAlpha(230),
             shape: BoxShape.circle,
-            border: Border.all(
-              color: borderColor,
-              width: borderWidth,
-            ),
+            border: Border.all(color: borderColor, width: borderWidth),
             boxShadow: [
               BoxShadow(
                 color: const Color(0x33000000),
@@ -50,11 +47,7 @@ class NavaidMarker extends StatelessWidget {
               ),
             ],
           ),
-          child: Icon(
-            icon,
-            size: visualSize * 0.6,
-            color: color,
-          ),
+          child: Icon(icon, size: visualSize * 0.6, color: color),
         ),
       ),
     );
@@ -138,10 +131,10 @@ class NavaidMarkersLayer extends StatelessWidget {
     if (mapZoom < 9) {
       return const SizedBox.shrink();
     }
-    
+
     // Dynamic size based on zoom - same as reporting points
     final dynamicMarkerSize = mapZoom >= 12 ? 20.0 : 14.0;
-    
+
     return MarkerLayer(
       markers: navaids.map((navaid) {
         return Marker(
@@ -195,11 +188,7 @@ class NavaidInfoSheet extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                Icon(
-                  Icons.navigation,
-                  color: theme.primaryColor,
-                  size: 24,
-                ),
+                Icon(Icons.navigation, color: theme.primaryColor, size: 24),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -242,7 +231,10 @@ class NavaidInfoSheet extends StatelessWidget {
                 _buildInfoRow('Type', navaid.typeDisplay),
                 _buildInfoRow('Frequency', '${navaid.frequencyMhz} MHz'),
                 if (navaid.dmeFrequencyKhz > 0)
-                  _buildInfoRow('DME Frequency', '${(navaid.dmeFrequencyKhz / 1000).toStringAsFixed(3)} MHz'),
+                  _buildInfoRow(
+                    'DME Frequency',
+                    '${(navaid.dmeFrequencyKhz / 1000).toStringAsFixed(3)} MHz',
+                  ),
                 if (navaid.dmeChannel.isNotEmpty)
                   _buildInfoRow('DME Channel', navaid.dmeChannel),
                 _buildInfoRow('Elevation', '${navaid.elevationFt} ft MSL'),
@@ -250,12 +242,15 @@ class NavaidInfoSheet extends StatelessWidget {
                 if (navaid.usageType.isNotEmpty)
                   _buildInfoRow('Usage', navaid.usageType),
                 if (navaid.power > 0)
-                  _buildInfoRow('Power', '${navaid.power.toStringAsFixed(1)} watts'),
+                  _buildInfoRow(
+                    'Power',
+                    '${navaid.power.toStringAsFixed(1)} watts',
+                  ),
                 if (navaid.associatedAirport.isNotEmpty)
                   _buildInfoRow('Associated Airport', navaid.associatedAirport),
                 _buildInfoRow(
                   'Coordinates',
-                  '${navaid.position.latitude.toStringAsFixed(4)}°N, ${navaid.position.longitude.toStringAsFixed(4)}°E'
+                  '${navaid.position.latitude.toStringAsFixed(4)}°N, ${navaid.position.longitude.toStringAsFixed(4)}°E',
                 ),
               ],
             ),
@@ -281,12 +276,7 @@ class NavaidInfoSheet extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 14),
-            ),
-          ),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 14))),
         ],
       ),
     );

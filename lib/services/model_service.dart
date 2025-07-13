@@ -27,7 +27,8 @@ class ModelService with ChangeNotifier {
         final model = _box!.get(key);
         if (model != null) {
           // Check if this is a corrupted model with placeholder data
-          if (model.id.startsWith('corrupted-') || model.name == 'Unknown Model') {
+          if (model.id.startsWith('corrupted-') ||
+              model.name == 'Unknown Model') {
             corruptedKeys.add(key.toString());
           } else {
             validModels.add(model);
@@ -64,9 +65,7 @@ class ModelService with ChangeNotifier {
   Future<void> updateModel(Model model) async {
     if (_box == null) throw Exception('ModelService not initialized');
 
-    final updatedModel = model.copyWith(
-      updatedAt: DateTime.now(),
-    );
+    final updatedModel = model.copyWith(updatedAt: DateTime.now());
 
     await _box!.put(updatedModel.id, updatedModel);
 
@@ -91,15 +90,11 @@ class ModelService with ChangeNotifier {
   }
 
   List<Model> getModelsByManufacturer(String manufacturerId) {
-    return _models
-        .where((m) => m.manufacturerId == manufacturerId)
-        .toList();
+    return _models.where((m) => m.manufacturerId == manufacturerId).toList();
   }
 
   List<Model> getModelsByCategory(AircraftCategory category) {
-    return _models
-        .where((m) => m.category == category)
-        .toList();
+    return _models.where((m) => m.category == category).toList();
   }
 
   List<Model> searchModels(String query) {
@@ -107,9 +102,11 @@ class ModelService with ChangeNotifier {
 
     final lowerQuery = query.toLowerCase();
     return _models
-        .where((m) =>
-            m.name.toLowerCase().contains(lowerQuery) ||
-            (m.description?.toLowerCase().contains(lowerQuery) ?? false))
+        .where(
+          (m) =>
+              m.name.toLowerCase().contains(lowerQuery) ||
+              (m.description?.toLowerCase().contains(lowerQuery) ?? false),
+        )
         .toList();
   }
 

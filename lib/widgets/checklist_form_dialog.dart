@@ -52,7 +52,9 @@ class _ChecklistFormDialogState extends State<ChecklistFormDialog> {
         child: Column(
           children: [
             AppBar(
-              title: Text(widget.checklist == null ? 'Add Checklist' : 'Edit Checklist'),
+              title: Text(
+                widget.checklist == null ? 'Add Checklist' : 'Edit Checklist',
+              ),
               automaticallyImplyLeading: false,
               actions: [
                 IconButton(
@@ -74,13 +76,21 @@ class _ChecklistFormDialogState extends State<ChecklistFormDialog> {
                         children: [
                           TextFormField(
                             controller: _nameController,
-                            decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
-                            validator: (v) => v == null || v.trim().isEmpty ? 'Please enter a name' : null,
+                            decoration: const InputDecoration(
+                              labelText: 'Name',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (v) => v == null || v.trim().isEmpty
+                                ? 'Please enter a name'
+                                : null,
                           ),
                           const SizedBox(height: 16),
                           TextFormField(
                             controller: _descriptionController,
-                            decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
+                            decoration: const InputDecoration(
+                              labelText: 'Description',
+                              border: OutlineInputBorder(),
+                            ),
                             maxLines: 3,
                           ),
                           const SizedBox(height: 16),
@@ -88,9 +98,17 @@ class _ChecklistFormDialogState extends State<ChecklistFormDialog> {
                             builder: (context, svc, child) {
                               return DropdownButtonFormField<String>(
                                 value: _selectedManufacturerId,
-                                decoration: const InputDecoration(labelText: 'Manufacturer', border: OutlineInputBorder()),
+                                decoration: const InputDecoration(
+                                  labelText: 'Manufacturer',
+                                  border: OutlineInputBorder(),
+                                ),
                                 items: svc.manufacturers
-                                    .map((m) => DropdownMenuItem(value: m.id, child: Text(m.name)))
+                                    .map(
+                                      (m) => DropdownMenuItem(
+                                        value: m.id,
+                                        child: Text(m.name),
+                                      ),
+                                    )
                                     .toList(),
                                 onChanged: (v) {
                                   setState(() {
@@ -98,7 +116,9 @@ class _ChecklistFormDialogState extends State<ChecklistFormDialog> {
                                     _selectedModelId = null;
                                   });
                                 },
-                                validator: (v) => v == null ? 'Please select manufacturer' : null,
+                                validator: (v) => v == null
+                                    ? 'Please select manufacturer'
+                                    : null,
                               );
                             },
                           ),
@@ -106,15 +126,29 @@ class _ChecklistFormDialogState extends State<ChecklistFormDialog> {
                           Consumer<AircraftSettingsService>(
                             builder: (context, svc, child) {
                               final models = svc.models.where(
-                                  (model) => _selectedManufacturerId != null && model.manufacturerId == _selectedManufacturerId);
+                                (model) =>
+                                    _selectedManufacturerId != null &&
+                                    model.manufacturerId ==
+                                        _selectedManufacturerId,
+                              );
                               return DropdownButtonFormField<String>(
                                 value: _selectedModelId,
-                                decoration: const InputDecoration(labelText: 'Model', border: OutlineInputBorder()),
+                                decoration: const InputDecoration(
+                                  labelText: 'Model',
+                                  border: OutlineInputBorder(),
+                                ),
                                 items: models
-                                    .map((m) => DropdownMenuItem(value: m.id, child: Text(m.name)))
+                                    .map(
+                                      (m) => DropdownMenuItem(
+                                        value: m.id,
+                                        child: Text(m.name),
+                                      ),
+                                    )
                                     .toList(),
-                                onChanged: (v) => setState(() => _selectedModelId = v),
-                                validator: (v) => v == null ? 'Please select model' : null,
+                                onChanged: (v) =>
+                                    setState(() => _selectedModelId = v),
+                                validator: (v) =>
+                                    v == null ? 'Please select model' : null,
                               );
                             },
                           ),
@@ -122,7 +156,10 @@ class _ChecklistFormDialogState extends State<ChecklistFormDialog> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    Text('Items', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      'Items',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 8),
                     ..._items.asMap().entries.map((entry) {
                       final idx = entry.key;
@@ -134,7 +171,12 @@ class _ChecklistFormDialogState extends State<ChecklistFormDialog> {
                           subtitle: Text(item.targetValue ?? ''),
                           leading: IconButton(
                             icon: const Icon(Icons.arrow_upward),
-                            onPressed: idx > 0 ? () => setState(() { _items.removeAt(idx); _items.insert(idx - 1, item); }) : null,
+                            onPressed: idx > 0
+                                ? () => setState(() {
+                                    _items.removeAt(idx);
+                                    _items.insert(idx - 1, item);
+                                  })
+                                : null,
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -142,21 +184,29 @@ class _ChecklistFormDialogState extends State<ChecklistFormDialog> {
                               IconButton(
                                 icon: const Icon(Icons.edit),
                                 onPressed: () async {
-                                  final edited = await showDialog<ChecklistItem>(
-                                    context: context,
-                                    builder: (_) => ChecklistItemFormDialog(item: item),
-                                  );
-                                  if (edited != null) setState(() => _items[idx] = edited);
+                                  final edited =
+                                      await showDialog<ChecklistItem>(
+                                        context: context,
+                                        builder: (_) =>
+                                            ChecklistItemFormDialog(item: item),
+                                      );
+                                  if (edited != null) {
+                                    setState(() => _items[idx] = edited);
+                                  }
                                 },
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete),
-                                onPressed: () => setState(() => _items.removeAt(idx)),
+                                onPressed: () =>
+                                    setState(() => _items.removeAt(idx)),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.arrow_downward),
                                 onPressed: idx < _items.length - 1
-                                    ? () => setState(() { _items.removeAt(idx); _items.insert(idx + 1, item); })
+                                    ? () => setState(() {
+                                        _items.removeAt(idx);
+                                        _items.insert(idx + 1, item);
+                                      })
                                     : null,
                               ),
                             ],
@@ -171,7 +221,9 @@ class _ChecklistFormDialogState extends State<ChecklistFormDialog> {
                           context: context,
                           builder: (_) => const ChecklistItemFormDialog(),
                         );
-                        if (newItem != null) setState(() => _items.add(newItem));
+                        if (newItem != null) {
+                          setState(() => _items.add(newItem));
+                        }
                       },
                       icon: const Icon(Icons.add),
                       label: const Text('Add Item'),
@@ -200,12 +252,17 @@ class _ChecklistFormDialogState extends State<ChecklistFormDialog> {
     final checklist = Checklist(
       id: id,
       name: _nameController.text.trim(),
-      description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+      description: _descriptionController.text.trim().isEmpty
+          ? null
+          : _descriptionController.text.trim(),
       manufacturerId: _selectedManufacturerId!,
       modelId: _selectedModelId!,
       items: List.from(_items),
     );
-    Provider.of<ChecklistService>(context, listen: false).saveChecklist(checklist);
+    Provider.of<ChecklistService>(
+      context,
+      listen: false,
+    ).saveChecklist(checklist);
     Navigator.of(context).pop();
   }
 }

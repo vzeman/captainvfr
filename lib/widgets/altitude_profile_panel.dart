@@ -48,7 +48,10 @@ class _AltitudeProfilePanelState extends State<AltitudeProfilePanel> {
                 ),
               ),
               if (_selectedWaypointIndex != null)
-                _buildAltitudeEditor(flightPlanService, _selectedWaypointIndex!),
+                _buildAltitudeEditor(
+                  flightPlanService,
+                  _selectedWaypointIndex!,
+                ),
             ],
           ),
         );
@@ -68,10 +71,7 @@ class _AltitudeProfilePanelState extends State<AltitudeProfilePanel> {
           const SizedBox(width: 8),
           const Text(
             'Altitude Profile',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const Spacer(),
           if (_selectedWaypointIndex != null)
@@ -101,8 +101,12 @@ class _AltitudeProfilePanelState extends State<AltitudeProfilePanel> {
     }
 
     // Find min/max altitudes for y-axis
-    double minAlt = waypoints.map((w) => w.altitude).reduce((a, b) => a < b ? a : b);
-    double maxAlt = waypoints.map((w) => w.altitude).reduce((a, b) => a > b ? a : b);
+    double minAlt = waypoints
+        .map((w) => w.altitude)
+        .reduce((a, b) => a < b ? a : b);
+    double maxAlt = waypoints
+        .map((w) => w.altitude)
+        .reduce((a, b) => a > b ? a : b);
 
     // Add some padding to the altitude range
     double altRange = maxAlt - minAlt;
@@ -130,7 +134,10 @@ class _AltitudeProfilePanelState extends State<AltitudeProfilePanel> {
                 );
               },
             ),
-            axisNameWidget: const Text('Altitude (ft)', style: TextStyle(fontSize: 12)),
+            axisNameWidget: const Text(
+              'Altitude (ft)',
+              style: TextStyle(fontSize: 12),
+            ),
           ),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
@@ -143,10 +150,17 @@ class _AltitudeProfilePanelState extends State<AltitudeProfilePanel> {
                 );
               },
             ),
-            axisNameWidget: const Text('Distance (NM)', style: TextStyle(fontSize: 12)),
+            axisNameWidget: const Text(
+              'Distance (NM)',
+              style: TextStyle(fontSize: 12),
+            ),
           ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
         ),
         borderData: FlBorderData(show: true),
         minX: 0,
@@ -164,7 +178,9 @@ class _AltitudeProfilePanelState extends State<AltitudeProfilePanel> {
               getDotPainter: (spot, percent, barData, index) {
                 return FlDotCirclePainter(
                   radius: _selectedWaypointIndex == index ? 8 : 5,
-                  color: _selectedWaypointIndex == index ? Colors.red : Colors.blue,
+                  color: _selectedWaypointIndex == index
+                      ? Colors.red
+                      : Colors.blue,
                   strokeWidth: 2,
                   strokeColor: Colors.white,
                 );
@@ -178,14 +194,16 @@ class _AltitudeProfilePanelState extends State<AltitudeProfilePanel> {
         ],
         lineTouchData: LineTouchData(
           enabled: true,
-          touchCallback: (FlTouchEvent event, LineTouchResponse? touchResponse) {
-            if (event is FlTapUpEvent && touchResponse?.lineBarSpots != null) {
-              final spot = touchResponse!.lineBarSpots!.first;
-              setState(() {
-                _selectedWaypointIndex = spot.spotIndex;
-              });
-            }
-          },
+          touchCallback:
+              (FlTouchEvent event, LineTouchResponse? touchResponse) {
+                if (event is FlTapUpEvent &&
+                    touchResponse?.lineBarSpots != null) {
+                  final spot = touchResponse!.lineBarSpots!.first;
+                  setState(() {
+                    _selectedWaypointIndex = spot.spotIndex;
+                  });
+                }
+              },
           touchTooltipData: LineTouchTooltipData(
             getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
               return touchedBarSpots.map((barSpot) {
@@ -202,7 +220,10 @@ class _AltitudeProfilePanelState extends State<AltitudeProfilePanel> {
     );
   }
 
-  Widget _buildAltitudeEditor(FlightPlanService flightPlanService, int waypointIndex) {
+  Widget _buildAltitudeEditor(
+    FlightPlanService flightPlanService,
+    int waypointIndex,
+  ) {
     final waypoint = flightPlanService.waypoints[waypointIndex];
     final TextEditingController altitudeController = TextEditingController(
       text: waypoint.altitude.toStringAsFixed(0),
@@ -230,12 +251,18 @@ class _AltitudeProfilePanelState extends State<AltitudeProfilePanel> {
                 labelText: 'Altitude',
                 suffix: Text('ft'),
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
               ),
               onSubmitted: (value) {
                 final altitude = double.tryParse(value);
                 if (altitude != null && altitude >= 0) {
-                  flightPlanService.updateWaypointAltitude(waypointIndex, altitude);
+                  flightPlanService.updateWaypointAltitude(
+                    waypointIndex,
+                    altitude,
+                  );
                   setState(() => _selectedWaypointIndex = null);
                 }
               },
@@ -246,7 +273,10 @@ class _AltitudeProfilePanelState extends State<AltitudeProfilePanel> {
             onPressed: () {
               final altitude = double.tryParse(altitudeController.text);
               if (altitude != null && altitude >= 0) {
-                flightPlanService.updateWaypointAltitude(waypointIndex, altitude);
+                flightPlanService.updateWaypointAltitude(
+                  waypointIndex,
+                  altitude,
+                );
                 setState(() => _selectedWaypointIndex = null);
               }
             },

@@ -72,11 +72,11 @@ class ReportingPoint extends HiveObject {
 
   String get elevationString {
     if (elevationM == null) return '';
-    
-    final value = elevationUnit == 'ft' 
-        ? elevationM!.round().toString() 
+
+    final value = elevationUnit == 'ft'
+        ? elevationM!.round().toString()
         : (elevationM! * 3.28084).round().toString();
-    
+
     final reference = elevationReference ?? 'MSL';
     return '$value ft $reference';
   }
@@ -90,7 +90,7 @@ class ReportingPoint extends HiveObject {
     final geometry = json['geometry'] ?? {};
     final coordinates = geometry['coordinates'] ?? [0.0, 0.0];
     final elevation = json['elevation'] ?? {};
-    
+
     return ReportingPoint(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       name: json['name']?.toString() ?? 'Unknown',
@@ -101,8 +101,9 @@ class ReportingPoint extends HiveObject {
       longitude: (coordinates[0] ?? 0.0).toDouble(),
       elevationM: elevation['value']?.toDouble(),
       elevationUnit: elevation['unit']?.toString(),
-      elevationReference: (elevation['referenceDatum'] ?? elevation['reference'])?.toString(),
-      tags: json['tags'] != null 
+      elevationReference:
+          (elevation['referenceDatum'] ?? elevation['reference'])?.toString(),
+      tags: json['tags'] != null
           ? (json['tags'] as List).map((tag) => tag.toString()).toList()
           : null,
       description: json['description']?.toString(),
@@ -123,11 +124,13 @@ class ReportingPoint extends HiveObject {
         'type': 'Point',
         'coordinates': [longitude, latitude],
       },
-      'elevation': elevationM != null ? {
-        'value': elevationM,
-        'unit': elevationUnit ?? 'm',
-        'referenceDatum': elevationReference ?? 'MSL',
-      } : null,
+      'elevation': elevationM != null
+          ? {
+              'value': elevationM,
+              'unit': elevationUnit ?? 'm',
+              'referenceDatum': elevationReference ?? 'MSL',
+            }
+          : null,
       'tags': tags,
       'description': description,
       'remarks': remarks,

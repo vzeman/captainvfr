@@ -31,7 +31,7 @@ class Checklist extends HiveObject {
     required this.modelId,
     List<ChecklistItem>? items,
   }) : items = items ?? [];
-  
+
   // Convert to JSON
   Map<String, dynamic> toJson() {
     return {
@@ -43,7 +43,7 @@ class Checklist extends HiveObject {
       'items': items.map((item) => item.toJson()).toList(),
     };
   }
-  
+
   // Create from JSON
   factory Checklist.fromJson(Map<String, dynamic> json) {
     return Checklist(
@@ -52,9 +52,11 @@ class Checklist extends HiveObject {
       description: json['description'],
       manufacturerId: json['manufacturerId'] ?? '',
       modelId: json['modelId'] ?? '',
-      items: (json['items'] as List<dynamic>?)
-          ?.map((item) => ChecklistItem.fromJson(item))
-          .toList() ?? [],
+      items:
+          (json['items'] as List<dynamic>?)
+              ?.map((item) => ChecklistItem.fromJson(item))
+              .toList() ??
+          [],
     );
   }
 }

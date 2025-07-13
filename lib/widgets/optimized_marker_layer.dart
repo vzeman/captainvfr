@@ -33,7 +33,7 @@ class OptimizedMarkerLayer extends StatelessWidget {
     }
 
     final bounds = mapController.camera.visibleBounds;
-    
+
     // Add padding to bounds to ensure smooth scrolling
     final paddedBounds = LatLngBounds(
       LatLng(
@@ -49,10 +49,9 @@ class OptimizedMarkerLayer extends StatelessWidget {
     // Filter markers to only those within padded bounds
     final visibleMarkers = <Marker>[];
 
-    
     for (int i = 0; i < markerPositions.length; i++) {
       final position = markerPositions[i];
-      
+
       // Check if marker is within padded bounds
       if (paddedBounds.contains(position)) {
         visibleMarkers.add(
@@ -92,25 +91,24 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
     if (mapController == null) {
       return const SizedBox.shrink();
     }
-    
+
     final currentZoom = mapController.camera.zoom;
-    
+
     // Filter airports based on zoom level
     // Hide small airports when zoomed out (similar to navaids at zoom < 9)
     List<Airport> visibleAirports = airports;
     if (currentZoom < 9) {
       // Only show medium and large airports when zoomed out
-      visibleAirports = airports.where((a) => 
-        a.type != 'small_airport' && 
-        a.type != 'heliport'
-      ).toList();
+      visibleAirports = airports
+          .where((a) => a.type != 'small_airport' && a.type != 'heliport')
+          .toList();
     }
-    
+
     final positions = visibleAirports.map((a) => a.position).toList();
-    
+
     // Calculate base marker size based on zoom level
     final baseMarkerSize = currentZoom >= 12 ? 40.0 : 28.0;
-    
+
     // Find the maximum marker size to use for the layer
     double maxMarkerSize = baseMarkerSize;
     for (final airport in airports) {
@@ -123,7 +121,7 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
     if (airports.every((a) => a.type == 'small_airport')) {
       maxMarkerSize = baseMarkerSize * 0.75;
     }
-    
+
     return OptimizedMarkerLayer(
       markerPositions: positions,
       markerWidth: maxMarkerSize,
@@ -131,10 +129,10 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
       markerBuilder: (index, position) {
         final airport = visibleAirports[index];
         // Small airports get 25% smaller markers (75% of base size)
-        final airportMarkerSize = airport.type == 'small_airport' 
-            ? baseMarkerSize * 0.75 
+        final airportMarkerSize = airport.type == 'small_airport'
+            ? baseMarkerSize * 0.75
             : baseMarkerSize;
-        
+
         return AirportMarker(
           airport: airport,
           onTap: onAirportTap != null ? () => onAirportTap!(airport) : null,
@@ -170,20 +168,20 @@ class OptimizedNavaidMarkersLayer extends StatelessWidget {
     if (mapController == null) {
       return const SizedBox.shrink();
     }
-    
+
     final currentZoom = mapController.camera.zoom;
 
     // Only show navaids when zoomed in enough (same threshold as reporting points)
     if (currentZoom < 9) {
       return const SizedBox.shrink();
     }
-    
+
     final positions = navaids.map((n) => n.position).toList();
-    
+
     // Calculate dynamic marker size based on zoom level
     // Same sizing as reporting points: smaller when zoomed out, larger when zoomed in
     final dynamicMarkerSize = currentZoom >= 12 ? 20.0 : 14.0;
-    
+
     return OptimizedMarkerLayer(
       markerPositions: positions,
       markerWidth: dynamicMarkerSize,
@@ -219,25 +217,25 @@ class OptimizedReportingPointsLayer extends StatelessWidget {
     if (mapController == null) {
       return const SizedBox.shrink();
     }
-    
+
     final currentZoom = mapController.camera.zoom;
-    
+
     // Only show reporting points when zoomed in enough
     // Temporarily lower threshold on iOS for debugging
     final zoomThreshold = Platform.isIOS ? 7 : 9;
     if (currentZoom < zoomThreshold) {
       return const SizedBox.shrink();
     }
-    
+
     final positions = reportingPoints.map((p) => p.position).toList();
-    
+
     // Calculate dynamic marker size based on zoom level
     final markerSize = currentZoom >= 12 ? 20.0 : 14.0;
     final showLabel = currentZoom >= 11;
     // Add extra height for label: marker + margin(2) + padding(2) + text(~14)
     final totalHeight = showLabel ? markerSize + 25.0 : markerSize;
     final markerWidth = showLabel ? 100.0 : markerSize;
-    
+
     return OptimizedMarkerLayer(
       markerPositions: positions,
       markerWidth: markerWidth,
@@ -249,13 +247,13 @@ class OptimizedReportingPointsLayer extends StatelessWidget {
       },
     );
   }
-  
+
   Widget _buildReportingPointMarker(ReportingPoint point, double zoom) {
     final markerSize = zoom >= 12 ? 20.0 : 14.0;
     final iconSize = zoom >= 12 ? 14.0 : 10.0;
     final fontSize = zoom >= 12 ? 11.0 : 9.0;
     final showLabel = zoom >= 11;
-    
+
     return GestureDetector(
       onTap: () => onReportingPointTap?.call(point),
       child: FittedBox(
@@ -264,67 +262,64 @@ class OptimizedReportingPointsLayer extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-            width: markerSize,
-            height: markerSize,
-            decoration: BoxDecoration(
-              color: _getPointColor(point.type).withValues(alpha: 0.9),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white,
-                width: 2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Center(
-              child: Icon(
-                _getPointIcon(point.type),
-                size: iconSize,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          // Show name label when zoomed in
-          if (showLabel)
-            Container(
-              margin: const EdgeInsets.only(top: 2),
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              width: markerSize,
+              height: markerSize,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(4),
+                color: _getPointColor(point.type).withValues(alpha: 0.9),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
-              child: Text(
-                point.name,
-                style: TextStyle(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+              child: Center(
+                child: Icon(
+                  _getPointIcon(point.type),
+                  size: iconSize,
+                  color: Colors.white,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
-        ],
-      ),
+            // Show name label when zoomed in
+            if (showLabel)
+              Container(
+                margin: const EdgeInsets.only(top: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  point.name,
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
-  
+
   Color _getPointColor(String? type) {
     if (type == null) return Colors.purple;
-    
+
     switch (type.toUpperCase()) {
       case 'COMPULSORY':
       case 'MANDATORY':
@@ -343,7 +338,7 @@ class OptimizedReportingPointsLayer extends StatelessWidget {
 
   IconData _getPointIcon(String? type) {
     if (type == null) return Icons.place;
-    
+
     switch (type.toUpperCase()) {
       case 'COMPULSORY':
       case 'MANDATORY':

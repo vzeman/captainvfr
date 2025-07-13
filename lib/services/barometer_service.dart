@@ -13,13 +13,15 @@ class BarometerService {
   late final Logger _logger;
 
   // Platform channels for native barometer access
-  static const MethodChannel _methodChannel = MethodChannel('barometer_service');
+  static const MethodChannel _methodChannel = MethodChannel(
+    'barometer_service',
+  );
   static const EventChannel _eventChannel = EventChannel('pressure_stream');
 
   StreamSubscription<dynamic>? _sensorSubscription;
   double? _pressureHPa;
   double? _altitudeMeters;
-  
+
   // Standard pressure at sea level in hPa (QNH)
   static double _seaLevelPressure = 1013.25;
 
@@ -46,13 +48,13 @@ class BarometerService {
 
   // Get current pressure in hPa
   double? get pressureHPa => _pressureHPa;
-  
+
   // Alias for pressureHPa for backward compatibility
   double? get lastPressure => _pressureHPa;
-  
+
   // Get current altitude in meters (calculated from pressure)
   double? get altitudeMeters => _altitudeMeters;
-  
+
   // Get sea level pressure (QNH)
   double get seaLevelPressure => _seaLevelPressure;
 
@@ -103,10 +105,10 @@ class BarometerService {
         await _methodChannel.invokeMethod('startPressureUpdates');
 
         // Listen for pressure updates via event channel
-        _sensorSubscription = _eventChannel
-            .receiveBroadcastStream()
-            .listen(_handlePressureUpdate, onError: _handleSensorError);
-
+        _sensorSubscription = _eventChannel.receiveBroadcastStream().listen(
+          _handlePressureUpdate,
+          onError: _handleSensorError,
+        );
       } else {
         // Fallback to simulated pressure data for testing
         _logger.w('Barometer not available, using simulated data');
@@ -159,17 +161,20 @@ class BarometerService {
       return;
     }
 
-    final smoothedPressure = _pressureWindow.reduce((a, b) => a + b) / _pressureWindow.length;
+    final smoothedPressure =
+        _pressureWindow.reduce((a, b) => a + b) / _pressureWindow.length;
 
     _pressureHPa = smoothedPressure;
     _altitudeMeters = _calculateAltitudeFromPressure(smoothedPressure);
 
     // Emit update
-    _updateController.add(BarometerReading(
-      pressure: smoothedPressure,
-      altitude: _altitudeMeters!,
-      timestamp: DateTime.now(),
-    ));
+    _updateController.add(
+      BarometerReading(
+        pressure: smoothedPressure,
+        altitude: _altitudeMeters!,
+        timestamp: DateTime.now(),
+      ),
+    );
   }
 
   /// Calculate altitude from pressure using the barometric formula
@@ -177,9 +182,11 @@ class BarometerService {
     // Using the barometric formula for the troposphere (valid up to 11 km)
     // h = (T0/L) * ((P0/P)^(R*L/(g*M)) - 1)
 
-    final double exponent = (_gasConstant * _temperatureLapseRate) / (_gravity * _molarMass);
+    final double exponent =
+        (_gasConstant * _temperatureLapseRate) / (_gravity * _molarMass);
     final double pressureRatio = _seaLevelPressure / pressureHPa;
-    final double altitude = (_temperatureSeaLevel / _temperatureLapseRate) *
+    final double altitude =
+        (_temperatureSeaLevel / _temperatureLapseRate) *
         (math.pow(pressureRatio, exponent) - 1);
 
     return altitude;
@@ -198,35 +205,42 @@ class BarometerService {
     double basePressure = 1013.25;
     int counter = 0;
 
-    _sensorSubscription = Stream.periodic(const Duration(milliseconds: 2000), (count) {
-      // Simulate realistic pressure variations (±2 hPa over time)
-      counter++;
-      final variation = math.sin(counter * 0.1) * 2.0;
-      final simulatedPressure = basePressure + variation;
+    _sensorSubscription =
+        Stream.periodic(const Duration(milliseconds: 2000), (count) {
+          // Simulate realistic pressure variations (±2 hPa over time)
+          counter++;
+          final variation = math.sin(counter * 0.1) * 2.0;
+          final simulatedPressure = basePressure + variation;
 
-      return simulatedPressure;
-    }).listen((pressure) {
-      _updatePressure(pressure);
-    });
+          return simulatedPressure;
+        }).listen((pressure) {
+          _updatePressure(pressure);
+        });
   }
 
   /// Set the sea level pressure (QNH) for accurate altitude calculation
   void setSeaLevelPressure(double pressureHPa) {
     if (pressureHPa > 900 && pressureHPa < 1100) {
       _seaLevelPressure = pressureHPa;
-      _logger.i('Sea level pressure set to: ${pressureHPa.toStringAsFixed(2)} hPa');
+      _logger.i(
+        'Sea level pressure set to: ${pressureHPa.toStringAsFixed(2)} hPa',
+      );
 
       // Recalculate altitude with new sea level pressure
       if (_pressureHPa != null) {
         _altitudeMeters = _calculateAltitudeFromPressure(_pressureHPa!);
-        _updateController.add(BarometerReading(
-          pressure: _pressureHPa!,
-          altitude: _altitudeMeters!,
-          timestamp: DateTime.now(),
-        ));
+        _updateController.add(
+          BarometerReading(
+            pressure: _pressureHPa!,
+            altitude: _altitudeMeters!,
+            timestamp: DateTime.now(),
+          ),
+        );
       }
     } else {
-      _logger.w('Invalid sea level pressure: $pressureHPa hPa. Must be between 900-1100 hPa');
+      _logger.w(
+        'Invalid sea level pressure: $pressureHPa hPa. Must be between 900-1100 hPa',
+      );
     }
   }
 
@@ -257,7 +271,7 @@ class BarometerService {
       _logger.e('Error stopping barometer: $e');
     }
   }
-  
+
   /// Clean up resources
   void dispose() {
     stopListening();

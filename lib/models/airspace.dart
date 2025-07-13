@@ -80,10 +80,10 @@ class Airspace extends HiveObject {
   factory Airspace.fromJson(Map<String, dynamic> json) {
     List<LatLng> parseGeometry(dynamic geometryData) {
       final List<LatLng> points = [];
-      
+
       if (geometryData != null && geometryData['coordinates'] != null) {
         final coordinates = geometryData['coordinates'];
-        
+
         if (geometryData['type'] == 'Polygon' && coordinates is List) {
           final ring = coordinates.first as List;
           for (final coord in ring) {
@@ -91,7 +91,8 @@ class Airspace extends HiveObject {
               points.add(LatLng(coord[1].toDouble(), coord[0].toDouble()));
             }
           }
-        } else if (geometryData['type'] == 'MultiPolygon' && coordinates is List) {
+        } else if (geometryData['type'] == 'MultiPolygon' &&
+            coordinates is List) {
           for (final polygon in coordinates) {
             if (polygon is List && polygon.isNotEmpty) {
               final ring = polygon.first as List;
@@ -104,7 +105,7 @@ class Airspace extends HiveObject {
           }
         }
       }
-      
+
       return points;
     }
 
@@ -135,7 +136,7 @@ class Airspace extends HiveObject {
       final geometryHash = parseGeometry(json['geometry']).hashCode;
       airspaceId = 'generated_${name}_${type}_$geometryHash';
     }
-    
+
     return Airspace(
       id: airspaceId,
       name: json['name']?.toString() ?? '',
@@ -151,8 +152,12 @@ class Airspace extends HiveObject {
       onDemand: json['onDemand'] == true,
       onRequest: json['onRequest'] == true,
       byNotam: json['byNotam'] == true,
-      validFrom: json['validFrom'] != null ? DateTime.tryParse(json['validFrom']) : null,
-      validTo: json['validTo'] != null ? DateTime.tryParse(json['validTo']) : null,
+      validFrom: json['validFrom'] != null
+          ? DateTime.tryParse(json['validFrom'])
+          : null,
+      validTo: json['validTo'] != null
+          ? DateTime.tryParse(json['validTo'])
+          : null,
       remarks: json['remarks']?.toString(),
     );
   }
@@ -164,17 +169,17 @@ class Airspace extends HiveObject {
       'type': type,
       'icaoClass': icaoClass,
       'activity': activity,
-      'lowerLimit': lowerLimitFt != null ? {
-        'value': lowerLimitFt,
-        'reference': lowerLimitReference ?? 'MSL',
-      } : null,
-      'upperLimit': upperLimitFt != null ? {
-        'value': upperLimitFt,
-        'reference': upperLimitReference ?? 'MSL',
-      } : null,
+      'lowerLimit': lowerLimitFt != null
+          ? {'value': lowerLimitFt, 'reference': lowerLimitReference ?? 'MSL'}
+          : null,
+      'upperLimit': upperLimitFt != null
+          ? {'value': upperLimitFt, 'reference': upperLimitReference ?? 'MSL'}
+          : null,
       'geometry': {
         'type': 'Polygon',
-        'coordinates': [geometry.map((p) => [p.longitude, p.latitude]).toList()],
+        'coordinates': [
+          geometry.map((p) => [p.longitude, p.latitude]).toList(),
+        ],
       },
       'country': country,
       'onDemand': onDemand,
@@ -199,38 +204,35 @@ class Airspace extends HiveObject {
   }
 
   String get altitudeRange => '$formattedLowerLimit - $formattedUpperLimit';
-  
+
   // Cached bounding box for performance
   late final LatLngBounds? _boundingBox = _calculateBoundingBox();
-  
+
   LatLngBounds? get boundingBox => _boundingBox;
-  
+
   LatLngBounds? _calculateBoundingBox() {
     if (geometry.isEmpty) return null;
-    
+
     double minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
-    
+
     for (final point in geometry) {
       minLat = minLat > point.latitude ? point.latitude : minLat;
       maxLat = maxLat < point.latitude ? point.latitude : maxLat;
       minLon = minLon > point.longitude ? point.longitude : minLon;
       maxLon = maxLon < point.longitude ? point.longitude : maxLon;
     }
-    
-    return LatLngBounds(
-      LatLng(minLat, minLon),
-      LatLng(maxLat, maxLon),
-    );
+
+    return LatLngBounds(LatLng(minLat, minLon), LatLng(maxLat, maxLon));
   }
 
   bool containsPoint(LatLng point) {
     if (geometry.isEmpty) return false;
-    
+
     int intersections = 0;
     for (int i = 0; i < geometry.length; i++) {
       final p1 = geometry[i];
       final p2 = geometry[(i + 1) % geometry.length];
-      
+
       if (p1.latitude <= point.latitude) {
         if (p2.latitude > point.latitude) {
           if (_isLeft(p1, p2, point) > 0) {
@@ -245,13 +247,13 @@ class Airspace extends HiveObject {
         }
       }
     }
-    
+
     return intersections % 2 == 1;
   }
 
   double _isLeft(LatLng p0, LatLng p1, LatLng p2) {
     return ((p1.longitude - p0.longitude) * (p2.latitude - p0.latitude) -
-            (p2.longitude - p0.longitude) * (p1.latitude - p0.latitude));
+        (p2.longitude - p0.longitude) * (p1.latitude - p0.latitude));
   }
 
   bool isActiveAt(DateTime dateTime) {

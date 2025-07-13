@@ -19,8 +19,9 @@ class _LicenseWarningWidgetState extends State<LicenseWarningWidget> {
   Widget build(BuildContext context) {
     return Consumer<LicenseService>(
       builder: (context, licenseService, child) {
-        final licensesNeedingAttention = licenseService.licensesNeedingAttention;
-        
+        final licensesNeedingAttention =
+            licenseService.licensesNeedingAttention;
+
         // Don't show if no licenses need attention or user dismissed
         if (licensesNeedingAttention.isEmpty || _isDismissed) {
           return const SizedBox.shrink();
@@ -33,8 +34,8 @@ class _LicenseWarningWidgetState extends State<LicenseWarningWidget> {
           duration: const Duration(milliseconds: 300),
           margin: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: expiredCount > 0 
-                ? Colors.red.shade100 
+            color: expiredCount > 0
+                ? Colors.red.shade100
                 : Colors.orange.shade100,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
@@ -51,7 +52,9 @@ class _LicenseWarningWidgetState extends State<LicenseWarningWidget> {
               // Header
               InkWell(
                 onTap: () => setState(() => _isExpanded = !_isExpanded),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Row(
@@ -75,7 +78,10 @@ class _LicenseWarningWidgetState extends State<LicenseWarningWidget> {
                             ),
                             if (!_isExpanded)
                               Text(
-                                _getWarningSubtitle(expiredCount, expiringCount),
+                                _getWarningSubtitle(
+                                  expiredCount,
+                                  expiringCount,
+                                ),
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey.shade700,
@@ -89,7 +95,8 @@ class _LicenseWarningWidgetState extends State<LicenseWarningWidget> {
                         children: [
                           IconButton(
                             icon: const Icon(Icons.close, size: 20),
-                            onPressed: () => setState(() => _isDismissed = true),
+                            onPressed: () =>
+                                setState(() => _isDismissed = true),
                             tooltip: 'Dismiss',
                           ),
                           Icon(
@@ -102,7 +109,7 @@ class _LicenseWarningWidgetState extends State<LicenseWarningWidget> {
                   ),
                 ),
               ),
-              
+
               // Expanded content
               if (_isExpanded) ...[
                 const Divider(height: 1),
@@ -119,7 +126,11 @@ class _LicenseWarningWidgetState extends State<LicenseWarningWidget> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
+                  padding: const EdgeInsets.only(
+                    left: 12,
+                    right: 12,
+                    bottom: 12,
+                  ),
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
@@ -127,8 +138,8 @@ class _LicenseWarningWidgetState extends State<LicenseWarningWidget> {
                       icon: const Icon(Icons.card_membership),
                       label: const Text('Manage Licenses'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: expiredCount > 0 
-                            ? Colors.red 
+                        backgroundColor: expiredCount > 0
+                            ? Colors.red
                             : Colors.orange,
                         foregroundColor: Colors.white,
                       ),
@@ -145,7 +156,7 @@ class _LicenseWarningWidgetState extends State<LicenseWarningWidget> {
 
   Widget _buildLicenseItem(License license) {
     final isExpired = license.isExpired;
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -186,12 +197,12 @@ class _LicenseWarningWidgetState extends State<LicenseWarningWidget> {
     if (expiredCount > 0 && expiringCount > 0) {
       return 'License Attention Required';
     } else if (expiredCount > 0) {
-      return expiredCount == 1 
-          ? 'License Expired' 
+      return expiredCount == 1
+          ? 'License Expired'
           : '$expiredCount Licenses Expired';
     } else {
-      return expiringCount == 1 
-          ? 'License Expiring Soon' 
+      return expiringCount == 1
+          ? 'License Expiring Soon'
           : '$expiringCount Licenses Expiring Soon';
     }
   }
@@ -209,9 +220,7 @@ class _LicenseWarningWidgetState extends State<LicenseWarningWidget> {
   void _navigateToLicenses(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const LicensesScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const LicensesScreen()),
     );
   }
 }

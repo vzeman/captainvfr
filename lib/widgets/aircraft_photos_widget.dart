@@ -8,11 +8,8 @@ import 'package:permission_handler/permission_handler.dart';
 
 class AircraftPhotosWidget extends StatefulWidget {
   final Aircraft aircraft;
-  
-  const AircraftPhotosWidget({
-    super.key,
-    required this.aircraft,
-  });
+
+  const AircraftPhotosWidget({super.key, required this.aircraft});
 
   @override
   State<AircraftPhotosWidget> createState() => _AircraftPhotosWidgetState();
@@ -21,11 +18,11 @@ class AircraftPhotosWidget extends StatefulWidget {
 class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
   final MediaService _mediaService = MediaService();
   bool _isLoading = false;
-  
+
   @override
   Widget build(BuildContext context) {
     final photos = widget.aircraft.photosPaths ?? [];
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -36,10 +33,7 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
             children: [
               const Text(
                 'Photos',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               Row(
                 children: [
@@ -58,7 +52,7 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
             ],
           ),
         ),
-        
+
         if (_isLoading)
           const Center(
             child: Padding(
@@ -66,7 +60,7 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
               child: CircularProgressIndicator(),
             ),
           ),
-        
+
         if (photos.isEmpty && !_isLoading)
           const Center(
             child: Padding(
@@ -81,24 +75,18 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
                   SizedBox(height: 16),
                   Text(
                     'No photos yet',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                    ),
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                   SizedBox(height: 8),
                   Text(
                     'Add photos from gallery or take new ones',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                 ],
               ),
             ),
           ),
-        
+
         if (photos.isNotEmpty)
           GridView.builder(
             shrinkWrap: true,
@@ -113,18 +101,18 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
             itemBuilder: (context, index) {
               final photoPath = photos[index];
               final file = _mediaService.getFile(photoPath);
-              
+
               if (file == null) {
                 return _buildErrorPhoto(photoPath);
               }
-              
+
               return _buildPhotoTile(file, photoPath, index);
             },
           ),
       ],
     );
   }
-  
+
   Widget _buildPhotoTile(File file, String photoPath, int index) {
     return GestureDetector(
       onTap: () => _viewPhoto(file, index),
@@ -139,10 +127,7 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
               errorBuilder: (context, error, stackTrace) {
                 return Container(
                   color: Colors.grey.shade300,
-                  child: const Icon(
-                    Icons.broken_image,
-                    color: Colors.grey,
-                  ),
+                  child: const Icon(Icons.broken_image, color: Colors.grey),
                 );
               },
             ),
@@ -156,11 +141,7 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: IconButton(
-                icon: const Icon(
-                  Icons.delete,
-                  color: Colors.white,
-                  size: 20,
-                ),
+                icon: const Icon(Icons.delete, color: Colors.white, size: 20),
                 onPressed: () => _deletePhoto(photoPath),
                 padding: const EdgeInsets.all(4),
                 constraints: const BoxConstraints(),
@@ -171,7 +152,7 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
       ),
     );
   }
-  
+
   Widget _buildErrorPhoto(String photoPath) {
     return Container(
       decoration: BoxDecoration(
@@ -181,10 +162,7 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          const Icon(
-            Icons.broken_image,
-            color: Colors.grey,
-          ),
+          const Icon(Icons.broken_image, color: Colors.grey),
           Positioned(
             top: 4,
             right: 4,
@@ -194,11 +172,7 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: IconButton(
-                icon: const Icon(
-                  Icons.delete,
-                  color: Colors.white,
-                  size: 20,
-                ),
+                icon: const Icon(Icons.delete, color: Colors.white, size: 20),
                 onPressed: () => _deletePhoto(photoPath),
                 padding: const EdgeInsets.all(4),
                 constraints: const BoxConstraints(),
@@ -209,10 +183,10 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
       ),
     );
   }
-  
+
   Future<void> _pickFromGallery() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final photoPath = await _mediaService.pickImageFromGallery();
       if (photoPath != null) {
@@ -228,10 +202,10 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
       }
     }
   }
-  
+
   Future<void> _takePhoto() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final photoPath = await _mediaService.takePhoto();
       if (photoPath != null) {
@@ -247,26 +221,26 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
       }
     }
   }
-  
+
   Future<void> _addPhotoToAircraft(String photoPath) async {
     final aircraftService = context.read<AircraftSettingsService>();
     final updatedPhotos = List<String>.from(widget.aircraft.photosPaths ?? []);
     updatedPhotos.add(photoPath);
-    
+
     final updatedAircraft = widget.aircraft.copyWith(
       photosPaths: updatedPhotos,
       updatedAt: DateTime.now(),
     );
-    
+
     await aircraftService.updateAircraft(updatedAircraft);
-    
+
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Photo added successfully')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Photo added successfully')));
     }
   }
-  
+
   Future<void> _deletePhoto(String photoPath) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -286,31 +260,33 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
         ],
       ),
     );
-    
+
     if (confirmed == true) {
       setState(() => _isLoading = true);
-      
+
       try {
         // Delete from storage
         await _mediaService.deletePhoto(photoPath);
-        
+
         // Update aircraft
         if (!mounted) return;
         final aircraftService = context.read<AircraftSettingsService>();
-        final updatedPhotos = List<String>.from(widget.aircraft.photosPaths ?? []);
+        final updatedPhotos = List<String>.from(
+          widget.aircraft.photosPaths ?? [],
+        );
         updatedPhotos.remove(photoPath);
-        
+
         final updatedAircraft = widget.aircraft.copyWith(
           photosPaths: updatedPhotos,
           updatedAt: DateTime.now(),
         );
-        
+
         await aircraftService.updateAircraft(updatedAircraft);
-        
+
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Photo deleted')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Photo deleted')));
         }
       } catch (e) {
         if (mounted) {
@@ -328,7 +304,7 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
       }
     }
   }
-  
+
   void _viewPhoto(File file, int index) {
     Navigator.push(
       context,
@@ -341,11 +317,11 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
       ),
     );
   }
-  
+
   void _handleError(dynamic error) {
     String message;
     SnackBarAction? action;
-    
+
     if (error is PermissionException) {
       message = error.message;
       if (error.isPermanentlyDenied) {
@@ -359,7 +335,7 @@ class _AircraftPhotosWidgetState extends State<AircraftPhotosWidget> {
     } else {
       message = 'An error occurred: ${error.toString()}';
     }
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -375,14 +351,14 @@ class PhotoViewScreen extends StatelessWidget {
   final List<String> photos;
   final int initialIndex;
   final MediaService mediaService;
-  
+
   const PhotoViewScreen({
     super.key,
     required this.photos,
     required this.initialIndex,
     required this.mediaService,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -400,24 +376,15 @@ class PhotoViewScreen extends StatelessWidget {
         itemCount: photos.length,
         itemBuilder: (context, index) {
           final file = mediaService.getFile(photos[index]);
-          
+
           if (file == null) {
             return const Center(
-              child: Icon(
-                Icons.broken_image,
-                color: Colors.white,
-                size: 64,
-              ),
+              child: Icon(Icons.broken_image, color: Colors.white, size: 64),
             );
           }
-          
+
           return InteractiveViewer(
-            child: Center(
-              child: Image.file(
-                file,
-                fit: BoxFit.contain,
-              ),
-            ),
+            child: Center(child: Image.file(file, fit: BoxFit.contain)),
           );
         },
       ),

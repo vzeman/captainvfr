@@ -62,17 +62,19 @@ class FlightPlan extends HiveObject {
   }
 
   // Get flight segments with calculations
-  List<FlightSegment> get segments {
+  List<PlanSegment> get segments {
     if (waypoints.length < 2) return [];
 
-    List<FlightSegment> segments = [];
+    List<PlanSegment> segments = [];
     for (int i = 0; i < waypoints.length - 1; i++) {
-      segments.add(FlightSegment(
-        from: waypoints[i],
-        to: waypoints[i + 1],
-        cruiseSpeed: cruiseSpeed,
-        fuelConsumptionRate: fuelConsumptionRate,
-      ));
+      segments.add(
+        PlanSegment(
+          from: waypoints[i],
+          to: waypoints[i + 1],
+          cruiseSpeed: cruiseSpeed,
+          fuelConsumptionRate: fuelConsumptionRate,
+        ),
+      );
     }
     return segments;
   }
@@ -80,7 +82,8 @@ class FlightPlan extends HiveObject {
   // Calculate total fuel consumption in gallons
   double get totalFuelConsumption {
     if (fuelConsumptionRate == null || fuelConsumptionRate! <= 0) return 0.0;
-    return (totalFlightTime / 60) * fuelConsumptionRate!; // Convert minutes to hours
+    return (totalFlightTime / 60) *
+        fuelConsumptionRate!; // Convert minutes to hours
   }
 }
 
@@ -122,7 +125,8 @@ class Waypoint extends HiveObject {
   // Calculate distance to another waypoint in nautical miles
   double distanceTo(Waypoint other) {
     const Distance distance = Distance();
-    return distance.as(LengthUnit.Meter, latLng, other.latLng) * 0.000539957; // Convert meters to nautical miles
+    return distance.as(LengthUnit.Meter, latLng, other.latLng) *
+        0.000539957; // Convert meters to nautical miles
   }
 
   // Calculate bearing to another waypoint in degrees
@@ -152,13 +156,13 @@ enum FlightRules {
   ifr,
 }
 
-class FlightSegment {
+class PlanSegment {
   final Waypoint from;
   final Waypoint to;
   final double? cruiseSpeed;
   final double? fuelConsumptionRate;
 
-  FlightSegment({
+  PlanSegment({
     required this.from,
     required this.to,
     this.cruiseSpeed,

@@ -50,10 +50,12 @@ class _ModelFormDialogState extends State<ModelFormDialog> {
     _engineCountController.text = type.engineCount.toString();
     _maxSeatsController.text = type.maxSeats.toString();
     _typicalCruiseSpeedController.text = type.typicalCruiseSpeed.toString();
-    _typicalServiceCeilingController.text = type.typicalServiceCeiling.toString();
+    _typicalServiceCeilingController.text = type.typicalServiceCeiling
+        .toString();
     _fuelConsumptionController.text = type.fuelConsumption?.toString() ?? '';
     _maximumClimbRateController.text = type.maximumClimbRate?.toString() ?? '';
-    _maximumDescentRateController.text = type.maximumDescentRate?.toString() ?? '';
+    _maximumDescentRateController.text =
+        type.maximumDescentRate?.toString() ?? '';
     _maxTakeoffWeightController.text = type.maxTakeoffWeight?.toString() ?? '';
     _maxLandingWeightController.text = type.maxLandingWeight?.toString() ?? '';
     _fuelCapacityController.text = type.fuelCapacity?.toString() ?? '';
@@ -279,7 +281,9 @@ class _ModelFormDialogState extends State<ModelFormDialog> {
                           labelText: 'Fuel Consumption (gph)',
                           border: OutlineInputBorder(),
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                       ),
                       const SizedBox(height: 16),
 
@@ -375,7 +379,10 @@ class _ModelFormDialogState extends State<ModelFormDialog> {
     });
 
     try {
-      final service = Provider.of<AircraftSettingsService>(context, listen: false);
+      final service = Provider.of<AircraftSettingsService>(
+        context,
+        listen: false,
+      );
 
       if (widget.model == null) {
         // Adding a new model - use the method with individual parameters
@@ -386,21 +393,30 @@ class _ModelFormDialogState extends State<ModelFormDialog> {
           engineCount: int.parse(_engineCountController.text),
           maxSeats: int.parse(_maxSeatsController.text),
           typicalCruiseSpeed: int.parse(_typicalCruiseSpeedController.text),
-          typicalServiceCeiling: int.parse(_typicalServiceCeilingController.text),
+          typicalServiceCeiling: int.parse(
+            _typicalServiceCeilingController.text,
+          ),
           description: _descriptionController.text.trim().isEmpty
-              ? null : _descriptionController.text.trim(),
+              ? null
+              : _descriptionController.text.trim(),
           fuelConsumption: _fuelConsumptionController.text.trim().isEmpty
-              ? null : double.tryParse(_fuelConsumptionController.text),
+              ? null
+              : double.tryParse(_fuelConsumptionController.text),
           maximumClimbRate: _maximumClimbRateController.text.trim().isEmpty
-              ? null : int.tryParse(_maximumClimbRateController.text),
+              ? null
+              : int.tryParse(_maximumClimbRateController.text),
           maximumDescentRate: _maximumDescentRateController.text.trim().isEmpty
-              ? null : int.tryParse(_maximumDescentRateController.text),
+              ? null
+              : int.tryParse(_maximumDescentRateController.text),
           maxTakeoffWeight: _maxTakeoffWeightController.text.trim().isEmpty
-              ? null : int.tryParse(_maxTakeoffWeightController.text),
+              ? null
+              : int.tryParse(_maxTakeoffWeightController.text),
           maxLandingWeight: _maxLandingWeightController.text.trim().isEmpty
-              ? null : int.tryParse(_maxLandingWeightController.text),
+              ? null
+              : int.tryParse(_maxLandingWeightController.text),
           fuelCapacity: _fuelCapacityController.text.trim().isEmpty
-              ? null : int.tryParse(_fuelCapacityController.text),
+              ? null
+              : int.tryParse(_fuelCapacityController.text),
         );
       } else {
         // Updating existing model - create Model object
@@ -412,23 +428,32 @@ class _ModelFormDialogState extends State<ModelFormDialog> {
           engineCount: int.parse(_engineCountController.text),
           maxSeats: int.parse(_maxSeatsController.text),
           typicalCruiseSpeed: int.parse(_typicalCruiseSpeedController.text),
-          typicalServiceCeiling: int.parse(_typicalServiceCeilingController.text),
+          typicalServiceCeiling: int.parse(
+            _typicalServiceCeilingController.text,
+          ),
           description: _descriptionController.text.trim().isEmpty
-              ? null : _descriptionController.text.trim(),
+              ? null
+              : _descriptionController.text.trim(),
           createdAt: widget.model!.createdAt,
           updatedAt: DateTime.now(),
           fuelConsumption: _fuelConsumptionController.text.trim().isEmpty
-              ? null : double.tryParse(_fuelConsumptionController.text),
+              ? null
+              : double.tryParse(_fuelConsumptionController.text),
           maximumClimbRate: _maximumClimbRateController.text.trim().isEmpty
-              ? null : int.tryParse(_maximumClimbRateController.text),
+              ? null
+              : int.tryParse(_maximumClimbRateController.text),
           maximumDescentRate: _maximumDescentRateController.text.trim().isEmpty
-              ? null : int.tryParse(_maximumDescentRateController.text),
+              ? null
+              : int.tryParse(_maximumDescentRateController.text),
           maxTakeoffWeight: _maxTakeoffWeightController.text.trim().isEmpty
-              ? null : int.tryParse(_maxTakeoffWeightController.text),
+              ? null
+              : int.tryParse(_maxTakeoffWeightController.text),
           maxLandingWeight: _maxLandingWeightController.text.trim().isEmpty
-              ? null : int.tryParse(_maxLandingWeightController.text),
+              ? null
+              : int.tryParse(_maxLandingWeightController.text),
           fuelCapacity: _fuelCapacityController.text.trim().isEmpty
-              ? null : int.tryParse(_fuelCapacityController.text),
+              ? null
+              : int.tryParse(_fuelCapacityController.text),
         );
 
         await service.updateModel(model);
@@ -438,9 +463,11 @@ class _ModelFormDialogState extends State<ModelFormDialog> {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.model == null
-                ? 'Model added successfully'
-                : 'Model updated successfully'),
+            content: Text(
+              widget.model == null
+                  ? 'Model added successfully'
+                  : 'Model updated successfully',
+            ),
           ),
         );
       }

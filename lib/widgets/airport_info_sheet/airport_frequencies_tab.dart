@@ -27,10 +27,7 @@ class AirportFrequenciesTab extends StatelessWidget {
     }
 
     if (error != null) {
-      return custom.ErrorWidget(
-        error: error!,
-        onRetry: onRetry,
-      );
+      return custom.ErrorWidget(error: error!, onRetry: onRetry);
     }
 
     if (frequencies.isEmpty) {
@@ -60,13 +57,15 @@ class AirportFrequenciesTab extends StatelessWidget {
           // Frequency List
           Text(
             'Frequencies (${frequencies.length})',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
 
-          ...frequencies.map((frequency) => FrequencyCard(frequency: frequency)),
+          ...frequencies.map(
+            (frequency) => FrequencyCard(frequency: frequency),
+          ),
         ],
       ),
     );
@@ -76,10 +75,7 @@ class AirportFrequenciesTab extends StatelessWidget {
 class FrequencyCard extends StatelessWidget {
   final Frequency frequency;
 
-  const FrequencyCard({
-    super.key,
-    required this.frequency,
-  });
+  const FrequencyCard({super.key, required this.frequency});
 
   @override
   Widget build(BuildContext context) {
@@ -96,9 +92,14 @@ class FrequencyCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withAlpha(51), // 20% opacity
+                    color: theme.colorScheme.primary.withAlpha(
+                      51,
+                    ), // 20% opacity
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -121,7 +122,8 @@ class FrequencyCard extends StatelessWidget {
             ),
 
             // Description if available
-            if (frequency.description != null && frequency.description!.isNotEmpty) ...[
+            if (frequency.description != null &&
+                frequency.description!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
                 frequency.description!,

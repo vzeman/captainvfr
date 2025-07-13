@@ -11,37 +11,37 @@ class FlightPoint extends HiveObject {
   @HiveField(1)
   late double longitude;
   @HiveField(2)
-  late double altitude;         // In meters
+  late double altitude; // In meters
   @HiveField(3)
-  late double speed;            // In m/s
+  late double speed; // In m/s
   @HiveField(4)
-  late double heading;          // In degrees (0-360)
+  late double heading; // In degrees (0-360)
   @HiveField(5)
-  late double accuracy;         // Position accuracy in meters
+  late double accuracy; // Position accuracy in meters
   @HiveField(6)
-  late double verticalAccuracy;  // Vertical accuracy in meters
+  late double verticalAccuracy; // Vertical accuracy in meters
   @HiveField(7)
-  late double speedAccuracy;     // Speed accuracy in m/s
+  late double speedAccuracy; // Speed accuracy in m/s
   @HiveField(8)
-  late double headingAccuracy;   // Heading accuracy in degrees
+  late double headingAccuracy; // Heading accuracy in degrees
   @HiveField(9)
-  late double xAcceleration;     // X-axis acceleration (m/s²)
+  late double xAcceleration; // X-axis acceleration (m/s²)
   @HiveField(10)
-  late double yAcceleration;     // Y-axis acceleration (m/s²)
+  late double yAcceleration; // Y-axis acceleration (m/s²)
   @HiveField(11)
-  late double zAcceleration;     // Z-axis acceleration (m/s²)
+  late double zAcceleration; // Z-axis acceleration (m/s²)
   @HiveField(12)
-  late double xGyro;            // X-axis rotation rate (rad/s)
+  late double xGyro; // X-axis rotation rate (rad/s)
   @HiveField(13)
-  late double yGyro;            // Y-axis rotation rate (rad/s)
+  late double yGyro; // Y-axis rotation rate (rad/s)
   @HiveField(14)
-  late double zGyro;            // Z-axis rotation rate (rad/s)
+  late double zGyro; // Z-axis rotation rate (rad/s)
   @HiveField(15)
-  late double pressure;         // Air pressure in hPa
+  late double pressure; // Air pressure in hPa
   @HiveField(16)
   late DateTime timestamp;
   @HiveField(17)
-  late double verticalSpeed;    // Vertical speed in m/s
+  late double verticalSpeed; // Vertical speed in m/s
 
   FlightPoint({
     double? latitude,
@@ -70,19 +70,19 @@ class FlightPoint extends HiveObject {
     this.heading = heading ?? 0.0;
     this.timestamp = timestamp ?? DateTime.now();
   }
-  
+
   // Calculate total acceleration (G-force)
   double get totalAcceleration {
-    return math.sqrt(xAcceleration * xAcceleration + 
-                   yAcceleration * yAcceleration + 
-                   zAcceleration * zAcceleration);
+    return math.sqrt(
+      xAcceleration * xAcceleration +
+          yAcceleration * yAcceleration +
+          zAcceleration * zAcceleration,
+    );
   }
-       
+
   // Calculate vibration magnitude
   double get vibrationMagnitude {
-    return math.sqrt(xGyro * xGyro + 
-                   yGyro * yGyro + 
-                   zGyro * zGyro);
+    return math.sqrt(xGyro * xGyro + yGyro * yGyro + zGyro * zGyro);
   }
 
   LatLng get position => LatLng(latitude, longitude);

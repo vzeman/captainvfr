@@ -20,14 +20,13 @@ class FlightLogScreen extends StatelessWidget {
       ),
       body: Consumer<FlightService>(
         builder: (context, flightService, child) {
-          final flights = flightService.flights.reversed.toList(); // Reverse to show newest first
+          final flights = flightService.flights.reversed
+              .toList(); // Reverse to show newest first
 
           if (flights.isEmpty) {
-            return const Center(
-              child: Text('No flights recorded yet.'),
-            );
+            return const Center(child: Text('No flights recorded yet.'));
           }
-          
+
           return ListView.builder(
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: flights.length,
@@ -40,14 +39,15 @@ class FlightLogScreen extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildFlightItem(BuildContext context, Flight flight) {
-    final dateStr = '${flight.startTime.day}/${flight.startTime.month}/${flight.startTime.year} ' 
+    final dateStr =
+        '${flight.startTime.day}/${flight.startTime.month}/${flight.startTime.year} '
         '${flight.startTime.hour}:${flight.startTime.minute.toString().padLeft(2, '0')}';
     final duration = flight.duration;
     final hours = duration.inHours.toString().padLeft(2, '0');
     final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
-    
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       child: InkWell(
@@ -79,10 +79,11 @@ class FlightLogScreen extends StatelessWidget {
                     children: [
                       Text(
                         '$hours:${minutes}h',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                       const SizedBox(width: 8),
                       IconButton(
@@ -91,7 +92,8 @@ class FlightLogScreen extends StatelessWidget {
                           color: Theme.of(context).colorScheme.error,
                           size: 20,
                         ),
-                        onPressed: () => _showDeleteConfirmation(context, flight),
+                        onPressed: () =>
+                            _showDeleteConfirmation(context, flight),
                         tooltip: 'Delete flight',
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(
@@ -130,8 +132,12 @@ class FlightLogScreen extends StatelessWidget {
       ),
     );
   }
-  
-  Widget _buildInfoChip(BuildContext context, {required IconData icon, required String label}) {
+
+  Widget _buildInfoChip(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -141,7 +147,11 @@ class FlightLogScreen extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          Icon(
+            icon,
+            size: 16,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(width: 4),
           Text(
             label,
@@ -155,13 +165,15 @@ class FlightLogScreen extends StatelessWidget {
   }
 
   void _showDeleteConfirmation(BuildContext context, Flight flight) {
-    final dateStr = '${flight.startTime.day}/${flight.startTime.month}/${flight.startTime.year} '
+    final dateStr =
+        '${flight.startTime.day}/${flight.startTime.month}/${flight.startTime.year} '
         '${flight.startTime.hour}:${flight.startTime.minute.toString().padLeft(2, '0')}';
 
     ThemedDialog.showConfirmation(
       context: context,
       title: 'Delete Flight',
-      message: 'Are you sure you want to delete the flight from $dateStr?\n\nThis action cannot be undone.',
+      message:
+          'Are you sure you want to delete the flight from $dateStr?\n\nThis action cannot be undone.',
       confirmText: 'Delete',
       cancelText: 'Cancel',
       destructive: true,

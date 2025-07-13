@@ -14,8 +14,9 @@ class FlightStorageService {
     if (_initialized) return;
 
     // Initialize Hive with a valid directory in your app
-    final appDocumentDir = await path_provider.getApplicationDocumentsDirectory();
-    
+    final appDocumentDir = await path_provider
+        .getApplicationDocumentsDirectory();
+
     // Initialize Hive
     Hive.init(appDocumentDir.path);
 
@@ -36,22 +37,22 @@ class FlightStorageService {
 
     _initialized = true;
   }
-  
+
   // Save a flight and its points
   static Future<void> saveFlight(Flight flight) async {
     final flightBox = Hive.box<Flight>(_flightBox);
     final flightPointsBox = Hive.box<FlightPoint>(_flightPointsBox);
-    
+
     // Save all points with a composite key first
     for (var i = 0; i < flight.path.length; i++) {
       final point = flight.path[i];
       await flightPointsBox.put('${flight.id}_$i', point);
     }
-    
+
     // Save the flight after points to ensure all points are stored
     await flightBox.put(flight.id, flight);
   }
-  
+
   // Get all flights
   static Future<List<Flight>> getAllFlights() async {
     final flightBox = Hive.box<Flight>(_flightBox);
@@ -79,28 +80,28 @@ class FlightStorageService {
 
     return flights;
   }
-  
+
   // Get a specific flight by ID with all its points
   static Future<Flight?> getFlight(String id) async {
     final flightBox = Hive.box<Flight>(_flightBox);
     final flightPointsBox = Hive.box<FlightPoint>(_flightPointsBox);
-    
+
     // Find the flight by ID
     final flight = flightBox.get(id);
     if (flight == null) return null;
-    
+
     // Retrieve all points for this flight
     final path = <FlightPoint>[];
-    
+
     int i = 0;
     while (true) {
       final point = flightPointsBox.get('${flight.id}_$i');
       if (point == null) break;
-      
+
       path.add(point);
       i++;
     }
-    
+
     // Return a new flight instance with the loaded points
     return flight.copyWith(
       path: path,
@@ -112,12 +113,12 @@ class FlightStorageService {
       distanceTraveled: null,
     );
   }
-  
+
   // Delete a flight by ID and all its points
   static Future<void> deleteFlight(String id) async {
     final flightBox = Hive.box<Flight>(_flightBox);
     final flightPointsBox = Hive.box<FlightPoint>(_flightPointsBox);
-    
+
     // Delete all points for this flight
     int i = 0;
     while (true) {
@@ -129,11 +130,11 @@ class FlightStorageService {
         break;
       }
     }
-    
+
     // Delete the flight
     await flightBox.delete(id);
   }
-  
+
   // Clear all data (for testing/debugging)
   static Future<void> clearAll() async {
     await Hive.box<Flight>(_flightBox).clear();

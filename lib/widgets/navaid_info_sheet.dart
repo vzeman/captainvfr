@@ -42,11 +42,7 @@ class NavaidInfoSheet extends StatelessWidget {
                     color: Colors.blue[100],
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    Icons.explore,
-                    color: Colors.blue[700],
-                    size: 24,
-                  ),
+                  child: Icon(Icons.explore, color: Colors.blue[700], size: 24),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -62,18 +58,12 @@ class NavaidInfoSheet extends StatelessWidget {
                       ),
                       Text(
                         navaid.name,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: onClose,
-                ),
+                IconButton(icon: const Icon(Icons.close), onPressed: onClose),
               ],
             ),
           ),
@@ -84,9 +74,14 @@ class NavaidInfoSheet extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildInfoRow('Type', navaid.type.toUpperCase()),
-                _buildInfoRow('Frequency', '${navaid.frequencyKhz.toStringAsFixed(1)} kHz'),
-                _buildInfoRow('Position',
-                  '${navaid.position.latitude.toStringAsFixed(6)}, ${navaid.position.longitude.toStringAsFixed(6)}'),
+                _buildInfoRow(
+                  'Frequency',
+                  '${navaid.frequencyKhz.toStringAsFixed(1)} kHz',
+                ),
+                _buildInfoRow(
+                  'Position',
+                  '${navaid.position.latitude.toStringAsFixed(6)}, ${navaid.position.longitude.toStringAsFixed(6)}',
+                ),
                 _buildInfoRow('Elevation', '${navaid.elevationFt} ft'),
                 _buildInfoRow('Country', navaid.isoCountry),
                 if (navaid.usageType.isNotEmpty)
@@ -94,7 +89,10 @@ class NavaidInfoSheet extends StatelessWidget {
                 if (navaid.associatedAirport.isNotEmpty)
                   _buildInfoRow('Airport', navaid.associatedAirport),
                 if (navaid.dmeFrequencyKhz > 0)
-                  _buildInfoRow('DME Frequency', '${navaid.dmeFrequencyKhz.toStringAsFixed(1)} kHz'),
+                  _buildInfoRow(
+                    'DME Frequency',
+                    '${navaid.dmeFrequencyKhz.toStringAsFixed(1)} kHz',
+                  ),
                 if (navaid.dmeChannel.isNotEmpty)
                   _buildInfoRow('DME Channel', navaid.dmeChannel),
               ],
@@ -112,7 +110,9 @@ class NavaidInfoSheet extends StatelessWidget {
                       // Add to flight plan functionality could be added here
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Add to flight plan feature coming soon!'),
+                          content: Text(
+                            'Add to flight plan feature coming soon!',
+                          ),
                         ),
                       );
                     },
@@ -151,9 +151,7 @@ class NavaidInfoSheet extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontWeight: FontWeight.w400,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w400),
             ),
           ),
         ],

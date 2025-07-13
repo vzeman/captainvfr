@@ -31,13 +31,23 @@ class AltitudeVerticalSpeedChart extends StatelessWidget {
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     // Calculate min and max for altitude Y axis
-    final minAltY = minAltitude ?? (altitudeData.isNotEmpty ? altitudeData.reduce((a, b) => a < b ? a : b) - 50 : 0);
-    final maxAltY = maxAltitude ?? (altitudeData.isNotEmpty ? altitudeData.reduce((a, b) => a > b ? a : b) + 50 : 1000);
-    
+    final minAltY =
+        minAltitude ??
+        (altitudeData.isNotEmpty
+            ? altitudeData.reduce((a, b) => a < b ? a : b) - 50
+            : 0);
+    final maxAltY =
+        maxAltitude ??
+        (altitudeData.isNotEmpty
+            ? altitudeData.reduce((a, b) => a > b ? a : b) + 50
+            : 1000);
+
     // Calculate min and max for vertical speed Y axis (in m/s)
-    final vsData = verticalSpeedData.isNotEmpty ? verticalSpeedData : List.filled(altitudeData.length, 0.0);
+    final vsData = verticalSpeedData.isNotEmpty
+        ? verticalSpeedData
+        : List.filled(altitudeData.length, 0.0);
     final minVS = vsData.reduce((a, b) => a < b ? a : b) - 0.5;
     final maxVS = vsData.reduce((a, b) => a > b ? a : b) + 0.5;
 
@@ -56,7 +66,10 @@ class AltitudeVerticalSpeedChart extends StatelessWidget {
           ),
           titlesData: FlTitlesData(
             leftTitles: AxisTitles(
-              axisNameWidget: const Text('Altitude (m)', style: TextStyle(fontSize: 12)),
+              axisNameWidget: const Text(
+                'Altitude (m)',
+                style: TextStyle(fontSize: 12),
+              ),
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 50,
@@ -67,13 +80,18 @@ class AltitudeVerticalSpeedChart extends StatelessWidget {
               ),
             ),
             rightTitles: AxisTitles(
-              axisNameWidget: const Text('V/S (m/s)', style: TextStyle(fontSize: 12)),
+              axisNameWidget: const Text(
+                'V/S (m/s)',
+                style: TextStyle(fontSize: 12),
+              ),
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 50,
                 getTitlesWidget: (value, meta) {
                   // Map the right axis to vertical speed range
-                  final vsValue = minVS + (value - minAltY) * (maxVS - minVS) / (maxAltY - minAltY);
+                  final vsValue =
+                      minVS +
+                      (value - minAltY) * (maxVS - minVS) / (maxAltY - minAltY);
                   return Text(
                     vsValue.toStringAsFixed(1),
                     style: const TextStyle(fontSize: 10, color: Colors.green),
@@ -82,10 +100,15 @@ class AltitudeVerticalSpeedChart extends StatelessWidget {
               ),
             ),
             bottomTitles: AxisTitles(
-              axisNameWidget: const Text('Time (minutes)', style: TextStyle(fontSize: 12)),
+              axisNameWidget: const Text(
+                'Time (minutes)',
+                style: TextStyle(fontSize: 12),
+              ),
               sideTitles: SideTitles(
                 showTitles: true,
-                interval: altitudeData.length > 10 ? altitudeData.length / 5 : 1,
+                interval: altitudeData.length > 10
+                    ? altitudeData.length / 5
+                    : 1,
                 getTitlesWidget: (value, meta) {
                   final minutes = value.toInt();
                   return Text(
@@ -118,14 +141,19 @@ class AltitudeVerticalSpeedChart extends StatelessWidget {
               dotData: const FlDotData(show: false),
               belowBarData: BarAreaData(
                 show: true,
-                color: (isDark ? Colors.blue[300] : Colors.blue[600])!.withValues(alpha: 0.15),
+                color: (isDark ? Colors.blue[300] : Colors.blue[600])!
+                    .withValues(alpha: 0.15),
               ),
             ),
             // Vertical speed line (mapped to altitude scale)
             LineChartBarData(
               spots: vsData.asMap().entries.map((entry) {
                 // Map vertical speed to altitude scale for display
-                final mappedValue = minAltY + (entry.value - minVS) * (maxAltY - minAltY) / (maxVS - minVS);
+                final mappedValue =
+                    minAltY +
+                    (entry.value - minVS) *
+                        (maxAltY - minAltY) /
+                        (maxVS - minVS);
                 return FlSpot(entry.key.toDouble(), mappedValue);
               }).toList(),
               isCurved: true,

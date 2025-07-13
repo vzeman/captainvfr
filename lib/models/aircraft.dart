@@ -67,12 +67,61 @@ class Aircraft extends HiveObject {
 
   @HiveField(20)
   AircraftCategory? category;
-  
+
   @HiveField(21)
   List<String>? photosPaths; // Paths to stored photos
-  
+
   @HiveField(22)
   List<String>? documentsPaths; // Paths to stored documents
+
+  // Performance data fields
+  @HiveField(23)
+  int? takeoffGroundRoll50ft; // in feet at sea level standard conditions
+
+  @HiveField(24)
+  int? takeoffOver50ft; // in feet at sea level standard conditions
+
+  @HiveField(25)
+  int? landingGroundRoll50ft; // in feet at sea level standard conditions
+
+  @HiveField(26)
+  int? landingOver50ft; // in feet at sea level standard conditions
+
+  @HiveField(27)
+  double? stallSpeedClean; // in knots (Vs1)
+
+  @HiveField(28)
+  double? stallSpeedLanding; // in knots (Vs0)
+
+  @HiveField(29)
+  int? serviceAboveCeiling; // in feet
+
+  @HiveField(30)
+  double? bestGlideSpeed; // in knots
+
+  @HiveField(31)
+  double? bestGlideRatio; // glide ratio (distance/altitude)
+
+  @HiveField(32)
+  double? vx; // best angle of climb speed in knots
+
+  @HiveField(33)
+  double? vy; // best rate of climb speed in knots
+
+  @HiveField(34)
+  double? va; // maneuvering speed in knots
+
+  @HiveField(35)
+  double? vno; // maximum structural cruising speed in knots
+
+  @HiveField(36)
+  double? vne; // never exceed speed in knots
+
+  @HiveField(37)
+  int? emptyWeight; // in pounds
+
+  @HiveField(38)
+  double? emptyWeightCG; // empty weight CG location in inches from datum
 
   // Convenience getters for backward compatibility
   double get maxAltitude => maximumAltitude.toDouble();
@@ -103,6 +152,22 @@ class Aircraft extends HiveObject {
     this.category,
     this.photosPaths,
     this.documentsPaths,
+    this.takeoffGroundRoll50ft,
+    this.takeoffOver50ft,
+    this.landingGroundRoll50ft,
+    this.landingOver50ft,
+    this.stallSpeedClean,
+    this.stallSpeedLanding,
+    this.serviceAboveCeiling,
+    this.bestGlideSpeed,
+    this.bestGlideRatio,
+    this.vx,
+    this.vy,
+    this.va,
+    this.vno,
+    this.vne,
+    this.emptyWeight,
+    this.emptyWeightCG,
   });
 
   Map<String, dynamic> toMap() {
@@ -128,6 +193,22 @@ class Aircraft extends HiveObject {
       'category': category?.index,
       'photos_paths': photosPaths,
       'documents_paths': documentsPaths,
+      'takeoff_ground_roll_50ft': takeoffGroundRoll50ft,
+      'takeoff_over_50ft': takeoffOver50ft,
+      'landing_ground_roll_50ft': landingGroundRoll50ft,
+      'landing_over_50ft': landingOver50ft,
+      'stall_speed_clean': stallSpeedClean,
+      'stall_speed_landing': stallSpeedLanding,
+      'service_above_ceiling': serviceAboveCeiling,
+      'best_glide_speed': bestGlideSpeed,
+      'best_glide_ratio': bestGlideRatio,
+      'vx': vx,
+      'vy': vy,
+      'va': va,
+      'vno': vno,
+      'vne': vne,
+      'empty_weight': emptyWeight,
+      'empty_weight_cg': emptyWeightCG,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -153,11 +234,37 @@ class Aircraft extends HiveObject {
       registration: map['registration'],
       manufacturer: map['manufacturer'],
       model: map['model'],
-      category: map['category'] != null ? AircraftCategory.values[map['category']] : null,
-      photosPaths: (map['photos_paths'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
-      documentsPaths: (map['documents_paths'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
-      createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
-      updatedAt: DateTime.parse(map['updated_at'] ?? DateTime.now().toIso8601String()),
+      category: map['category'] != null
+          ? AircraftCategory.values[map['category']]
+          : null,
+      photosPaths: (map['photos_paths'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList(),
+      documentsPaths: (map['documents_paths'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList(),
+      takeoffGroundRoll50ft: map['takeoff_ground_roll_50ft']?.toInt(),
+      takeoffOver50ft: map['takeoff_over_50ft']?.toInt(),
+      landingGroundRoll50ft: map['landing_ground_roll_50ft']?.toInt(),
+      landingOver50ft: map['landing_over_50ft']?.toInt(),
+      stallSpeedClean: (map['stall_speed_clean'] ?? 0).toDouble(),
+      stallSpeedLanding: (map['stall_speed_landing'] ?? 0).toDouble(),
+      serviceAboveCeiling: map['service_above_ceiling']?.toInt(),
+      bestGlideSpeed: (map['best_glide_speed'] ?? 0).toDouble(),
+      bestGlideRatio: (map['best_glide_ratio'] ?? 0).toDouble(),
+      vx: (map['vx'] ?? 0).toDouble(),
+      vy: (map['vy'] ?? 0).toDouble(),
+      va: (map['va'] ?? 0).toDouble(),
+      vno: (map['vno'] ?? 0).toDouble(),
+      vne: (map['vne'] ?? 0).toDouble(),
+      emptyWeight: map['empty_weight']?.toInt(),
+      emptyWeightCG: (map['empty_weight_cg'] ?? 0).toDouble(),
+      createdAt: DateTime.parse(
+        map['created_at'] ?? DateTime.now().toIso8601String(),
+      ),
+      updatedAt: DateTime.parse(
+        map['updated_at'] ?? DateTime.now().toIso8601String(),
+      ),
     );
   }
 
@@ -185,6 +292,22 @@ class Aircraft extends HiveObject {
     AircraftCategory? category,
     List<String>? photosPaths,
     List<String>? documentsPaths,
+    int? takeoffGroundRoll50ft,
+    int? takeoffOver50ft,
+    int? landingGroundRoll50ft,
+    int? landingOver50ft,
+    double? stallSpeedClean,
+    double? stallSpeedLanding,
+    int? serviceAboveCeiling,
+    double? bestGlideSpeed,
+    double? bestGlideRatio,
+    double? vx,
+    double? vy,
+    double? va,
+    double? vno,
+    double? vne,
+    int? emptyWeight,
+    double? emptyWeightCG,
   }) {
     return Aircraft(
       id: id ?? this.id,
@@ -210,6 +333,24 @@ class Aircraft extends HiveObject {
       category: category ?? this.category,
       photosPaths: photosPaths ?? this.photosPaths,
       documentsPaths: documentsPaths ?? this.documentsPaths,
+      takeoffGroundRoll50ft:
+          takeoffGroundRoll50ft ?? this.takeoffGroundRoll50ft,
+      takeoffOver50ft: takeoffOver50ft ?? this.takeoffOver50ft,
+      landingGroundRoll50ft:
+          landingGroundRoll50ft ?? this.landingGroundRoll50ft,
+      landingOver50ft: landingOver50ft ?? this.landingOver50ft,
+      stallSpeedClean: stallSpeedClean ?? this.stallSpeedClean,
+      stallSpeedLanding: stallSpeedLanding ?? this.stallSpeedLanding,
+      serviceAboveCeiling: serviceAboveCeiling ?? this.serviceAboveCeiling,
+      bestGlideSpeed: bestGlideSpeed ?? this.bestGlideSpeed,
+      bestGlideRatio: bestGlideRatio ?? this.bestGlideRatio,
+      vx: vx ?? this.vx,
+      vy: vy ?? this.vy,
+      va: va ?? this.va,
+      vno: vno ?? this.vno,
+      vne: vne ?? this.vne,
+      emptyWeight: emptyWeight ?? this.emptyWeight,
+      emptyWeightCG: emptyWeightCG ?? this.emptyWeightCG,
     );
   }
 }

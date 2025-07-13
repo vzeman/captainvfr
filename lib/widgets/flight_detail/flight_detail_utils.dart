@@ -19,8 +19,8 @@ class FlightDetailUtils {
   static String formatZuluTime(DateTime dateTime) {
     final utc = dateTime.toUtc();
     return '${utc.hour.toString().padLeft(2, '0')}:'
-           '${utc.minute.toString().padLeft(2, '0')}:'
-           '${utc.second.toString().padLeft(2, '0')}Z';
+        '${utc.minute.toString().padLeft(2, '0')}:'
+        '${utc.second.toString().padLeft(2, '0')}Z';
   }
 
   // Copy flight data to clipboard (share_plus dependency was removed)
@@ -35,15 +35,23 @@ class FlightDetailUtils {
     sb.writeln('Flight Details:');
     sb.writeln('Date: ${DateFormat('MMM d, y').format(flight.startTime)}');
     sb.writeln('Duration: ${formatDuration(flight.duration)}');
-    sb.writeln('Distance: ${(flight.distanceTraveled / 1000).toStringAsFixed(1)} km');
+    sb.writeln(
+      'Distance: ${(flight.distanceTraveled / 1000).toStringAsFixed(1)} km',
+    );
     sb.writeln('Max Speed: ${(flight.maxSpeed * 3.6).toStringAsFixed(1)} km/h');
-    sb.writeln('Avg Speed: ${(flight.averageSpeed * 3.6).toStringAsFixed(1)} km/h');
+    sb.writeln(
+      'Avg Speed: ${(flight.averageSpeed * 3.6).toStringAsFixed(1)} km/h',
+    );
     sb.writeln('Max Altitude: ${flight.maxAltitude.toStringAsFixed(0)} m');
     sb.writeln('Min Altitude: ${minAltitude.toStringAsFixed(0)} m');
     sb.writeln('Points: ${flight.path.length}');
-    sb.writeln('Recording Started: ${formatZuluTime(flight.recordingStartedZulu)}');
+    sb.writeln(
+      'Recording Started: ${formatZuluTime(flight.recordingStartedZulu)}',
+    );
     if (flight.recordingStoppedZulu != null) {
-      sb.writeln('Recording Stopped: ${formatZuluTime(flight.recordingStoppedZulu!)}');
+      sb.writeln(
+        'Recording Stopped: ${formatZuluTime(flight.recordingStoppedZulu!)}',
+      );
     }
 
     // Copy to clipboard instead of sharing

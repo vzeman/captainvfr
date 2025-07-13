@@ -73,7 +73,7 @@ class _LicensesScreenState extends State<LicensesScreen> {
   Widget _buildLicenseCard(BuildContext context, License license) {
     final isExpired = license.isExpired;
     final isExpiringSoon = license.willExpireWithinDays(30);
-    
+
     Color? cardColor;
     IconData statusIcon;
     Color statusColor;
@@ -96,23 +96,17 @@ class _LicensesScreenState extends State<LicensesScreen> {
       color: cardColor,
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        leading: Icon(
-          statusIcon,
-          color: statusColor,
-          size: 32,
-        ),
+        leading: Icon(statusIcon, color: statusColor, size: 32),
         title: Text(
           license.name,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(license.description),
-            if (license.licenseNumber != null && license.licenseNumber!.isNotEmpty) ...[
+            if (license.licenseNumber != null &&
+                license.licenseNumber!.isNotEmpty) ...[
               const SizedBox(height: 2),
               Text(
                 'License #: ${license.licenseNumber}',
@@ -134,10 +128,7 @@ class _LicensesScreenState extends State<LicensesScreen> {
                 const SizedBox(width: 4),
                 Text(
                   'Issued: ${_formatDate(license.issueDate)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
                 const SizedBox(width: 16),
                 Icon(
@@ -161,7 +152,9 @@ class _LicensesScreenState extends State<LicensesScreen> {
               license.expirationStatus,
               style: TextStyle(
                 fontSize: 12,
-                color: isExpired ? Colors.red : (isExpiringSoon ? Colors.orange : Colors.green),
+                color: isExpired
+                    ? Colors.red
+                    : (isExpiringSoon ? Colors.orange : Colors.green),
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -173,11 +166,7 @@ class _LicensesScreenState extends State<LicensesScreen> {
             if (license.imagePaths != null && license.imagePaths!.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(right: 8.0),
-                child: Icon(
-                  Icons.photo,
-                  color: Colors.grey.shade600,
-                  size: 20,
-                ),
+                child: Icon(Icons.photo, color: Colors.grey.shade600, size: 20),
               ),
             IconButton(
               icon: const Icon(Icons.edit),
@@ -203,9 +192,7 @@ class _LicensesScreenState extends State<LicensesScreen> {
   void _navigateToAddLicense(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const LicenseDetailScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const LicenseDetailScreen()),
     );
   }
 
@@ -221,7 +208,7 @@ class _LicensesScreenState extends State<LicensesScreen> {
   Future<void> _confirmDelete(BuildContext context, License license) async {
     // Get the service reference before any async operations
     final licenseService = context.read<LicenseService>();
-    
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -243,13 +230,13 @@ class _LicensesScreenState extends State<LicensesScreen> {
 
     if (confirmed == true) {
       if (!mounted) return;
-      
+
       try {
         await licenseService.deleteLicense(license.id);
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${license.name} deleted')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('${license.name} deleted')));
       } catch (e) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

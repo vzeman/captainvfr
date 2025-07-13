@@ -29,12 +29,8 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
     super.initState();
     // Altitude will be set in build method based on unit settings
     _altitudeController = TextEditingController();
-    _nameController = TextEditingController(
-      text: widget.waypoint.name ?? '',
-    );
-    _notesController = TextEditingController(
-      text: widget.waypoint.notes ?? '',
-    );
+    _nameController = TextEditingController(text: widget.waypoint.name ?? '');
+    _notesController = TextEditingController(text: widget.waypoint.notes ?? '');
   }
 
   @override
@@ -46,12 +42,19 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
   }
 
   void _saveChanges() {
-    final flightPlanService = Provider.of<FlightPlanService>(context, listen: false);
-    final settingsService = Provider.of<SettingsService>(context, listen: false);
+    final flightPlanService = Provider.of<FlightPlanService>(
+      context,
+      listen: false,
+    );
+    final settingsService = Provider.of<SettingsService>(
+      context,
+      listen: false,
+    );
     final isMetric = settingsService.units == 'metric';
 
     // Update altitude - convert back to feet if metric
-    var altitude = double.tryParse(_altitudeController.text) ?? widget.waypoint.altitude;
+    var altitude =
+        double.tryParse(_altitudeController.text) ?? widget.waypoint.altitude;
     if (isMetric) {
       altitude = altitude / 0.3048; // Convert meters to feet for storage
     }
@@ -60,11 +63,11 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
     // Update name and notes using the new service methods
     flightPlanService.updateWaypointName(
       widget.waypointIndex,
-      _nameController.text.isNotEmpty ? _nameController.text : null
+      _nameController.text.isNotEmpty ? _nameController.text : null,
     );
     flightPlanService.updateWaypointNotes(
       widget.waypointIndex,
-      _notesController.text.isNotEmpty ? _notesController.text : null
+      _notesController.text.isNotEmpty ? _notesController.text : null,
     );
 
     Navigator.of(context).pop();
@@ -76,7 +79,9 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Delete Waypoint'),
-          content: Text('Are you sure you want to delete waypoint "${widget.waypoint.name ?? 'WP${widget.waypointIndex + 1}'}"?'),
+          content: Text(
+            'Are you sure you want to delete waypoint "${widget.waypoint.name ?? 'WP${widget.waypointIndex + 1}'}"?',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -84,7 +89,10 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
             ),
             TextButton(
               onPressed: () {
-                final flightPlanService = Provider.of<FlightPlanService>(context, listen: false);
+                final flightPlanService = Provider.of<FlightPlanService>(
+                  context,
+                  listen: false,
+                );
                 flightPlanService.removeWaypoint(widget.waypointIndex);
                 Navigator.of(context).pop(); // Close confirmation dialog
                 Navigator.of(context).pop(); // Close editor dialog
@@ -103,15 +111,16 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
     return Consumer<SettingsService>(
       builder: (context, settings, child) {
         final isMetric = settings.units == 'metric';
-        
+
         // Set altitude text based on unit settings
         if (_altitudeController.text.isEmpty) {
-          final displayAltitude = isMetric 
-              ? widget.waypoint.altitude * 0.3048 // Convert to meters
+          final displayAltitude = isMetric
+              ? widget.waypoint.altitude *
+                    0.3048 // Convert to meters
               : widget.waypoint.altitude;
           _altitudeController.text = displayAltitude.toStringAsFixed(0);
         }
-        
+
         return AlertDialog(
           title: Text('Edit Waypoint ${widget.waypointIndex + 1}'),
           content: SingleChildScrollView(
@@ -142,64 +151,74 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
                   controller: _altitudeController,
                   keyboardType: TextInputType.number,
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                    FilteringTextInputFormatter.allow(
+                      RegExp(r'^\d+\.?\d{0,1}'),
+                    ),
                   ],
                   decoration: InputDecoration(
-                    labelText: isMetric ? 'Altitude (m MSL)' : 'Altitude (ft MSL)',
-                    hintText: isMetric ? 'Enter altitude in meters' : 'Enter altitude in feet',
+                    labelText: isMetric
+                        ? 'Altitude (m MSL)'
+                        : 'Altitude (ft MSL)',
+                    hintText: isMetric
+                        ? 'Enter altitude in meters'
+                        : 'Enter altitude in feet',
                     border: const OutlineInputBorder(),
                     suffixText: isMetric ? 'm' : 'ft',
                   ),
                 ),
-            const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-            // Notes field
-            TextField(
-              controller: _notesController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Notes',
-                hintText: 'Enter waypoint notes',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Waypoint type indicator
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: _getWaypointTypeColor(widget.waypoint.type).withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: _getWaypointTypeColor(widget.waypoint.type)),
-              ),
-              child: Text(
-                'Type: ${_getWaypointTypeText(widget.waypoint.type)}',
-                style: TextStyle(
-                  color: _getWaypointTypeColor(widget.waypoint.type),
-                  fontWeight: FontWeight.w500,
+                // Notes field
+                TextField(
+                  controller: _notesController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Notes',
+                    hintText: 'Enter waypoint notes',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 16),
+
+                // Waypoint type indicator
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _getWaypointTypeColor(
+                      widget.waypoint.type,
+                    ).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: _getWaypointTypeColor(widget.waypoint.type),
+                    ),
+                  ),
+                  child: Text(
+                    'Type: ${_getWaypointTypeText(widget.waypoint.type)}',
+                    style: TextStyle(
+                      color: _getWaypointTypeColor(widget.waypoint.type),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: _deleteWaypoint,
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(onPressed: _saveChanges, child: const Text('Save')),
           ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _deleteWaypoint,
-          style: TextButton.styleFrom(foregroundColor: Colors.red),
-          child: const Text('Delete'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: _saveChanges,
-          child: const Text('Save'),
-        ),
-      ],
-    );
+        );
       },
     );
   }

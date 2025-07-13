@@ -8,7 +8,8 @@ class AltimeterSettingsScreen extends StatefulWidget {
   const AltimeterSettingsScreen({super.key});
 
   @override
-  State<AltimeterSettingsScreen> createState() => _AltimeterSettingsScreenState();
+  State<AltimeterSettingsScreen> createState() =>
+      _AltimeterSettingsScreenState();
 }
 
 class _AltimeterSettingsScreenState extends State<AltimeterSettingsScreen> {
@@ -65,7 +66,9 @@ class _AltimeterSettingsScreenState extends State<AltimeterSettingsScreen> {
     // Calibration change is handled by the widgets
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Altimeter calibrated (QNH: ${newQNH.toStringAsFixed(2)} hPa)'),
+        content: Text(
+          'Altimeter calibrated (QNH: ${newQNH.toStringAsFixed(2)} hPa)',
+        ),
         duration: const Duration(seconds: 3),
         backgroundColor: Colors.green,
       ),
@@ -161,7 +164,10 @@ class _AltimeterSettingsScreenState extends State<AltimeterSettingsScreen> {
                 ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8.0,
+                    vertical: 4.0,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.green.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12.0),
@@ -231,16 +237,14 @@ class _AltimeterSettingsScreenState extends State<AltimeterSettingsScreen> {
       ),
       child: Column(
         children: [
-          Icon(
-            icon,
-            color: Theme.of(context).colorScheme.primary,
-            size: 20,
-          ),
+          Icon(icon, color: Theme.of(context).colorScheme.primary, size: 20),
           const SizedBox(height: 4),
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 2),
@@ -281,7 +285,9 @@ class _AltimeterSettingsScreenState extends State<AltimeterSettingsScreen> {
               'Altitude measurements will use GPS data only, which is less accurate.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
             const SizedBox(height: 24),
@@ -325,9 +331,9 @@ class _AltimeterSettingsScreenState extends State<AltimeterSettingsScreen> {
 
             Text(
               'QNH Setting:',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             Text(
@@ -341,9 +347,9 @@ class _AltimeterSettingsScreenState extends State<AltimeterSettingsScreen> {
 
             Text(
               'Altitude Calibration:',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             Text(

@@ -22,7 +22,7 @@ class ChecklistItem extends HiveObject {
     this.description,
     this.targetValue,
   });
-  
+
   // Convert to JSON
   Map<String, dynamic> toJson() {
     return {
@@ -32,7 +32,7 @@ class ChecklistItem extends HiveObject {
       'targetValue': targetValue,
     };
   }
-  
+
   // Create from JSON
   factory ChecklistItem.fromJson(Map<String, dynamic> json) {
     return ChecklistItem(

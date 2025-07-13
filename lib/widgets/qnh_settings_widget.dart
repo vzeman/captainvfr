@@ -27,7 +27,9 @@ class _QNHSettingsWidgetState extends State<QNHSettingsWidget> {
   void initState() {
     super.initState();
     _currentQNH = widget.barometerService.seaLevelPressure;
-    _qnhController = TextEditingController(text: _currentQNH.toStringAsFixed(2));
+    _qnhController = TextEditingController(
+      text: _currentQNH.toStringAsFixed(2),
+    );
   }
 
   @override
@@ -42,11 +44,11 @@ class _QNHSettingsWidgetState extends State<QNHSettingsWidget> {
         _currentQNH = newQNH;
         _qnhController.text = newQNH.toStringAsFixed(2);
       });
-      
+
       // Update both services
       widget.barometerService.setSeaLevelPressure(newQNH);
       widget.altitudeService.setSeaLevelPressure(newQNH);
-      
+
       // Notify parent
       widget.onQNHChanged?.call(newQNH);
     }
@@ -101,7 +103,9 @@ class _QNHSettingsWidgetState extends State<QNHSettingsWidget> {
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8.0),
                 border: Border.all(
-                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.2),
                 ),
               ),
               child: Row(
@@ -113,23 +117,28 @@ class _QNHSettingsWidgetState extends State<QNHSettingsWidget> {
                       Text(
                         'Current QNH',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
                       ),
                       Text(
                         '${_currentQNH.toStringAsFixed(2)} hPa',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'monospace',
-                        ),
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'monospace',
+                            ),
                       ),
                     ],
                   ),
                   Text(
                     '${(_currentQNH * 0.02953).toStringAsFixed(2)}" Hg',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
                       fontFamily: 'monospace',
                     ),
                   ),
@@ -142,9 +151,9 @@ class _QNHSettingsWidgetState extends State<QNHSettingsWidget> {
             // Quick Adjustment Buttons
             Text(
               'Quick Adjustments',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
 
@@ -163,9 +172,9 @@ class _QNHSettingsWidgetState extends State<QNHSettingsWidget> {
             // Manual Input
             Text(
               'Manual Entry',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
 
@@ -174,9 +183,13 @@ class _QNHSettingsWidgetState extends State<QNHSettingsWidget> {
                 Expanded(
                   child: TextField(
                     controller: _qnhController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d+\.?\d{0,2}'),
+                      ),
                     ],
                     decoration: InputDecoration(
                       labelText: 'QNH (hPa)',
@@ -213,7 +226,9 @@ class _QNHSettingsWidgetState extends State<QNHSettingsWidget> {
             Container(
               padding: const EdgeInsets.all(8.0),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                color: Theme.of(
+                  context,
+                ).colorScheme.primaryContainer.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(6.0),
               ),
               child: Row(
@@ -228,7 +243,9 @@ class _QNHSettingsWidgetState extends State<QNHSettingsWidget> {
                     child: Text(
                       'Set QNH to match local altimeter setting for accurate altitude readings',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.8),
                       ),
                     ),
                   ),

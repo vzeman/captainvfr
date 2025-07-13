@@ -45,4 +45,3 @@ class SpecialConditions {
     'VCFC': 'Funnel cloud in vicinity',
   };
 }
-

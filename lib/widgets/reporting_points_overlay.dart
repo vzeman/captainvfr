@@ -18,7 +18,6 @@ class ReportingPointsOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     if (!showReportingPointsLayer || reportingPoints.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -30,7 +29,9 @@ class ReportingPointsOverlay extends StatelessWidget {
     }
 
     return MarkerLayer(
-      markers: reportingPoints.map((point) => _buildReportingPointMarker(point)).toList(),
+      markers: reportingPoints
+          .map((point) => _buildReportingPointMarker(point))
+          .toList(),
     );
   }
 
@@ -42,7 +43,7 @@ class ReportingPointsOverlay extends StatelessWidget {
     final showLabel = mapZoom >= 11;
     // Increase height when showing label to accommodate both marker and text
     final totalHeight = showLabel ? markerSize + 20.0 : markerSize;
-    
+
     return Marker(
       point: point.position,
       width: showLabel ? 100.0 : markerSize, // Wider when showing label
@@ -58,10 +59,7 @@ class ReportingPointsOverlay extends StatelessWidget {
               decoration: BoxDecoration(
                 color: _getPointColor(point.type).withValues(alpha: 0.9),
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white,
-                  width: 2,
-                ),
+                border: Border.all(color: Colors.white, width: 2),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.3),
@@ -113,7 +111,7 @@ class ReportingPointsOverlay extends StatelessWidget {
 
   Color _getPointColor(String? type) {
     if (type == null) return Colors.purple;
-    
+
     switch (type.toUpperCase()) {
       case 'COMPULSORY':
       case 'MANDATORY':
@@ -132,7 +130,7 @@ class ReportingPointsOverlay extends StatelessWidget {
 
   IconData _getPointIcon(String? type) {
     if (type == null) return Icons.place;
-    
+
     switch (type.toUpperCase()) {
       case 'COMPULSORY':
       case 'MANDATORY':

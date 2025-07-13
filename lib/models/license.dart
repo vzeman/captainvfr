@@ -21,9 +21,9 @@ class License {
     required this.expirationDate,
     DateTime? createdAt,
     DateTime? updatedAt,
-  })  : id = id ?? const Uuid().v4(),
-        createdAt = createdAt ?? DateTime.now(),
-        updatedAt = updatedAt ?? DateTime.now();
+  }) : id = id ?? const Uuid().v4(),
+       createdAt = createdAt ?? DateTime.now(),
+       updatedAt = updatedAt ?? DateTime.now();
 
   // Check if license is expired
   bool get isExpired => DateTime.now().isAfter(expirationDate);
@@ -95,7 +95,9 @@ class License {
       name: json['name'],
       description: json['description'],
       licenseNumber: json['licenseNumber'],
-      imagePaths: json['imagePaths'] != null ? List<String>.from(json['imagePaths']) : null,
+      imagePaths: json['imagePaths'] != null
+          ? List<String>.from(json['imagePaths'])
+          : null,
       issueDate: DateTime.parse(json['issueDate']),
       expirationDate: DateTime.parse(json['expirationDate']),
       createdAt: DateTime.parse(json['createdAt']),

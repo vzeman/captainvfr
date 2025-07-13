@@ -20,12 +20,18 @@ class Frequency {
 
     return Frequency(
       id: int.tryParse(values[0]) ?? 0,
-      airportIdent: values[2].replaceAll('"', '').trim(), // Fixed: use values[2] for airport_ident
-      type: values[3].replaceAll('"', '').trim(), // Fixed: use values[3] for type
+      airportIdent: values[2]
+          .replaceAll('"', '')
+          .trim(), // Fixed: use values[2] for airport_ident
+      type: values[3]
+          .replaceAll('"', '')
+          .trim(), // Fixed: use values[3] for type
       description: values.length > 4 && values[4].isNotEmpty
-        ? values[4].replaceAll('"', '').trim()
-        : null,
-      frequencyMhz: double.tryParse(values[5]) ?? 0.0, // Fixed: use values[5] for frequency_mhz
+          ? values[4].replaceAll('"', '').trim()
+          : null,
+      frequencyMhz:
+          double.tryParse(values[5]) ??
+          0.0, // Fixed: use values[5] for frequency_mhz
     );
   }
 
@@ -68,19 +74,19 @@ class Frequency {
     if (identical(this, other)) return true;
 
     return other is Frequency &&
-      other.id == id &&
-      other.airportIdent == airportIdent &&
-      other.type == type &&
-      other.description == description &&
-      other.frequencyMhz == frequencyMhz;
+        other.id == id &&
+        other.airportIdent == airportIdent &&
+        other.type == type &&
+        other.description == description &&
+        other.frequencyMhz == frequencyMhz;
   }
 
   @override
   int get hashCode {
     return id.hashCode ^
-      airportIdent.hashCode ^
-      type.hashCode ^
-      description.hashCode ^
-      frequencyMhz.hashCode;
+        airportIdent.hashCode ^
+        type.hashCode ^
+        description.hashCode ^
+        frequencyMhz.hashCode;
   }
 }

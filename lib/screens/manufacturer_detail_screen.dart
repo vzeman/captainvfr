@@ -9,10 +9,7 @@ import '../widgets/model_form_dialog.dart';
 class ManufacturerDetailScreen extends StatelessWidget {
   final Manufacturer manufacturer;
 
-  const ManufacturerDetailScreen({
-    super.key,
-    required this.manufacturer,
-  });
+  const ManufacturerDetailScreen({super.key, required this.manufacturer});
 
   @override
   Widget build(BuildContext context) {
@@ -29,8 +26,10 @@ class ManufacturerDetailScreen extends StatelessWidget {
       body: Consumer<AircraftSettingsService>(
         builder: (context, service, child) {
           // Get the latest manufacturer data
-          final currentManufacturer = service.manufacturers
-              .firstWhere((m) => m.id == manufacturer.id, orElse: () => manufacturer);
+          final currentManufacturer = service.manufacturers.firstWhere(
+            (m) => m.id == manufacturer.id,
+            orElse: () => manufacturer,
+          );
 
           // Get models for this manufacturer
           final manufacturerModels = service.models
@@ -70,14 +69,17 @@ class ManufacturerDetailScreen extends StatelessWidget {
                               children: [
                                 Text(
                                   currentManufacturer.name,
-                                  style: Theme.of(context).textTheme.headlineSmall,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.headlineSmall,
                                 ),
                               ],
                             ),
                           ),
                         ],
                       ),
-                      if (currentManufacturer.description?.isNotEmpty == true) ...[
+                      if (currentManufacturer.description?.isNotEmpty ==
+                          true) ...[
                         const SizedBox(height: 16),
                         Text(
                           currentManufacturer.description ?? '',
@@ -87,13 +89,16 @@ class ManufacturerDetailScreen extends StatelessWidget {
                       const SizedBox(height: 16),
                       Row(
                         children: [
-                          Icon(Icons.category, color: Colors.grey[600], size: 20),
+                          Icon(
+                            Icons.category,
+                            color: Colors.grey[600],
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             '${manufacturerModels.length} model(s)',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey[600],
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: Colors.grey[600]),
                           ),
                         ],
                       ),
@@ -114,7 +119,8 @@ class ManufacturerDetailScreen extends StatelessWidget {
                       ),
                     ),
                     ElevatedButton.icon(
-                      onPressed: () => _showModelForm(context, currentManufacturer),
+                      onPressed: () =>
+                          _showModelForm(context, currentManufacturer),
                       icon: const Icon(Icons.add),
                       label: const Text('Add Model'),
                     ),
@@ -147,14 +153,13 @@ class ManufacturerDetailScreen extends StatelessWidget {
                             const SizedBox(height: 8),
                             Text(
                               'Add the first model for ${currentManufacturer.name}',
-                              style: TextStyle(
-                                color: Colors.grey[500],
-                              ),
+                              style: TextStyle(color: Colors.grey[500]),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 16),
                             ElevatedButton.icon(
-                              onPressed: () => _showModelForm(context, currentManufacturer),
+                              onPressed: () =>
+                                  _showModelForm(context, currentManufacturer),
                               icon: const Icon(Icons.add),
                               label: const Text('Add First Model'),
                             ),
@@ -170,9 +175,13 @@ class ManufacturerDetailScreen extends StatelessWidget {
                             margin: const EdgeInsets.only(bottom: 8),
                             child: ListTile(
                               leading: CircleAvatar(
-                                backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).primaryColor.withValues(alpha: 0.1),
                                 child: Text(
-                                  model.name.isNotEmpty ? model.name[0].toUpperCase() : 'M',
+                                  model.name.isNotEmpty
+                                      ? model.name[0].toUpperCase()
+                                      : 'M',
                                   style: TextStyle(
                                     color: Theme.of(context).primaryColor,
                                     fontWeight: FontWeight.bold,
@@ -183,16 +192,26 @@ class ManufacturerDetailScreen extends StatelessWidget {
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Category: ${_getCategoryDisplayName(model.category)}'),
+                                  Text(
+                                    'Category: ${_getCategoryDisplayName(model.category)}',
+                                  ),
                                   Text('${model.engineCount} engine(s)'),
                                 ],
                               ),
                               trailing: PopupMenuButton<String>(
                                 onSelected: (value) {
                                   if (value == 'edit') {
-                                    _showModelForm(context, currentManufacturer, model: model);
+                                    _showModelForm(
+                                      context,
+                                      currentManufacturer,
+                                      model: model,
+                                    );
                                   } else if (value == 'delete') {
-                                    _confirmDeleteModel(context, model, currentManufacturer);
+                                    _confirmDeleteModel(
+                                      context,
+                                      model,
+                                      currentManufacturer,
+                                    );
                                   }
                                 },
                                 itemBuilder: (context) => [
@@ -210,9 +229,16 @@ class ManufacturerDetailScreen extends StatelessWidget {
                                     value: 'delete',
                                     child: Row(
                                       children: [
-                                        Icon(Icons.delete, size: 20, color: Colors.red),
+                                        Icon(
+                                          Icons.delete,
+                                          size: 20,
+                                          color: Colors.red,
+                                        ),
                                         SizedBox(width: 8),
-                                        Text('Delete', style: TextStyle(color: Colors.red)),
+                                        Text(
+                                          'Delete',
+                                          style: TextStyle(color: Colors.red),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -237,17 +263,23 @@ class ManufacturerDetailScreen extends StatelessWidget {
     );
   }
 
-  void _showModelForm(BuildContext context, Manufacturer manufacturer, {Model? model}) {
+  void _showModelForm(
+    BuildContext context,
+    Manufacturer manufacturer, {
+    Model? model,
+  }) {
     showDialog(
       context: context,
-      builder: (context) => ModelFormDialog(
-        model: model,
-        manufacturer: manufacturer,
-      ),
+      builder: (context) =>
+          ModelFormDialog(model: model, manufacturer: manufacturer),
     );
   }
 
-  void _confirmDeleteModel(BuildContext context, Model model, Manufacturer manufacturer) {
+  void _confirmDeleteModel(
+    BuildContext context,
+    Model model,
+    Manufacturer manufacturer,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -260,7 +292,10 @@ class ManufacturerDetailScreen extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              final service = Provider.of<AircraftSettingsService>(context, listen: false);
+              final service = Provider.of<AircraftSettingsService>(
+                context,
+                listen: false,
+              );
               service.deleteModel(model.id);
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(

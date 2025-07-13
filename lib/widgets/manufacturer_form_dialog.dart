@@ -46,7 +46,9 @@ class _ManufacturerFormDialogState extends State<ManufacturerFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.manufacturer == null ? 'Add Manufacturer' : 'Edit Manufacturer'),
+      title: Text(
+        widget.manufacturer == null ? 'Add Manufacturer' : 'Edit Manufacturer',
+      ),
       content: SizedBox(
         width: MediaQuery.of(context).size.width * 0.8,
         child: SingleChildScrollView(
@@ -131,13 +133,22 @@ class _ManufacturerFormDialogState extends State<ManufacturerFormDialog> {
     });
 
     try {
-      final service = Provider.of<AircraftSettingsService>(context, listen: false);
+      final service = Provider.of<AircraftSettingsService>(
+        context,
+        listen: false,
+      );
 
       final manufacturer = Manufacturer(
-        id: widget.manufacturer?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        id:
+            widget.manufacturer?.id ??
+            DateTime.now().millisecondsSinceEpoch.toString(),
         name: _nameController.text.trim(),
-        website: _websiteController.text.trim().isEmpty ? null : _websiteController.text.trim(),
-        description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+        website: _websiteController.text.trim().isEmpty
+            ? null
+            : _websiteController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
         models: widget.manufacturer?.models ?? [],
         createdAt: widget.manufacturer?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
@@ -146,7 +157,9 @@ class _ManufacturerFormDialogState extends State<ManufacturerFormDialog> {
       if (widget.manufacturer == null) {
         await service.addManufacturer(
           _nameController.text.trim(),
-          website: _websiteController.text.trim().isEmpty ? null : _websiteController.text.trim(),
+          website: _websiteController.text.trim().isEmpty
+              ? null
+              : _websiteController.text.trim(),
         );
       } else {
         await service.updateManufacturer(manufacturer);
@@ -156,9 +169,11 @@ class _ManufacturerFormDialogState extends State<ManufacturerFormDialog> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.manufacturer == null
-                ? 'Manufacturer "${manufacturer.name}" added successfully'
-                : 'Manufacturer "${manufacturer.name}" updated successfully'),
+            content: Text(
+              widget.manufacturer == null
+                  ? 'Manufacturer "${manufacturer.name}" added successfully'
+                  : 'Manufacturer "${manufacturer.name}" updated successfully',
+            ),
           ),
         );
       }

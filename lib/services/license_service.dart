@@ -20,14 +20,18 @@ class LicenseService extends ChangeNotifier {
 
   // Get licenses expiring within 30 days
   List<License> get expiringLicenses {
-    return _licenses.where((license) => license.willExpireWithinDays(30)).toList();
+    return _licenses
+        .where((license) => license.willExpireWithinDays(30))
+        .toList();
   }
 
   // Get licenses that need attention (expired or expiring soon)
   List<License> get licensesNeedingAttention {
-    return _licenses.where((license) => 
-      license.isExpired || license.willExpireWithinDays(30)
-    ).toList();
+    return _licenses
+        .where(
+          (license) => license.isExpired || license.willExpireWithinDays(30),
+        )
+        .toList();
   }
 
   // Initialize service and load licenses
@@ -50,14 +54,14 @@ class LicenseService extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final String? licensesJson = prefs.getString(_storageKey);
-      
+
       if (licensesJson != null) {
         final List<dynamic> decoded = json.decode(licensesJson);
         _licenses = decoded.map((json) => License.fromJson(json)).toList();
-        
+
         // Sort by expiration date (soonest first)
         _licenses.sort((a, b) => a.expirationDate.compareTo(b.expirationDate));
-        
+
         notifyListeners();
       }
     } catch (e) {
@@ -103,7 +107,7 @@ class LicenseService extends ChangeNotifier {
   Future<void> deleteLicense(String id) async {
     // Find the license to delete
     final licenseToDelete = _licenses.firstWhere((license) => license.id == id);
-    
+
     // Delete associated images
     if (licenseToDelete.imagePaths != null) {
       for (final imagePath in licenseToDelete.imagePaths!) {
@@ -114,7 +118,7 @@ class LicenseService extends ChangeNotifier {
         }
       }
     }
-    
+
     _licenses.removeWhere((license) => license.id == id);
     await _saveLicenses();
     notifyListeners();

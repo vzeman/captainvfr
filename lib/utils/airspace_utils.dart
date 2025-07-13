@@ -3,12 +3,12 @@ class AirspaceUtils {
   /// Convert numeric airspace type to human-readable text
   static String getAirspaceTypeName(String? type) {
     if (type == null) return 'Unknown';
-    
+
     // If it's already a string name, return it
     if (!RegExp(r'^\d+$').hasMatch(type)) {
       return type;
     }
-    
+
     // Convert numeric values to airspace types
     // Note: These mappings are based on common OpenAIP conventions
     // The exact mapping should be verified with OpenAIP documentation
@@ -55,12 +55,12 @@ class AirspaceUtils {
   /// Convert numeric ICAO class to letter designation
   static String getIcaoClassName(String? icaoClass) {
     if (icaoClass == null) return 'Unclassified';
-    
+
     // If it's already a letter, return it
     if (!RegExp(r'^\d+$').hasMatch(icaoClass)) {
       return icaoClass;
     }
-    
+
     // Convert numeric values to ICAO classes
     switch (icaoClass) {
       case '0':
@@ -85,12 +85,12 @@ class AirspaceUtils {
   /// Convert numeric activity type to human-readable text
   static String getActivityName(String? activity) {
     if (activity == null) return 'No specific activity';
-    
+
     // If it's already a string name, return it
     if (!RegExp(r'^\d+$').hasMatch(activity)) {
       return activity;
     }
-    
+
     // Convert numeric values to activity types
     // Note: These are estimated based on common aviation activities
     switch (activity) {
@@ -128,7 +128,7 @@ class AirspaceUtils {
   /// Get a description for the airspace type
   static String getAirspaceTypeDescription(String? type) {
     final typeName = getAirspaceTypeName(type);
-    
+
     switch (typeName) {
       case 'CTR':
         return 'Control Zone - Controlled airspace around an airport';
@@ -164,7 +164,7 @@ class AirspaceUtils {
   /// Get the display name for altitude reference
   static String getAltitudeReferenceName(String? reference) {
     if (reference == null) return '';
-    
+
     switch (reference.toUpperCase()) {
       case 'MSL':
       case '0':

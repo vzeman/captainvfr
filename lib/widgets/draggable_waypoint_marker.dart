@@ -26,7 +26,8 @@ class DraggableWaypointMarker extends StatefulWidget {
   });
 
   @override
-  State<DraggableWaypointMarker> createState() => _DraggableWaypointMarkerState();
+  State<DraggableWaypointMarker> createState() =>
+      _DraggableWaypointMarkerState();
 }
 
 class _DraggableWaypointMarkerState extends State<DraggableWaypointMarker> {
@@ -90,7 +91,9 @@ class _DraggableWaypointMarkerState extends State<DraggableWaypointMarker> {
       },
       child: MouseRegion(
         cursor: widget.isSelected && widget.isEditMode
-            ? (_isDragging ? SystemMouseCursors.grabbing : SystemMouseCursors.grab)
+            ? (_isDragging
+                  ? SystemMouseCursors.grabbing
+                  : SystemMouseCursors.grab)
             : SystemMouseCursors.click,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -129,7 +132,8 @@ class _DraggableWaypointMarkerState extends State<DraggableWaypointMarker> {
   void _applyNewPosition(Offset globalPosition) {
     try {
       // Get the map's render box
-      final RenderBox? mapBox = widget.mapKey.currentContext?.findRenderObject() as RenderBox?;
+      final RenderBox? mapBox =
+          widget.mapKey.currentContext?.findRenderObject() as RenderBox?;
       if (mapBox == null) return;
 
       // Convert global position to local position relative to the map
@@ -142,20 +146,20 @@ class _DraggableWaypointMarkerState extends State<DraggableWaypointMarker> {
       // Get map dimensions
       final mapWidth = mapCamera.nonRotatedSize.width;
       final mapHeight = mapCamera.nonRotatedSize.height;
-      
+
       // Calculate the relative position (0-1)
       final relativeX = localPosition.dx / mapWidth;
       final relativeY = localPosition.dy / mapHeight;
-      
+
       // Get the current map bounds
       final bounds = mapCamera.visibleBounds;
-      
+
       // Calculate the new latitude and longitude
       final lng = bounds.west + (bounds.east - bounds.west) * relativeX;
       final lat = bounds.north - (bounds.north - bounds.south) * relativeY;
-      
+
       final newPosition = LatLng(lat, lng);
-      
+
       // Call the callback with the new position
       widget.onWaypointMoved(widget.waypointIndex, newPosition);
     } catch (e) {

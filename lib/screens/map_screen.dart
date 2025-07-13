@@ -11,6 +11,7 @@ import 'flight_plans_screen.dart';
 import 'aircraft_settings_screen.dart';
 import 'checklist_settings_screen.dart';
 import 'licenses_screen.dart';
+import 'calculators_screen.dart';
 import 'settings_screen.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
@@ -53,19 +54,21 @@ class MapScreen extends StatefulWidget {
   MapScreenState createState() => MapScreenState();
 }
 
-class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixin {
+class MapScreenState extends State<MapScreen>
+    with SingleTickerProviderStateMixin {
   // Services
   late final FlightService _flightService;
   late final AirportService _airportService;
   late final NavaidService _navaidService;
   late final LocationService _locationService;
   late final WeatherService _weatherService;
-  OfflineMapService? _offlineMapService; // Make nullable to prevent LateInitializationError
+  OfflineMapService?
+  _offlineMapService; // Make nullable to prevent LateInitializationError
   late final FlightPlanService _flightPlanService;
   OpenAIPService? _openAIPService;
   late final MapController _mapController;
   late final CacheService _cacheService;
-  
+
   // Getter to ensure OpenAIPService is available
   OpenAIPService get openAIPService {
     if (_openAIPService == null && mounted) {
@@ -73,20 +76,23 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         _openAIPService = Provider.of<OpenAIPService>(context, listen: false);
       } catch (e) {
         // debugPrint('⚠️ OpenAIPService still not available, using singleton');
-        _openAIPService = OpenAIPService(); // This returns the singleton instance
+        _openAIPService =
+            OpenAIPService(); // This returns the singleton instance
       }
     }
     return _openAIPService!;
   }
+
   final GlobalKey _mapKey = GlobalKey();
-  
+
   // State variables
   bool _isLocationLoaded = false; // Track if location has been loaded
   bool _showStats = false;
   bool _showNavaids = true; // Toggle for navaid display
   bool _showMetar = false; // Toggle for METAR overlay
   bool _showHeliports = false; // Toggle for heliport display (default hidden)
-  bool _showSmallAirports = true; // Toggle for small airport display (default visible)
+  bool _showSmallAirports =
+      true; // Toggle for small airport display (default visible)
   bool _showAirspaces = true; // Toggle for airspaces display
   bool _servicesInitialized = false;
   bool _isInitializing = false; // Guard against concurrent initialization
@@ -95,24 +101,39 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   Timer? _debounceTimer;
   Timer? _airspaceDebounceTimer;
   Timer? _notamPrefetchTimer;
-  bool _waypointJustTapped = false; // Flag to prevent airspace popup when waypoint is tapped
-  int _notamFetchGeneration = 0; // Track NOTAM fetch generations to cancel outdated requests
-  
+  bool _waypointJustTapped =
+      false; // Flag to prevent airspace popup when waypoint is tapped
+  int _notamFetchGeneration =
+      0; // Track NOTAM fetch generations to cancel outdated requests
+
   // Flight data panel position state
-  Offset _flightDataPanelPosition = const Offset(8, 220); // Default to bottom with minimal margin for phones
-  bool _flightDashboardExpanded = true; // Track expanded state of flight dashboard
-  
+  Offset _flightDataPanelPosition = const Offset(
+    8,
+    220,
+  ); // Default to bottom with minimal margin for phones
+  bool _flightDashboardExpanded =
+      true; // Track expanded state of flight dashboard
+
   // Airspace panel visibility and position
-  bool _showCurrentAirspacePanel = true; // Control visibility of current airspace panel
-  Offset _airspacePanelPosition = const Offset(0, 10); // Default position (centered horizontally, 10px from bottom)
-  
+  bool _showCurrentAirspacePanel =
+      true; // Control visibility of current airspace panel
+  Offset _airspacePanelPosition = const Offset(
+    0,
+    10,
+  ); // Default position (centered horizontally, 10px from bottom)
+
   // Toggle panel position
   double _togglePanelRightPosition = 16.0; // Default position from right edge
-  double _togglePanelTopPosition = 0.4; // Default position as percentage from top (40%)
-  
+  double _togglePanelTopPosition =
+      0.4; // Default position as percentage from top (40%)
+
   // Flight planning panel position and state
-  Offset _flightPlanningPanelPosition = const Offset(16, 100); // Default position
-  bool _flightPlanningExpanded = true; // Track expanded state of flight planning panel
+  Offset _flightPlanningPanelPosition = const Offset(
+    16,
+    100,
+  ); // Default position
+  bool _flightPlanningExpanded =
+      true; // Track expanded state of flight planning panel
 
   // Waypoint selection state
   int? _selectedWaypointIndex;
@@ -129,35 +150,35 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
   // UI state
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  
+
   // Map settings
   static const double _initialZoom = 12.0;
   static const double _maxZoom = 18.0;
   static const double _minZoom = 3.0;
-  
+
   // Auto-centering control
   bool _autoCenteringEnabled = true;
   Timer? _autoCenteringTimer;
   static const Duration _autoCenteringDelay = Duration(minutes: 3);
   bool _wasTracking = false;
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize map controller
     _mapController = MapController();
-    
+
     // Start location loading in background without blocking UI
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initLocationInBackground();
     });
   }
-  
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    
+
     // Initialize services from Provider to ensure they're properly initialized
     if (!_servicesInitialized) {
       try {
@@ -166,9 +187,12 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         _airportService = Provider.of<AirportService>(context, listen: false);
         _navaidService = Provider.of<NavaidService>(context, listen: false);
         _weatherService = Provider.of<WeatherService>(context, listen: false);
-        _flightPlanService = Provider.of<FlightPlanService>(context, listen: false);
+        _flightPlanService = Provider.of<FlightPlanService>(
+          context,
+          listen: false,
+        );
         _cacheService = Provider.of<CacheService>(context, listen: false);
-        
+
         // Try to get OpenAIPService, but don't fail if it's not available yet
         try {
           _openAIPService = Provider.of<OpenAIPService>(context, listen: false);
@@ -182,15 +206,15 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
         // Listen to flight service updates
         _setupFlightServiceListener();
-        
+
         // Listen to cache updates
         _setupCacheListener();
-        
+
         // Start loading data in background if location is already available
         if (_currentPosition != null && !_isLocationLoaded) {
           _onLocationLoaded();
         }
-        
+
         _servicesInitialized = true;
       } catch (e) {
         // debugPrint('Error initializing services: $e');
@@ -202,19 +226,18 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   void _setupCacheListener() {
     _cacheService.addListener(_onCacheUpdated);
   }
-  
+
   // Handle cache updates
   void _onCacheUpdated() {
-
     // Refresh airspaces if they're enabled
     if (_showAirspaces && mounted) {
       _refreshAirspacesDisplay();
       _refreshReportingPointsDisplay();
     }
-    
+
     // Could also refresh other data types here if needed
   }
-  
+
   // Setup listener for flight service updates
   void _setupFlightServiceListener() {
     _flightService.addListener(_onFlightPathUpdated);
@@ -232,16 +255,15 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           _autoCenteringTimer?.cancel();
         }
         _wasTracking = _flightService.isTracking;
-        
+
         // Convert flight points to LatLng for map visualization
         _flightPathPoints = _flightService.flightPath
             .map((point) => LatLng(point.latitude, point.longitude))
             .toList();
 
-
         // Update flight segments for visualization
         _flightSegments = _flightService.flightSegments;
-        
+
         // Update current position if tracking
         if (_flightService.isTracking && _flightPathPoints.isNotEmpty) {
           final lastPoint = _flightService.flightPath.last;
@@ -257,16 +279,20 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             altitudeAccuracy: lastPoint.verticalAccuracy,
             headingAccuracy: lastPoint.headingAccuracy,
           );
-          
+
           // Update map position and rotation during tracking only if auto-centering is enabled
           if (_autoCenteringEnabled) {
-            final settings = Provider.of<SettingsService>(context, listen: false);
+            final settings = Provider.of<SettingsService>(
+              context,
+              listen: false,
+            );
             if (settings.rotateMapWithHeading) {
               // Move and rotate map
               _mapController.moveAndRotate(
                 LatLng(lastPoint.latitude, lastPoint.longitude),
                 _mapController.camera.zoom,
-                -(_flightService.currentHeading ?? lastPoint.heading), // Negate for map rotation
+                -(_flightService.currentHeading ??
+                    lastPoint.heading), // Negate for map rotation
               );
             } else {
               // Just move map
@@ -279,7 +305,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         } else if (!_flightService.isTracking && _currentPosition != null) {
           // When not tracking, still update heading from sensors if available
           final currentHeading = _flightService.currentHeading;
-          if (currentHeading != null && (_currentPosition!.heading - currentHeading).abs() > 1.0) {
+          if (currentHeading != null &&
+              (_currentPosition!.heading - currentHeading).abs() > 1.0) {
             _currentPosition = Position(
               latitude: _currentPosition!.latitude,
               longitude: _currentPosition!.longitude,
@@ -297,7 +324,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       });
     }
   }
-  
+
   // Handle flight plan updates from the flight plan service
   void _onFlightPlanUpdated() {
     if (mounted) {
@@ -307,14 +334,14 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           _showFlightPlanning = true;
         }
       });
-      
+
       // Prefetch NOTAMs for airports in the flight plan when it changes
       if (_flightPlanService.currentFlightPlan != null) {
         _prefetchFlightPlanNotams();
       }
     }
   }
-  
+
   @override
   void dispose() {
     _flightService.removeListener(_onFlightPathUpdated);
@@ -328,7 +355,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     _flightService.dispose();
     super.dispose();
   }
-  
+
   // Initialize location in background without blocking the UI
   Future<void> _initLocationInBackground() async {
     try {
@@ -338,7 +365,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           _currentPosition = position;
           _errorMessage = '';
         });
-        
+
         // Location loaded successfully, handle the rest
         _onLocationLoaded();
       }
@@ -348,7 +375,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         setState(() {
           _errorMessage = 'Location unavailable - using default position';
         });
-        
+
         // Use a default position if location fails
         setState(() {
           // Default to San Francisco or any other default location
@@ -365,24 +392,26 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             headingAccuracy: 0,
           );
         });
-        
+
         // Still trigger loading with default position
         _onLocationLoaded();
       }
     }
   }
-  
+
   // Handle actions after location is loaded
   void _onLocationLoaded() {
     if (_isLocationLoaded) return; // Prevent duplicate calls
     _isLocationLoaded = true;
-    
+
     // Wait for the next frame to ensure FlutterMap is rendered before using MapController
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _currentPosition != null) {
         try {
           final settings = Provider.of<SettingsService>(context, listen: false);
-          if (settings.rotateMapWithHeading && _flightService.isTracking && _flightService.currentHeading != null) {
+          if (settings.rotateMapWithHeading &&
+              _flightService.isTracking &&
+              _flightService.currentHeading != null) {
             _mapController.moveAndRotate(
               LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
               _initialZoom,
@@ -401,7 +430,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             if (mounted && _currentPosition != null) {
               try {
                 _mapController.move(
-                  LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                  LatLng(
+                    _currentPosition!.latitude,
+                    _currentPosition!.longitude,
+                  ),
                   _initialZoom,
                 );
               } catch (e) {
@@ -410,15 +442,15 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             }
           });
         }
-        
+
         // Start loading data progressively
         _loadAirports();
-        
+
         // Load navaids if they should be shown
         if (_showNavaids) {
           _loadNavaids();
         }
-        
+
         // Load airspaces if they should be shown
         if (_showAirspaces) {
           _loadAirspaces();
@@ -427,32 +459,32 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       }
     });
   }
-  
+
   // Load airports in the current map view with debouncing
   Future<void> _loadAirports() async {
     // Cancel any pending debounce timer
     _debounceTimer?.cancel();
-    
+
     // Set a new debounce timer (300ms delay)
     _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
       if (!mounted) return;
-      
+
       try {
         // Check if map controller is ready
         if (!mounted) {
           // debugPrint('📍 _loadAirports: Widget not mounted, returning');
           return;
         }
-        
+
         final bounds = _mapController.camera.visibleBounds;
         final zoom = _mapController.camera.zoom;
-        
+
         // Get airports within the current map bounds
         final airports = await _airportService.getAirportsInBounds(
           bounds.southWest,
           bounds.northEast,
         );
-        
+
         if (mounted) {
           setState(() {
             _airports = airports;
@@ -479,7 +511,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       }
     });
   }
-  
+
   /// Refresh weather data for visible airports when map focus changes
   Future<void> _refreshWeatherForVisibleAirports(List<Airport> airports) async {
     if (!_showMetar || airports.isEmpty) return;
@@ -541,29 +573,33 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       default:
         // For unknown types, check if it has an ICAO code
         // Airports with proper ICAO codes are more likely to have weather data
-        return airport.icao.length == 4 && RegExp(r'^[A-Z]{4}$').hasMatch(airport.icao);
+        return airport.icao.length == 4 &&
+            RegExp(r'^[A-Z]{4}$').hasMatch(airport.icao);
     }
   }
 
   // Calculate radius in kilometers based on zoom level
   double _calculateRadiusForZoom(double zoom) {
     // These values can be adjusted based on testing
-    if (zoom > 14) return 20.0;  // Very close zoom
-    if (zoom > 12) return 50.0;  // Close zoom
-    if (zoom > 9) return 100.0;  // Medium zoom
-    return 200.0;                // Far zoom
+    if (zoom > 14) return 20.0; // Very close zoom
+    if (zoom > 12) return 50.0; // Close zoom
+    if (zoom > 9) return 100.0; // Medium zoom
+    return 200.0; // Far zoom
   }
-  
+
   // Load additional nearby airports that might be just outside the current view
   Future<void> _loadNearbyAirports(LatLng center, double radiusKm) async {
     try {
-      final nearbyAirports = _airportService.findAirportsNearby(center, radiusKm: radiusKm);
-      
+      final nearbyAirports = _airportService.findAirportsNearby(
+        center,
+        radiusKm: radiusKm,
+      );
+
       // Filter out airports we already have
-      final newAirports = nearbyAirports.where((a) => 
-        !_airports.any((existing) => existing.icao == a.icao)
-      ).toList();
-      
+      final newAirports = nearbyAirports
+          .where((a) => !_airports.any((existing) => existing.icao == a.icao))
+          .toList();
+
       if (newAirports.isNotEmpty && mounted) {
         setState(() {
           _airports = [..._airports, ...newAirports];
@@ -573,7 +609,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       // debugPrint('Error loading nearby airports: $e');
     }
   }
-  
+
   // Load navaids in the current map view
   Future<void> _loadNavaids() async {
     if (!_showNavaids) {
@@ -617,16 +653,16 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     if (!_showAirspaces) {
       return;
     }
-    
+
     // Cancel any pending debounce timer
     _airspaceDebounceTimer?.cancel();
-    
+
     // Set a new debounce timer (500ms delay for airspaces)
     _airspaceDebounceTimer = Timer(const Duration(milliseconds: 500), () async {
       await _loadAirspacesDebounced();
     });
   }
-  
+
   Future<void> _loadAirspacesDebounced() async {
     // Check if we have API key (either user or default)
     if (!openAIPService.hasApiKey) {
@@ -634,7 +670,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please set your OpenAIP API key in Offline Data settings to view airspaces'),
+            content: Text(
+              'Please set your OpenAIP API key in Offline Data settings to view airspaces',
+            ),
             duration: Duration(seconds: 3),
           ),
         );
@@ -642,11 +680,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       return;
     }
 
-
     try {
       // First, load from cache for immediate display
       final cachedAirspaces = await openAIPService.getCachedAirspaces();
-      
+
       if (cachedAirspaces.isNotEmpty) {
         if (mounted) {
           setState(() {
@@ -654,10 +691,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           });
         }
       }
-      
+
       // Then progressively load data for current bounds
       final bounds = _mapController.camera.visibleBounds;
-      
+
       // Load airspaces for current map bounds
       await openAIPService.loadAirspacesForBounds(
         minLat: bounds.southWest.latitude,
@@ -676,7 +713,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       // debugPrint('❌ Stack trace: ${StackTrace.current}');
     }
   }
-  
+
   // Refresh airspaces display when new data is available
   Future<void> _refreshAirspacesDisplay() async {
     try {
@@ -700,7 +737,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     try {
       // First load from cache for immediate display
       final cachedPoints = await openAIPService.getCachedReportingPoints();
-      
+
       if (cachedPoints.isNotEmpty) {
         if (mounted) {
           setState(() {
@@ -708,11 +745,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           });
         }
       }
-      
+
       // Then progressively load for current bounds if we have an API key
       if (openAIPService.hasApiKey) {
         final bounds = _mapController.camera.visibleBounds;
-        
+
         // Load reporting points for current area
         await openAIPService.loadReportingPointsForBounds(
           minLat: bounds.southWest.latitude,
@@ -731,7 +768,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       // debugPrint('❌ Error loading reporting points: $e');
     }
   }
-  
+
   // Refresh reporting points display when new data is available
   Future<void> _refreshReportingPointsDisplay() async {
     try {
@@ -756,10 +793,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           // Re-enable auto-centering when user manually centers
           _autoCenteringEnabled = true;
         });
-        
+
         // Cancel any existing auto-centering timer
         _autoCenteringTimer?.cancel();
-        
+
         _mapController.move(
           LatLng(position.latitude, position.longitude),
           _mapController.camera.zoom,
@@ -774,7 +811,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       }
     }
   }
-  
 
   // Toggle flight dashboard visibility
   void _toggleStats() {
@@ -782,7 +818,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       _showStats = !_showStats;
     });
   }
-  
+
   // Toggle navaid visibility
   void _toggleNavaids() {
     setState(() {
@@ -880,7 +916,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
   Future<void> _prefetchFlightPlanNotams() async {
     final flightPlan = _flightPlanService.currentFlightPlan;
     if (flightPlan == null) return;
-    
+
     final airportIcaos = <String>[];
     for (final waypoint in flightPlan.waypoints) {
       if (waypoint.type == WaypointType.airport && waypoint.name != null) {
@@ -891,7 +927,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         }
       }
     }
-    
+
     if (airportIcaos.isNotEmpty) {
       // debugPrint('Prefetching NOTAMs for flight plan airports: $airportIcaos');
       try {
@@ -902,21 +938,21 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       }
     }
   }
-  
+
   // Prefetch NOTAMs for visible airports with debouncing
   void _schedulePrefetchVisibleAirportNotams() {
     // Cancel any existing timer
     _notamPrefetchTimer?.cancel();
-    
+
     // Increment generation to cancel any pending fetches
     _notamFetchGeneration++;
-    
+
     // Only prefetch NOTAMs when zoomed in enough (zoom > 11)
     if (_mapController.camera.zoom <= 11) {
       // debugPrint('Skipping NOTAM prefetch - zoom level too low: ${_mapController.camera.zoom}');
       return;
     }
-    
+
     // Schedule a new prefetch after 5 seconds of inactivity (increased from 2)
     final currentGeneration = _notamFetchGeneration;
     _notamPrefetchTimer = Timer(const Duration(seconds: 5), () async {
@@ -926,24 +962,24 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       }
     });
   }
-  
+
   // Prefetch NOTAMs for visible airports
   Future<void> _prefetchVisibleAirportNotams(int generation) async {
     if (_airports.isEmpty) return;
-    
+
     // Check if this generation is still current
     if (generation != _notamFetchGeneration) {
       // debugPrint('Cancelling outdated NOTAM prefetch (generation $generation != $_notamFetchGeneration)');
       return;
     }
-    
+
     final bounds = _mapController.camera.visibleBounds;
-    
+
     // Filter visible airports and prioritize by type
     final visibleAirports = _airports.where((airport) {
       return bounds.contains(airport.position);
     }).toList();
-    
+
     // Sort by priority: large > medium > small > heliport > closed
     visibleAirports.sort((a, b) {
       const priorities = {
@@ -957,26 +993,31 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       final bPriority = priorities[b.type] ?? 5;
       return aPriority.compareTo(bPriority);
     });
-    
+
     // Limit to 10 airports (reduced from 20) and exclude small airports, heliports and closed airports
     final priorityAirports = visibleAirports
-        .where((a) => a.type != 'small_airport' && a.type != 'heliport' && a.type != 'closed')
+        .where(
+          (a) =>
+              a.type != 'small_airport' &&
+              a.type != 'heliport' &&
+              a.type != 'closed',
+        )
         .take(10)
         .toList();
-    
+
     if (priorityAirports.isNotEmpty) {
       // Final check before making the request
       if (generation != _notamFetchGeneration) {
         // debugPrint('Cancelling NOTAM prefetch before request (generation $generation != $_notamFetchGeneration)');
         return;
       }
-      
+
       final icaoCodes = priorityAirports.map((a) => a.icao).toList();
       // debugPrint('Prefetching NOTAMs for ${icaoCodes.length} large/medium airports at zoom ${_mapController.camera.zoom}');
       try {
         final notamService = NotamServiceV3(); // Using V3 as primary
         await notamService.prefetchNotamsForAirports(icaoCodes);
-        
+
         // Check one more time after the async operation
         if (generation != _notamFetchGeneration) {
           // debugPrint('NOTAM prefetch completed but is now outdated (generation $generation != $_notamFetchGeneration)');
@@ -986,13 +1027,14 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       }
     }
   }
-  
+
   void _showAirspacesAtPoint(List<Airspace> airspaces, LatLng point) async {
     if (!mounted) return;
 
     // Get current altitude if available
-    final currentAltitudeFt = _currentPosition?.altitude != null 
-        ? _currentPosition!.altitude * 3.28084 // Convert meters to feet
+    final currentAltitudeFt = _currentPosition?.altitude != null
+        ? _currentPosition!.altitude *
+              3.28084 // Convert meters to feet
         : null;
 
     // Sort airspaces by altitude (lower first)
@@ -1021,13 +1063,14 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               padding: const EdgeInsets.only(bottom: 12.0),
               child: IntrinsicWidth(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0x1A448AFF),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: const Color(0x33448AFF),
-                    ),
+                    border: Border.all(color: const Color(0x33448AFF)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1055,9 +1098,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             ),
           ...airspaces.map<Widget>((airspace) {
             // Check if current altitude is within this airspace
-            final isAtCurrentAltitude = currentAltitudeFt != null &&
+            final isAtCurrentAltitude =
+                currentAltitudeFt != null &&
                 airspace.isAtAltitude(currentAltitudeFt);
-            
+
             return Container(
               decoration: isAtCurrentAltitude
                   ? BoxDecoration(
@@ -1090,7 +1134,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                       children: [
                         Icon(
                           _getAirspaceIcon(airspace.type),
-                          color: _getAirspaceColor(airspace.type, airspace.icaoClass),
+                          color: _getAirspaceColor(
+                            airspace.type,
+                            airspace.icaoClass,
+                          ),
                           size: isAtCurrentAltitude ? 28 : 24,
                         ),
                         const SizedBox(width: 12),
@@ -1123,10 +1170,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                             ],
                           ),
                         ),
-                        Icon(
-                          Icons.chevron_right,
-                          color: Colors.white30,
-                        ),
+                        Icon(Icons.chevron_right, color: Colors.white30),
                       ],
                     ),
                   ),
@@ -1147,7 +1191,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
   IconData _getAirspaceIcon(String? type) {
     if (type == null) return Icons.layers;
-    
+
     switch (type.toUpperCase()) {
       case 'CTR':
       case 'ATZ':
@@ -1172,7 +1216,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
   Color _getAirspaceColor(String? type, String? icaoClass) {
     if (type == null) return Colors.grey;
-    
+
     switch (type.toUpperCase()) {
       case 'CTR':
       case 'D':
@@ -1224,9 +1268,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
   // Handle waypoint tap for selection
   void _onWaypointTapped(int index) {
-
     final flightPlan = _flightPlanService.currentFlightPlan;
-    if (flightPlan != null && index >= 0 && index < flightPlan.waypoints.length) {
+    if (flightPlan != null &&
+        index >= 0 &&
+        index < flightPlan.waypoints.length) {
       setState(() {
         _selectedWaypointIndex = _selectedWaypointIndex == index ? null : index;
         _waypointJustTapped = true;
@@ -1244,9 +1289,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
   // Handle waypoint move via drag and drop
   void _onWaypointMoved(int index, LatLng newPosition) {
-
     final flightPlan = _flightPlanService.currentFlightPlan;
-    if (flightPlan != null && index >= 0 && index < flightPlan.waypoints.length) {
+    if (flightPlan != null &&
+        index >= 0 &&
+        index < flightPlan.waypoints.length) {
       // Update waypoint position
       _flightPlanService.updateWaypointPosition(index, newPosition);
     }
@@ -1268,7 +1314,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       // debugPrint('Context not mounted, returning early');
       return;
     }
-    
+
     try {
       // debugPrint('Showing bottom sheet for ${airport.icao}');
       await showModalBottomSheet(
@@ -1295,7 +1341,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       }
     }
   }
-  
+
   // Handle airport selection from search
   void _onAirportSelectedFromSearch(Airport airport) {
     // Focus map on the selected airport
@@ -1306,12 +1352,12 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
     // Load airports in the new area
     _loadAirports();
-    
+
     // Load navaids if they're enabled
     if (_showNavaids) {
       _loadNavaids();
     }
-    
+
     // Load airspaces and reporting points if they're enabled
     if (_showAirspaces) {
       _loadAirspaces();
@@ -1384,7 +1430,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     }
 
     try {
-
       // Create a themed dialog to show airspace information
       await ThemedDialog.show(
         context: context,
@@ -1394,22 +1439,35 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           mainAxisSize: MainAxisSize.min,
           children: [
             if (airspace.type != null)
-              _buildThemedInfoRow('Type', AirspaceUtils.getAirspaceTypeName(airspace.type)),
+              _buildThemedInfoRow(
+                'Type',
+                AirspaceUtils.getAirspaceTypeName(airspace.type),
+              ),
             if (airspace.icaoClass != null)
-              _buildThemedInfoRow('ICAO Class', AirspaceUtils.getIcaoClassName(airspace.icaoClass)),
+              _buildThemedInfoRow(
+                'ICAO Class',
+                AirspaceUtils.getIcaoClassName(airspace.icaoClass),
+              ),
             if (airspace.activity != null)
-              _buildThemedInfoRow('Activity', AirspaceUtils.getActivityName(airspace.activity)),
+              _buildThemedInfoRow(
+                'Activity',
+                AirspaceUtils.getActivityName(airspace.activity),
+              ),
             _buildThemedInfoRow('Altitude', airspace.altitudeRange),
             if (airspace.country != null)
               _buildThemedInfoRow('Country', airspace.country!),
             // Extract and display frequency if available in remarks
-            if (airspace.remarks != null && _extractFrequency(airspace.remarks!) != null)
-              _buildThemedInfoRow('Frequency', _extractFrequency(airspace.remarks!)!),
+            if (airspace.remarks != null &&
+                _extractFrequency(airspace.remarks!) != null)
+              _buildThemedInfoRow(
+                'Frequency',
+                _extractFrequency(airspace.remarks!)!,
+              ),
             if (airspace.onDemand == true)
               const Padding(
                 padding: EdgeInsets.only(top: 8.0),
                 child: Text(
-                  '⚠️ On Demand', 
+                  '⚠️ On Demand',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.orange,
@@ -1420,7 +1478,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               const Padding(
                 padding: EdgeInsets.only(top: 8.0),
                 child: Text(
-                  '⚠️ On Request', 
+                  '⚠️ On Request',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.orange,
@@ -1431,7 +1489,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               const Padding(
                 padding: EdgeInsets.only(top: 8.0),
                 child: Text(
-                  '⚠️ By NOTAM', 
+                  '⚠️ By NOTAM',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.orange,
@@ -1445,7 +1503,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Remarks:', 
+                      'Remarks:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF448AFF),
@@ -1480,13 +1538,11 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
 
   // Handle reporting point selection
   Future<void> _onReportingPointSelected(ReportingPoint point) async {
-
     if (!mounted) {
       return;
     }
 
     try {
-
       // Create a themed dialog to show reporting point information
       await ThemedDialog.show(
         context: context,
@@ -1496,14 +1552,12 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildThemedInfoRow('Name', point.name),
-            if (point.type != null)
-              _buildThemedInfoRow('Type', point.type!),
+            if (point.type != null) _buildThemedInfoRow('Type', point.type!),
             if (point.elevationString.isNotEmpty)
               _buildThemedInfoRow('Elevation', point.elevationString),
             if (point.country != null)
               _buildThemedInfoRow('Country', point.country!),
-            if (point.state != null)
-              _buildThemedInfoRow('State', point.state!),
+            if (point.state != null) _buildThemedInfoRow('State', point.state!),
             if (point.airportName != null)
               _buildThemedInfoRow('Airport', point.airportName!),
             if (point.description != null)
@@ -1513,7 +1567,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Description:', 
+                      'Description:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF448AFF),
@@ -1534,7 +1588,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Remarks:', 
+                      'Remarks:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF448AFF),
@@ -1555,7 +1609,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Tags:', 
+                      'Tags:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF448AFF),
@@ -1582,13 +1636,14 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       // debugPrint('Error showing reporting point details: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error showing reporting point details')),
+          const SnackBar(
+            content: Text('Error showing reporting point details'),
+          ),
         );
       }
     }
   }
 
-  
   Widget _buildThemedInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -1596,23 +1651,20 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '$label: ', 
+            '$label: ',
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               color: Color(0xFF448AFF),
             ),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(color: Colors.white70),
-            ),
+            child: Text(value, style: const TextStyle(color: Colors.white70)),
           ),
         ],
       ),
     );
   }
-  
+
   /// Extract frequency information from remarks or other text
   String? _extractFrequency(String text) {
     // Common frequency patterns:
@@ -1627,13 +1679,13 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       r'(?:freq(?:uency)?|tower|app|ground|atis|approach|departure|center|control|radio)?\s*:?\s*(\d{3}\.\d{1,3})(?:\s*mhz)?',
       caseSensitive: false,
     );
-    
+
     final match = frequencyPattern.firstMatch(text);
     if (match != null) {
       final freq = match.group(1);
       return '$freq MHz';
     }
-    
+
     return null;
   }
 
@@ -1666,7 +1718,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
     }
   }
 
-
   // Load weather data for airports currently visible on the map
   Future<void> _loadWeatherForVisibleAirports() async {
     if (_airports.isEmpty) return;
@@ -1693,12 +1744,15 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       if (visibleAirports.isEmpty) return;
 
       // Get only the ICAOs of airports that are actually visible
-      final visibleAirportIcaos = visibleAirports.map((airport) => airport.icao).toList();
-
+      final visibleAirportIcaos = visibleAirports
+          .map((airport) => airport.icao)
+          .toList();
 
       // Fetch weather data for visible airports
       await _weatherService.initialize();
-      final metarData = await _weatherService.getMetarsForAirports(visibleAirportIcaos);
+      final metarData = await _weatherService.getMetarsForAirports(
+        visibleAirportIcaos,
+      );
 
       // Update only the visible airports with weather data
       bool hasUpdates = false;
@@ -1733,14 +1787,21 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
             mapController: _mapController,
             options: MapOptions(
               initialCenter: _currentPosition != null
-                  ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
-                  : const LatLng(37.7749, -122.4194), // Default to San Francisco
+                  ? LatLng(
+                      _currentPosition!.latitude,
+                      _currentPosition!.longitude,
+                    )
+                  : const LatLng(
+                      37.7749,
+                      -122.4194,
+                    ), // Default to San Francisco
               initialZoom: _initialZoom,
               minZoom: _minZoom,
               maxZoom: _maxZoom,
               interactionOptions: InteractionOptions(
-                flags: _isDraggingWaypoint 
-                    ? InteractiveFlag.none  // Disable all map interactions when dragging waypoint
+                flags: _isDraggingWaypoint
+                    ? InteractiveFlag
+                          .none // Disable all map interactions when dragging waypoint
                     : InteractiveFlag.all & ~InteractiveFlag.rotate,
               ),
               onTap: (tapPosition, point) => _onMapTapped(tapPosition, point),
@@ -1751,10 +1812,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                     setState(() {
                       _autoCenteringEnabled = false;
                     });
-                    
+
                     // Cancel any existing timer
                     _autoCenteringTimer?.cancel();
-                    
+
                     // Start a new timer to re-enable auto-centering after 3 minutes
                     _autoCenteringTimer = Timer(_autoCenteringDelay, () {
                       if (mounted && _flightService.isTracking) {
@@ -1764,7 +1825,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                       }
                     });
                   }
-                  
+
                   _loadAirports();
                   // Also load navaids if they're enabled
                   if (_showNavaids) {
@@ -1791,7 +1852,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                 userAgentPackageName: 'com.example.captainvfr',
                 tileProvider: _servicesInitialized && _offlineMapService != null
                     ? OfflineTileProvider(
-                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                         offlineMapService: _offlineMapService!,
                         userAgentPackageName: 'com.example.captainvfr',
                       )
@@ -1844,7 +1906,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               Consumer<FlightPlanService>(
                 builder: (context, flightPlanService, child) {
                   final flightPlan = flightPlanService.currentFlightPlan;
-                  if (flightPlan == null || flightPlan.waypoints.isEmpty || !flightPlanService.isFlightPlanVisible) {
+                  if (flightPlan == null ||
+                      flightPlan.waypoints.isEmpty ||
+                      !flightPlanService.isFlightPlanVisible) {
                     return const SizedBox.shrink();
                   }
 
@@ -1852,7 +1916,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                     children: [
                       // Flight plan route lines
                       PolylineLayer(
-                        polylines: FlightPlanOverlay.buildFlightPath(flightPlan),
+                        polylines: FlightPlanOverlay.buildFlightPath(
+                          flightPlan,
+                        ),
                       ),
                       // Highlight next segment when tracking
                       if (_flightService.isTracking && _currentPosition != null)
@@ -1893,7 +1959,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                       Builder(
                         builder: (context) {
                           return MarkerLayer(
-                            markers: FlightPlanOverlay.buildSegmentLabels(flightPlan, context),
+                            markers: FlightPlanOverlay.buildSegmentLabels(
+                              flightPlan,
+                              context,
+                            ),
                           );
                         },
                       ),
@@ -1917,44 +1986,57 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               // Flight segment markers
               if (_flightSegments.isNotEmpty)
                 MarkerLayer(
-                  markers: _flightSegments.map((segment) => [
-                    // Start marker
-                    Marker(
-                      point: segment.startLatLng,
-                      width: 16,
-                      height: 16,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: _getSegmentColor(segment.type),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: Icon(
-                          _getSegmentIcon(segment.type),
-                          size: 8,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    // End marker
-                    Marker(
-                      point: segment.endLatLng,
-                      width: 16,
-                      height: 16,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: _getSegmentColor(segment.type).withValues(alpha: 0.7),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: Icon(
-                          Icons.flag,
-                          size: 8,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ]).expand((markers) => markers).toList(),
+                  markers: _flightSegments
+                      .map(
+                        (segment) => [
+                          // Start marker
+                          Marker(
+                            point: segment.startLatLng,
+                            width: 16,
+                            height: 16,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: _getSegmentColor(segment.type),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Icon(
+                                _getSegmentIcon(segment.type),
+                                size: 8,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          // End marker
+                          Marker(
+                            point: segment.endLatLng,
+                            width: 16,
+                            height: 16,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: _getSegmentColor(
+                                  segment.type,
+                                ).withValues(alpha: 0.7),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.flag,
+                                size: 8,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                      .expand((markers) => markers)
+                      .toList(),
                 ),
               // Current position marker
               if (_currentPosition != null)
@@ -2021,33 +2103,53 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         SizedBox(height: 4),
                         Icon(Icons.adjust, size: 20, color: Colors.grey),
                         SizedBox(height: 4),
-                        Icon(Icons.airplanemode_active, size: 20, color: Colors.grey),
+                        Icon(
+                          Icons.airplanemode_active,
+                          size: 20,
+                          color: Colors.grey,
+                        ),
                         SizedBox(height: 4),
                         Icon(Icons.layers, size: 20, color: Colors.grey),
                         SizedBox(height: 4),
-                        Text('A', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+                        Text(
+                          'A',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
-                childWhenDragging: const SizedBox(width: 50), // Maintain space when dragging
+                childWhenDragging: const SizedBox(
+                  width: 50,
+                ), // Maintain space when dragging
                 onDragEnd: (details) {
                   setState(() {
                     final screenSize = MediaQuery.of(context).size;
                     final dragX = details.offset.dx;
                     final dragY = details.offset.dy;
-                    
+
                     // Calculate new right position
                     // dragX is from left, we need distance from right
-                    double newRightPosition = screenSize.width - dragX - 50; // 50 is panel width
-                    
+                    double newRightPosition =
+                        screenSize.width - dragX - 50; // 50 is panel width
+
                     // Calculate new top position as percentage
                     double newTopPosition = dragY / screenSize.height;
-                    
+
                     // Constrain to screen bounds
-                    newRightPosition = newRightPosition.clamp(0.0, screenSize.width - 60);
-                    newTopPosition = newTopPosition.clamp(0.05, 0.85); // Keep between 5% and 85% of screen height
-                    
+                    newRightPosition = newRightPosition.clamp(
+                      0.0,
+                      screenSize.width - 60,
+                    );
+                    newTopPosition = newTopPosition.clamp(
+                      0.05,
+                      0.85,
+                    ); // Keep between 5% and 85% of screen height
+
                     _togglePanelRightPosition = newRightPosition;
                     _togglePanelTopPosition = newTopPosition;
                   });
@@ -2066,100 +2168,120 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                     ],
                   ),
                   child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Drag handle indicator
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Center(
-                        child: Container(
-                          width: 30,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(2),
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Drag handle indicator
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Center(
+                          child: Container(
+                            width: 30,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    _buildLayerToggle(
-                      icon: _showNavaids ? Icons.explore : Icons.explore_outlined,
-                      tooltip: 'Toggle Navaids',
-                      isActive: _showNavaids,
-                      onPressed: () {
-                        _toggleNavaids();
-                      },
-                    ),
-                    _buildLayerToggle(
-                      icon: _showMetar ? Icons.cloud : Icons.cloud_outlined,
-                      tooltip: 'Toggle METAR Overlay',
-                      isActive: _showMetar,
-                      onPressed: _toggleMetar,
-                    ),
-                    _buildLayerToggle(
-                      icon: _showHeliports ? Icons.adjust : Icons.radio_button_unchecked,
-                      tooltip: 'Toggle Heliports',
-                      isActive: _showHeliports,
-                      onPressed: _toggleHeliports,
-                    ),
-                    _buildLayerToggle(
-                      icon: _showSmallAirports ? Icons.airplanemode_active : Icons.airplanemode_inactive,
-                      tooltip: 'Toggle Small Airports',
-                      isActive: _showSmallAirports,
-                      onPressed: _toggleSmallAirports,
-                    ),
-                    _buildLayerToggle(
-                      icon: _showAirspaces ? Icons.layers : Icons.layers_outlined,
-                      tooltip: 'Toggle Airspaces',
-                      isActive: _showAirspaces,
-                      onPressed: _toggleAirspaces,
-                    ),
-                    _buildLayerToggle(
-                      icon: _showCurrentAirspacePanel ? Icons.account_tree : Icons.account_tree_outlined,
-                      tooltip: 'Toggle Current Airspace Panel',
-                      isActive: _showCurrentAirspacePanel,
-                      onPressed: () {
-                        setState(() {
-                          _showCurrentAirspacePanel = !_showCurrentAirspacePanel;
-                        });
-                      },
-                    ),
-                    _buildLayerToggle(
-                      icon: _showFlightPlanning ? Icons.route : Icons.route_outlined,
-                      tooltip: 'Toggle Flight Planning',
-                      isActive: _showFlightPlanning,
-                      onPressed: () {
-                        setState(() {
-                          _showFlightPlanning = !_showFlightPlanning;
-                          // Auto-create flight plan if none exists (with planning mode OFF)
-                          if (_showFlightPlanning && _flightPlanService.currentFlightPlan == null) {
-                            _flightPlanService.createNewFlightPlan(enablePlanning: false);
-                          }
-                          // Sync flight plan visibility with panel visibility
-                          _flightPlanService.setFlightPlanVisibility(_showFlightPlanning);
-                        });
-                      },
-                    ),
-                  ],
+                      _buildLayerToggle(
+                        icon: _showNavaids
+                            ? Icons.explore
+                            : Icons.explore_outlined,
+                        tooltip: 'Toggle Navaids',
+                        isActive: _showNavaids,
+                        onPressed: () {
+                          _toggleNavaids();
+                        },
+                      ),
+                      _buildLayerToggle(
+                        icon: _showMetar ? Icons.cloud : Icons.cloud_outlined,
+                        tooltip: 'Toggle METAR Overlay',
+                        isActive: _showMetar,
+                        onPressed: _toggleMetar,
+                      ),
+                      _buildLayerToggle(
+                        icon: _showHeliports
+                            ? Icons.adjust
+                            : Icons.radio_button_unchecked,
+                        tooltip: 'Toggle Heliports',
+                        isActive: _showHeliports,
+                        onPressed: _toggleHeliports,
+                      ),
+                      _buildLayerToggle(
+                        icon: _showSmallAirports
+                            ? Icons.airplanemode_active
+                            : Icons.airplanemode_inactive,
+                        tooltip: 'Toggle Small Airports',
+                        isActive: _showSmallAirports,
+                        onPressed: _toggleSmallAirports,
+                      ),
+                      _buildLayerToggle(
+                        icon: _showAirspaces
+                            ? Icons.layers
+                            : Icons.layers_outlined,
+                        tooltip: 'Toggle Airspaces',
+                        isActive: _showAirspaces,
+                        onPressed: _toggleAirspaces,
+                      ),
+                      _buildLayerToggle(
+                        icon: _showCurrentAirspacePanel
+                            ? Icons.account_tree
+                            : Icons.account_tree_outlined,
+                        tooltip: 'Toggle Current Airspace Panel',
+                        isActive: _showCurrentAirspacePanel,
+                        onPressed: () {
+                          setState(() {
+                            _showCurrentAirspacePanel =
+                                !_showCurrentAirspacePanel;
+                          });
+                        },
+                      ),
+                      _buildLayerToggle(
+                        icon: _showFlightPlanning
+                            ? Icons.route
+                            : Icons.route_outlined,
+                        tooltip: 'Toggle Flight Planning',
+                        isActive: _showFlightPlanning,
+                        onPressed: () {
+                          setState(() {
+                            _showFlightPlanning = !_showFlightPlanning;
+                            // Auto-create flight plan if none exists (with planning mode OFF)
+                            if (_showFlightPlanning &&
+                                _flightPlanService.currentFlightPlan == null) {
+                              _flightPlanService.createNewFlightPlan(
+                                enablePlanning: false,
+                              );
+                            }
+                            // Sync flight plan visibility with panel visibility
+                            _flightPlanService.setFlightPlanVisibility(
+                              _showFlightPlanning,
+                            );
+                          });
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
 
           // Flight dashboard overlay - show when toggle is active
           if (_showStats)
             Positioned(
               left: _flightDataPanelPosition.dx,
-              bottom: _flightDataPanelPosition.dy, // Use positive value for bottom positioning
+              bottom: _flightDataPanelPosition
+                  .dy, // Use positive value for bottom positioning
               child: Draggable<String>(
                 data: 'flight_panel',
                 feedback: Material(
                   color: Colors.transparent,
                   child: SizedBox(
-                    width: MediaQuery.of(context).size.width < 600 
-                        ? MediaQuery.of(context).size.width - 16 // Phone width
+                    width: MediaQuery.of(context).size.width < 600
+                        ? MediaQuery.of(context).size.width -
+                              16 // Phone width
                         : 600, // Tablet/desktop max width
                     child: FlightDashboard(
                       isExpanded: _flightDashboardExpanded,
@@ -2175,7 +2297,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                     // Calculate new position based on drag end position
                     final screenSize = MediaQuery.of(context).size;
                     final isPhone = screenSize.width < 600;
-                    
+
                     double newX = details.offset.dx;
                     double newY = details.offset.dy;
 
@@ -2184,27 +2306,35 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                     final panelHeight = _flightDashboardExpanded ? 260 : 60;
 
                     // Convert screen coordinates to bottom-relative positioning
-                    double bottomDistance = screenSize.height - newY - panelHeight;
+                    double bottomDistance =
+                        screenSize.height - newY - panelHeight;
 
                     // Constrain to screen bounds with margins
                     final minMargin = isPhone ? 8.0 : 16.0;
-                    
+
                     // Allow full horizontal movement on tablets/desktop
                     if (!isPhone) {
-                      newX = newX.clamp(minMargin, screenSize.width - panelWidth - minMargin);
+                      newX = newX.clamp(
+                        minMargin,
+                        screenSize.width - panelWidth - minMargin,
+                      );
                     } else {
                       // On phones, keep centered
                       newX = minMargin;
                     }
-                    
-                    bottomDistance = bottomDistance.clamp(16.0, screenSize.height - panelHeight - 100);
+
+                    bottomDistance = bottomDistance.clamp(
+                      16.0,
+                      screenSize.height - panelHeight - 100,
+                    );
 
                     _flightDataPanelPosition = Offset(newX, bottomDistance);
                   });
                 },
                 child: SizedBox(
-                  width: MediaQuery.of(context).size.width < 600 
-                      ? MediaQuery.of(context).size.width - 16 // Phone width
+                  width: MediaQuery.of(context).size.width < 600
+                      ? MediaQuery.of(context).size.width -
+                            16 // Phone width
                       : 600, // Tablet/desktop max width
                   child: FlightDashboard(
                     isExpanded: _flightDashboardExpanded,
@@ -2218,7 +2348,6 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
               ),
             ),
 
-          
           // Airspace information panel
           if (_showCurrentAirspacePanel)
             Positioned(
@@ -2230,22 +2359,25 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                   color: Colors.transparent,
                   child: Container(
                     constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width < 600 
-                          ? MediaQuery.of(context).size.width - 16 
-                          : MediaQuery.of(context).size.width < 1200 
-                              ? 500 
-                              : 600,
+                      maxWidth: MediaQuery.of(context).size.width < 600
+                          ? MediaQuery.of(context).size.width - 16
+                          : MediaQuery.of(context).size.width < 1200
+                          ? 500
+                          : 600,
                     ),
                     child: _currentPosition != null
-                      ? AirspaceFlightInfo(
-                          currentPosition: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-                          currentAltitude: _currentPosition!.altitude,
-                          currentHeading: _currentPosition!.heading,
-                          currentSpeed: _currentPosition!.speed,
-                          openAIPService: openAIPService,
-                          onAirspaceSelected: _onAirspaceSelected,
-                        )
-                      : _buildLoadingAirspacePanel(),
+                        ? AirspaceFlightInfo(
+                            currentPosition: LatLng(
+                              _currentPosition!.latitude,
+                              _currentPosition!.longitude,
+                            ),
+                            currentAltitude: _currentPosition!.altitude,
+                            currentHeading: _currentPosition!.heading,
+                            currentSpeed: _currentPosition!.speed,
+                            openAIPService: openAIPService,
+                            onAirspaceSelected: _onAirspaceSelected,
+                          )
+                        : _buildLoadingAirspacePanel(),
                   ),
                 ),
                 childWhenDragging: Container(), // Empty container when dragging
@@ -2254,17 +2386,21 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                     // Calculate new position based on drag end position
                     final screenSize = MediaQuery.of(context).size;
                     final isPhone = screenSize.width < 600;
-                    final isTablet = screenSize.width >= 600 && screenSize.width < 1200;
-                    
+                    final isTablet =
+                        screenSize.width >= 600 && screenSize.width < 1200;
+
                     double newX = details.offset.dx;
                     double newY = details.offset.dy;
 
                     // Get panel dimensions based on device type
-                    final panelWidth = isPhone ? screenSize.width - 16 : (isTablet ? 500 : 600);
+                    final panelWidth = isPhone
+                        ? screenSize.width - 16
+                        : (isTablet ? 500 : 600);
                     final panelHeight = 200; // Approximate panel height
 
                     // Convert screen coordinates to bottom-relative positioning
-                    double bottomDistance = screenSize.height - newY - panelHeight;
+                    double bottomDistance =
+                        screenSize.height - newY - panelHeight;
 
                     // Constrain horizontal position based on device type
                     if (isPhone) {
@@ -2272,38 +2408,47 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                       newX = 0;
                     } else {
                       // On tablets/desktop, allow horizontal movement
-                      newX = newX.clamp(0.0, screenSize.width - panelWidth - 16);
+                      newX = newX.clamp(
+                        0.0,
+                        screenSize.width - panelWidth - 16,
+                      );
                     }
-                    
+
                     // Constrain vertical position
-                    bottomDistance = bottomDistance.clamp(10.0, screenSize.height - panelHeight - 100);
+                    bottomDistance = bottomDistance.clamp(
+                      10.0,
+                      screenSize.height - panelHeight - 100,
+                    );
 
                     _airspacePanelPosition = Offset(newX, bottomDistance);
                   });
                 },
                 child: Container(
                   constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width < 600 
-                        ? MediaQuery.of(context).size.width - 16 
-                        : MediaQuery.of(context).size.width < 1200 
-                            ? 500 
-                            : 600,
+                    maxWidth: MediaQuery.of(context).size.width < 600
+                        ? MediaQuery.of(context).size.width - 16
+                        : MediaQuery.of(context).size.width < 1200
+                        ? 500
+                        : 600,
                   ),
                   child: _currentPosition != null
-                    ? AirspaceFlightInfo(
-                        currentPosition: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-                        currentAltitude: _currentPosition!.altitude,
-                        currentHeading: _currentPosition!.heading,
-                        currentSpeed: _currentPosition!.speed,
-                        openAIPService: openAIPService,
-                        onAirspaceSelected: _onAirspaceSelected,
-                        onClose: () {
-                          setState(() {
-                            _showCurrentAirspacePanel = false;
-                          });
-                        },
-                      )
-                    : _buildLoadingAirspacePanel(),
+                      ? AirspaceFlightInfo(
+                          currentPosition: LatLng(
+                            _currentPosition!.latitude,
+                            _currentPosition!.longitude,
+                          ),
+                          currentAltitude: _currentPosition!.altitude,
+                          currentHeading: _currentPosition!.heading,
+                          currentSpeed: _currentPosition!.speed,
+                          openAIPService: openAIPService,
+                          onAirspaceSelected: _onAirspaceSelected,
+                          onClose: () {
+                            setState(() {
+                              _showCurrentAirspacePanel = false;
+                            });
+                          },
+                        )
+                      : _buildLoadingAirspacePanel(),
                 ),
               ),
             ),
@@ -2367,11 +2512,16 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         setState(() {
                           _showFlightPlanning = !_showFlightPlanning;
                           // Auto-create flight plan if none exists (with planning mode OFF)
-                          if (_showFlightPlanning && _flightPlanService.currentFlightPlan == null) {
-                            _flightPlanService.createNewFlightPlan(enablePlanning: false);
+                          if (_showFlightPlanning &&
+                              _flightPlanService.currentFlightPlan == null) {
+                            _flightPlanService.createNewFlightPlan(
+                              enablePlanning: false,
+                            );
                           }
                           // Sync flight plan visibility with panel visibility
-                          _flightPlanService.setFlightPlanVisibility(_showFlightPlanning);
+                          _flightPlanService.setFlightPlanVisibility(
+                            _showFlightPlanning,
+                          );
                         });
                         // Note: Planning mode is NOT automatically enabled when showing the panel
                         // Users must explicitly enable it from within the panel
@@ -2380,14 +2530,16 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const ChecklistSettingsScreen(),
+                            builder: (context) =>
+                                const ChecklistSettingsScreen(),
                           ),
                         );
                       } else if (value == 'airplane_settings') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const AircraftSettingsScreen(),
+                            builder: (context) =>
+                                const AircraftSettingsScreen(),
                           ),
                         );
                       } else if (value == 'licenses') {
@@ -2395,6 +2547,13 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                           context,
                           MaterialPageRoute(
                             builder: (context) => const LicensesScreen(),
+                          ),
+                        );
+                      } else if (value == 'calculators') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const CalculatorsScreen(),
                           ),
                         );
                       } else if (value == 'settings') {
@@ -2463,6 +2622,16 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         ),
                       ),
                       const PopupMenuItem(
+                        value: 'calculators',
+                        child: Row(
+                          children: [
+                            Icon(Icons.calculate, size: 20),
+                            SizedBox(width: 8),
+                            Text('Calculators'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
                         value: 'settings',
                         child: Row(
                           children: [
@@ -2473,6 +2642,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         ),
                       ),
                     ],
+                    offset: const Offset(0, 48), // Move popup down to avoid overlapping with top panel
                   ),
                   IconButton(
                     icon: const Icon(Icons.search, color: Colors.black),
@@ -2485,8 +2655,8 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                       color: _autoCenteringEnabled ? Colors.black : Colors.grey,
                     ),
                     onPressed: _centerOnLocation,
-                    tooltip: _autoCenteringEnabled 
-                        ? 'Center on location' 
+                    tooltip: _autoCenteringEnabled
+                        ? 'Center on location'
                         : 'Center on location (auto-centering paused)',
                   ),
                   IconButton(
@@ -2518,13 +2688,16 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                       SizedBox(width: 8),
-                      Text('Getting location...', style: TextStyle(fontSize: 12)),
+                      Text(
+                        'Getting location...',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
-            
+
           // Error message
           if (_errorMessage.isNotEmpty)
             Positioned(
@@ -2570,7 +2743,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                         feedback: Material(
                           color: Colors.transparent,
                           child: SizedBox(
-                            width: MediaQuery.of(context).size.width < 600 
+                            width: MediaQuery.of(context).size.width < 600
                                 ? MediaQuery.of(context).size.width - 16
                                 : 600,
                             child: FlightPlanningPanel(
@@ -2584,7 +2757,9 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                                   _flightPlanService.togglePlanningMode();
                                 }
                                 // Hide flight plan layer on map
-                                _flightPlanService.setFlightPlanVisibility(false);
+                                _flightPlanService.setFlightPlanVisibility(
+                                  false,
+                                );
                                 // debugPrint('Flight planning closed from panel');
                               },
                             ),
@@ -2595,32 +2770,39 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                           setState(() {
                             final screenSize = MediaQuery.of(context).size;
                             final isPhone = screenSize.width < 600;
-                            
+
                             double newX = details.offset.dx;
                             double newY = details.offset.dy;
-                            
-                            final panelWidth = isPhone ? screenSize.width - 16 : 600;
-                            final panelHeight = _flightPlanningExpanded ? 600 : 50;
-                            
+
+                            final panelWidth = isPhone
+                                ? screenSize.width - 16
+                                : 600;
+                            final panelHeight = _flightPlanningExpanded
+                                ? 600
+                                : 50;
+
                             // Constrain position
                             final minMargin = isPhone ? 8.0 : 16.0;
-                            
+
                             if (!isPhone) {
-                              newX = newX.clamp(minMargin, screenSize.width - panelWidth - minMargin);
+                              newX = newX.clamp(
+                                minMargin,
+                                screenSize.width - panelWidth - minMargin,
+                              );
                             } else {
                               newX = minMargin;
                             }
-                            
+
                             newY = newY.clamp(
                               MediaQuery.of(context).padding.top + 60,
-                              screenSize.height - panelHeight - 100
+                              screenSize.height - panelHeight - 100,
                             );
-                            
+
                             _flightPlanningPanelPosition = Offset(newX, newY);
                           });
                         },
                         child: SizedBox(
-                          width: MediaQuery.of(context).size.width < 600 
+                          width: MediaQuery.of(context).size.width < 600
                               ? MediaQuery.of(context).size.width - 16
                               : 600,
                           child: FlightPlanningPanel(
@@ -2647,9 +2829,10 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
                       ),
                     ),
                   // Floating waypoint panel for selected waypoint
-                  if (_selectedWaypointIndex != null && 
+                  if (_selectedWaypointIndex != null &&
                       flightPlanService.currentFlightPlan != null &&
-                      _selectedWaypointIndex! < flightPlanService.currentFlightPlan!.waypoints.length)
+                      _selectedWaypointIndex! <
+                          flightPlanService.currentFlightPlan!.waypoints.length)
                     FloatingWaypointPanel(
                       waypointIndex: _selectedWaypointIndex!,
                       onClose: () {
@@ -2686,7 +2869,7 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
       onPressed: onPressed,
     );
   }
-  
+
   Widget _buildLoadingAirspacePanel() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -2709,20 +2892,14 @@ class MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixi
           const SizedBox(width: 12),
           const Text(
             'Getting location...',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: Colors.white70, fontSize: 12),
           ),
           const SizedBox(width: 12),
           IconButton(
             icon: const Icon(Icons.close, size: 16),
             color: Colors.white54,
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(
-              minWidth: 24,
-              minHeight: 24,
-            ),
+            constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
             onPressed: () {
               setState(() {
                 _showCurrentAirspacePanel = false;

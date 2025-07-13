@@ -73,7 +73,9 @@ class Navaid {
       magneticVariationDeg: double.tryParse(parts[16]) ?? 0.0,
       usageType: parts[17].replaceAll('"', '').trim(),
       power: double.tryParse(parts[18]) ?? 0.0,
-      associatedAirport: parts.length > 19 ? parts[19].replaceAll('"', '').trim() : '',
+      associatedAirport: parts.length > 19
+          ? parts[19].replaceAll('"', '').trim()
+          : '',
     );
   }
 
@@ -169,7 +171,8 @@ class Navaid {
   }
 
   /// Check if navaid has valid coordinates
-  bool get hasValidPosition => position.latitude != 0.0 || position.longitude != 0.0;
+  bool get hasValidPosition =>
+      position.latitude != 0.0 || position.longitude != 0.0;
 
   /// Get formatted elevation
   String get elevationFormatted => '$elevationFt ft';

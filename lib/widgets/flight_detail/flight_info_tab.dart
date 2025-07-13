@@ -33,8 +33,8 @@ class FlightInfoTab extends StatelessWidget {
   String _formatZuluTime(DateTime dateTime) {
     final utc = dateTime.toUtc();
     return '${utc.hour.toString().padLeft(2, '0')}:'
-           '${utc.minute.toString().padLeft(2, '0')}:'
-           '${utc.second.toString().padLeft(2, '0')}Z';
+        '${utc.minute.toString().padLeft(2, '0')}:'
+        '${utc.second.toString().padLeft(2, '0')}Z';
   }
 
   @override
@@ -78,20 +78,20 @@ class FlightInfoTab extends StatelessWidget {
           Consumer<SettingsService>(
             builder: (context, settings, child) {
               final isMetric = settings.units == 'metric';
-              
+
               // Format values based on unit settings
-              final speedValue = isMetric 
+              final speedValue = isMetric
                   ? '${(flight.maxSpeed * 3.6).toStringAsFixed(1)} km/h'
                   : '${(flight.maxSpeed * 2.23694).toStringAsFixed(1)} mph';
-                  
-              final altitudeValue = isMetric 
+
+              final altitudeValue = isMetric
                   ? '${flight.maxAltitude.toStringAsFixed(0)} m'
                   : '${(flight.maxAltitude * 3.28084).toStringAsFixed(0)} ft';
-                  
-              final distanceValue = isMetric 
+
+              final distanceValue = isMetric
                   ? '${(flight.distanceTraveled / 1000).toStringAsFixed(1)} km'
                   : '${(flight.distanceTraveled * 0.000621371).toStringAsFixed(1)} mi';
-              
+
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -140,24 +140,24 @@ class FlightInfoTab extends StatelessWidget {
                           value: distanceValue,
                         ),
                       ),
-              SizedBox(
-                width: (MediaQuery.of(context).size.width - 48) / 2,
-                child: _buildInfoTile(
-                  context,
-                  icon: Icons.timer,
-                  title: 'Moving Time',
-                  value: _formatDuration(flight.movingTime),
-                ),
-              ),
-              SizedBox(
-                width: (MediaQuery.of(context).size.width - 48) / 2,
-                child: _buildInfoTile(
-                  context,
-                  icon: Icons.assessment,
-                  title: 'Points',
-                  value: '${flight.path.length}',
-                ),
-              ),
+                      SizedBox(
+                        width: (MediaQuery.of(context).size.width - 48) / 2,
+                        child: _buildInfoTile(
+                          context,
+                          icon: Icons.timer,
+                          title: 'Moving Time',
+                          value: _formatDuration(flight.movingTime),
+                        ),
+                      ),
+                      SizedBox(
+                        width: (MediaQuery.of(context).size.width - 48) / 2,
+                        child: _buildInfoTile(
+                          context,
+                          icon: Icons.assessment,
+                          title: 'Points',
+                          value: '${flight.path.length}',
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -173,7 +173,9 @@ class FlightInfoTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12.0),
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
@@ -285,7 +287,9 @@ class FlightInfoTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12.0),
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
@@ -330,7 +334,9 @@ class FlightInfoTab extends StatelessWidget {
                     border: Border.all(
                       color: selectedSegment == segment
                           ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
+                          : Theme.of(
+                              context,
+                            ).colorScheme.outline.withValues(alpha: 0.1),
                     ),
                   ),
                   child: Column(
@@ -341,16 +347,16 @@ class FlightInfoTab extends StatelessWidget {
                         children: [
                           Text(
                             'Segment ${index + 1}',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
                           Text(
                             segment.formattedDuration,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
                           ),
                         ],
                       ),
@@ -363,9 +369,12 @@ class FlightInfoTab extends StatelessWidget {
                             children: [
                               Text(
                                 'Started',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                ),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
                               ),
                               Text(
                                 segment.startZuluFormatted,
@@ -378,9 +387,12 @@ class FlightInfoTab extends StatelessWidget {
                             children: [
                               Text(
                                 'Stopped',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                ),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
                               ),
                               Text(
                                 segment.endZuluFormatted,
@@ -406,7 +418,9 @@ class FlightInfoTab extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12.0),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
+                color: Theme.of(
+                  context,
+                ).colorScheme.errorContainer.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(8.0),
               ),
               child: Row(
@@ -477,8 +491,12 @@ class FlightInfoTab extends StatelessWidget {
                 context,
                 'Alt Change',
                 segment.formattedAltitudeChange,
-                segment.altitudeChange >= 0 ? Icons.trending_up : Icons.trending_down,
-                iconColor: segment.altitudeChange >= 0 ? Colors.green : Colors.red,
+                segment.altitudeChange >= 0
+                    ? Icons.trending_up
+                    : Icons.trending_down,
+                iconColor: segment.altitudeChange >= 0
+                    ? Colors.green
+                    : Colors.red,
               ),
             ),
           ],
@@ -607,9 +625,9 @@ class FlightInfoTab extends StatelessWidget {
           ),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -633,7 +651,11 @@ class FlightInfoTab extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.only(top: 2.0),
-            child: Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+            child: Icon(
+              icon,
+              size: 20,
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -653,9 +675,9 @@ class FlightInfoTab extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,
                 ),

@@ -5,7 +5,8 @@ import '../models/runway.dart';
 import 'cache_service.dart';
 
 class RunwayService {
-  static const String _baseUrl = 'https://davidmegginson.github.io/ourairports-data';
+  static const String _baseUrl =
+      'https://davidmegginson.github.io/ourairports-data';
   static const String _runwaysUrl = '$_baseUrl/runways.csv';
 
   List<Runway> _runways = [];
@@ -47,7 +48,9 @@ class RunwayService {
     if (!forceRefresh && _runways.isNotEmpty) {
       final lastFetch = await _cacheService.getRunwaysLastFetch();
       if (lastFetch != null) {
-        final hoursSinceLastFetch = DateTime.now().difference(lastFetch).inHours;
+        final hoursSinceLastFetch = DateTime.now()
+            .difference(lastFetch)
+            .inHours;
         if (hoursSinceLastFetch < 24) {
           developer.log('🔄 Runways data is recent, skipping fetch');
           return;
@@ -60,10 +63,9 @@ class RunwayService {
     try {
       developer.log('🌐 Fetching runways data from remote source...');
 
-      final response = await http.get(
-        Uri.parse(_runwaysUrl),
-        headers: {'Accept': 'text/csv'},
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(Uri.parse(_runwaysUrl), headers: {'Accept': 'text/csv'})
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final csvData = response.body;
@@ -75,7 +77,9 @@ class RunwayService {
         await _cacheService.cacheRunways(runways);
         await _cacheService.setRunwaysLastFetch(DateTime.now());
 
-        developer.log('✅ Successfully fetched and cached ${runways.length} runways');
+        developer.log(
+          '✅ Successfully fetched and cached ${runways.length} runways',
+        );
       } else {
         throw Exception('Failed to fetch runways: HTTP ${response.statusCode}');
       }
@@ -104,7 +108,8 @@ class RunwayService {
 
         try {
           final row = _parseCsvRow(line);
-          if (row.length >= 20) { // Ensure we have all required columns
+          if (row.length >= 20) {
+            // Ensure we have all required columns
             final runway = Runway.fromCsvRow(row);
             runways.add(runway);
           }
@@ -150,9 +155,12 @@ class RunwayService {
 
   /// Get runways for a specific airport
   List<Runway> getRunwaysForAirport(String airportIdent) {
-    return _runways.where((runway) =>
-      runway.airportIdent.toUpperCase() == airportIdent.toUpperCase()
-    ).toList();
+    return _runways
+        .where(
+          (runway) =>
+              runway.airportIdent.toUpperCase() == airportIdent.toUpperCase(),
+        )
+        .toList();
   }
 
   /// Get runways for multiple airports
@@ -177,7 +185,9 @@ class RunwayService {
   }) {
     return _runways.where((runway) {
       if (airportIdent != null &&
-          !runway.airportIdent.toUpperCase().contains(airportIdent.toUpperCase())) {
+          !runway.airportIdent.toUpperCase().contains(
+            airportIdent.toUpperCase(),
+          )) {
         return false;
       }
 
@@ -215,7 +225,10 @@ class RunwayService {
     }
 
     final lengths = airportRunways.map((r) => r.lengthFt).toList();
-    final surfaces = airportRunways.map((r) => r.surfaceFormatted).toSet().toList();
+    final surfaces = airportRunways
+        .map((r) => r.surfaceFormatted)
+        .toSet()
+        .toList();
 
     return RunwayStats(
       count: airportRunways.length,
@@ -223,9 +236,10 @@ class RunwayService {
       shortestFt: lengths.reduce((a, b) => a < b ? a : b),
       surfaces: surfaces,
       hasLightedRunways: airportRunways.any((r) => r.lighted),
-      hasHardSurface: airportRunways.any((r) =>
-        r.surface.toLowerCase().contains('asp') ||
-        r.surface.toLowerCase().contains('con')
+      hasHardSurface: airportRunways.any(
+        (r) =>
+            r.surface.toLowerCase().contains('asp') ||
+            r.surface.toLowerCase().contains('con'),
       ),
     );
   }

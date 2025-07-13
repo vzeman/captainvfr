@@ -75,7 +75,8 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    flightPlanService.currentFlightPlan?.name ?? 'Flight Planning',
+                    flightPlanService.currentFlightPlan?.name ??
+                        'Flight Planning',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -83,10 +84,7 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
                   ),
                   Text(
                     flightPlanService.getFlightPlanSummary(),
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
                   ),
                 ],
               ),
@@ -146,7 +144,10 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
                 hintText: '120',
                 suffix: Text('kts'),
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
               ),
               onChanged: (value) {
                 final speed = double.tryParse(value);
@@ -204,11 +205,7 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
       child: Row(
         children: [
           // Drag handle icon for visual feedback
-          Icon(
-            Icons.drag_handle,
-            color: Colors.grey[400],
-            size: 20,
-          ),
+          Icon(Icons.drag_handle, color: Colors.grey[400], size: 20),
           const SizedBox(width: 8),
           // Waypoint number and line
           SizedBox(
@@ -234,11 +231,7 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
                   ),
                 ),
                 if (!isLast)
-                  Container(
-                    width: 2,
-                    height: 20,
-                    color: Colors.blue,
-                  ),
+                  Container(width: 2, height: 20, color: Colors.blue),
               ],
             ),
           ),
@@ -257,10 +250,7 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
                     const Spacer(),
                     Text(
                       '${waypoint.altitude.toStringAsFixed(0)} ft',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
                     ),
                   ],
                 ),
@@ -270,18 +260,12 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
                     children: [
                       Text(
                         '${segment.distance.toStringAsFixed(1)} NM',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 11,
-                        ),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 11),
                       ),
                       const SizedBox(width: 16),
                       Text(
                         '${segment.bearing.toStringAsFixed(0)}°',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 11,
-                        ),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 11),
                       ),
                       if (segment.flightTime > 0) ...[
                         const SizedBox(width: 16),
@@ -302,7 +286,8 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
           // Delete button
           IconButton(
             icon: const Icon(Icons.delete, size: 18),
-            onPressed: () => _showDeleteConfirmation(context, flightPlanService, index),
+            onPressed: () =>
+                _showDeleteConfirmation(context, flightPlanService, index),
             color: Colors.red,
           ),
         ],
@@ -336,7 +321,8 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
               if (flightPlanService.currentFlightPlan != null)
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => _showSaveDialog(context, flightPlanService),
+                    onPressed: () =>
+                        _showSaveDialog(context, flightPlanService),
                     icon: const Icon(Icons.save),
                     label: const Text('Save'),
                     style: ElevatedButton.styleFrom(
@@ -351,7 +337,8 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
                 // Clear flight plan button
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => _showClearDialog(context, flightPlanService),
+                    onPressed: () =>
+                        _showClearDialog(context, flightPlanService),
                     icon: const Icon(Icons.clear),
                     label: const Text('Clear'),
                     style: ElevatedButton.styleFrom(
@@ -372,8 +359,14 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () => flightPlanService.togglePlanningMode(),
-                  icon: Icon(flightPlanService.isPlanning ? Icons.done : Icons.edit),
-                  label: Text(flightPlanService.isPlanning ? 'Finish Planning' : 'Edit Plan'),
+                  icon: Icon(
+                    flightPlanService.isPlanning ? Icons.done : Icons.edit,
+                  ),
+                  label: Text(
+                    flightPlanService.isPlanning
+                        ? 'Finish Planning'
+                        : 'Edit Plan',
+                  ),
                 ),
               ),
             ),
@@ -382,7 +375,10 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
     );
   }
 
-  void _showSaveDialog(BuildContext context, FlightPlanService flightPlanService) {
+  void _showSaveDialog(
+    BuildContext context,
+    FlightPlanService flightPlanService,
+  ) {
     final controller = TextEditingController(
       text: flightPlanService.currentFlightPlan?.name ?? '',
     );
@@ -405,10 +401,7 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
             const SizedBox(height: 16),
             Text(
               'This will save your flight plan for future use.',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
             ),
           ],
         ),
@@ -440,12 +433,17 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
     );
   }
 
-  void _showClearDialog(BuildContext context, FlightPlanService flightPlanService) {
+  void _showClearDialog(
+    BuildContext context,
+    FlightPlanService flightPlanService,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Clear Flight Plan'),
-        content: const Text('Are you sure you want to clear the current flight plan? This action cannot be undone.'),
+        content: const Text(
+          'Are you sure you want to clear the current flight plan? This action cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -470,7 +468,11 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
     );
   }
 
-  void _showDeleteConfirmation(BuildContext context, FlightPlanService flightPlanService, int index) {
+  void _showDeleteConfirmation(
+    BuildContext context,
+    FlightPlanService flightPlanService,
+    int index,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -533,19 +535,13 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
               const SizedBox(width: 8),
               const Text(
                 'Altitude Profile',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
               const Spacer(),
               Flexible(
                 child: Text(
                   'Drag points to adjust altitude',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 11),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -626,19 +622,15 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
                   show: true,
                   drawVerticalLine: true,
                   drawHorizontalLine: true,
-                  horizontalInterval: altRange > 0 ? altRange / 4 : 1000, // Use 1000ft intervals when altRange is 0
+                  horizontalInterval: altRange > 0
+                      ? altRange / 4
+                      : 1000, // Use 1000ft intervals when altRange is 0
                   verticalInterval: cumulativeDistances.last / 4,
                   getDrawingHorizontalLine: (value) {
-                    return FlLine(
-                      color: Colors.grey[300]!,
-                      strokeWidth: 1,
-                    );
+                    return FlLine(color: Colors.grey[300]!, strokeWidth: 1);
                   },
                   getDrawingVerticalLine: (value) {
-                    return FlLine(
-                      color: Colors.grey[300]!,
-                      strokeWidth: 1,
-                    );
+                    return FlLine(color: Colors.grey[300]!, strokeWidth: 1);
                   },
                 ),
                 borderData: FlBorderData(
@@ -649,8 +641,11 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
                   enabled: true,
                   touchCallback: (FlTouchEvent event, LineTouchResponse? touchResponse) {
                     // Handle both tap and drag events for better interaction
-                    if ((event is FlTapUpEvent || event is FlPanUpdateEvent || event is FlPanEndEvent) &&
-                        touchResponse != null && touchResponse.lineBarSpots != null) {
+                    if ((event is FlTapUpEvent ||
+                            event is FlPanUpdateEvent ||
+                            event is FlPanEndEvent) &&
+                        touchResponse != null &&
+                        touchResponse.lineBarSpots != null) {
                       final spot = touchResponse.lineBarSpots!.first;
                       final waypointIndex = _findWaypointIndexFromDistance(
                         cumulativeDistances,
@@ -658,24 +653,34 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
                       );
                       if (waypointIndex != -1) {
                         // Convert chart Y coordinate to altitude, ensuring it's within reasonable bounds
-                        final chartHeight = maxAlt + padding - (minAlt - padding);
-                        final normalizedY = (spot.y - (minAlt - padding)) / chartHeight;
-                        final targetAltitude = ((1 - normalizedY) * chartHeight + (minAlt - padding))
-                            .clamp(0.0, 20000.0);
+                        final chartHeight =
+                            maxAlt + padding - (minAlt - padding);
+                        final normalizedY =
+                            (spot.y - (minAlt - padding)) / chartHeight;
+                        final targetAltitude =
+                            ((1 - normalizedY) * chartHeight +
+                                    (minAlt - padding))
+                                .clamp(0.0, 20000.0);
 
                         // Only update if the altitude actually changed significantly
-                        final currentAltitude = waypoints[waypointIndex].altitude;
-                        if ((targetAltitude - currentAltitude).abs() > 50) { // 50ft threshold
-                          flightPlanService.updateWaypointAltitude(waypointIndex, targetAltitude);
+                        final currentAltitude =
+                            waypoints[waypointIndex].altitude;
+                        if ((targetAltitude - currentAltitude).abs() > 50) {
+                          // 50ft threshold
+                          flightPlanService.updateWaypointAltitude(
+                            waypointIndex,
+                            targetAltitude,
+                          );
                         }
                       }
                     }
                   },
                   touchSpotThreshold: 50, // Increase touch sensitivity
-                  distanceCalculator: (Offset touchPoint, Offset spotPixelCoordinates) {
-                    // Custom distance calculation for better touch detection
-                    return (touchPoint - spotPixelCoordinates).distance;
-                  },
+                  distanceCalculator:
+                      (Offset touchPoint, Offset spotPixelCoordinates) {
+                        // Custom distance calculation for better touch detection
+                        return (touchPoint - spotPixelCoordinates).distance;
+                      },
                 ),
               ),
             ),
@@ -685,9 +690,13 @@ class _FlightPlanPanelState extends State<FlightPlanPanel> {
     );
   }
 
-  int _findWaypointIndexFromDistance(List<double> distances, double targetDistance) {
+  int _findWaypointIndexFromDistance(
+    List<double> distances,
+    double targetDistance,
+  ) {
     for (int i = 0; i < distances.length; i++) {
-      if ((distances[i] - targetDistance).abs() < 0.5) { // 0.5 NM tolerance
+      if ((distances[i] - targetDistance).abs() < 0.5) {
+        // 0.5 NM tolerance
         return i;
       }
     }

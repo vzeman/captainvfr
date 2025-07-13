@@ -16,7 +16,8 @@ class _LoadingProgressBarState extends State<LoadingProgressBar> {
   Widget build(BuildContext context) {
     return Consumer<BackgroundDataService>(
       builder: (context, dataService, child) {
-        if (_isDismissed || (!dataService.isLoading && dataService.isFullyLoaded)) {
+        if (_isDismissed ||
+            (!dataService.isLoading && dataService.isFullyLoaded)) {
           return const SizedBox.shrink();
         }
 
@@ -55,8 +56,8 @@ class _LoadingProgressBarState extends State<LoadingProgressBar> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          dataService.isLoading 
-                              ? dataService.currentTask 
+                          dataService.isLoading
+                              ? dataService.currentTask
                               : 'Some data may still be loading...',
                           style: const TextStyle(
                             color: Colors.white,
@@ -70,8 +71,12 @@ class _LoadingProgressBarState extends State<LoadingProgressBar> {
                             borderRadius: BorderRadius.circular(2),
                             child: LinearProgressIndicator(
                               value: dataService.progress,
-                              backgroundColor: Colors.white.withValues(alpha: 0.3),
-                              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.3,
+                              ),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                               minHeight: 3,
                             ),
                           ),
@@ -96,7 +101,11 @@ class _LoadingProgressBarState extends State<LoadingProgressBar> {
                     ),
                   ],
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                     onPressed: () {
                       setState(() {
                         _isDismissed = true;

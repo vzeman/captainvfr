@@ -8,7 +8,8 @@ import '../models/navaid.dart';
 import 'cache_service.dart';
 
 class NavaidService {
-  static const String _baseUrl = 'https://davidmegginson.github.io/ourairports-data';
+  static const String _baseUrl =
+      'https://davidmegginson.github.io/ourairports-data';
   static const String _navaidsUrl = '$_baseUrl/navaids.csv';
 
   List<Navaid> _navaids = [];
@@ -65,9 +66,12 @@ class NavaidService {
 
     try {
       final stopwatch = Stopwatch()..start();
-      final response = await http.get(Uri.parse(_navaidsUrl))
+      final response = await http
+          .get(Uri.parse(_navaidsUrl))
           .timeout(const Duration(seconds: 10));
-      developer.log('📡 Navaid data response status: ${response.statusCode} (took ${stopwatch.elapsedMilliseconds}ms)');
+      developer.log(
+        '📡 Navaid data response status: ${response.statusCode} (took ${stopwatch.elapsedMilliseconds}ms)',
+      );
 
       if (response.statusCode == 200) {
         developer.log('📊 Successfully fetched navaid data. Parsing...');
@@ -76,7 +80,8 @@ class NavaidService {
         final lines = const LineSplitter().convert(response.body);
         developer.log('📄 Parsed ${lines.length} lines from navaids CSV');
 
-        if (lines.length > 1) { // Skip header
+        if (lines.length > 1) {
+          // Skip header
           final filteredNavaids = <String>[];
           int invalidCount = 0;
 
@@ -103,7 +108,9 @@ class NavaidService {
             }
           }
 
-          developer.log('✅ Found ${filteredNavaids.length} valid navaid entries in CSV ($invalidCount invalid entries skipped)');
+          developer.log(
+            '✅ Found ${filteredNavaids.length} valid navaid entries in CSV ($invalidCount invalid entries skipped)',
+          );
 
           developer.log('🏗  Creating Navaid objects...');
           final parsedNavaids = <Navaid>[];
@@ -122,14 +129,20 @@ class NavaidService {
 
           _navaids = parsedNavaids;
 
-          developer.log('✨ Successfully created ${_navaids.length} Navaid objects');
+          developer.log(
+            '✨ Successfully created ${_navaids.length} Navaid objects',
+          );
 
           // Cache the navaids
           await _cacheService.cacheNavaids(_navaids);
 
           if (_navaids.isNotEmpty) {
-            developer.log('🧭 First navaid: ${_navaids.first.ident} - ${_navaids.first.name} (${_navaids.first.position})');
-            developer.log('🧭 Sample types: ${_navaids.take(5).map((n) => n.type).join(", ")}');
+            developer.log(
+              '🧭 First navaid: ${_navaids.first.ident} - ${_navaids.first.name} (${_navaids.first.position})',
+            );
+            developer.log(
+              '🧭 Sample types: ${_navaids.take(5).map((n) => n.type).join(", ")}',
+            );
           }
         }
       } else {
@@ -154,9 +167,9 @@ class NavaidService {
       final lng = navaid.position.longitude;
 
       return lat >= southWest.latitude &&
-             lat <= northEast.latitude &&
-             lng >= southWest.longitude &&
-             lng <= northEast.longitude;
+          lat <= northEast.latitude &&
+          lng >= southWest.longitude &&
+          lng <= northEast.longitude;
     }).toList();
   }
 
@@ -208,9 +221,9 @@ class NavaidService {
 
   /// Get navaids by type
   List<Navaid> getNavaidsByType(String type) {
-    return _navaids.where((navaid) =>
-      navaid.type.toLowerCase() == type.toLowerCase()
-    ).toList();
+    return _navaids
+        .where((navaid) => navaid.type.toLowerCase() == type.toLowerCase())
+        .toList();
   }
 
   /// Calculate distance between two points using Haversine formula
@@ -223,9 +236,10 @@ class NavaidService {
     double lat1 = _toRadians(point1.latitude);
     double lat2 = _toRadians(point2.latitude);
 
-    double a = sin(dLat/2) * sin(dLat/2) +
-              sin(dLon/2) * sin(dLon/2) * cos(lat1) * cos(lat2);
-    double c = 2 * atan2(sqrt(a), sqrt(1-a));
+    double a =
+        sin(dLat / 2) * sin(dLat / 2) +
+        sin(dLon / 2) * sin(dLon / 2) * cos(lat1) * cos(lat2);
+    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
 
     return earthRadiusKm * c;
   }

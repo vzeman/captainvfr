@@ -13,13 +13,13 @@ class VibrationDisplay extends StatefulWidget {
 class _VibrationDisplayState extends State<VibrationDisplay> {
   VibrationData? _latestData;
   bool _isCalibrated = false;
-  
+
   @override
   void initState() {
     super.initState();
     _startListening();
   }
-  
+
   void _startListening() {
     final service = context.read<VibrationMeasurementService>();
     service.vibrationStream.listen((data) {
@@ -33,7 +33,7 @@ class _VibrationDisplayState extends State<VibrationDisplay> {
       }
     });
   }
-  
+
   Color _getVibrationColor(VibrationLevel level) {
     switch (level) {
       case VibrationLevel.none:
@@ -48,7 +48,7 @@ class _VibrationDisplayState extends State<VibrationDisplay> {
         return Colors.red;
     }
   }
-  
+
   IconData _getVibrationIcon(VibrationLevel level) {
     switch (level) {
       case VibrationLevel.none:
@@ -61,7 +61,7 @@ class _VibrationDisplayState extends State<VibrationDisplay> {
         return Icons.error;
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     if (_latestData == null) {
@@ -78,10 +78,10 @@ class _VibrationDisplayState extends State<VibrationDisplay> {
         ),
       );
     }
-    
+
     final color = _getVibrationColor(_latestData!.level);
     final icon = _getVibrationIcon(_latestData!.level);
-    
+
     return Card(
       color: _latestData!.isSignificant ? color.withValues(alpha: 0.2) : null,
       child: InkWell(
@@ -116,10 +116,16 @@ class _VibrationDisplayState extends State<VibrationDisplay> {
                 TextButton(
                   onPressed: _calibrate,
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     minimumSize: const Size(0, 0),
                   ),
-                  child: const Text('Calibrate', style: TextStyle(fontSize: 10)),
+                  child: const Text(
+                    'Calibrate',
+                    style: TextStyle(fontSize: 10),
+                  ),
                 ),
               ],
             ],
@@ -128,14 +134,14 @@ class _VibrationDisplayState extends State<VibrationDisplay> {
       ),
     );
   }
-  
+
   void _calibrate() {
     final service = context.read<VibrationMeasurementService>();
     service.calibrate();
     setState(() {
       _isCalibrated = true;
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Vibration sensor calibrated'),
@@ -143,10 +149,10 @@ class _VibrationDisplayState extends State<VibrationDisplay> {
       ),
     );
   }
-  
+
   void _showDetails() {
     if (_latestData == null) return;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -162,17 +168,40 @@ class _VibrationDisplayState extends State<VibrationDisplay> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildDetailRow('Level', _latestData!.level.displayName),
-            _buildDetailRow('RMS Acceleration', '${_latestData!.rmsAcceleration.toStringAsFixed(3)} m/s²'),
-            _buildDetailRow('Peak Acceleration', '${_latestData!.peakAcceleration.toStringAsFixed(3)} m/s²'),
-            _buildDetailRow('Frequency', '${_latestData!.frequency.toStringAsFixed(1)} Hz'),
+            _buildDetailRow(
+              'RMS Acceleration',
+              '${_latestData!.rmsAcceleration.toStringAsFixed(3)} m/s²',
+            ),
+            _buildDetailRow(
+              'Peak Acceleration',
+              '${_latestData!.peakAcceleration.toStringAsFixed(3)} m/s²',
+            ),
+            _buildDetailRow(
+              'Frequency',
+              '${_latestData!.frequency.toStringAsFixed(1)} Hz',
+            ),
             const SizedBox(height: 16),
-            const Text('Axis Data:', style: TextStyle(fontWeight: FontWeight.bold)),
-            _buildDetailRow('  Lateral (X)', '${_latestData!.axisData.x.toStringAsFixed(3)} m/s²'),
-            _buildDetailRow('  Longitudinal (Y)', '${_latestData!.axisData.y.toStringAsFixed(3)} m/s²'),
-            _buildDetailRow('  Vertical (Z)', '${_latestData!.axisData.z.toStringAsFixed(3)} m/s²'),
+            const Text(
+              'Axis Data:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            _buildDetailRow(
+              '  Lateral (X)',
+              '${_latestData!.axisData.x.toStringAsFixed(3)} m/s²',
+            ),
+            _buildDetailRow(
+              '  Longitudinal (Y)',
+              '${_latestData!.axisData.y.toStringAsFixed(3)} m/s²',
+            ),
+            _buildDetailRow(
+              '  Vertical (Z)',
+              '${_latestData!.axisData.z.toStringAsFixed(3)} m/s²',
+            ),
             const SizedBox(height: 16),
             Text(
-              _isCalibrated ? 'Sensor is calibrated' : 'Sensor needs calibration',
+              _isCalibrated
+                  ? 'Sensor is calibrated'
+                  : 'Sensor needs calibration',
               style: TextStyle(
                 fontStyle: FontStyle.italic,
                 color: _isCalibrated ? Colors.green : Colors.orange,
@@ -197,7 +226,7 @@ class _VibrationDisplayState extends State<VibrationDisplay> {
       ),
     );
   }
-  
+
   Widget _buildDetailRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),

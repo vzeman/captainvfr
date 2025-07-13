@@ -91,7 +91,10 @@ class ThemedDialog extends StatelessWidget {
           ),
           if (actions != null && actions!.isNotEmpty) ...[
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8.0,
+                vertical: 4.0,
+              ),
               decoration: const BoxDecoration(
                 border: Border(
                   top: BorderSide(
@@ -109,7 +112,10 @@ class ThemedDialog extends StatelessWidget {
                       onPressed: action.onPressed,
                       style: TextButton.styleFrom(
                         foregroundColor: const Color(0xFF448AFF),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                       ),
                       child: action.child!,
                     );
@@ -183,10 +189,7 @@ class ThemedDialog extends StatelessWidget {
     return show<bool>(
       context: context,
       title: title,
-      content: Text(
-        message,
-        style: const TextStyle(color: Colors.white70),
-      ),
+      content: Text(message, style: const TextStyle(color: Colors.white70)),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),

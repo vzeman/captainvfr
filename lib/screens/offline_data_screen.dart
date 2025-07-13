@@ -27,10 +27,10 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
   final FrequencyService _frequencyService = FrequencyService();
   final WeatherService _weatherService = WeatherService();
   final OpenAIPService _openAIPService = OpenAIPService();
-  
+
   // Scroll controller to preserve position
   final ScrollController _scrollController = ScrollController();
-  
+
   bool _isLoading = true;
   bool _isRefreshing = false;
   bool _isDownloading = false;
@@ -39,14 +39,14 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
   int _totalTiles = 0;
   int _skippedTiles = 0;
   int _downloadedTiles = 0;
-  
+
   // Cache statistics
   Map<String, dynamic>? _mapCacheStats;
   Map<String, dynamic> _cacheStats = {};
-  
+
   int _minZoom = 8;
   int _maxZoom = 14;
-  
+
   // OpenAIP API key
   String _openAIPApiKey = '';
   final TextEditingController _apiKeyController = TextEditingController();
@@ -57,7 +57,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
     _loadAllCacheStats();
     _loadApiKey();
   }
-  
+
   Future<void> _loadApiKey() async {
     try {
       final settingsBox = await Hive.openBox('settings');
@@ -73,7 +73,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       // debugPrint('Error loading OpenAIP API key: $e');
     }
   }
-  
+
   Future<void> _saveApiKey(String apiKey) async {
     try {
       final settingsBox = await Hive.openBox('settings');
@@ -82,16 +82,16 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         _openAIPApiKey = apiKey;
       });
       _openAIPService.setApiKey(apiKey);
-      
+
       // No success message for auto-save
       // debugPrint('✅ OpenAIP API key auto-saved');
-      
+
       // If this is the first time setting an API key, load reporting points and airspaces
       if (apiKey.isNotEmpty) {
         // Check and load reporting points
         final cachedPoints = await _openAIPService.getCachedReportingPoints();
         final cachedAirspaces = await _openAIPService.getCachedAirspaces();
-        
+
         if (cachedPoints.isEmpty || cachedAirspaces.isEmpty) {
           // debugPrint('📍 First time API key set, loading data...');
           if (mounted) {
@@ -114,27 +114,29 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
               ),
             );
           }
-          
+
           try {
             // Load both in parallel
             final futures = <Future>[];
-            
+
             if (cachedPoints.isEmpty) {
               // debugPrint('📍 Loading reporting points...');
               futures.add(_openAIPService.fetchAllReportingPoints());
             }
-            
+
             if (cachedAirspaces.isEmpty) {
               // debugPrint('🌍 Loading airspaces...');
               futures.add(_openAIPService.fetchAllAirspaces());
             }
-            
+
             await Future.wait(futures);
-            
+
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Airspaces and reporting points loaded successfully'),
+                content: Text(
+                  'Airspaces and reporting points loaded successfully',
+                ),
                 backgroundColor: Colors.green,
               ),
             );
@@ -171,7 +173,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
     if (preserveScroll && _scrollController.hasClients) {
       scrollPosition = _scrollController.offset;
     }
-    
+
     // Don't show loading indicator if we're preserving scroll
     if (!preserveScroll) {
       setState(() {
@@ -183,19 +185,19 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       // Initialize services if needed
       await _cacheService.initialize();
       await _weatherService.initialize();
-      
+
       // Get map cache statistics
       final mapStats = await _offlineMapService.getCacheStatistics();
-      
+
       // Get data cache statistics
       final stats = await _getCacheStatistics();
-      
+
       setState(() {
         _mapCacheStats = mapStats;
         _cacheStats = stats;
         _isLoading = false;
       });
-      
+
       // Restore scroll position after rebuild
       if (scrollPosition != null && _scrollController.hasClients) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -220,7 +222,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
 
   Future<Map<String, dynamic>> _getCacheStatistics() async {
     final Map<String, dynamic> stats = {};
-    
+
     try {
       // Open boxes to get counts
       final airportsBox = await Hive.openBox<Map>('airports_cache');
@@ -228,41 +230,43 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       final runwaysBox = await Hive.openBox<Map>('runways_cache');
       final frequenciesBox = await Hive.openBox<Map>('frequencies_cache');
       final airspacesBox = await Hive.openBox<Map>('airspaces_cache');
-      final reportingPointsBox = await Hive.openBox<Map>('reporting_points_cache');
+      final reportingPointsBox = await Hive.openBox<Map>(
+        'reporting_points_cache',
+      );
       // Weather stats are now retrieved directly from WeatherService
       final metadataBox = await Hive.openBox('cache_metadata');
-      
+
       // Get counts
       stats['airports'] = {
         'count': airportsBox.length,
         'lastFetch': metadataBox.get('airports_last_fetch'),
       };
-      
+
       stats['navaids'] = {
         'count': navaidsBox.length,
         'lastFetch': metadataBox.get('navaids_last_fetch'),
       };
-      
+
       stats['runways'] = {
         'count': runwaysBox.length,
         'lastFetch': metadataBox.get('runways_last_fetch'),
       };
-      
+
       stats['frequencies'] = {
         'count': frequenciesBox.length,
         'lastFetch': metadataBox.get('frequencies_last_fetch'),
       };
-      
+
       stats['airspaces'] = {
         'count': airspacesBox.length,
         'lastFetch': metadataBox.get('airspaces_last_fetch'),
       };
-      
+
       stats['reportingPoints'] = {
         'count': reportingPointsBox.length,
         'lastFetch': metadataBox.get('reporting_points_last_fetch'),
       };
-      
+
       // Get weather statistics from WeatherService
       final weatherStats = _weatherService.getCacheStatistics();
       stats['weather'] = {
@@ -270,22 +274,21 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         'tafs': weatherStats['tafs'] ?? 0,
         'lastFetch': weatherStats['lastFetch']?.toIso8601String(),
       };
-      
     } catch (e) {
       // debugPrint('Error getting cache statistics: $e');
     }
-    
+
     return stats;
   }
 
   String _formatLastFetch(String? lastFetch) {
     if (lastFetch == null) return 'Never';
-    
+
     try {
       final date = DateTime.parse(lastFetch);
       final now = DateTime.now();
       final difference = now.difference(date);
-      
+
       if (difference.inDays > 0) {
         return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
       } else if (difference.inHours > 0) {
@@ -321,9 +324,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 SizedBox(width: 16),
-                Expanded(
-                  child: Text('Refreshing all aviation data...'),
-                ),
+                Expanded(child: Text('Refreshing all aviation data...')),
               ],
             ),
             duration: Duration(seconds: 5),
@@ -339,13 +340,13 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         _frequencyService.fetchFrequencies(forceRefresh: true),
         _weatherService.forceReload(),
       ];
-      
+
       // Add airspaces refresh if API key is set
       if (_openAIPApiKey.isNotEmpty) {
         futures.add(_openAIPService.refreshAirspacesCache());
         futures.add(_openAIPService.refreshReportingPointsCache());
       }
-      
+
       await Future.wait(futures);
 
       // Reload cache statistics
@@ -417,12 +418,12 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
 
       // Refresh airspaces
       await _openAIPService.refreshAirspacesCache();
-      
+
       // Close progress dialog
       if (mounted) {
         Navigator.of(context).pop();
       }
-      
+
       // Reload cache statistics
       await _loadAllCacheStats();
 
@@ -439,7 +440,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       if (mounted) {
         Navigator.of(context).pop();
       }
-      
+
       // debugPrint('Error refreshing airspaces: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -495,12 +496,12 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
 
       // Force refresh reporting points
       await _openAIPService.refreshReportingPointsCache(forceRefresh: true);
-      
+
       // Close progress dialog
       if (mounted) {
         Navigator.of(context).pop();
       }
-      
+
       // Reload cache statistics
       await _loadAllCacheStats();
 
@@ -517,7 +518,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       if (mounted) {
         Navigator.of(context).pop();
       }
-      
+
       // debugPrint('Error refreshing reporting points: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -556,9 +557,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 SizedBox(width: 16),
-                Expanded(
-                  child: Text('Refreshing weather data...'),
-                ),
+                Expanded(child: Text('Refreshing weather data...')),
               ],
             ),
             duration: Duration(seconds: 3),
@@ -647,9 +646,9 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
             await _offlineMapService.clearCache();
             break;
         }
-        
+
         await _loadAllCacheStats();
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -673,7 +672,9 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Clear All Caches'),
-        content: const Text('Are you sure you want to clear all cached data? This includes map tiles and all aviation data.'),
+        content: const Text(
+          'Are you sure you want to clear all cached data? This includes map tiles and all aviation data.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -692,7 +693,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         await _cacheService.clearAllCaches();
         await _offlineMapService.clearCache();
         await _loadAllCacheStats();
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -703,9 +704,9 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error clearing caches: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error clearing caches: $e')));
         }
       }
     }
@@ -740,7 +741,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                     ),
                   ),
                 ),
-                if (onRefresh != null) 
+                if (onRefresh != null)
                   IconButton(
                     icon: const Icon(Icons.refresh, color: Colors.blue),
                     onPressed: _isRefreshing ? null : onRefresh,
@@ -757,27 +758,18 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
             ],
             const SizedBox(height: 8),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Entries: $count',
-                  style: const TextStyle(fontSize: 16),
-                ),
+                Text('Entries: $count', style: const TextStyle(fontSize: 16)),
                 const SizedBox(height: 4),
                 Text(
                   'Updated: $lastFetch',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                 ),
@@ -796,7 +788,6 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       southWest: const LatLng(48.0, 12.0),
     );
   }
-
 
   Future<void> _downloadArea({
     required LatLng northEast,
@@ -827,14 +818,15 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
           });
 
           // Update cache statistics periodically, preserving scroll position
-          if (current % 50 == 0 || (total > 0 && (current / total * 100).round() % 5 == 0)) {
+          if (current % 50 == 0 ||
+              (total > 0 && (current / total * 100).round() % 5 == 0)) {
             _loadAllCacheStats(preserveScroll: true);
           }
         },
       );
 
       if (mounted) {
-        final message = _skippedTiles > 0 
+        final message = _skippedTiles > 0
             ? 'Downloaded $_downloadedTiles new tiles, skipped $_skippedTiles cached tiles'
             : 'Downloaded $_downloadedTiles tiles successfully!';
         ScaffoldMessenger.of(context).showSnackBar(
@@ -850,7 +842,9 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         final isUserCancelled = e.toString().contains('cancelled by user');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(isUserCancelled ? 'Download cancelled' : 'Download failed: $e'),
+            content: Text(
+              isUserCancelled ? 'Download cancelled' : 'Download failed: $e',
+            ),
             backgroundColor: isUserCancelled ? Colors.orange : Colors.red,
           ),
         );
@@ -906,81 +900,97 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Airports cache
                     _buildCacheCard(
                       title: 'Airports',
                       icon: Icons.flight_land,
                       count: _cacheStats['airports']?['count'] ?? 0,
-                      lastFetch: _formatLastFetch(_cacheStats['airports']?['lastFetch']),
+                      lastFetch: _formatLastFetch(
+                        _cacheStats['airports']?['lastFetch'],
+                      ),
                       onClear: () => _clearSpecificCache('Airports'),
                       subtitle: 'Airport information and details',
                     ),
-                    
+
                     const SizedBox(height: 8),
-                    
+
                     // Navaids cache
                     _buildCacheCard(
                       title: 'Navigation Aids',
                       icon: Icons.radar,
                       count: _cacheStats['navaids']?['count'] ?? 0,
-                      lastFetch: _formatLastFetch(_cacheStats['navaids']?['lastFetch']),
+                      lastFetch: _formatLastFetch(
+                        _cacheStats['navaids']?['lastFetch'],
+                      ),
                       onClear: () => _clearSpecificCache('Navaids'),
                       subtitle: 'VOR, NDB, and other navigation aids',
                     ),
-                    
+
                     const SizedBox(height: 8),
-                    
+
                     // Runways cache
                     _buildCacheCard(
                       title: 'Runways',
                       icon: Icons.horizontal_rule,
                       count: _cacheStats['runways']?['count'] ?? 0,
-                      lastFetch: _formatLastFetch(_cacheStats['runways']?['lastFetch']),
+                      lastFetch: _formatLastFetch(
+                        _cacheStats['runways']?['lastFetch'],
+                      ),
                       onClear: () => _clearSpecificCache('Runways'),
                       subtitle: 'Runway information for airports',
                     ),
-                    
+
                     const SizedBox(height: 8),
-                    
+
                     // Frequencies cache
                     _buildCacheCard(
                       title: 'Frequencies',
                       icon: Icons.radio,
                       count: _cacheStats['frequencies']?['count'] ?? 0,
-                      lastFetch: _formatLastFetch(_cacheStats['frequencies']?['lastFetch']),
+                      lastFetch: _formatLastFetch(
+                        _cacheStats['frequencies']?['lastFetch'],
+                      ),
                       onClear: () => _clearSpecificCache('Frequencies'),
                       subtitle: 'Radio frequencies for airports',
                     ),
-                    
+
                     const SizedBox(height: 8),
-                    
+
                     // Airspaces cache
                     _buildCacheCard(
                       title: 'Airspaces',
                       icon: Icons.layers,
                       count: _cacheStats['airspaces']?['count'] ?? 0,
-                      lastFetch: _formatLastFetch(_cacheStats['airspaces']?['lastFetch']),
+                      lastFetch: _formatLastFetch(
+                        _cacheStats['airspaces']?['lastFetch'],
+                      ),
                       onClear: () => _clearSpecificCache('Airspaces'),
                       subtitle: 'Controlled airspaces and restricted areas',
-                      onRefresh: _openAIPApiKey.isNotEmpty ? _refreshAirspaces : null,
+                      onRefresh: _openAIPApiKey.isNotEmpty
+                          ? _refreshAirspaces
+                          : null,
                     ),
-                    
+
                     const SizedBox(height: 8),
-                    
+
                     // Reporting points cache
                     _buildCacheCard(
                       title: 'Reporting Points',
                       icon: Icons.location_on,
                       count: _cacheStats['reportingPoints']?['count'] ?? 0,
-                      lastFetch: _formatLastFetch(_cacheStats['reportingPoints']?['lastFetch']),
+                      lastFetch: _formatLastFetch(
+                        _cacheStats['reportingPoints']?['lastFetch'],
+                      ),
                       onClear: () => _clearSpecificCache('Reporting Points'),
                       subtitle: 'VFR reporting points for navigation',
-                      onRefresh: _openAIPApiKey.isNotEmpty ? _refreshReportingPoints : null,
+                      onRefresh: _openAIPApiKey.isNotEmpty
+                          ? _refreshReportingPoints
+                          : null,
                     ),
-                    
+
                     const SizedBox(height: 8),
-                    
+
                     // Weather cache
                     Card(
                       elevation: 2,
@@ -991,7 +1001,11 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.cloud, size: 24, color: Colors.blue[700]),
+                                Icon(
+                                  Icons.cloud,
+                                  size: 24,
+                                  color: Colors.blue[700],
+                                ),
                                 const SizedBox(width: 8),
                                 const Expanded(
                                   child: Text(
@@ -1003,13 +1017,22 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.refresh, color: Colors.blue),
-                                  onPressed: _isRefreshing ? null : () => _refreshWeatherData(),
+                                  icon: const Icon(
+                                    Icons.refresh,
+                                    color: Colors.blue,
+                                  ),
+                                  onPressed: _isRefreshing
+                                      ? null
+                                      : () => _refreshWeatherData(),
                                   tooltip: 'Refresh weather data',
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                  onPressed: () => _clearSpecificCache('Weather'),
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () =>
+                                      _clearSpecificCache('Weather'),
                                   tooltip: 'Clear cache',
                                 ),
                               ],
@@ -1050,7 +1073,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                     ),
 
                     const SizedBox(height: 16),
-                    
+
                     // OpenAIP API Configuration
                     Card(
                       elevation: 2,
@@ -1061,7 +1084,11 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.key, size: 24, color: Colors.blue[700]),
+                                Icon(
+                                  Icons.key,
+                                  size: 24,
+                                  color: Colors.blue[700],
+                                ),
                                 const SizedBox(width: 8),
                                 const Expanded(
                                   child: Text(
@@ -1099,7 +1126,11 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
+                                Icon(
+                                  Icons.info_outline,
+                                  size: 16,
+                                  color: Colors.grey[600],
+                                ),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
@@ -1118,14 +1149,17 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                                 onPressed: () async {
                                   // Test the API key by fetching some airspaces
                                   try {
-                                    final airspaces = await _openAIPService.fetchAirspaces(limit: 1);
+                                    final airspaces = await _openAIPService
+                                        .fetchAirspaces(limit: 1);
                                     if (!mounted) return;
                                     // ignore: use_build_context_synchronously
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text(airspaces.isNotEmpty 
-                                            ? 'API key is valid and working!' 
-                                            : 'API key seems valid but no airspaces found'),
+                                        content: Text(
+                                          airspaces.isNotEmpty
+                                              ? 'API key is valid and working!'
+                                              : 'API key seems valid but no airspaces found',
+                                        ),
                                         backgroundColor: Colors.green,
                                       ),
                                     );
@@ -1134,7 +1168,9 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                                     // ignore: use_build_context_synchronously
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('API key validation failed. Please check your key.'),
+                                        content: Text(
+                                          'API key validation failed. Please check your key.',
+                                        ),
                                         backgroundColor: Colors.red,
                                       ),
                                     );
@@ -1177,7 +1213,11 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.map, size: 24, color: Colors.blue[700]),
+                                Icon(
+                                  Icons.map,
+                                  size: 24,
+                                  color: Colors.blue[700],
+                                ),
                                 const SizedBox(width: 8),
                                 const Expanded(
                                   child: Text(
@@ -1189,16 +1229,24 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                  onPressed: () => _clearSpecificCache('Map tiles'),
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () =>
+                                      _clearSpecificCache('Map tiles'),
                                   tooltip: 'Clear cache',
                                 ),
                               ],
                             ),
                             const SizedBox(height: 8),
                             if (_mapCacheStats != null) ...[
-                              Text('Total Tiles: ${_mapCacheStats!['totalTiles']}'),
-                              Text('Total Size: ${_mapCacheStats!['totalSizeMB']} MB'),
+                              Text(
+                                'Total Tiles: ${_mapCacheStats!['totalTiles']}',
+                              ),
+                              Text(
+                                'Total Size: ${_mapCacheStats!['totalSizeMB']} MB',
+                              ),
                               const SizedBox(height: 8),
                               const Text('Zoom Levels:'),
                               ...(_mapCacheStats!['zoomLevels'] as List).map(
@@ -1232,7 +1280,9 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                               const SizedBox(height: 8),
                               LinearProgressIndicator(value: _downloadProgress),
                               const SizedBox(height: 8),
-                              Text('Progress: $_currentTiles / $_totalTiles tiles'),
+                              Text(
+                                'Progress: $_currentTiles / $_totalTiles tiles',
+                              ),
                               const SizedBox(height: 4),
                               Text(
                                 'Downloaded: $_downloadedTiles | Skipped (cached): $_skippedTiles',
@@ -1276,8 +1326,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                             const SizedBox(height: 8),
                             const Text('Download tiles for current map area'),
                             const SizedBox(height: 16),
-                            
-                            
+
                             // Zoom level sliders
                             Text('Min Zoom Level: $_minZoom'),
                             Slider(
@@ -1305,13 +1354,15 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                                 });
                               },
                             ),
-                            
+
                             const SizedBox(height: 16),
-                            
+
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
-                                onPressed: _isDownloading ? null : _downloadCurrentArea,
+                                onPressed: _isDownloading
+                                    ? null
+                                    : _downloadCurrentArea,
                                 child: const Text('Download Current Area'),
                               ),
                             ),
@@ -1319,7 +1370,6 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                         ),
                       ),
                     ),
-
 
                     const SizedBox(height: 16),
 

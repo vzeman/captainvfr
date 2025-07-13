@@ -24,9 +24,7 @@ class ActionButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           side: BorderSide(
             color: theme.colorScheme.outline.withAlpha(102), // 40% opacity
           ),

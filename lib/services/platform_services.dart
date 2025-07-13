@@ -27,7 +27,9 @@ class PlatformServices {
   /// Get detailed network diagnostics for debugging
   static Future<Map<String, dynamic>> getNetworkDiagnostics() async {
     try {
-      final result = await _networkChannel.invokeMethod('getNetworkDiagnostics');
+      final result = await _networkChannel.invokeMethod(
+        'getNetworkDiagnostics',
+      );
       return Map<String, dynamic>.from(result as Map);
     } catch (e) {
       _logger.e('Error getting network diagnostics', error: e);
@@ -38,18 +40,18 @@ class PlatformServices {
   /// Log network state on app startup for debugging
   static Future<void> logNetworkState() async {
     _logger.i('=== CaptainVFR Network State Check ===');
-    
+
     final status = await checkNetworkStatus();
     _logger.i('Network Status: $status');
-    
+
     final diagnostics = await getNetworkDiagnostics();
     _logger.i('Network Diagnostics: $diagnostics');
-    
+
     if (!status['isConnected'] || !status['hasInternet']) {
       _logger.w('Network connectivity issues detected!');
       _logger.w('Please check your internet connection and app permissions');
     }
-    
+
     _logger.i('=====================================');
   }
 }

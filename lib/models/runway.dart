@@ -168,8 +168,10 @@ class Runway {
 
   /// Check if runway has both ends with coordinates
   bool get hasCompleteCoordinates {
-    return leLatitude != null && leLongitude != null &&
-           heLatitude != null && heLongitude != null;
+    return leLatitude != null &&
+        leLongitude != null &&
+        heLatitude != null &&
+        heLongitude != null;
   }
 
   /// Get low end position if available

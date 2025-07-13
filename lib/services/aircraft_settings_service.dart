@@ -123,8 +123,9 @@ class AircraftSettingsService with ChangeNotifier {
     await _modelService.addModel(model);
 
     // Update the manufacturer's models list
-    final manufacturer = _manufacturerService.manufacturers
-        .firstWhere((m) => m.id == manufacturerId);
+    final manufacturer = _manufacturerService.manufacturers.firstWhere(
+      (m) => m.id == manufacturerId,
+    );
 
     if (!manufacturer.models.contains(model.id)) {
       manufacturer.models.add(model.id);
@@ -199,20 +200,43 @@ class AircraftSettingsService with ChangeNotifier {
     // Add some default models for common manufacturers
     final cessna = manufacturers.firstWhere(
       (m) => m.name == 'Cessna',
-      orElse: () => manufacturers.first, // Fallback to first manufacturer if Cessna not found
+      orElse: () => manufacturers
+          .first, // Fallback to first manufacturer if Cessna not found
     );
     final piper = manufacturers.firstWhere(
       (m) => m.name == 'Piper',
-      orElse: () => manufacturers.first, // Fallback to first manufacturer if Piper not found
+      orElse: () => manufacturers
+          .first, // Fallback to first manufacturer if Piper not found
     );
 
     try {
-      await addModel('C172', cessna.id, AircraftCategory.singleEngine,
-          engineCount: 1, maxSeats: 4, typicalCruiseSpeed: 122, typicalServiceCeiling: 14000);
-      await addModel('C182', cessna.id, AircraftCategory.singleEngine,
-          engineCount: 1, maxSeats: 4, typicalCruiseSpeed: 145, typicalServiceCeiling: 18000);
-      await addModel('PA-28', piper.id, AircraftCategory.singleEngine,
-          engineCount: 1, maxSeats: 4, typicalCruiseSpeed: 125, typicalServiceCeiling: 14000);
+      await addModel(
+        'C172',
+        cessna.id,
+        AircraftCategory.singleEngine,
+        engineCount: 1,
+        maxSeats: 4,
+        typicalCruiseSpeed: 122,
+        typicalServiceCeiling: 14000,
+      );
+      await addModel(
+        'C182',
+        cessna.id,
+        AircraftCategory.singleEngine,
+        engineCount: 1,
+        maxSeats: 4,
+        typicalCruiseSpeed: 145,
+        typicalServiceCeiling: 18000,
+      );
+      await addModel(
+        'PA-28',
+        piper.id,
+        AircraftCategory.singleEngine,
+        engineCount: 1,
+        maxSeats: 4,
+        typicalCruiseSpeed: 125,
+        typicalServiceCeiling: 14000,
+      );
     } catch (e) {
       // debugPrint('Error adding default models: $e');
     }

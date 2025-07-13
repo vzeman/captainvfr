@@ -40,7 +40,7 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
   @override
   void didUpdateWidget(AirspaceFlightInfo oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     // Update airspace info when position changes significantly
     if (_hasSignificantChange(oldWidget)) {
       _updateAirspaceInfo();
@@ -52,12 +52,15 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
     final distance = Distance().as(
       LengthUnit.Meter,
       widget.currentPosition,
-      LatLng(oldWidget.currentPosition.latitude, oldWidget.currentPosition.longitude),
+      LatLng(
+        oldWidget.currentPosition.latitude,
+        oldWidget.currentPosition.longitude,
+      ),
     );
-    
-    return distance > 100 || 
-           (widget.currentAltitude - oldWidget.currentAltitude).abs() > 30 ||
-           (widget.currentHeading - oldWidget.currentHeading).abs() > 15;
+
+    return distance > 100 ||
+        (widget.currentAltitude - oldWidget.currentAltitude).abs() > 30 ||
+        (widget.currentHeading - oldWidget.currentHeading).abs() > 15;
   }
 
   @override
@@ -69,16 +72,19 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
   Future<void> _updateAirspaceInfo() async {
     try {
       // Get current airspaces
-      final currentAirspaces = await widget.openAIPService.getAirspacesAtPosition(
-        widget.currentPosition,
-        widget.currentAltitude,
-      );
+      final currentAirspaces = await widget.openAIPService
+          .getAirspacesAtPosition(
+            widget.currentPosition,
+            widget.currentAltitude,
+          );
 
       // Find next airspace in flight path
       final nextAirspace = await _findNextAirspace();
-      
+
       // Calculate distance to exit current airspace if no next airspace
-      if (currentAirspaces.isNotEmpty && nextAirspace == null && widget.currentSpeed > 1) {
+      if (currentAirspaces.isNotEmpty &&
+          nextAirspace == null &&
+          widget.currentSpeed > 1) {
         _calculateExitDistance(currentAirspaces.first);
       } else {
         _distanceToExit = null;
@@ -101,7 +107,7 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
       // Search ahead in the direction of travel
       final searchDistanceKm = 50.0; // Search 50km ahead
       final bearing = widget.currentHeading;
-      
+
       // Calculate search points along the flight path
       final searchPoints = <LatLng>[];
       for (double distKm = 1; distKm <= searchDistanceKm; distKm += 2) {
@@ -146,7 +152,9 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
 
       if (closestAirspace != null) {
         _distanceToNext = minDistance;
-        _timeToNext = widget.currentSpeed > 0 ? minDistance / widget.currentSpeed : null;
+        _timeToNext = widget.currentSpeed > 0
+            ? minDistance / widget.currentSpeed
+            : null;
       }
 
       return closestAirspace;
@@ -170,18 +178,18 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
 
     return minDistance;
   }
-  
+
   void _calculateExitDistance(Airspace currentAirspace) {
     if (currentAirspace.geometry.isEmpty || widget.currentSpeed < 1) {
       _distanceToExit = null;
       _timeToExit = null;
       return;
     }
-    
+
     // Search for airspace boundary in the direction of travel
     final bearing = widget.currentHeading;
     double? exitDistance;
-    
+
     // Check points along the flight path to find where we exit the airspace
     for (double distKm = 0.5; distKm <= 50; distKm += 0.5) {
       final checkPoint = _calculateDestination(
@@ -189,17 +197,17 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
         bearing,
         distKm * 1000, // Convert to meters
       );
-      
+
       // Check if this point is still inside the airspace
       final inAirspace = _isPointInAirspace(checkPoint, currentAirspace);
-      
+
       if (!inAirspace) {
         // Found the exit point
         exitDistance = distKm * 1000; // Convert to meters
         break;
       }
     }
-    
+
     if (exitDistance != null) {
       _distanceToExit = exitDistance;
       _timeToExit = exitDistance / widget.currentSpeed;
@@ -208,29 +216,33 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
       _timeToExit = null;
     }
   }
-  
+
   bool _isPointInAirspace(LatLng point, Airspace airspace) {
     // Simple point-in-polygon check
     // This is a basic implementation - in production, use a proper
     // point-in-polygon algorithm considering the airspace geometry
     if (airspace.geometry.isEmpty) return false;
-    
+
     // For now, check if the point is within a certain distance of any boundary point
     // This is a simplification - real implementation would need proper polygon checking
     final distance = Distance();
     const double threshold = 1000; // 1km threshold
-    
+
     for (final boundaryPoint in airspace.geometry) {
       final dist = distance.as(LengthUnit.Meter, point, boundaryPoint);
       if (dist < threshold) {
         return true;
       }
     }
-    
+
     return false;
   }
 
-  LatLng _calculateDestination(LatLng start, double bearing, double distanceMeters) {
+  LatLng _calculateDestination(
+    LatLng start,
+    double bearing,
+    double distanceMeters,
+  ) {
     const earthRadius = 6371000.0; // Earth's radius in meters
     final lat1 = start.latitude * math.pi / 180;
     final lon1 = start.longitude * math.pi / 180;
@@ -238,12 +250,15 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
     final d = distanceMeters / earthRadius;
 
     final lat2 = math.asin(
-      math.sin(lat1) * math.cos(d) + math.cos(lat1) * math.sin(d) * math.cos(brng)
+      math.sin(lat1) * math.cos(d) +
+          math.cos(lat1) * math.sin(d) * math.cos(brng),
     );
-    final lon2 = lon1 + math.atan2(
-      math.sin(brng) * math.sin(d) * math.cos(lat1),
-      math.cos(d) - math.sin(lat1) * math.sin(lat2)
-    );
+    final lon2 =
+        lon1 +
+        math.atan2(
+          math.sin(brng) * math.sin(d) * math.cos(lat1),
+          math.cos(d) - math.sin(lat1) * math.sin(lat2),
+        );
 
     return LatLng(
       lat2 * 180 / math.pi,
@@ -265,10 +280,12 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
     if (_currentAirspaces.isEmpty && _nextAirspace == null) {
       return const SizedBox.shrink();
     }
-    
+
     final screenWidth = MediaQuery.of(context).size.width;
     final isPhone = screenWidth < 600;
-    final horizontalMargin = isPhone ? 8.0 : 0.0; // Minimal margin on phones, no margin on tablets
+    final horizontalMargin = isPhone
+        ? 8.0
+        : 0.0; // Minimal margin on phones, no margin on tablets
 
     return Container(
       margin: EdgeInsets.symmetric(horizontal: horizontalMargin, vertical: 4.0),
@@ -311,57 +328,59 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
                   ),
               ],
             ),
-                const SizedBox(height: 4),
-                ..._currentAirspaces.map((airspace) => GestureDetector(
-              onTap: widget.onAirspaceSelected != null 
-                  ? () => widget.onAirspaceSelected!(airspace)
-                  : null,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 2.0),
-                child: Row(
-                  children: [
-                    Icon(
-                      _getAirspaceIcon(airspace.type),
-                      size: 12,
-                      color: _getAirspaceColor(airspace.type),
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        '${airspace.name} (${AirspaceUtils.getAirspaceTypeName(airspace.type)})',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
+            const SizedBox(height: 4),
+            ..._currentAirspaces.map(
+              (airspace) => GestureDetector(
+                onTap: widget.onAirspaceSelected != null
+                    ? () => widget.onAirspaceSelected!(airspace)
+                    : null,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 2.0),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _getAirspaceIcon(airspace.type),
+                        size: 12,
+                        color: _getAirspaceColor(airspace.type),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '${airspace.name} (${AirspaceUtils.getAirspaceTypeName(airspace.type)})',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    Text(
-                      airspace.altitudeRange,
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 10,
+                      Text(
+                        airspace.altitudeRange,
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 10,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-                )),
-              ],
-              if (_nextAirspace != null && _currentAirspaces.isNotEmpty)
-                const Divider(color: Colors.grey, height: 8),
-              if (_nextAirspace != null) ...[
-                const Text(
-                  'NEXT AIRSPACE',
-                  style: TextStyle(
-                    color: Colors.blue,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                GestureDetector(
+              ),
+            ),
+          ],
+          if (_nextAirspace != null && _currentAirspaces.isNotEmpty)
+            const Divider(color: Colors.grey, height: 8),
+          if (_nextAirspace != null) ...[
+            const Text(
+              'NEXT AIRSPACE',
+              style: TextStyle(
+                color: Colors.blue,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 4),
+            GestureDetector(
               onTap: widget.onAirspaceSelected != null && _nextAirspace != null
                   ? () => widget.onAirspaceSelected!(_nextAirspace!)
                   : null,
@@ -376,20 +395,14 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
                   Expanded(
                     child: Text(
                       '${_nextAirspace!.name} (${_nextAirspace!.type ?? 'Unknown'})',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 11),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (_distanceToNext != null) ...[
                     Text(
                       '${(_distanceToNext! / 1000).toStringAsFixed(1)}km',
-                      style: const TextStyle(
-                        color: Colors.blue,
-                        fontSize: 10,
-                      ),
+                      style: const TextStyle(color: Colors.blue, fontSize: 10),
                     ),
                     if (_timeToNext != null) ...[
                       const SizedBox(width: 8),
@@ -403,60 +416,49 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
                     ],
                   ],
                 ],
+              ),
+            ),
+          ],
+          // Show exit distance if no next airspace
+          if (_currentAirspaces.isNotEmpty &&
+              _nextAirspace == null &&
+              _distanceToExit != null) ...[
+            if (_currentAirspaces.isNotEmpty)
+              const Divider(color: Colors.grey, height: 8),
+            const Text(
+              'AIRSPACE EXIT',
+              style: TextStyle(
+                color: Colors.orange,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.exit_to_app, size: 12, color: Colors.orange),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Exiting ${_currentAirspaces.first.name}',
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                Text(
+                  '${(_distanceToExit! / 1000).toStringAsFixed(1)}km',
+                  style: const TextStyle(color: Colors.orange, fontSize: 10),
+                ),
+                if (_timeToExit != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    _formatDuration(_timeToExit!),
+                    style: const TextStyle(color: Colors.green, fontSize: 10),
+                  ),
+                ],
               ],
-              // Show exit distance if no next airspace
-              if (_currentAirspaces.isNotEmpty && _nextAirspace == null && _distanceToExit != null) ...[
-                if (_currentAirspaces.isNotEmpty)
-                  const Divider(color: Colors.grey, height: 8),
-                const Text(
-                  'AIRSPACE EXIT',
-                  style: TextStyle(
-                    color: Colors.orange,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.exit_to_app,
-                      size: 12,
-                      color: Colors.orange,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        'Exiting ${_currentAirspaces.first.name}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Text(
-                      '${(_distanceToExit! / 1000).toStringAsFixed(1)}km',
-                      style: const TextStyle(
-                        color: Colors.orange,
-                        fontSize: 10,
-                      ),
-                    ),
-                    if (_timeToExit != null) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        _formatDuration(_timeToExit!),
-                        style: const TextStyle(
-                          color: Colors.green,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+            ),
           ],
         ],
       ),
@@ -465,7 +467,7 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
 
   IconData _getAirspaceIcon(String? type) {
     final typeName = AirspaceUtils.getAirspaceTypeName(type);
-    
+
     switch (typeName.toUpperCase()) {
       case 'CTR':
       case 'ATZ':
@@ -490,7 +492,7 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
 
   Color _getAirspaceColor(String? type) {
     final typeName = AirspaceUtils.getAirspaceTypeName(type);
-    
+
     switch (typeName.toUpperCase()) {
       case 'CTR':
       case 'D':

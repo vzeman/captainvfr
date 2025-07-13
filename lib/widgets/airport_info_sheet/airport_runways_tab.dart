@@ -33,10 +33,7 @@ class AirportRunwaysTab extends StatelessWidget {
     }
 
     if (error != null) {
-      return custom.ErrorWidget(
-        error: error!,
-        onRetry: onRetry,
-      );
+      return custom.ErrorWidget(error: error!, onRetry: onRetry);
     }
 
     if (runways.isEmpty) {
@@ -70,9 +67,9 @@ class AirportRunwaysTab extends StatelessWidget {
           // Individual Runways
           Text(
             'Runways (${runways.length})',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
 
@@ -102,10 +99,20 @@ class AirportRunwaysTab extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: _buildStatItem(context, 'Count', '${stats.count}', Icons.straighten),
+                  child: _buildStatItem(
+                    context,
+                    'Count',
+                    '${stats.count}',
+                    Icons.straighten,
+                  ),
                 ),
                 Expanded(
-                  child: _buildStatItem(context, 'Longest', stats.longestFormatted, Icons.trending_up),
+                  child: _buildStatItem(
+                    context,
+                    'Longest',
+                    stats.longestFormatted,
+                    Icons.trending_up,
+                  ),
                 ),
               ],
             ),
@@ -117,7 +124,9 @@ class AirportRunwaysTab extends StatelessWidget {
                     context,
                     'Lighted',
                     stats.hasLightedRunways ? 'Yes' : 'No',
-                    stats.hasLightedRunways ? Icons.lightbulb : Icons.lightbulb_outline,
+                    stats.hasLightedRunways
+                        ? Icons.lightbulb
+                        : Icons.lightbulb_outline,
                   ),
                 ),
                 Expanded(
@@ -125,7 +134,9 @@ class AirportRunwaysTab extends StatelessWidget {
                     context,
                     'Hard Surface',
                     stats.hasHardSurface ? 'Yes' : 'No',
-                    stats.hasHardSurface ? Icons.check_circle : Icons.circle_outlined,
+                    stats.hasHardSurface
+                        ? Icons.check_circle
+                        : Icons.circle_outlined,
                   ),
                 ),
               ],
@@ -140,7 +151,12 @@ class AirportRunwaysTab extends StatelessWidget {
     );
   }
 
-  Widget _buildStatItem(BuildContext context, String label, String value, IconData icon) {
+  Widget _buildStatItem(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+  ) {
     final theme = Theme.of(context);
     return Row(
       children: [
@@ -201,10 +217,7 @@ class AirportRunwaysTab extends StatelessWidget {
 class RunwayCard extends StatelessWidget {
   final Runway runway;
 
-  const RunwayCard({
-    super.key,
-    required this.runway,
-  });
+  const RunwayCard({super.key, required this.runway});
 
   @override
   Widget build(BuildContext context) {
@@ -213,17 +226,17 @@ class RunwayCard extends StatelessWidget {
     return Consumer<SettingsService>(
       builder: (context, settings, child) {
         final isMetric = settings.units == 'metric';
-        
+
         // Format length based on units
-        final lengthStr = isMetric 
+        final lengthStr = isMetric
             ? '${runway.lengthM.toStringAsFixed(0)} m'
             : runway.lengthFormatted;
-            
+
         // Format width based on units
         final widthStr = runway.widthFt != null
-            ? isMetric 
-                ? '${runway.widthM!.toStringAsFixed(0)} m'
-                : '${runway.widthFt} ft'
+            ? isMetric
+                  ? '${runway.widthM!.toStringAsFixed(0)} m'
+                  : '${runway.widthFt} ft'
             : null;
 
         return Card(
@@ -237,9 +250,14 @@ class RunwayCard extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withAlpha(51), // 20% opacity
+                        color: theme.colorScheme.primary.withAlpha(
+                          51,
+                        ), // 20% opacity
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -252,7 +270,11 @@ class RunwayCard extends StatelessWidget {
                     ),
                     const Spacer(),
                     if (runway.lighted)
-                      Icon(Icons.lightbulb, size: 16, color: Colors.yellow[700]),
+                      Icon(
+                        Icons.lightbulb,
+                        size: 16,
+                        color: Colors.yellow[700],
+                      ),
                     if (runway.closed)
                       Icon(Icons.block, size: 16, color: Colors.red[700]),
                   ],
@@ -271,40 +293,48 @@ class RunwayCard extends StatelessWidget {
                       ),
                   ],
                 ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildRunwayDetail(context, 'Surface', runway.surfaceFormatted),
-                ),
-                if (runway.leHeadingDegT != null || runway.heHeadingDegT != null)
-                  Expanded(
-                    child: _buildRunwayDetail(
-                      context,
-                      'Heading',
-                      '${runway.leHeadingDegT?.toStringAsFixed(0) ?? 'N/A'}°/${runway.heHeadingDegT?.toStringAsFixed(0) ?? 'N/A'}°',
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildRunwayDetail(
+                        context,
+                        'Surface',
+                        runway.surfaceFormatted,
+                      ),
                     ),
+                    if (runway.leHeadingDegT != null ||
+                        runway.heHeadingDegT != null)
+                      Expanded(
+                        child: _buildRunwayDetail(
+                          context,
+                          'Heading',
+                          '${runway.leHeadingDegT?.toStringAsFixed(0) ?? 'N/A'}°/${runway.heHeadingDegT?.toStringAsFixed(0) ?? 'N/A'}°',
+                        ),
+                      ),
+                  ],
+                ),
+
+                // Status indicators
+                if (runway.closed || runway.lighted) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      if (runway.lighted)
+                        StatusChip(
+                          label: 'Lighted',
+                          color: Colors.yellow[700]!,
+                        ),
+                      if (runway.closed)
+                        StatusChip(label: 'Closed', color: Colors.red[700]!),
+                    ],
                   ),
+                ],
               ],
             ),
-
-            // Status indicators
-            if (runway.closed || runway.lighted) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  if (runway.lighted)
-                    StatusChip(label: 'Lighted', color: Colors.yellow[700]!),
-                  if (runway.closed)
-                    StatusChip(label: 'Closed', color: Colors.red[700]!),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
+          ),
+        );
       },
     );
   }
@@ -316,9 +346,7 @@ class RunwayCard extends StatelessWidget {
       children: [
         Text(
           label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.hintColor,
-          ),
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
         ),
         Text(
           value,

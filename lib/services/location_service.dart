@@ -5,7 +5,7 @@ import 'package:geolocator/geolocator.dart';
 class LocationService {
   final GeolocatorPlatform _geolocator = GeolocatorPlatform.instance;
   Position? _lastKnownPosition;
-  
+
   /// Checks if location services are enabled
   Future<bool> isLocationServiceEnabled() async {
     if (!kIsWeb && Platform.isMacOS) {
@@ -36,11 +36,11 @@ class LocationService {
         return Future.error('Location permissions are denied');
       }
     }
-    
+
     if (permission == LocationPermission.deniedForever) {
       return Future.error('Location permissions are permanently denied');
     }
-    
+
     // Request background location permission for tracking
     if (permission == LocationPermission.whileInUse) {
       // Try to get always permission for background tracking
@@ -48,7 +48,7 @@ class LocationService {
       // On Android 10+, this requires separate permission request
       permission = await _geolocator.requestPermission();
     }
-    
+
     return permission;
   }
 
@@ -57,7 +57,7 @@ class LocationService {
     if (!kIsWeb && Platform.isMacOS) {
       // Return a default position for macOS
       final position = Position(
-        latitude: 37.7749,  // Default to San Francisco
+        latitude: 37.7749, // Default to San Francisco
         longitude: -122.4194,
         timestamp: DateTime.now(),
         accuracy: 100,
@@ -81,18 +81,20 @@ class LocationService {
     _lastKnownPosition = position;
     return position;
   }
-  
+
   /// Gets the last known position quickly, or current position if no last known position
   Future<Position> getLastKnownOrCurrentLocation() async {
     // If we have a last known position, return it immediately
     if (_lastKnownPosition != null) {
       // Update position in background for next time
-      getCurrentLocation().then((position) {
-        _lastKnownPosition = position;
-      }).catchError((_) {});
+      getCurrentLocation()
+          .then((position) {
+            _lastKnownPosition = position;
+          })
+          .catchError((_) {});
       return _lastKnownPosition!;
     }
-    
+
     // Otherwise get current position
     return getCurrentLocation();
   }
@@ -102,18 +104,20 @@ class LocationService {
     if (!kIsWeb && Platform.isMacOS) {
       // On macOS, return a stream with a single default position
       // since we can't get real location updates
-      return Stream.value(Position(
-        latitude: 37.7749,  // Default to San Francisco
-        longitude: -122.4194,
-        timestamp: DateTime.now(),
-        accuracy: 100,
-        altitude: 0.0,
-        heading: 0.0,
-        speed: 0.0,
-        speedAccuracy: 0.0,
-        altitudeAccuracy: 0.0,
-        headingAccuracy: 0.0,
-      ));
+      return Stream.value(
+        Position(
+          latitude: 37.7749, // Default to San Francisco
+          longitude: -122.4194,
+          timestamp: DateTime.now(),
+          accuracy: 100,
+          altitude: 0.0,
+          heading: 0.0,
+          speed: 0.0,
+          speedAccuracy: 0.0,
+          altitudeAccuracy: 0.0,
+          headingAccuracy: 0.0,
+        ),
+      );
     }
 
     return _geolocator.getPositionStream(

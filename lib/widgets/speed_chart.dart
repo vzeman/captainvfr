@@ -29,14 +29,16 @@ class SpeedChart extends StatelessWidget {
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     // Convert m/s to km/h for display
     final speedsKmh = speedData.map((s) => s * 3.6).toList();
     // Calculate min and max for the Y axis
     final minY = 0.0; // Always start from 0 for speed
-    final maxY = maxSpeed != null 
-        ? maxSpeed! * 3.6 * 1.1 
-        : (speedsKmh.isNotEmpty ? speedsKmh.reduce((a, b) => a > b ? a : b) * 1.1 : 100.0);
+    final maxY = maxSpeed != null
+        ? maxSpeed! * 3.6 * 1.1
+        : (speedsKmh.isNotEmpty
+              ? speedsKmh.reduce((a, b) => a > b ? a : b) * 1.1
+              : 100.0);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -53,17 +55,16 @@ class SpeedChart extends StatelessWidget {
           ),
           titlesData: FlTitlesData(
             show: true,
-            rightTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            topTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
+            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 30,
-                interval: (speedData.length / 4).ceilToDouble().clamp(1, double.infinity),
+                interval: (speedData.length / 4).ceilToDouble().clamp(
+                  1,
+                  double.infinity,
+                ),
                 getTitlesWidget: (value, meta) {
                   final index = value.toInt();
                   if (index >= 0 && index < speedData.length) {

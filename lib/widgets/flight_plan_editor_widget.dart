@@ -65,7 +65,8 @@ class FlightPlanEditorWidget extends StatelessWidget {
                       waypoint: waypoint,
                       index: index,
                       onTap: () => _editWaypoint(context, index, waypoint),
-                      onDelete: () => _confirmDeleteWaypoint(context, index, waypoint),
+                      onDelete: () =>
+                          _confirmDeleteWaypoint(context, index, waypoint),
                     );
                   },
                 ),
@@ -80,14 +81,16 @@ class FlightPlanEditorWidget extends StatelessWidget {
   void _editWaypoint(BuildContext context, int index, Waypoint waypoint) {
     showDialog(
       context: context,
-      builder: (context) => WaypointEditorDialog(
-        waypointIndex: index,
-        waypoint: waypoint,
-      ),
+      builder: (context) =>
+          WaypointEditorDialog(waypointIndex: index, waypoint: waypoint),
     );
   }
 
-  void _confirmDeleteWaypoint(BuildContext context, int index, Waypoint waypoint) {
+  void _confirmDeleteWaypoint(
+    BuildContext context,
+    int index,
+    Waypoint waypoint,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -102,8 +105,10 @@ class FlightPlanEditorWidget extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              Provider.of<FlightPlanService>(context, listen: false)
-                  .removeWaypoint(index);
+              Provider.of<FlightPlanService>(
+                context,
+                listen: false,
+              ).removeWaypoint(index);
               Navigator.of(context).pop();
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -215,7 +220,7 @@ class WaypointListTile extends StatelessWidget {
       case WaypointType.fix:
         return Colors.orange;
       case WaypointType.user:
-      return Colors.blue;
+        return Colors.blue;
     }
   }
 
@@ -228,7 +233,7 @@ class WaypointListTile extends StatelessWidget {
       case WaypointType.fix:
         return 'FIX';
       case WaypointType.user:
-      return 'USR';
+        return 'USR';
     }
   }
 }

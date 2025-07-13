@@ -6,7 +6,6 @@ import 'weather_interpretation/uvwxyz_abbreviations_constants.dart';
 
 /// Service for interpreting METAR and TAF weather codes into human-readable descriptions
 class WeatherInterpretationService {
-
   /// Interprets weather phenomena codes from METAR/TAF
   static String interpretWeatherPhenomena(String code) {
     // Check for special combined cases first (like +FC)
@@ -97,7 +96,8 @@ class WeatherInterpretationService {
 
   /// Interprets multiple weather codes separated by spaces
   static String interpretWeatherCodes(String codes) {
-    return codes.split(' ')
+    return codes
+        .split(' ')
         .map((code) => interpretWeatherCode(code.trim()))
         .where((result) => result.isNotEmpty)
         .join(' ');
@@ -123,7 +123,9 @@ class WeatherInterpretationService {
       }
     }
 
-    return interpretedParts.isEmpty ? 'Weather conditions normal' : interpretedParts.join('. ');
+    return interpretedParts.isEmpty
+        ? 'Weather conditions normal'
+        : interpretedParts.join('. ');
   }
 
   /// Interprets a complete TAF report into human-readable format
@@ -141,11 +143,17 @@ class WeatherInterpretationService {
       }
     }
 
-    return interpretedParts.isEmpty ? 'Forecast conditions normal' : interpretedParts.join('. ');
+    return interpretedParts.isEmpty
+        ? 'Forecast conditions normal'
+        : interpretedParts.join('. ');
   }
 
   /// Parses individual METAR components
-  String _parseMetarComponent(String component, int index, List<String> allParts) {
+  String _parseMetarComponent(
+    String component,
+    int index,
+    List<String> allParts,
+  ) {
     // Skip station identifier (first component)
     if (index == 0 && RegExp(r'^[A-Z]{4}$').hasMatch(component)) {
       return 'Station: $component';
@@ -181,12 +189,16 @@ class WeatherInterpretationService {
     }
 
     // Weather phenomena (e.g., -RA, +TSRA, VCSH)
-    if (RegExp(r'^(\+|-|VC|RE)?(MI|PR|BC|DR|BL|SH|TS|FZ)?(DZ|RA|SN|SG|IC|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PY|PO|SQ|FC|SS|DS)+$').hasMatch(component)) {
+    if (RegExp(
+      r'^(\+|-|VC|RE)?(MI|PR|BC|DR|BL|SH|TS|FZ)?(DZ|RA|SN|SG|IC|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PY|PO|SQ|FC|SS|DS)+$',
+    ).hasMatch(component)) {
       return _parseWeatherPhenomena(component);
     }
 
     // Sky condition (e.g., SKC, CLR, FEW015, SCT025, BKN040, OVC100)
-    if (RegExp(r'^(SKC|CLR|FEW|SCT|BKN|OVC|VV)(\d{3})?(CB|TCU)?$').hasMatch(component)) {
+    if (RegExp(
+      r'^(SKC|CLR|FEW|SCT|BKN|OVC|VV)(\d{3})?(CB|TCU)?$',
+    ).hasMatch(component)) {
       return _parseSkyCondition(component);
     }
 
@@ -210,7 +222,11 @@ class WeatherInterpretationService {
   }
 
   /// Parses individual TAF components
-  String _parseTafComponent(String component, int index, List<String> allParts) {
+  String _parseTafComponent(
+    String component,
+    int index,
+    List<String> allParts,
+  ) {
     // TAF header
     if (component == 'TAF') {
       return 'Terminal Aerodrome Forecast';
@@ -516,13 +532,17 @@ class WeatherInterpretationService {
     ];
 
     // Check for dangerous patterns
-    bool hasDangerous = dangerousPatterns.any((pattern) => upperMetar.contains(pattern));
+    bool hasDangerous = dangerousPatterns.any(
+      (pattern) => upperMetar.contains(pattern),
+    );
 
     // Additional checks for specific dangerous conditions
     if (!hasDangerous) {
       // Check for low visibility (less than 3SM is dangerous for VFR)
       // Be more specific with visibility patterns to avoid false positives
-      RegExp lowVisRegex = RegExp(r'\b([0-2]SM|M1/4SM|1/4SM|1/2SM|3/4SM|1SM|2SM)\b');
+      RegExp lowVisRegex = RegExp(
+        r'\b([0-2]SM|M1/4SM|1/4SM|1/2SM|3/4SM|1SM|2SM)\b',
+      );
       if (lowVisRegex.hasMatch(upperMetar)) {
         // Double-check that it's not 10SM, 20SM etc.
         if (!RegExp(r'\b(10SM|[1-9][0-9]SM)\b').hasMatch(upperMetar)) {
@@ -535,7 +555,9 @@ class WeatherInterpretationService {
       if (lowCeilingRegex.hasMatch(upperMetar)) hasDangerous = true;
 
       // Check for strong winds (>20 knots or gusts >25 knots)
-      RegExp strongWindRegex = RegExp(r'\b(\d{3}[2-9][0-9]KT|\d{3}\d{2}G[2-9][0-9]KT|\d{3}\d{2}G\d{3}KT)\b');
+      RegExp strongWindRegex = RegExp(
+        r'\b(\d{3}[2-9][0-9]KT|\d{3}\d{2}G[2-9][0-9]KT|\d{3}\d{2}G\d{3}KT)\b',
+      );
       if (strongWindRegex.hasMatch(upperMetar)) hasDangerous = true;
 
       // Check for variable wind direction with high speeds
@@ -590,13 +612,17 @@ class WeatherInterpretationService {
     ];
 
     // Check for dangerous patterns
-    bool hasDangerous = dangerousPatterns.any((pattern) => upperTaf.contains(pattern));
+    bool hasDangerous = dangerousPatterns.any(
+      (pattern) => upperTaf.contains(pattern),
+    );
 
     // Additional checks for TAF-specific dangerous conditions
     if (!hasDangerous) {
       // Check for low visibility forecasts
       // Be more specific with visibility patterns to avoid false positives
-      RegExp lowVisRegex = RegExp(r'\b([0-2]SM|M1/4SM|1/4SM|1/2SM|3/4SM|1SM|2SM)\b');
+      RegExp lowVisRegex = RegExp(
+        r'\b([0-2]SM|M1/4SM|1/4SM|1/2SM|3/4SM|1SM|2SM)\b',
+      );
       if (lowVisRegex.hasMatch(upperTaf)) {
         // Double-check that it's not 10SM, 20SM etc.
         if (!RegExp(r'\b(10SM|[1-9][0-9]SM)\b').hasMatch(upperTaf)) {
@@ -609,7 +635,9 @@ class WeatherInterpretationService {
       if (lowCeilingRegex.hasMatch(upperTaf)) hasDangerous = true;
 
       // Check for strong wind forecasts
-      RegExp strongWindRegex = RegExp(r'\b(\d{3}[2-9][0-9]KT|\d{3}\d{2}G[2-9][0-9]KT|\d{3}\d{2}G\d{3}KT)\b');
+      RegExp strongWindRegex = RegExp(
+        r'\b(\d{3}[2-9][0-9]KT|\d{3}\d{2}G[2-9][0-9]KT|\d{3}\d{2}G\d{3}KT)\b',
+      );
       if (strongWindRegex.hasMatch(upperTaf)) hasDangerous = true;
 
       // Check for variable strong winds
@@ -639,67 +667,101 @@ class WeatherInterpretationService {
 
     // Check for specific dangerous conditions with detailed warnings
     if (upperMetar.contains('TS')) {
-      dangerousConditions.add('⚡ Thunderstorms present - AVOID all flight operations');
+      dangerousConditions.add(
+        '⚡ Thunderstorms present - AVOID all flight operations',
+      );
     }
     if (upperMetar.contains('TSRA')) {
-      dangerousConditions.add('⛈️ Thunderstorms with rain - Severe turbulence and wind shear likely');
+      dangerousConditions.add(
+        '⛈️ Thunderstorms with rain - Severe turbulence and wind shear likely',
+      );
     }
     if (upperMetar.contains('TSGR')) {
-      dangerousConditions.add('🧊 Thunderstorms with hail - EXTREME DANGER to aircraft');
+      dangerousConditions.add(
+        '🧊 Thunderstorms with hail - EXTREME DANGER to aircraft',
+      );
     }
     if (upperMetar.contains('SQ')) {
-      dangerousConditions.add('💨 Squalls present - Sudden violent wind changes possible');
+      dangerousConditions.add(
+        '💨 Squalls present - Sudden violent wind changes possible',
+      );
     }
     if (upperMetar.contains('FC') || upperMetar.contains('+FC')) {
-      dangerousConditions.add('🌪️ Funnel cloud/tornado - EXTREME DANGER - DO NOT FLY');
+      dangerousConditions.add(
+        '🌪️ Funnel cloud/tornado - EXTREME DANGER - DO NOT FLY',
+      );
     }
     if (upperMetar.contains('SS') || upperMetar.contains('DS')) {
-      dangerousConditions.add('🌪️ Sandstorm/duststorm - Zero visibility conditions');
+      dangerousConditions.add(
+        '🌪️ Sandstorm/duststorm - Zero visibility conditions',
+      );
     }
     if (upperMetar.contains('GR') || upperMetar.contains('GS')) {
       dangerousConditions.add('🧊 Hail present - Aircraft damage risk');
     }
     if (RegExp(r'\+[A-Z]{2}').hasMatch(upperMetar)) {
-      dangerousConditions.add('🌧️ Heavy precipitation - Severe visibility reduction and turbulence');
+      dangerousConditions.add(
+        '🌧️ Heavy precipitation - Severe visibility reduction and turbulence',
+      );
     }
     if (upperMetar.contains('FZ')) {
       dangerousConditions.add('🧊 Freezing conditions - SEVERE ICING HAZARD');
     }
     if (upperMetar.contains('FZRA')) {
-      dangerousConditions.add('🧊 Freezing rain - Severe icing, structural ice accumulation');
+      dangerousConditions.add(
+        '🧊 Freezing rain - Severe icing, structural ice accumulation',
+      );
     }
 
     // Low visibility warnings - be more precise
-    RegExp lowVisRegex = RegExp(r'\b([0-2]SM|M1/4SM|1/4SM|1/2SM|3/4SM|1SM|2SM)\b');
+    RegExp lowVisRegex = RegExp(
+      r'\b([0-2]SM|M1/4SM|1/4SM|1/2SM|3/4SM|1SM|2SM)\b',
+    );
     if (lowVisRegex.hasMatch(upperMetar)) {
       // Double-check that it's not 10SM, 20SM etc.
       if (!RegExp(r'\b(10SM|[1-9][0-9]SM)\b').hasMatch(upperMetar)) {
-        dangerousConditions.add('👁️ Low visibility (≤3SM) - VFR flight NOT RECOMMENDED');
+        dangerousConditions.add(
+          '👁️ Low visibility (≤3SM) - VFR flight NOT RECOMMENDED',
+        );
       }
     }
 
     // Low ceiling warnings
     RegExp lowCeilingRegex = RegExp(r'\b(BKN|OVC)(00[0-9]|0[0-9][0-9])\b');
     if (lowCeilingRegex.hasMatch(upperMetar)) {
-      dangerousConditions.add('☁️ Low cloud ceiling (<1000ft) - VFR flight NOT RECOMMENDED');
+      dangerousConditions.add(
+        '☁️ Low cloud ceiling (<1000ft) - VFR flight NOT RECOMMENDED',
+      );
     }
 
     // Strong wind warnings
-    RegExp strongWindRegex = RegExp(r'\b(\d{3}[2-9][0-9]KT|\d{3}\d{2}G[2-9][0-9]KT|\d{3}\d{2}G\d{3}KT)\b');
+    RegExp strongWindRegex = RegExp(
+      r'\b(\d{3}[2-9][0-9]KT|\d{3}\d{2}G[2-9][0-9]KT|\d{3}\d{2}G\d{3}KT)\b',
+    );
     if (strongWindRegex.hasMatch(upperMetar)) {
-      dangerousConditions.add('💨 Strong winds (>20kt) or gusts (>25kt) - Turbulence and crosswind hazards');
+      dangerousConditions.add(
+        '💨 Strong winds (>20kt) or gusts (>25kt) - Turbulence and crosswind hazards',
+      );
     }
 
     if (upperMetar.contains('WS')) {
-      dangerousConditions.add('⚠️ Wind shear reported - Dangerous for takeoff and landing');
+      dangerousConditions.add(
+        '⚠️ Wind shear reported - Dangerous for takeoff and landing',
+      );
     }
 
-    if (upperMetar.contains('BLSN') || upperMetar.contains('BLDU') || upperMetar.contains('BLSA')) {
-      dangerousConditions.add('🌪️ Blowing snow/dust/sand - Severe visibility reduction');
+    if (upperMetar.contains('BLSN') ||
+        upperMetar.contains('BLDU') ||
+        upperMetar.contains('BLSA')) {
+      dangerousConditions.add(
+        '🌪️ Blowing snow/dust/sand - Severe visibility reduction',
+      );
     }
 
     if (upperMetar.contains('UP')) {
-      dangerousConditions.add('❓ Unknown precipitation - Unpredictable and potentially dangerous conditions');
+      dangerousConditions.add(
+        '❓ Unknown precipitation - Unpredictable and potentially dangerous conditions',
+      );
     }
 
     return dangerousConditions;
@@ -714,73 +776,111 @@ class WeatherInterpretationService {
 
     // Check for specific dangerous conditions in forecast with detailed warnings
     if (upperTaf.contains('TS')) {
-      dangerousConditions.add('⚡ Thunderstorms forecasted - AVOID flight operations during this period');
+      dangerousConditions.add(
+        '⚡ Thunderstorms forecasted - AVOID flight operations during this period',
+      );
     }
     if (upperTaf.contains('TSRA')) {
-      dangerousConditions.add('⛈️ Thunderstorms with rain forecasted - Expect severe turbulence and wind shear');
+      dangerousConditions.add(
+        '⛈️ Thunderstorms with rain forecasted - Expect severe turbulence and wind shear',
+      );
     }
     if (upperTaf.contains('TSGR')) {
-      dangerousConditions.add('🧊 Thunderstorms with hail forecasted - EXTREME DANGER to aircraft');
+      dangerousConditions.add(
+        '🧊 Thunderstorms with hail forecasted - EXTREME DANGER to aircraft',
+      );
     }
     if (upperTaf.contains('SQ')) {
-      dangerousConditions.add('💨 Squalls forecasted - Expect sudden violent wind changes');
+      dangerousConditions.add(
+        '💨 Squalls forecasted - Expect sudden violent wind changes',
+      );
     }
     if (upperTaf.contains('FC') || upperTaf.contains('+FC')) {
-      dangerousConditions.add('🌪️ Funnel cloud/tornado forecasted - EXTREME DANGER - Plan alternate route');
+      dangerousConditions.add(
+        '🌪️ Funnel cloud/tornado forecasted - EXTREME DANGER - Plan alternate route',
+      );
     }
     if (upperTaf.contains('SS') || upperTaf.contains('DS')) {
-      dangerousConditions.add('🌪️ Sandstorm/duststorm forecasted - Zero visibility expected');
+      dangerousConditions.add(
+        '🌪️ Sandstorm/duststorm forecasted - Zero visibility expected',
+      );
     }
     if (upperTaf.contains('GR') || upperTaf.contains('GS')) {
       dangerousConditions.add('🧊 Hail forecasted - Aircraft damage risk');
     }
     if (RegExp(r'\+[A-Z]{2}').hasMatch(upperTaf)) {
-      dangerousConditions.add('🌧️ Heavy precipitation forecasted - Expect severe visibility reduction');
+      dangerousConditions.add(
+        '🌧️ Heavy precipitation forecasted - Expect severe visibility reduction',
+      );
     }
     if (upperTaf.contains('FZ')) {
-      dangerousConditions.add('🧊 Freezing conditions forecasted - SEVERE ICING HAZARD expected');
+      dangerousConditions.add(
+        '🧊 Freezing conditions forecasted - SEVERE ICING HAZARD expected',
+      );
     }
     if (upperTaf.contains('FZRA')) {
-      dangerousConditions.add('🧊 Freezing rain forecasted - Severe icing, structural ice accumulation expected');
+      dangerousConditions.add(
+        '🧊 Freezing rain forecasted - Severe icing, structural ice accumulation expected',
+      );
     }
 
     // Low visibility forecasts - be more precise
-    RegExp lowVisRegex = RegExp(r'\b([0-2]SM|M1/4SM|1/4SM|1/2SM|3/4SM|1SM|2SM)\b');
+    RegExp lowVisRegex = RegExp(
+      r'\b([0-2]SM|M1/4SM|1/4SM|1/2SM|3/4SM|1SM|2SM)\b',
+    );
     if (lowVisRegex.hasMatch(upperTaf)) {
       // Double-check that it's not 10SM, 20SM etc.
       if (!RegExp(r'\b(10SM|[1-9][0-9]SM)\b').hasMatch(upperTaf)) {
-        dangerousConditions.add('👁️ Low visibility forecasted (≤3SM) - VFR flight NOT RECOMMENDED');
+        dangerousConditions.add(
+          '👁️ Low visibility forecasted (≤3SM) - VFR flight NOT RECOMMENDED',
+        );
       }
     }
 
     // Low ceiling forecasts
     RegExp lowCeilingRegex = RegExp(r'\b(BKN|OVC)(00[0-9]|0[0-9][0-9])\b');
     if (lowCeilingRegex.hasMatch(upperTaf)) {
-      dangerousConditions.add('☁️ Low cloud ceiling forecasted (<1000ft) - VFR flight NOT RECOMMENDED');
+      dangerousConditions.add(
+        '☁️ Low cloud ceiling forecasted (<1000ft) - VFR flight NOT RECOMMENDED',
+      );
     }
 
     // Strong wind forecasts
-    RegExp strongWindRegex = RegExp(r'\b(\d{3}[2-9][0-9]KT|\d{3}\d{2}G[2-9][0-9]KT|\d{3}\d{2}G\d{3}KT)\b');
+    RegExp strongWindRegex = RegExp(
+      r'\b(\d{3}[2-9][0-9]KT|\d{3}\d{2}G[2-9][0-9]KT|\d{3}\d{2}G\d{3}KT)\b',
+    );
     if (strongWindRegex.hasMatch(upperTaf)) {
-      dangerousConditions.add('💨 Strong winds forecasted (>20kt) or gusts (>25kt) - Expect turbulence');
+      dangerousConditions.add(
+        '💨 Strong winds forecasted (>20kt) or gusts (>25kt) - Expect turbulence',
+      );
     }
 
     if (upperTaf.contains('WS')) {
-      dangerousConditions.add('⚠️ Wind shear forecasted - Dangerous for takeoff and landing');
+      dangerousConditions.add(
+        '⚠️ Wind shear forecasted - Dangerous for takeoff and landing',
+      );
     }
 
-    if (upperTaf.contains('BLSN') || upperTaf.contains('BLDU') || upperTaf.contains('BLSA')) {
-      dangerousConditions.add('🌪️ Blowing snow/dust/sand forecasted - Severe visibility reduction expected');
+    if (upperTaf.contains('BLSN') ||
+        upperTaf.contains('BLDU') ||
+        upperTaf.contains('BLSA')) {
+      dangerousConditions.add(
+        '🌪️ Blowing snow/dust/sand forecasted - Severe visibility reduction expected',
+      );
     }
 
     if (upperTaf.contains('UP')) {
-      dangerousConditions.add('❓ Unknown precipitation forecasted - Unpredictable conditions expected');
+      dangerousConditions.add(
+        '❓ Unknown precipitation forecasted - Unpredictable conditions expected',
+      );
     }
 
     // Check for probability of dangerous conditions
     RegExp probRegex = RegExp(r'PROB[3-9][0-9]');
     if (probRegex.hasMatch(upperTaf)) {
-      dangerousConditions.add('📊 High probability of adverse weather conditions - Monitor closely');
+      dangerousConditions.add(
+        '📊 High probability of adverse weather conditions - Monitor closely',
+      );
     }
 
     return dangerousConditions;

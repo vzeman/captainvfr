@@ -51,9 +51,7 @@ class AircraftService with ChangeNotifier {
   Future<void> updateAircraft(Aircraft aircraft) async {
     if (_box == null) throw Exception('AircraftService not initialized');
 
-    final updatedAircraft = aircraft.copyWith(
-      updatedAt: DateTime.now(),
-    );
+    final updatedAircraft = aircraft.copyWith(updatedAt: DateTime.now());
 
     await _box!.put(updatedAircraft.id, updatedAircraft);
 
@@ -80,7 +78,9 @@ class AircraftService with ChangeNotifier {
   }
 
   Future<void> selectAircraft(String? aircraftId) async {
-    if (_settingsBox == null) throw Exception('AircraftService not initialized');
+    if (_settingsBox == null) {
+      throw Exception('AircraftService not initialized');
+    }
 
     _selectedAircraftId = aircraftId;
     if (aircraftId == null) {
@@ -96,15 +96,11 @@ class AircraftService with ChangeNotifier {
   }
 
   List<Aircraft> getAircraftsByManufacturer(String manufacturerId) {
-    return _aircrafts
-        .where((a) => a.manufacturerId == manufacturerId)
-        .toList();
+    return _aircrafts.where((a) => a.manufacturerId == manufacturerId).toList();
   }
 
   List<Aircraft> getAircraftsByModel(String modelId) {
-    return _aircrafts
-        .where((a) => a.modelId == modelId)
-        .toList();
+    return _aircrafts.where((a) => a.modelId == modelId).toList();
   }
 
   List<Aircraft> searchAircrafts(String query) {
@@ -112,10 +108,13 @@ class AircraftService with ChangeNotifier {
 
     final lowerQuery = query.toLowerCase();
     return _aircrafts
-        .where((a) =>
-            a.name.toLowerCase().contains(lowerQuery) ||
-            (a.registrationNumber?.toLowerCase().contains(lowerQuery) ?? false) ||
-            (a.description?.toLowerCase().contains(lowerQuery) ?? false))
+        .where(
+          (a) =>
+              a.name.toLowerCase().contains(lowerQuery) ||
+              (a.registrationNumber?.toLowerCase().contains(lowerQuery) ??
+                  false) ||
+              (a.description?.toLowerCase().contains(lowerQuery) ?? false),
+        )
         .toList();
   }
 

@@ -33,7 +33,8 @@ class AirportDataFetcher {
       default:
         // For unknown types, check if it has an ICAO code
         // Airports with proper ICAO codes are more likely to have weather data
-        return airport.icao.length == 4 && RegExp(r'^[A-Z]{4}$').hasMatch(airport.icao);
+        return airport.icao.length == 4 &&
+            RegExp(r'^[A-Z]{4}$').hasMatch(airport.icao);
     }
   }
 
@@ -76,7 +77,9 @@ class AirportDataFetcher {
     // log('🔍 Looking for frequencies for airport: ${airport.icao}');
     // log('📋 Airport details - ICAO: ${airport.icao}, IATA: ${airport.iata}, Local: ${airport.localCode}, GPS: ${airport.gpsCode}');
 
-    List<Frequency> frequencies = frequencyService.getFrequenciesForAirport(airport.icao);
+    List<Frequency> frequencies = frequencyService.getFrequenciesForAirport(
+      airport.icao,
+    );
     // log('📻 Found ${frequencies.length} frequencies for ICAO: ${airport.icao}');
 
     // Debug: Show some sample frequencies if we have any in the service
@@ -86,8 +89,9 @@ class AirportDataFetcher {
 
       // Try exact case-insensitive search
       final upperIcao = airport.icao.toUpperCase();
-      final matchingFreqs = frequencyService.frequencies.where((f) =>
-        f.airportIdent.toUpperCase() == upperIcao).toList();
+      final matchingFreqs = frequencyService.frequencies
+          .where((f) => f.airportIdent.toUpperCase() == upperIcao)
+          .toList();
       // log('🔧 DEBUG: Case-insensitive match found: ${matchingFreqs.length} frequencies');
       if (matchingFreqs.isNotEmpty) {
         frequencies = matchingFreqs;
@@ -95,9 +99,13 @@ class AirportDataFetcher {
     }
 
     // Try with other identifiers if available
-    if (frequencies.isEmpty && airport.iata != null && airport.iata!.isNotEmpty) {
+    if (frequencies.isEmpty &&
+        airport.iata != null &&
+        airport.iata!.isNotEmpty) {
       // log('🔍 Trying with IATA code: ${airport.iata}');
-      final iataFrequencies = frequencyService.getFrequenciesForAirport(airport.iata!);
+      final iataFrequencies = frequencyService.getFrequenciesForAirport(
+        airport.iata!,
+      );
       // log('📻 Found ${iataFrequencies.length} frequencies with IATA code');
       if (iataFrequencies.isNotEmpty) {
         frequencies = [...frequencies, ...iataFrequencies];
@@ -105,9 +113,13 @@ class AirportDataFetcher {
     }
 
     // Try with local code if available
-    if (frequencies.isEmpty && airport.localCode != null && airport.localCode!.isNotEmpty) {
+    if (frequencies.isEmpty &&
+        airport.localCode != null &&
+        airport.localCode!.isNotEmpty) {
       // log('🔍 Trying with local code: ${airport.localCode}');
-      final localFrequencies = frequencyService.getFrequenciesForAirport(airport.localCode!);
+      final localFrequencies = frequencyService.getFrequenciesForAirport(
+        airport.localCode!,
+      );
       // log('📻 Found ${localFrequencies.length} frequencies with local code');
       if (localFrequencies.isNotEmpty) {
         frequencies = [...frequencies, ...localFrequencies];
@@ -115,9 +127,13 @@ class AirportDataFetcher {
     }
 
     // Try with GPS code if available
-    if (frequencies.isEmpty && airport.gpsCode != null && airport.gpsCode!.isNotEmpty) {
+    if (frequencies.isEmpty &&
+        airport.gpsCode != null &&
+        airport.gpsCode!.isNotEmpty) {
       // log('🔍 Trying with GPS code: ${airport.gpsCode}');
-      final gpsFrequencies = frequencyService.getFrequenciesForAirport(airport.gpsCode!);
+      final gpsFrequencies = frequencyService.getFrequenciesForAirport(
+        airport.gpsCode!,
+      );
       // log('📻 Found ${gpsFrequencies.length} frequencies with GPS code');
       if (gpsFrequencies.isNotEmpty) {
         frequencies = [...frequencies, ...gpsFrequencies];

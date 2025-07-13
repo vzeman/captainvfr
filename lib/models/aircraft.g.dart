@@ -40,13 +40,29 @@ class AircraftAdapter extends TypeAdapter<Aircraft> {
       category: fields[20] as AircraftCategory?,
       photosPaths: (fields[21] as List?)?.cast<String>(),
       documentsPaths: (fields[22] as List?)?.cast<String>(),
+      takeoffGroundRoll50ft: fields[23] as int?,
+      takeoffOver50ft: fields[24] as int?,
+      landingGroundRoll50ft: fields[25] as int?,
+      landingOver50ft: fields[26] as int?,
+      stallSpeedClean: fields[27] as double?,
+      stallSpeedLanding: fields[28] as double?,
+      serviceAboveCeiling: fields[29] as int?,
+      bestGlideSpeed: fields[30] as double?,
+      bestGlideRatio: fields[31] as double?,
+      vx: fields[32] as double?,
+      vy: fields[33] as double?,
+      va: fields[34] as double?,
+      vno: fields[35] as double?,
+      vne: fields[36] as double?,
+      emptyWeight: fields[37] as int?,
+      emptyWeightCG: fields[38] as double?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Aircraft obj) {
     writer
-      ..writeByte(23)
+      ..writeByte(39)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -92,7 +108,39 @@ class AircraftAdapter extends TypeAdapter<Aircraft> {
       ..writeByte(21)
       ..write(obj.photosPaths)
       ..writeByte(22)
-      ..write(obj.documentsPaths);
+      ..write(obj.documentsPaths)
+      ..writeByte(23)
+      ..write(obj.takeoffGroundRoll50ft)
+      ..writeByte(24)
+      ..write(obj.takeoffOver50ft)
+      ..writeByte(25)
+      ..write(obj.landingGroundRoll50ft)
+      ..writeByte(26)
+      ..write(obj.landingOver50ft)
+      ..writeByte(27)
+      ..write(obj.stallSpeedClean)
+      ..writeByte(28)
+      ..write(obj.stallSpeedLanding)
+      ..writeByte(29)
+      ..write(obj.serviceAboveCeiling)
+      ..writeByte(30)
+      ..write(obj.bestGlideSpeed)
+      ..writeByte(31)
+      ..write(obj.bestGlideRatio)
+      ..writeByte(32)
+      ..write(obj.vx)
+      ..writeByte(33)
+      ..write(obj.vy)
+      ..writeByte(34)
+      ..write(obj.va)
+      ..writeByte(35)
+      ..write(obj.vno)
+      ..writeByte(36)
+      ..write(obj.vne)
+      ..writeByte(37)
+      ..write(obj.emptyWeight)
+      ..writeByte(38)
+      ..write(obj.emptyWeightCG);
   }
 
   @override

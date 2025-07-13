@@ -52,10 +52,7 @@ class AirportSearchDelegate extends SearchDelegate<Airport?> {
         child: Text(
           'Search for airports by name or code\n(e.g., "KJFK", "Kennedy", "London")',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.grey,
-          ),
+          style: TextStyle(fontSize: 16, color: Colors.grey),
         ),
       );
     }
@@ -67,26 +64,17 @@ class AirportSearchDelegate extends SearchDelegate<Airport?> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.search_off,
-              size: 64,
-              color: Colors.grey,
-            ),
+            const Icon(Icons.search_off, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
               'No airports found for "$query"',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             const Text(
               'Try searching by:\n• Airport name (e.g., "Kennedy")\n• ICAO code (e.g., "KJFK")\n• IATA code (e.g., "JFK")\n• City name (e.g., "New York")',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey,
-              ),
+              style: TextStyle(color: Colors.grey),
             ),
           ],
         ),
@@ -118,9 +106,7 @@ class AirportSearchDelegate extends SearchDelegate<Airport?> {
       ),
       title: Text(
         airport.name,
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-        ),
+        style: const TextStyle(fontWeight: FontWeight.bold),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -137,17 +123,11 @@ class AirportSearchDelegate extends SearchDelegate<Airport?> {
           if (airport.municipality != null && airport.municipality!.isNotEmpty)
             Text(
               '${airport.municipality}, ${airport.country}',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
             ),
         ],
       ),
-      trailing: Icon(
-        Icons.location_on,
-        color: Colors.grey[400],
-      ),
+      trailing: Icon(Icons.location_on, color: Colors.grey[400]),
       onTap: () {
         onAirportSelected(airport);
         close(context, airport);

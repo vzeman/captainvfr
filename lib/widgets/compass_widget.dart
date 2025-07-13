@@ -46,10 +46,7 @@ class CompassWidget extends StatelessWidget {
         if (targetHeading != null)
           Text(
             'Target: ${targetHeading!.toStringAsFixed(0)}°',
-            style: TextStyle(
-              color: accentColor,
-              fontSize: 11,
-            ),
+            style: TextStyle(color: accentColor, fontSize: 11),
           ),
       ],
     );
@@ -91,7 +88,7 @@ class CompassPainter extends CustomPainter {
       final isCardinal = i % 90 == 0;
       final markLength = isCardinal ? radius * 0.15 : radius * 0.1;
       final startRadius = radius - markLength;
-      
+
       final start = Offset(
         center.dx + startRadius * math.cos(angle),
         center.dy + startRadius * math.sin(angle),
@@ -100,13 +97,13 @@ class CompassPainter extends CustomPainter {
         center.dx + (radius - 2) * math.cos(angle),
         center.dy + (radius - 2) * math.sin(angle),
       );
-      
+
       if (isCardinal) {
         markPaint.strokeWidth = 2;
       } else {
         markPaint.strokeWidth = 1;
       }
-      
+
       canvas.drawLine(start, end, markPaint);
     }
 
@@ -122,7 +119,7 @@ class CompassPainter extends CustomPainter {
     for (int i = 0; i < directions.length; i++) {
       final angle = (angles[i] - 90) * math.pi / 180;
       final letterRadius = radius * 0.7;
-      
+
       textPainter.text = TextSpan(
         text: directions[i],
         style: TextStyle(
@@ -132,12 +129,12 @@ class CompassPainter extends CustomPainter {
         ),
       );
       textPainter.layout();
-      
+
       final offset = Offset(
         center.dx + letterRadius * math.cos(angle) - textPainter.width / 2,
         center.dy + letterRadius * math.sin(angle) - textPainter.height / 2,
       );
-      
+
       textPainter.paint(canvas, offset);
     }
 
@@ -148,7 +145,7 @@ class CompassPainter extends CustomPainter {
         ..color = accentColor
         ..strokeWidth = 3
         ..style = PaintingStyle.stroke;
-      
+
       // Draw target line
       final targetStart = Offset(
         center.dx + (radius * 0.4) * math.cos(targetAngle),
@@ -158,14 +155,14 @@ class CompassPainter extends CustomPainter {
         center.dx + (radius - 5) * math.cos(targetAngle),
         center.dy + (radius - 5) * math.sin(targetAngle),
       );
-      
+
       canvas.drawLine(targetStart, targetEnd, targetPaint);
-      
+
       // Draw target marker - small triangle
       final targetMarkerPaint = Paint()
         ..color = accentColor
         ..style = PaintingStyle.fill;
-      
+
       final markerPath = Path();
       final markerTip = Offset(
         center.dx + (radius - 4) * math.cos(targetAngle),
@@ -179,12 +176,12 @@ class CompassPainter extends CustomPainter {
         center.dx + (radius - 12) * math.cos(targetAngle - 0.15),
         center.dy + (radius - 12) * math.sin(targetAngle - 0.15),
       );
-      
+
       markerPath.moveTo(markerTip.dx, markerTip.dy);
       markerPath.lineTo(markerBase1.dx, markerBase1.dy);
       markerPath.lineTo(markerBase2.dx, markerBase2.dy);
       markerPath.close();
-      
+
       canvas.drawPath(markerPath, targetMarkerPaint);
     }
 
@@ -192,19 +189,19 @@ class CompassPainter extends CustomPainter {
     canvas.save();
     canvas.translate(center.dx, center.dy);
     canvas.rotate(heading * math.pi / 180);
-    
+
     // Draw green arrow
     final arrowPaint = Paint()
       ..color = Colors.green
       ..strokeWidth = 3
       ..style = PaintingStyle.fill;
-    
+
     final arrowPath = Path();
-    
+
     // Arrow pointing up (north when not rotated)
     final arrowLength = radius * 0.6;
     final arrowWidth = 8.0;
-    
+
     // Arrow tip
     arrowPath.moveTo(0, -arrowLength);
     // Right side
@@ -219,21 +216,21 @@ class CompassPainter extends CustomPainter {
     // Left side
     arrowPath.lineTo(-arrowWidth, -arrowLength + arrowWidth * 2);
     arrowPath.close();
-    
+
     canvas.drawPath(arrowPath, arrowPaint);
-    
+
     // Add small white circle at center
     final centerPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset.zero, 3, centerPaint);
-    
+
     canvas.restore();
   }
 
   @override
   bool shouldRepaint(CompassPainter oldDelegate) {
-    return oldDelegate.heading != heading || 
-           oldDelegate.targetHeading != targetHeading;
+    return oldDelegate.heading != heading ||
+        oldDelegate.targetHeading != targetHeading;
   }
 }

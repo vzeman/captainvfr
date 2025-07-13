@@ -9,24 +9,22 @@ import '../services/aircraft_settings_service.dart';
 
 class AircraftDocumentsWidget extends StatefulWidget {
   final Aircraft aircraft;
-  
-  const AircraftDocumentsWidget({
-    super.key,
-    required this.aircraft,
-  });
+
+  const AircraftDocumentsWidget({super.key, required this.aircraft});
 
   @override
-  State<AircraftDocumentsWidget> createState() => _AircraftDocumentsWidgetState();
+  State<AircraftDocumentsWidget> createState() =>
+      _AircraftDocumentsWidgetState();
 }
 
 class _AircraftDocumentsWidgetState extends State<AircraftDocumentsWidget> {
   final MediaService _mediaService = MediaService();
   bool _isLoading = false;
-  
+
   @override
   Widget build(BuildContext context) {
     final documents = widget.aircraft.documentsPaths ?? [];
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -37,10 +35,7 @@ class _AircraftDocumentsWidgetState extends State<AircraftDocumentsWidget> {
             children: [
               const Text(
                 'Documents',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               IconButton(
                 icon: const Icon(Icons.add),
@@ -50,7 +45,7 @@ class _AircraftDocumentsWidgetState extends State<AircraftDocumentsWidget> {
             ],
           ),
         ),
-        
+
         if (_isLoading)
           const Center(
             child: Padding(
@@ -58,39 +53,29 @@ class _AircraftDocumentsWidgetState extends State<AircraftDocumentsWidget> {
               child: CircularProgressIndicator(),
             ),
           ),
-        
+
         if (documents.isEmpty && !_isLoading)
           const Center(
             child: Padding(
               padding: EdgeInsets.all(40.0),
               child: Column(
                 children: [
-                  Icon(
-                    Icons.folder_open,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
+                  Icon(Icons.folder_open, size: 64, color: Colors.grey),
                   SizedBox(height: 16),
                   Text(
                     'No documents yet',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                    ),
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                   SizedBox(height: 8),
                   Text(
                     'Add images of AFM, POH, or other aircraft documents',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                 ],
               ),
             ),
           ),
-        
+
         if (documents.isNotEmpty)
           ListView.builder(
             shrinkWrap: true,
@@ -100,23 +85,23 @@ class _AircraftDocumentsWidgetState extends State<AircraftDocumentsWidget> {
             itemBuilder: (context, index) {
               final docPath = documents[index];
               final file = _mediaService.getFile(docPath);
-              
+
               return _buildDocumentTile(file, docPath);
             },
           ),
       ],
     );
   }
-  
+
   Widget _buildDocumentTile(File? file, String docPath) {
     final fileName = _mediaService.getFileName(docPath);
     final isImage = _mediaService.isImage(docPath);
     final extension = _mediaService.getFileExtension(docPath);
     final exists = file != null;
-    
+
     IconData icon;
     Color iconColor;
-    
+
     if (!exists) {
       icon = Icons.broken_image;
       iconColor = Colors.red;
@@ -143,29 +128,15 @@ class _AircraftDocumentsWidgetState extends State<AircraftDocumentsWidget> {
           iconColor = Colors.grey;
       }
     }
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        leading: Icon(
-          icon,
-          size: 40,
-          color: iconColor,
-        ),
-        title: Text(
-          fileName,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
+        leading: Icon(icon, size: 40, color: iconColor),
+        title: Text(fileName, maxLines: 2, overflow: TextOverflow.ellipsis),
         subtitle: exists
-            ? Text(
-                'Tap to open',
-                style: TextStyle(color: Colors.grey.shade600),
-              )
-            : const Text(
-                'File not found',
-                style: TextStyle(color: Colors.red),
-              ),
+            ? Text('Tap to open', style: TextStyle(color: Colors.grey.shade600))
+            : const Text('File not found', style: TextStyle(color: Colors.red)),
         trailing: IconButton(
           icon: const Icon(Icons.delete),
           onPressed: () => _deleteDocument(docPath),
@@ -175,7 +146,7 @@ class _AircraftDocumentsWidgetState extends State<AircraftDocumentsWidget> {
       ),
     );
   }
-  
+
   Future<void> _addDocument() async {
     // Show dialog to let user choose between camera or gallery for image documents
     final source = await showDialog<ImageSource>(
@@ -184,7 +155,7 @@ class _AircraftDocumentsWidgetState extends State<AircraftDocumentsWidget> {
         title: const Text('Add Document Image'),
         content: const Text(
           'You can add images of your aircraft documents (AFM, POH, etc.).\n\n'
-          'Note: PDF and DOC files are not supported at this time.'
+          'Note: PDF and DOC files are not supported at this time.',
         ),
         actions: [
           TextButton(
@@ -206,7 +177,7 @@ class _AircraftDocumentsWidgetState extends State<AircraftDocumentsWidget> {
     if (source == null) return;
 
     setState(() => _isLoading = true);
-    
+
     try {
       String? documentPath;
       if (source == ImageSource.camera) {
@@ -214,7 +185,7 @@ class _AircraftDocumentsWidgetState extends State<AircraftDocumentsWidget> {
       } else {
         documentPath = await _mediaService.pickImageFromGallery();
       }
-      
+
       if (documentPath != null) {
         await _addDocumentToAircraft(documentPath);
       }
@@ -233,26 +204,28 @@ class _AircraftDocumentsWidgetState extends State<AircraftDocumentsWidget> {
       }
     }
   }
-  
+
   Future<void> _addDocumentToAircraft(String documentPath) async {
     final aircraftService = context.read<AircraftSettingsService>();
-    final updatedDocuments = List<String>.from(widget.aircraft.documentsPaths ?? []);
+    final updatedDocuments = List<String>.from(
+      widget.aircraft.documentsPaths ?? [],
+    );
     updatedDocuments.add(documentPath);
-    
+
     final updatedAircraft = widget.aircraft.copyWith(
       documentsPaths: updatedDocuments,
       updatedAt: DateTime.now(),
     );
-    
+
     await aircraftService.updateAircraft(updatedAircraft);
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Document added successfully')),
       );
     }
   }
-  
+
   Future<void> _deleteDocument(String documentPath) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -274,31 +247,33 @@ class _AircraftDocumentsWidgetState extends State<AircraftDocumentsWidget> {
         ],
       ),
     );
-    
+
     if (confirmed == true) {
       setState(() => _isLoading = true);
-      
+
       try {
         // Delete from storage
         await _mediaService.deleteDocument(documentPath);
-        
+
         // Update aircraft
         if (!mounted) return;
         final aircraftService = context.read<AircraftSettingsService>();
-        final updatedDocuments = List<String>.from(widget.aircraft.documentsPaths ?? []);
+        final updatedDocuments = List<String>.from(
+          widget.aircraft.documentsPaths ?? [],
+        );
         updatedDocuments.remove(documentPath);
-        
+
         final updatedAircraft = widget.aircraft.copyWith(
           documentsPaths: updatedDocuments,
           updatedAt: DateTime.now(),
         );
-        
+
         await aircraftService.updateAircraft(updatedAircraft);
-        
+
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Document deleted')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Document deleted')));
         }
       } catch (e) {
         if (mounted) {
@@ -316,7 +291,7 @@ class _AircraftDocumentsWidgetState extends State<AircraftDocumentsWidget> {
       }
     }
   }
-  
+
   Future<void> _openDocument(File file) async {
     try {
       final uri = Uri.file(file.path);

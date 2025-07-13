@@ -28,8 +28,9 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hasAltitudeData = widget.flight.altitudes.isNotEmpty &&
-                          widget.flight.altitudes.any((alt) => alt > 0);
+    final hasAltitudeData =
+        widget.flight.altitudes.isNotEmpty &&
+        widget.flight.altitudes.any((alt) => alt > 0);
 
     return DefaultTabController(
       length: 5,
@@ -103,7 +104,9 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                                 : null,
                             minSpeed: 0,
                             maxSpeed: widget.flight.speeds.isNotEmpty
-                                ? widget.flight.speeds.reduce((a, b) => a > b ? a : b)
+                                ? widget.flight.speeds.reduce(
+                                    (a, b) => a > b ? a : b,
+                                  )
                                 : null,
                           )
                         : null,
@@ -116,11 +119,14 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                     widget.flight.vibrationData.isNotEmpty
                         ? VibrationChart(
                             vibrationData: widget.flight.vibrationData,
-                            currentVibration: widget.flight.vibrationData.isNotEmpty
+                            currentVibration:
+                                widget.flight.vibrationData.isNotEmpty
                                 ? widget.flight.vibrationData.last
                                 : null,
                             maxVibration: widget.flight.vibrationData.isNotEmpty
-                                ? widget.flight.vibrationData.reduce((a, b) => a > b ? a : b)
+                                ? widget.flight.vibrationData.reduce(
+                                    (a, b) => a > b ? a : b,
+                                  )
                                 : null,
                           )
                         : null,
@@ -138,10 +144,16 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                                 ? widget.flight.altitudes.last
                                 : null,
                             minAltitude: widget.flight.altitudes.isNotEmpty
-                                ? widget.flight.altitudes.reduce((a, b) => a < b ? a : b) - 50
+                                ? widget.flight.altitudes.reduce(
+                                        (a, b) => a < b ? a : b,
+                                      ) -
+                                      50
                                 : null,
                             maxAltitude: widget.flight.altitudes.isNotEmpty
-                                ? widget.flight.altitudes.reduce((a, b) => a > b ? a : b) + 50
+                                ? widget.flight.altitudes.reduce(
+                                        (a, b) => a > b ? a : b,
+                                      ) +
+                                      50
                                 : null,
                           )
                         : null,
@@ -158,24 +170,19 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
   }
 
   Widget _buildChartTab(Widget? chart, IconData icon, String noDataMessage) {
-    return chart ?? Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 48,
-            color: Theme.of(context).disabledColor,
+    return chart ??
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 48, color: Theme.of(context).disabledColor),
+              const SizedBox(height: 16),
+              Text(
+                noDataMessage,
+                style: TextStyle(color: Theme.of(context).disabledColor),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            noDataMessage,
-            style: TextStyle(
-              color: Theme.of(context).disabledColor,
-            ),
-          ),
-        ],
-      ),
-    );
+        );
   }
 }

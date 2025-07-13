@@ -5,7 +5,8 @@ import '../models/frequency.dart';
 import 'cache_service.dart';
 
 class FrequencyService {
-  static const String _baseUrl = 'https://davidmegginson.github.io/ourairports-data';
+  static const String _baseUrl =
+      'https://davidmegginson.github.io/ourairports-data';
   static const String _frequenciesUrl = '$_baseUrl/airport-frequencies.csv';
 
   List<Frequency> _frequencies = [];
@@ -29,13 +30,18 @@ class FrequencyService {
     await _cacheService.initialize();
     developer.log('🔧 FrequencyService: Cache service initialized');
     await _loadCachedFrequencies();
-    developer.log('🔧 FrequencyService: Cached frequencies loaded, count: ${_frequencies.length}');
+    developer.log(
+      '🔧 FrequencyService: Cached frequencies loaded, count: ${_frequencies.length}',
+    );
   }
 
   /// Load frequencies from cache
   Future<void> _loadCachedFrequencies() async {
     try {
-      final cachedFrequencies = await _cacheService.getCachedFrequencies();developer.log('🔧 FrequencyService: Retrieved ${cachedFrequencies.length} frequencies from cache');
+      final cachedFrequencies = await _cacheService.getCachedFrequencies();
+      developer.log(
+        '🔧 FrequencyService: Retrieved ${cachedFrequencies.length} frequencies from cache',
+      );
       if (cachedFrequencies.isNotEmpty) {
         _frequencies = cachedFrequencies;
       }
@@ -52,7 +58,9 @@ class FrequencyService {
     if (!forceRefresh && _frequencies.isNotEmpty) {
       final lastFetch = await _cacheService.getFrequenciesLastFetch();
       if (lastFetch != null) {
-        final hoursSinceLastFetch = DateTime.now().difference(lastFetch).inHours;
+        final hoursSinceLastFetch = DateTime.now()
+            .difference(lastFetch)
+            .inHours;
         if (hoursSinceLastFetch < 24) {
           developer.log('🔄 Frequencies data is recent, skipping fetch');
           return;
@@ -65,10 +73,9 @@ class FrequencyService {
     try {
       developer.log('🌐 Fetching frequencies data from remote source...');
 
-      final response = await http.get(
-        Uri.parse(_frequenciesUrl),
-        headers: {'Accept': 'text/csv'},
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(Uri.parse(_frequenciesUrl), headers: {'Accept': 'text/csv'})
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final csvData = response.body;
@@ -80,9 +87,13 @@ class FrequencyService {
         await _cacheService.cacheFrequencies(frequencies);
         await _cacheService.setFrequenciesLastFetch(DateTime.now());
 
-        developer.log('✅ Successfully fetched and cached ${frequencies.length} frequencies');
+        developer.log(
+          '✅ Successfully fetched and cached ${frequencies.length} frequencies',
+        );
       } else {
-        throw Exception('Failed to fetch frequencies: HTTP ${response.statusCode}');
+        throw Exception(
+          'Failed to fetch frequencies: HTTP ${response.statusCode}',
+        );
       }
     } catch (e) {
       developer.log('❌ Error fetching frequencies: $e');
@@ -101,7 +112,9 @@ class FrequencyService {
 
     try {
       final lines = csvData.split('\n');
-      developer.log('📊 DEBUG: CSV has ${lines.length} lines (including header)');
+      developer.log(
+        '📊 DEBUG: CSV has ${lines.length} lines (including header)',
+      );
 
       // Show the header line for debugging
       if (lines.isNotEmpty) {
@@ -128,7 +141,9 @@ class FrequencyService {
 
           // Debug first few parsed frequencies
           if (frequencies.length <= 10) {
-            developer.log('📊 DEBUG: Parsed frequency ${frequencies.length}: ${frequency.toString()}');
+            developer.log(
+              '📊 DEBUG: Parsed frequency ${frequencies.length}: ${frequency.toString()}',
+            );
           }
         } catch (e) {
           // Skip malformed rows
@@ -150,8 +165,12 @@ class FrequencyService {
 
   /// Get frequencies for a specific airport
   List<Frequency> getFrequenciesForAirport(String airportIdent) {
-    developer.log('🔍 DEBUG: Searching frequencies for airport: "$airportIdent"');
-    developer.log('🔍 DEBUG: Total frequencies in service: ${_frequencies.length}');
+    developer.log(
+      '🔍 DEBUG: Searching frequencies for airport: "$airportIdent"',
+    );
+    developer.log(
+      '🔍 DEBUG: Total frequencies in service: ${_frequencies.length}',
+    );
 
     if (_frequencies.isEmpty) {
       developer.log('⚠️ DEBUG: No frequencies loaded in service');
@@ -164,40 +183,63 @@ class FrequencyService {
       final sampleSize = _frequencies.length > 20 ? 20 : _frequencies.length;
       for (int i = 0; i < sampleSize; i++) {
         final freq = _frequencies[i];
-        developer.log('   Sample ${i + 1}: "${freq.airportIdent}" (${freq.type}: ${freq.frequencyMhz} MHz)');
+        developer.log(
+          '   Sample ${i + 1}: "${freq.airportIdent}" (${freq.type}: ${freq.frequencyMhz} MHz)',
+        );
       }
     }
 
     // Try exact match first
-    final exactMatches = _frequencies.where((frequency) =>
-      frequency.airportIdent == airportIdent
-    ).toList();
-    developer.log('🔍 DEBUG: Exact matches for "$airportIdent": ${exactMatches.length}');
+    final exactMatches = _frequencies
+        .where((frequency) => frequency.airportIdent == airportIdent)
+        .toList();
+    developer.log(
+      '🔍 DEBUG: Exact matches for "$airportIdent": ${exactMatches.length}',
+    );
 
     // Try case-insensitive match
-    final caseInsensitiveMatches = _frequencies.where((frequency) =>
-      frequency.airportIdent.toUpperCase() == airportIdent.toUpperCase()
-    ).toList();
-    developer.log('🔍 DEBUG: Case-insensitive matches for "$airportIdent": ${caseInsensitiveMatches.length}');
+    final caseInsensitiveMatches = _frequencies
+        .where(
+          (frequency) =>
+              frequency.airportIdent.toUpperCase() ==
+              airportIdent.toUpperCase(),
+        )
+        .toList();
+    developer.log(
+      '🔍 DEBUG: Case-insensitive matches for "$airportIdent": ${caseInsensitiveMatches.length}',
+    );
 
     // If we found matches, log them
     if (caseInsensitiveMatches.isNotEmpty) {
       developer.log('🔍 DEBUG: Found frequencies:');
       for (final freq in caseInsensitiveMatches) {
-        developer.log('   - ${freq.type}: ${freq.frequencyMhz} MHz (${freq.description ?? "No description"})');
+        developer.log(
+          '   - ${freq.type}: ${freq.frequencyMhz} MHz (${freq.description ?? "No description"})',
+        );
       }
     } else {
       // Try partial matches to see if there are similar airport codes
-      final partialMatches = _frequencies.where((frequency) =>
-        frequency.airportIdent.toUpperCase().contains(airportIdent.toUpperCase()) ||
-        airportIdent.toUpperCase().contains(frequency.airportIdent.toUpperCase())
-      ).toList();
-      developer.log('🔍 DEBUG: Partial matches for "$airportIdent": ${partialMatches.length}');
+      final partialMatches = _frequencies
+          .where(
+            (frequency) =>
+                frequency.airportIdent.toUpperCase().contains(
+                  airportIdent.toUpperCase(),
+                ) ||
+                airportIdent.toUpperCase().contains(
+                  frequency.airportIdent.toUpperCase(),
+                ),
+          )
+          .toList();
+      developer.log(
+        '🔍 DEBUG: Partial matches for "$airportIdent": ${partialMatches.length}',
+      );
 
       if (partialMatches.isNotEmpty) {
         developer.log('🔍 DEBUG: Partial matches found:');
         for (final freq in partialMatches.take(10)) {
-          developer.log('   - "${freq.airportIdent}" (${freq.type}: ${freq.frequencyMhz} MHz)');
+          developer.log(
+            '   - "${freq.airportIdent}" (${freq.type}: ${freq.frequencyMhz} MHz)',
+          );
         }
       }
     }
@@ -206,7 +248,9 @@ class FrequencyService {
   }
 
   /// Get frequencies for multiple airports
-  Map<String, List<Frequency>> getFrequenciesForAirports(List<String> airportIdents) {
+  Map<String, List<Frequency>> getFrequenciesForAirports(
+    List<String> airportIdents,
+  ) {
     final result = <String, List<Frequency>>{};
 
     for (final ident in airportIdents) {
@@ -225,7 +269,9 @@ class FrequencyService {
   }) {
     return _frequencies.where((frequency) {
       if (airportIdent != null &&
-          !frequency.airportIdent.toUpperCase().contains(airportIdent.toUpperCase())) {
+          !frequency.airportIdent.toUpperCase().contains(
+            airportIdent.toUpperCase(),
+          )) {
         return false;
       }
 
