@@ -143,6 +143,7 @@ class MapScreenState extends State<MapScreen>
   ); // Default position
   bool _flightPlanningExpanded =
       false; // Track expanded state of flight planning panel (default collapsed)
+  Size? _lastFlightPlanningScreenSize; // Track screen size for position adjustment
 
   // Waypoint selection state
   int? _selectedWaypointIndex;
@@ -460,6 +461,39 @@ class MapScreenState extends State<MapScreen>
     } catch (e) {
       // Ignore save errors - not critical functionality
     }
+  }
+
+  // Adjust flight planning panel position for screen size changes (orientation)
+  void _adjustFlightPlanningPanelPosition(Size newScreenSize) {
+    if (_lastFlightPlanningScreenSize != null && 
+        (_lastFlightPlanningScreenSize!.width != newScreenSize.width || 
+         _lastFlightPlanningScreenSize!.height != newScreenSize.height)) {
+      
+      // Calculate relative position as percentages
+      final relativeX = _flightPlanningPanelPosition.dx / _lastFlightPlanningScreenSize!.width;
+      final relativeY = _flightPlanningPanelPosition.dy / _lastFlightPlanningScreenSize!.height;
+      
+      // Determine panel dimensions based on screen size and orientation
+      final isPhone = newScreenSize.width < 600;
+      final panelWidth = isPhone ? newScreenSize.width - 16 : 600.0;
+      final panelHeight = _flightPlanningExpanded ? 600.0 : 60.0;
+      
+      // Apply to new screen size and ensure panel stays visible
+      final newX = (relativeX * newScreenSize.width).clamp(0.0, newScreenSize.width - panelWidth);
+      final newY = (relativeY * newScreenSize.height).clamp(0.0, newScreenSize.height - panelHeight);
+      
+      final newPosition = Offset(newX, newY);
+      
+      // Use post-frame callback to avoid setState during build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _flightPlanningPanelPosition = newPosition;
+          });
+        }
+      });
+    }
+    _lastFlightPlanningScreenSize = newScreenSize;
   }
 
   // Handle actions after location is loaded
@@ -2923,6 +2957,10 @@ class MapScreenState extends State<MapScreen>
           // Flight planning UI panels
           Consumer<FlightPlanService>(
             builder: (context, flightPlanService, child) {
+              // Adjust flight planning panel position for screen size changes (orientation)
+              final screenSize = MediaQuery.of(context).size;
+              _adjustFlightPlanningPanelPosition(screenSize);
+              
               return Stack(
                 children: [
                   // Flight Planning Panel - new unified draggable panel

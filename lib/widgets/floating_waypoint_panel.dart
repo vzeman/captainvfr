@@ -51,7 +51,10 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
   }
 
   void _adjustPositionForScreenSize(Size newScreenSize) {
-    if (_lastScreenSize != null) {
+    if (_lastScreenSize != null && 
+        (_lastScreenSize!.width != newScreenSize.width || 
+         _lastScreenSize!.height != newScreenSize.height)) {
+      
       // Calculate relative position as percentages
       final relativeX = _panelPosition.dx / _lastScreenSize!.width;
       final relativeY = _panelPosition.dy / _lastScreenSize!.height;
@@ -63,8 +66,15 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
       final newX = (relativeX * newScreenSize.width).clamp(0.0, newScreenSize.width - panelWidth);
       final newY = (relativeY * newScreenSize.height).clamp(0.0, newScreenSize.height - 400);
       
-      setState(() {
-        _panelPosition = Offset(newX, newY);
+      final newPosition = Offset(newX, newY);
+      
+      // Use post-frame callback to avoid setState during build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _panelPosition = newPosition;
+          });
+        }
       });
     }
     _lastScreenSize = newScreenSize;
