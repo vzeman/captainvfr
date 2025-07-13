@@ -23,6 +23,7 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
   late TextEditingController _notesController;
   Offset _panelPosition = const Offset(20, 100);
   bool _isDragging = false;
+  Size? _lastScreenSize;
 
   @override
   void initState() {
@@ -47,6 +48,26 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
       _altitudeController.text = waypoint.altitude.toStringAsFixed(0);
       _notesController.text = waypoint.notes ?? '';
     }
+  }
+
+  void _adjustPositionForScreenSize(Size newScreenSize) {
+    if (_lastScreenSize != null) {
+      // Calculate relative position as percentages
+      final relativeX = _panelPosition.dx / _lastScreenSize!.width;
+      final relativeY = _panelPosition.dy / _lastScreenSize!.height;
+      
+      // Determine panel width based on orientation
+      final panelWidth = newScreenSize.width > newScreenSize.height ? 350.0 : 300.0;
+      
+      // Apply to new screen size and ensure panel stays visible
+      final newX = (relativeX * newScreenSize.width).clamp(0.0, newScreenSize.width - panelWidth);
+      final newY = (relativeY * newScreenSize.height).clamp(0.0, newScreenSize.height - 400);
+      
+      setState(() {
+        _panelPosition = Offset(newX, newY);
+      });
+    }
+    _lastScreenSize = newScreenSize;
   }
 
   @override
@@ -132,6 +153,9 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
 
         final waypoint = flightPlan.waypoints[widget.waypointIndex];
         final screenSize = MediaQuery.of(context).size;
+        
+        // Adjust position if screen size changed (orientation change)
+        _adjustPositionForScreenSize(screenSize);
 
         return Positioned(
           left: _panelPosition.dx,
@@ -140,11 +164,12 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
             onPanStart: (_) => setState(() => _isDragging = true),
             onPanUpdate: (details) {
               if (_isDragging) {
+                final panelWidth = screenSize.width > screenSize.height ? 350.0 : 300.0;
                 setState(() {
                   _panelPosition = Offset(
                     (_panelPosition.dx + details.delta.dx).clamp(
                       0,
-                      screenSize.width - 320,
+                      screenSize.width - panelWidth,
                     ),
                     (_panelPosition.dy + details.delta.dy).clamp(
                       0,
@@ -159,7 +184,7 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
               elevation: 8,
               borderRadius: BorderRadius.circular(12),
               child: Container(
-                width: 300,
+                width: screenSize.width > screenSize.height ? 350 : 300, // Larger in landscape
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),

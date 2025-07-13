@@ -24,10 +24,22 @@ class ThemedDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isLandscape = screenSize.width > screenSize.height;
+    
+    // Responsive sizing based on orientation and screen size
+    final responsiveMaxWidth = maxWidth ?? (isLandscape ? 
+      (screenSize.width * 0.5).clamp(400.0, 600.0) : 
+      (screenSize.width * 0.9).clamp(300.0, 400.0));
+    
+    final responsiveMaxHeight = maxHeight ?? (isLandscape ? 
+      screenSize.height * 0.9 : 
+      screenSize.height * 0.8);
+    
     final dialogContent = Container(
       constraints: BoxConstraints(
-        maxWidth: maxWidth ?? 400,
-        maxHeight: maxHeight ?? MediaQuery.of(context).size.height * 0.8,
+        maxWidth: responsiveMaxWidth,
+        maxHeight: responsiveMaxHeight,
       ),
       decoration: BoxDecoration(
         color: const Color(0xF0000000), // Black with 0.94 opacity

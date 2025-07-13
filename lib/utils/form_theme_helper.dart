@@ -177,11 +177,23 @@ class FormThemeHelper {
     double? width,
     double? height,
   }) {
+    final screenSize = MediaQuery.of(context).size;
+    final isLandscape = screenSize.width > screenSize.height;
+    
+    // Responsive sizing based on orientation
+    final responsiveWidth = width ?? (isLandscape ? 
+      (screenSize.width * 0.6).clamp(500.0, 800.0) : 
+      (screenSize.width * 0.9).clamp(300.0, 500.0));
+    
+    final responsiveHeight = height ?? (isLandscape ? 
+      screenSize.height * 0.85 : 
+      screenSize.height * 0.8);
+    
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: width,
-        height: height,
+        width: responsiveWidth,
+        height: responsiveHeight,
         decoration: BoxDecoration(
           color: dialogBackgroundColor,
           borderRadius: BorderRadius.circular(12.0),

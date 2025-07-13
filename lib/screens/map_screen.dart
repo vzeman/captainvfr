@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'flight_log_screen.dart';
 import 'offline_data_screen.dart';
 import 'flight_plans_screen.dart';
@@ -57,6 +58,9 @@ class MapScreen extends StatefulWidget {
 
 class MapScreenState extends State<MapScreen>
     with SingleTickerProviderStateMixin {
+  // SharedPreferences key for flight planning panel state
+  static const String _keyFlightPlanningExpanded = 'flight_planning_expanded';
+  
   // Services
   late final FlightService _flightService;
   late final AirportService _airportService;
@@ -138,7 +142,7 @@ class MapScreenState extends State<MapScreen>
     100,
   ); // Default position
   bool _flightPlanningExpanded =
-      true; // Track expanded state of flight planning panel
+      false; // Track expanded state of flight planning panel (default collapsed)
 
   // Waypoint selection state
   int? _selectedWaypointIndex;
@@ -173,6 +177,9 @@ class MapScreenState extends State<MapScreen>
 
     // Initialize map controller
     _mapController = MapController();
+
+    // Load flight planning panel state from SharedPreferences
+    _loadFlightPlanningPanelState();
 
     // Start location loading in background without blocking UI
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -427,6 +434,31 @@ class MapScreenState extends State<MapScreen>
         // Still trigger loading with default position
         _onLocationLoaded();
       }
+    }
+  }
+
+  // Load flight planning panel expanded state from SharedPreferences
+  Future<void> _loadFlightPlanningPanelState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isExpanded = prefs.getBool(_keyFlightPlanningExpanded) ?? false; // Default collapsed
+      if (mounted) {
+        setState(() {
+          _flightPlanningExpanded = isExpanded;
+        });
+      }
+    } catch (e) {
+      // If there's an error loading, keep the default state (collapsed)
+    }
+  }
+
+  // Save flight planning panel expanded state to SharedPreferences
+  Future<void> _saveFlightPlanningPanelState(bool isExpanded) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyFlightPlanningExpanded, isExpanded);
+    } catch (e) {
+      // Ignore save errors - not critical functionality
     }
   }
 
@@ -2971,6 +3003,8 @@ class MapScreenState extends State<MapScreen>
                               setState(() {
                                 _flightPlanningExpanded = expanded;
                               });
+                              // Save the state to SharedPreferences
+                              _saveFlightPlanningPanelState(expanded);
                             },
                             onClose: () {
                               setState(() {
