@@ -88,12 +88,18 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
     });
 
     try {
-      // Use V3 service which provides realistic mock data
-      // In production, this would connect to a real NOTAM API
-      List<Notam> notams = await _notamServiceV3.getNotamsForAirport(
-        widget.airport.icao,
-        forceRefresh: forceRefresh,
-      );
+      List<Notam> notams = [];
+      
+      // Check if it's a European airport first
+      final icaoPrefix = widget.airport.icao.substring(0, 2);
+
+      // If not European or no results, try V3 service
+      if (notams.isEmpty) {
+        notams = await _notamServiceV3.getNotamsForAirport(
+          widget.airport.icao,
+          forceRefresh: forceRefresh,
+        );
+      }
 
       // If V3 fails or returns empty, try other services
       if (notams.isEmpty) {

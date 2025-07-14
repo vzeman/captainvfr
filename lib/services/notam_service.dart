@@ -411,11 +411,26 @@ class NotamService {
           // Clean up any corrupted NOTAM IDs
           if (notamJson['notamId'] != null) {
             String notamId = notamJson['notamId'].toString();
-            // Remove any URL encoding artifacts
-            notamId = notamId.replaceAll(RegExp(r'%[0-9A-Fa-f]{2}'), '');
-            // Remove any null bytes or control characters
-            notamId = notamId.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
-            notamJson['notamId'] = notamId.trim();
+            
+            // Extract just the NOTAM ID pattern (e.g., A1234/24)
+            final notamIdMatch = RegExp(r'([A-Z]\d{4}/\d{2})').firstMatch(notamId);
+            if (notamIdMatch != null) {
+              // Use only the extracted NOTAM ID, discarding any corruption
+              notamId = notamIdMatch.group(0) ?? '';
+            } else {
+              // If no valid pattern found, clean up the string
+              // Remove any HTML tags or fragments
+              notamId = notamId.replaceAll(RegExp(r'<[^>]*>'), '');
+              // Remove any URL encoding artifacts
+              notamId = notamId.replaceAll(RegExp(r'%[0-9A-Fa-f]{2}'), '');
+              // Remove any null bytes or control characters
+              notamId = notamId.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
+              // Remove any special HTML entities
+              notamId = notamId.replaceAll(RegExp(r'&[a-zA-Z]+;'), '');
+              notamId = notamId.trim();
+            }
+            
+            notamJson['notamId'] = notamId;
           }
 
           return Notam.fromJson(notamJson);
@@ -442,11 +457,26 @@ class NotamService {
       // Ensure NOTAM ID is clean
       if (json['notamId'] != null) {
         String notamId = json['notamId'].toString();
-        // Remove any URL encoding artifacts
-        notamId = notamId.replaceAll(RegExp(r'%[0-9A-Fa-f]{2}'), '');
-        // Remove any null bytes or control characters
-        notamId = notamId.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
-        json['notamId'] = notamId.trim();
+        
+        // Extract just the NOTAM ID pattern (e.g., A1234/24)
+        final notamIdMatch = RegExp(r'([A-Z]\d{4}/\d{2})').firstMatch(notamId);
+        if (notamIdMatch != null) {
+          // Use only the extracted NOTAM ID, discarding any corruption
+          notamId = notamIdMatch.group(0) ?? '';
+        } else {
+          // If no valid pattern found, clean up the string
+          // Remove any HTML tags or fragments
+          notamId = notamId.replaceAll(RegExp(r'<[^>]*>'), '');
+          // Remove any URL encoding artifacts
+          notamId = notamId.replaceAll(RegExp(r'%[0-9A-Fa-f]{2}'), '');
+          // Remove any null bytes or control characters
+          notamId = notamId.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
+          // Remove any special HTML entities
+          notamId = notamId.replaceAll(RegExp(r'&[a-zA-Z]+;'), '');
+          notamId = notamId.trim();
+        }
+        
+        json['notamId'] = notamId;
       }
 
       return json;
