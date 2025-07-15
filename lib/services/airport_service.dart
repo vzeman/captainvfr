@@ -2,8 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:math' show sin, cos, sqrt, atan2;
+import 'dart:io' show gzip;
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:archive/archive.dart';
 import '../models/airport.dart';
 import 'cache_service.dart';
 
@@ -40,6 +44,7 @@ class AirportService {
 
   List<Airport> _airports = [];
   bool _isLoading = false;
+  bool _bundledDataLoaded = false;
   final CacheService _cacheService = CacheService();
 
   // Singleton pattern
@@ -53,7 +58,13 @@ class AirportService {
   /// Initialize the service and load cached data
   Future<void> initialize() async {
     await _cacheService.initialize();
-    await _loadFromCache();
+    
+    // Try to load bundled data first
+    await _loadBundledAirports();
+    
+    if (!_bundledDataLoaded) {
+      await _loadFromCache();
+    }
   }
 
   /// Load airports from cache if available
@@ -76,6 +87,135 @@ class AirportService {
     await _cacheService.clearAllCaches();
     _airports.clear();
     await fetchNearbyAirports(forceRefresh: true);
+  }
+  
+  /// Load bundled airports data
+  Future<void> _loadBundledAirports() async {
+    try {
+      developer.log('📦 Attempting to load bundled airports data...');
+      
+      // Try compressed data first
+      try {
+        final airportsBytes = await rootBundle.load('assets/data/airports_min.json.gz');
+        final compressedData = airportsBytes.buffer.asUint8List();
+        
+        // Use platform-appropriate decompression
+        List<int> decompressed;
+        if (kIsWeb) {
+          // Use archive package for web
+          decompressed = GZipDecoder().decodeBytes(compressedData);
+        } else {
+          // Use dart:io gzip for native platforms
+          decompressed = gzip.decode(compressedData);
+        }
+        
+        final jsonString = utf8.decode(decompressed);
+        final data = json.decode(jsonString);
+        
+        if (data['airports'] != null) {
+          final List<dynamic> items = data['airports'];
+          final airports = items.map((item) => _parseMinifiedAirport(item)).toList();
+          
+          if (airports.isNotEmpty) {
+            // Filter out closed airports
+            _airports = airports
+                .where((airport) => airport.type.toLowerCase() != 'closed')
+                .toList();
+            
+            // Also cache them for offline use
+            await _cacheService.cacheAirports(_airports);
+            
+            developer.log('✅ Loaded ${_airports.length} airports from bundled data');
+            _bundledDataLoaded = true;
+          }
+        }
+      } catch (e) {
+        developer.log('⚠️ Could not load compressed airports, trying uncompressed: $e');
+        
+        // Fallback to uncompressed data
+        final airportsJson = await rootBundle.loadString('assets/data/airports.json');
+        final airportsData = json.decode(airportsJson);
+        
+        if (airportsData['airports'] != null) {
+          final List<dynamic> airportsList = airportsData['airports'];
+          final airports = airportsList.map((json) => Airport.fromJson(json)).toList();
+          
+          if (airports.isNotEmpty) {
+            // Filter out closed airports
+            _airports = airports
+                .where((airport) => airport.type.toLowerCase() != 'closed')
+                .toList();
+            
+            // Also cache them for offline use
+            await _cacheService.cacheAirports(_airports);
+            
+            developer.log('✅ Loaded ${_airports.length} airports from bundled data');
+            developer.log('📅 Data generated at: ${airportsData['generated_at']}');
+            _bundledDataLoaded = true;
+          }
+        }
+      }
+    } catch (e) {
+      developer.log('📡 No bundled airports data found, will use cache or fetch: $e');
+    }
+  }
+  
+  /// Parse minified airport data
+  Airport _parseMinifiedAirport(Map<String, dynamic> data) {
+    // Map airport types from numeric to string
+    String getAirportType(dynamic type) {
+      switch (type) {
+        case 0: return 'heliport';
+        case 1: return 'small_airport';
+        case 2: return 'medium_airport';
+        case 3: return 'large_airport';
+        case 4: return 'closed';
+        case 5: return 'seaplane_base';
+        case 6: return 'balloonport';
+        case 7: return 'small_airport';
+        case 8: return 'small_airport';
+        case 9: return 'heliport';
+        case 10: return 'small_airport';
+        case 11: return 'small_airport';
+        case 12: return 'small_airport';
+        case 13: return 'small_airport';
+        default: return 'small_airport';
+      }
+    }
+    
+    final expanded = <String, dynamic>{
+      '_id': data['_id'],
+      'name': data['name'],
+      'icao': data['icao'],
+      'iata': data['iata'],
+      'type': getAirportType(data['type']),
+    };
+    
+    // Expand geometry
+    if (data['g'] != null && data['g'].length >= 2) {
+      expanded['latitude'] = data['g'][1];  // lat
+      expanded['longitude'] = data['g'][0]; // lon
+    }
+    
+    // Elevation
+    if (data['elev'] != null) {
+      if (data['elev'] is Map) {
+        expanded['elevation_ft'] = data['elev']['value'] ?? 0;
+      } else {
+        expanded['elevation_ft'] = data['elev'];
+      }
+    }
+    
+    // Optional fields
+    if (data['country'] != null) expanded['country'] = data['country'];
+    
+    // Expand runways if needed
+    if (data['rwy'] != null) {
+      final runways = data['rwy'] as List;
+      expanded['runways'] = json.encode(runways);
+    }
+    
+    return Airport.fromJson(expanded);
   }
 
   // Get current location (placeholder - will be implemented with location service)

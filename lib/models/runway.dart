@@ -101,7 +101,7 @@ class Runway {
   factory Runway.fromMap(Map<String, dynamic> map) {
     return Runway(
       id: map['id'] ?? 0,
-      airportRef: map['airport_ref'] ?? '',
+      airportRef: map['airport_ref']?.toString() ?? '',
       airportIdent: map['airport_ident'] ?? '',
       lengthFt: map['length_ft'] ?? 0,
       widthFt: map['width_ft'],

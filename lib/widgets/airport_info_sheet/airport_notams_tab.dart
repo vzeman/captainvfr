@@ -90,10 +90,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
     try {
       List<Notam> notams = [];
       
-      // Check if it's a European airport first
-      final icaoPrefix = widget.airport.icao.substring(0, 2);
-
-      // If not European or no results, try V3 service
+      // Try V3 service
       if (notams.isEmpty) {
         notams = await _notamServiceV3.getNotamsForAirport(
           widget.airport.icao,

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
 import 'package:archive/archive.dart';
 import 'cache_service.dart';
+import 'cors_proxy_service.dart';
 
 /// Service for fetching and managing weather data for airports
 
@@ -107,8 +108,13 @@ class WeatherService {
   Future<void> _fetchAllWeather() async {
     try {
       _logger.d('🌍 Fetching all METARs and TAFs');
-      final metarResp = await _client.get(Uri.parse(_metarUrl));
-      final tafResp = await _client.get(Uri.parse(_tafUrl));
+      
+      // Use CORS proxy for web platform
+      final metarUrl = CorsProxyService.wrapUrl(_metarUrl);
+      final tafUrl = CorsProxyService.wrapUrl(_tafUrl);
+      
+      final metarResp = await _client.get(Uri.parse(metarUrl));
+      final tafResp = await _client.get(Uri.parse(tafUrl));
 
       if (metarResp.statusCode == 200) {
         _metarCache = _parseGzCsv(metarResp.bodyBytes, isMetar: true);

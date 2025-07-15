@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import '../models/notam.dart';
 import 'cache_service.dart';
+import 'cors_proxy_service.dart';
 
 /// Alternative NOTAM service implementation using ICAO format parsing
 class NotamServiceV2 {
@@ -72,9 +73,12 @@ class NotamServiceV2 {
     // Try to fetch from API
     try {
       // First, let's try a simple HTTP request to see what we get
-      final testUrl =
+      final baseUrl =
           'https://www.notams.faa.gov/dinsQueryWeb/queryRetrievalMapAction.do'
           '?reportType=Raw&retrieveLocId=$icaoCode&actionType=notamRetrievalByICAOs';
+      
+      // Use CORS proxy for web platform
+      final testUrl = CorsProxyService.wrapUrl(baseUrl);
 
       developer.log('🌐 Trying URL: $testUrl');
 

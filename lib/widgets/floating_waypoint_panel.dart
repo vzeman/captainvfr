@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/flight_plan.dart';
 import '../services/flight_plan_service.dart';
+import '../services/settings_service.dart';
 
 class FloatingWaypointPanel extends StatefulWidget {
   final int waypointIndex;
   final VoidCallback onClose;
+  final bool isEditMode;
 
   const FloatingWaypointPanel({
     super.key,
     required this.waypointIndex,
     required this.onClose,
+    this.isEditMode = false,
   });
 
   @override
@@ -88,41 +91,6 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
     super.dispose();
   }
 
-  void _updateWaypointName(String value) {
-    final flightPlanService = Provider.of<FlightPlanService>(
-      context,
-      listen: false,
-    );
-    flightPlanService.updateWaypointName(
-      widget.waypointIndex,
-      value.isEmpty ? null : value,
-    );
-  }
-
-  void _updateWaypointAltitude(String value) {
-    final altitude = double.tryParse(value);
-    if (altitude != null) {
-      final flightPlanService = Provider.of<FlightPlanService>(
-        context,
-        listen: false,
-      );
-      flightPlanService.updateWaypointAltitudeWithValidation(
-        widget.waypointIndex,
-        altitude,
-      );
-    }
-  }
-
-  void _updateWaypointNotes(String value) {
-    final flightPlanService = Provider.of<FlightPlanService>(
-      context,
-      listen: false,
-    );
-    flightPlanService.updateWaypointNotes(
-      widget.waypointIndex,
-      value.isEmpty ? null : value,
-    );
-  }
 
   String _getWaypointTypeString(WaypointType type) {
     switch (type) {
@@ -190,60 +158,45 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
               }
             },
             onPanEnd: (_) => setState(() => _isDragging = false),
-            child: Material(
-              elevation: 8,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                width: screenSize.width > screenSize.height ? 350 : 300, // Larger in landscape
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _getWaypointColor(
-                      waypoint.type,
-                    ).withValues(alpha: 0.3),
-                    width: 2,
-                  ),
+            child: Container(
+              width: screenSize.width > screenSize.height ? 320 : 280,
+              decoration: BoxDecoration(
+                color: Colors.black87,
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(
+                  color: _getWaypointColor(waypoint.type).withValues(alpha: 0.5),
                 ),
+              ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Header with drag handle
-                    Container(
-                      decoration: BoxDecoration(
-                        color: _getWaypointColor(
-                          waypoint.type,
-                        ).withValues(alpha: 0.1),
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(10),
-                        ),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(
-                            Icons.drag_handle,
-                            color: Colors.grey.shade600,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Waypoint ${widget.waypointIndex + 1} - ${_getWaypointTypeString(waypoint.type)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: _getWaypointColor(waypoint.type),
-                              ),
+                          Text(
+                            'WAYPOINT ${widget.waypointIndex + 1}',
+                            style: TextStyle(
+                              color: _getWaypointColor(waypoint.type),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.close, size: 20),
                             onPressed: widget.onClose,
+                            icon: const Icon(
+                              Icons.close,
+                              size: 16,
+                              color: Colors.white70,
+                            ),
                             padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                            constraints: const BoxConstraints(
+                              minWidth: 20,
+                              minHeight: 20,
+                            ),
                           ),
                         ],
                       ),
@@ -251,117 +204,154 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
 
                     // Content
                     Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Name field
-                          TextField(
-                            controller: _nameController,
-                            decoration: const InputDecoration(
-                              labelText: 'Name',
-                              hintText: 'Enter waypoint name',
-                              prefixIcon: Icon(Icons.label, size: 20),
-                              isDense: true,
-                              contentPadding: EdgeInsets.symmetric(
-                                vertical: 12,
-                              ),
-                            ),
-                            onChanged: _updateWaypointName,
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Coordinates (read-only)
+                          // Type and name
                           Row(
                             children: [
-                              const Icon(
-                                Icons.location_on,
-                                size: 20,
-                                color: Colors.grey,
+                              Icon(
+                                _getWaypointIcon(waypoint.type),
+                                size: 12,
+                                color: _getWaypointColor(waypoint.type),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
-                                  '${waypoint.latitude.toStringAsFixed(6)}, ${waypoint.longitude.toStringAsFixed(6)}',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey.shade700,
+                                  '${waypoint.name ?? "Waypoint"} (${_getWaypointTypeString(waypoint.type)})',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
                                   ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 6),
 
-                          // Altitude field
-                          TextField(
-                            controller: _altitudeController,
-                            decoration: const InputDecoration(
-                              labelText: 'Altitude (ft)',
-                              hintText: 'Enter altitude',
-                              prefixIcon: Icon(Icons.flight, size: 20),
-                              isDense: true,
-                              contentPadding: EdgeInsets.symmetric(
-                                vertical: 12,
+                          // Coordinates
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on,
+                                size: 12,
+                                color: Colors.grey,
                               ),
-                            ),
-                            keyboardType: TextInputType.number,
-                            onChanged: _updateWaypointAltitude,
+                              const SizedBox(width: 4),
+                              Text(
+                                '${waypoint.latitude.toStringAsFixed(6)}, ${waypoint.longitude.toStringAsFixed(6)}',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 4),
 
-                          // Notes field
-                          TextField(
-                            controller: _notesController,
-                            decoration: const InputDecoration(
-                              labelText: 'Notes',
-                              hintText: 'Add notes about this waypoint',
-                              prefixIcon: Icon(Icons.note, size: 20),
-                              isDense: true,
-                              contentPadding: EdgeInsets.symmetric(
-                                vertical: 12,
+                          // Altitude
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.flight,
+                                size: 12,
+                                color: Colors.blue,
                               ),
-                            ),
-                            maxLines: 2,
-                            onChanged: _updateWaypointNotes,
+                              const SizedBox(width: 4),
+                              Consumer<SettingsService>(
+                                builder: (context, settings, child) {
+                                  final isMetric = settings.units == 'metric';
+                                  final altitude = isMetric ? waypoint.altitude * 0.3048 : waypoint.altitude;
+                                  final unit = isMetric ? 'm' : 'ft';
+                                  return Text(
+                                    'Altitude: ${altitude.toStringAsFixed(0)} $unit',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.white70,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
+                          
+                          // Notes if present
+                          if (waypoint.notes != null && waypoint.notes!.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(
+                                  Icons.note,
+                                  size: 12,
+                                  color: Colors.amber,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    waypoint.notes!,
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.white70,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
 
                           // Segment info if not the last waypoint
                           if (widget.waypointIndex <
                               flightPlan.waypoints.length - 1) ...[
-                            const SizedBox(height: 16),
-                            const Divider(),
-                            const SizedBox(height: 8),
-                            Text(
-                              'To Next Waypoint',
+                            const Divider(color: Colors.grey, height: 8),
+                            const Text(
+                              'TO NEXT WAYPOINT',
                               style: TextStyle(
-                                fontSize: 12,
+                                color: Colors.blue,
+                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.grey.shade700,
+                                letterSpacing: 0.5,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                _buildSegmentInfo(
-                                  Icons.straighten,
-                                  '${waypoint.distanceTo(flightPlan.waypoints[widget.waypointIndex + 1]).toStringAsFixed(1)} NM',
-                                  'Distance',
-                                ),
-                                _buildSegmentInfo(
-                                  Icons.navigation,
-                                  '${waypoint.bearingTo(flightPlan.waypoints[widget.waypointIndex + 1]).toStringAsFixed(0)}°',
-                                  'Bearing',
-                                ),
-                                if (flightPlan.segments.length >
-                                    widget.waypointIndex)
-                                  _buildSegmentInfo(
-                                    Icons.timer,
-                                    '${flightPlan.segments[widget.waypointIndex].flightTime.toStringAsFixed(0)} min',
-                                    'Time',
-                                  ),
-                              ],
+                            const SizedBox(height: 4),
+                            Consumer<SettingsService>(
+                              builder: (context, settings, child) {
+                                final isMetric = settings.units == 'metric';
+                                final distance = waypoint.distanceTo(flightPlan.waypoints[widget.waypointIndex + 1]);
+                                final displayDistance = isMetric ? distance * 1.852 : distance;
+                                final unit = isMetric ? 'km' : 'nm';
+                                return Row(
+                                  children: [
+                                    const Icon(Icons.straighten, size: 12, color: Colors.blue),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${displayDistance.toStringAsFixed(1)} $unit',
+                                      style: const TextStyle(color: Colors.white, fontSize: 11),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Icon(Icons.navigation, size: 12, color: Colors.green),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${waypoint.bearingTo(flightPlan.waypoints[widget.waypointIndex + 1]).toStringAsFixed(0)}°',
+                                      style: const TextStyle(color: Colors.white, fontSize: 11),
+                                    ),
+                                    if (flightPlan.segments.length > widget.waypointIndex) ...[
+                                      const SizedBox(width: 12),
+                                      const Icon(Icons.timer, size: 12, color: Colors.orange),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${flightPlan.segments[widget.waypointIndex].flightTime.toStringAsFixed(0)} min',
+                                        style: const TextStyle(color: Colors.white, fontSize: 11),
+                                      ),
+                                    ],
+                                  ],
+                                );
+                              },
                             ),
                           ],
                         ],
@@ -371,26 +361,21 @@ class _FloatingWaypointPanelState extends State<FloatingWaypointPanel> {
                 ),
               ),
             ),
-          ),
         );
       },
     );
   }
 
-  Widget _buildSegmentInfo(IconData icon, String value, String label) {
-    return Column(
-      children: [
-        Icon(icon, size: 20, color: Colors.grey.shade600),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-        ),
-        Text(
-          label,
-          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-        ),
-      ],
-    );
+  IconData _getWaypointIcon(WaypointType type) {
+    switch (type) {
+      case WaypointType.airport:
+        return Icons.local_airport;
+      case WaypointType.navaid:
+        return Icons.radio;
+      case WaypointType.fix:
+        return Icons.place;
+      default:
+        return Icons.location_pin;
+    }
   }
 }

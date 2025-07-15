@@ -268,16 +268,23 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 8),
                       if (waypoints.isNotEmpty && cruiseSpeed != null)
-                        Text(
-                          'Total: ${_formatDistance(widget.flightPlan!.totalDistance, isMetric)} ${_getDistanceUnit(isMetric)}, '
-                          '${_formatTime(widget.flightPlan!.totalFlightTime)}',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
+                        Expanded(
+                          child: Text(
+                            'Total: ${_formatDistance(widget.flightPlan!.totalDistance, isMetric)} ${_getDistanceUnit(isMetric)}, '
+                            '${_formatTime(widget.flightPlan!.totalFlightTime)}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            textAlign: TextAlign.right,
                           ),
                         ),
+                      if (waypoints.isEmpty || cruiseSpeed == null)
+                        const Spacer(),
                       // Undo button - only show in edit mode when there are waypoints
                       if (waypoints.isNotEmpty)
                         Consumer<FlightPlanService>(
@@ -407,8 +414,8 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                   },
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 12,
+                                      horizontal: 12,
+                                      vertical: 8,
                                     ),
                                     child: Row(
                                       crossAxisAlignment:
@@ -417,27 +424,27 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                         // Drag Handle
                                         Padding(
                                           padding: const EdgeInsets.only(
-                                            top: 12,
+                                            top: 6,
                                           ),
                                           child: ReorderableDragStartListener(
                                             index: index,
                                             child: const Icon(
                                               Icons.drag_handle,
                                               color: Colors.white70,
-                                              size: 20,
+                                              size: 16,
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(width: 12),
+                                        const SizedBox(width: 8),
 
                                         // Waypoint Number
                                         Padding(
                                           padding: const EdgeInsets.only(
-                                            top: 8,
+                                            top: 4,
                                           ),
                                           child: Container(
-                                            width: 32,
-                                            height: 32,
+                                            width: 26,
+                                            height: 26,
                                             decoration: BoxDecoration(
                                               color: _getWaypointTypeColor(
                                                 waypoint.type,
@@ -447,7 +454,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                                 color: _getWaypointTypeColor(
                                                   waypoint.type,
                                                 ),
-                                                width: 2,
+                                                width: 1.5,
                                               ),
                                             ),
                                             child: Center(
@@ -458,13 +465,13 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                                   color: _getWaypointTypeColor(
                                                     waypoint.type,
                                                   ),
-                                                  fontSize: 14,
+                                                  fontSize: 10,
                                                 ),
                                               ),
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(width: 12),
+                                        const SizedBox(width: 8),
 
                                         // Main content in column
                                         Expanded(
@@ -500,12 +507,12 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                                         contentPadding:
                                                             const EdgeInsets.symmetric(
                                                               horizontal: 8,
-                                                              vertical: 4,
+                                                              vertical: 2,
                                                             ),
                                                       ),
                                                       style: const TextStyle(
                                                         color: Colors.white,
-                                                        fontSize: 14,
+                                                        fontSize: 12,
                                                         fontWeight:
                                                             FontWeight.w500,
                                                       ),
@@ -524,7 +531,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                                       },
                                                     ),
                                                   ),
-                                                  const SizedBox(width: 12),
+                                                  const SizedBox(width: 8),
                                                   // Altitude (Editable)
                                                   SizedBox(
                                                     width: 80,
@@ -561,12 +568,12 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                                         contentPadding:
                                                             const EdgeInsets.symmetric(
                                                               horizontal: 8,
-                                                              vertical: 4,
+                                                              vertical: 2,
                                                             ),
                                                       ),
                                                       style: const TextStyle(
                                                         color: Colors.white,
-                                                        fontSize: 14,
+                                                        fontSize: 12,
                                                       ),
                                                       textAlign:
                                                           TextAlign.right,
@@ -598,7 +605,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                                 Padding(
                                                   padding:
                                                       const EdgeInsets.only(
-                                                        top: 4,
+                                                        top: 2,
                                                       ),
                                                   child: Row(
                                                     children: [
@@ -611,7 +618,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                                               const TextStyle(
                                                                 color: Colors
                                                                     .white60,
-                                                                fontSize: 11,
+                                                                fontSize: 10,
                                                               ),
                                                         ),
                                                         const SizedBox(
@@ -627,7 +634,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                                               const TextStyle(
                                                                 color: Colors
                                                                     .white60,
-                                                                fontSize: 11,
+                                                                fontSize: 10,
                                                               ),
                                                         ),
                                                         const SizedBox(
@@ -647,7 +654,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                                               const TextStyle(
                                                                 color: Colors
                                                                     .white60,
-                                                                fontSize: 11,
+                                                                fontSize: 10,
                                                               ),
                                                         ),
                                                         const SizedBox(
@@ -665,7 +672,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                                               const TextStyle(
                                                                 color: Colors
                                                                     .white60,
-                                                                fontSize: 11,
+                                                                fontSize: 10,
                                                               ),
                                                         ),
                                                       ],

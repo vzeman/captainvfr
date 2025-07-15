@@ -11,7 +11,7 @@ import 'services/cache_service.dart';
 import 'services/runway_service.dart';
 import 'services/navaid_service.dart';
 import 'services/weather_service.dart';
-import 'services/frequency_service.dart';
+import 'services/bundled_frequency_service.dart';
 import 'services/flight_plan_service.dart';
 import 'services/aircraft_settings_service.dart';
 import 'services/checklist_service.dart';
@@ -23,7 +23,9 @@ import 'services/openaip_service.dart';
 import 'services/settings_service.dart';
 import 'widgets/connectivity_banner.dart';
 import 'widgets/loading_screen.dart';
+import 'widgets/sensor_notifications_wrapper.dart';
 import 'services/background_data_service.dart';
+import 'services/sensor_availability_service.dart';
 import 'adapters/latlng_adapter.dart';
 import 'models/manufacturer.dart';
 import 'models/model.dart';
@@ -38,10 +40,17 @@ import 'models/moving_segment.dart';
 import 'models/flight_plan.dart';
 import 'models/airspace.dart';
 import 'models/reporting_point.dart';
+import 'utils/performance_monitor.dart';
 
 void main() async {
   // Ensure Flutter binding is initialized
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Start performance monitoring in debug mode
+  assert(() {
+    PerformanceMonitor().startMonitoring();
+    return true;
+  }());
 
   // Show loading screen immediately
   runApp(
@@ -137,7 +146,7 @@ void main() async {
     final runwayService = RunwayService();
     final navaidService = NavaidService();
     final weatherService = WeatherService();
-    final frequencyService = FrequencyService();
+    final frequencyService = BundledFrequencyService();
     final flightPlanService = FlightPlanService();
 
     // Initialize flight plan service with error handling
@@ -162,12 +171,24 @@ void main() async {
     // Initialize OpenAIP service
     final openAIPService = OpenAIPService();
 
-    // Initialize OpenAIP service without blocking
-    // The service will load data in background after initialization
-    openAIPService.initialize().then((_) {}).catchError((e) {});
+    // Initialize OpenAIP service and load bundled data
+    try {
+      await openAIPService.initialize();
+      debugPrint('✅ OpenAIP service initialized successfully');
+    } catch (e) {
+      debugPrint('⚠️ OpenAIP service initialization failed: $e');
+      // Continue without bundled airspace data - will fall back to API
+    }
 
     // Initialize Settings service
     final settingsService = SettingsService();
+    
+    // Initialize sensor availability service
+    final sensorAvailabilityService = SensorAvailabilityService();
+    // Check sensors after a short delay to avoid blocking startup
+    Future.delayed(const Duration(seconds: 2), () {
+      sensorAvailabilityService.checkSensorAvailability();
+    });
 
     // Initialize background data service
     final backgroundDataService = BackgroundDataService();
@@ -237,13 +258,16 @@ void main() async {
           Provider<RunwayService>.value(value: runwayService),
           Provider<NavaidService>.value(value: navaidService),
           Provider<WeatherService>.value(value: weatherService),
-          Provider<FrequencyService>.value(value: frequencyService),
+          Provider<BundledFrequencyService>.value(value: frequencyService),
           Provider<OpenAIPService>.value(value: openAIPService),
           Provider<VibrationMeasurementService>.value(
             value: vibrationMeasurementService,
           ),
           ChangeNotifierProvider<BackgroundDataService>.value(
             value: backgroundDataService,
+          ),
+          ChangeNotifierProvider<SensorAvailabilityService>.value(
+            value: sensorAvailabilityService,
           ),
         ],
         child: const CaptainVFRApp(),
@@ -312,7 +336,7 @@ void _runMinimalApp() {
   final runwayService = RunwayService();
   final navaidService = NavaidService();
   final weatherService = WeatherService();
-  final frequencyService = FrequencyService();
+  final frequencyService = BundledFrequencyService();
   final flightPlanService = FlightPlanService();
   final aircraftSettingsService = AircraftSettingsService();
   final checklistService = ChecklistService();
@@ -320,6 +344,8 @@ void _runMinimalApp() {
   final settingsService = SettingsService();
   final cacheService = CacheService();
   final flightService = FlightService(barometerService: barometerService);
+  final backgroundDataService = BackgroundDataService();
+  final sensorAvailabilityService = SensorAvailabilityService();
 
   // Initialize connectivity service even in minimal mode
   connectivityService.initialize().then((_) {
@@ -349,7 +375,13 @@ void _runMinimalApp() {
         Provider<RunwayService>.value(value: runwayService),
         Provider<NavaidService>.value(value: navaidService),
         Provider<WeatherService>.value(value: weatherService),
-        Provider<FrequencyService>.value(value: frequencyService),
+        Provider<BundledFrequencyService>.value(value: frequencyService),
+        ChangeNotifierProvider<BackgroundDataService>.value(
+          value: backgroundDataService,
+        ),
+        ChangeNotifierProvider<SensorAvailabilityService>.value(
+          value: sensorAvailabilityService,
+        ),
       ],
       child: const CaptainVFRApp(),
     ),
@@ -436,7 +468,9 @@ class _CaptainVFRAppState extends State<CaptainVFRApp> {
       _navigatorKey.currentState?.pushReplacement(
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) =>
-              const ConnectivityBanner(child: MapScreen()),
+              const SensorNotificationsWrapper(
+                child: ConnectivityBanner(child: MapScreen()),
+              ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },

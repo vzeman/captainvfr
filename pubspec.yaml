@@ -33,7 +33,8 @@ dependencies:
 
   # UI Components
   cupertino_icons: ^1.0.8
-  flutter_map: ^8.1.1
+  flutter_map: ^8.2.1
+  font_awesome_flutter: ^10.7.0
   
   # Location & Sensors
   geolocator: ^14.0.1
@@ -140,11 +141,27 @@ flutter:
   # Assets for the application
   assets:
     - assets/images/
+    - assets/icons/
     - assets/map_style/
     
-  # Map assets for offline use
-  # Uncomment and configure these paths after adding map tiles
-  # - assets/map_tiles/
+    # Bundled OpenAIP data (compressed)
+    - assets/data/airports_min.json.gz
+    - assets/data/airspaces_min.json.gz
+    - assets/data/reporting_points_min.json.gz
+    
+    # Bundled OurAirports data (compressed)
+    - assets/data/frequencies_min.json.gz
+    - assets/data/navaids_min.json.gz
+    - assets/data/runways_min.json.gz
+    
+    # Pre-built spatial indexes (compressed)
+    - assets/data/airspaces_index.json.gz
+    - assets/data/airports_index.json.gz
+    - assets/data/reporting_points_index.json.gz
+    
+    # Map assets for offline use
+    # Uncomment and configure these paths after adding map tiles
+    # - assets/map_tiles/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

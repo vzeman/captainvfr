@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../models/airport.dart';
 
 class AirportMarker extends StatelessWidget {
@@ -31,7 +32,8 @@ class AirportMarker extends StatelessWidget {
 
     // The visual size of the marker based on zoom
     // Use the size parameter which is already adjusted for zoom
-    final visualSize = size;
+    // Make heliport and balloonport markers slightly larger to accommodate their special icons
+    final visualSize = (airport.type == 'heliport' || airport.type == 'balloonport') ? size * 1.2 : size;
 
     // Weather indicator dot size
     final weatherDotSize = visualSize * 0.3;
@@ -66,7 +68,14 @@ class AirportMarker extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Icon(icon, size: visualSize * 0.6, color: color),
+                child: airport.type == 'heliport' 
+                    ? Center(
+                        child: Transform.translate(
+                          offset: Offset(visualSize * 0.02, visualSize * 0.02), // Slight offset to compensate for icon's visual weight
+                          child: FaIcon(FontAwesomeIcons.helicopter, size: visualSize * 0.45, color: color),
+                        ),
+                      )
+                    : Icon(icon, size: visualSize * 0.6, color: color),
               ),
             ),
 
@@ -95,7 +104,9 @@ class AirportMarker extends StatelessWidget {
   IconData _getAirportIcon(String type) {
     switch (type) {
       case 'heliport':
-        return Icons.adjust; // Circular target-like icon representing helipad
+        return Icons.circle; // Circle represents helipad landing area
+      case 'balloonport':
+        return Icons.cloud_circle; // Cloud-like icon for balloonports (balloon alternative)
       case 'seaplane_base':
         return Icons.airplanemode_active;
       case 'large_airport':

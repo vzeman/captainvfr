@@ -133,6 +133,9 @@ class Navaid {
     );
   }
 
+  /// Create from JSON (alias for fromMap for consistency)
+  factory Navaid.fromJson(Map<String, dynamic> json) => Navaid.fromMap(json);
+
   /// Get frequency in MHz for display
   double get frequencyMhz => frequencyKhz / 1000.0;
 

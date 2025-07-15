@@ -4,12 +4,12 @@ import '../../models/runway.dart';
 import '../../models/frequency.dart';
 import '../../services/weather_service.dart';
 import '../../services/runway_service.dart';
-import '../../services/frequency_service.dart';
+import '../../services/bundled_frequency_service.dart';
 
 class AirportDataFetcher {
   final WeatherService weatherService;
   final RunwayService runwayService;
-  final FrequencyService frequencyService;
+  final BundledFrequencyService frequencyService;
 
   AirportDataFetcher({
     required this.weatherService,

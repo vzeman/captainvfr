@@ -1,5 +1,6 @@
 import 'package:latlong2/latlong.dart';
 import 'dart:convert';
+import 'openaip_runway.dart';
 
 class Airport {
   final String icao;
@@ -144,6 +145,11 @@ class Airport {
     } catch (e) {
       return [];
     }
+  }
+  
+  // Get OpenAIP runway objects
+  List<OpenAIPRunway> get openAIPRunways {
+    return runwaysList.map((r) => OpenAIPRunway.fromJson(r)).toList();
   }
 
   // Communication frequencies

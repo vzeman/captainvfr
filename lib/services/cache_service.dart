@@ -1,7 +1,7 @@
 import 'dart:developer' as developer;
 import 'dart:io' show Platform;
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show ChangeNotifier, kIsWeb;
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/airport.dart';
@@ -10,6 +10,7 @@ import '../models/runway.dart';
 import '../models/frequency.dart';
 import '../models/airspace.dart';
 import '../models/reporting_point.dart';
+import '../utils/performance_monitor.dart';
 
 /// Cache service for storing airports, navaids, runways, frequencies, airspaces, and reporting points locally
 class CacheService extends ChangeNotifier {
@@ -294,40 +295,62 @@ class CacheService extends ChangeNotifier {
     await _ensureInitialized();
 
     try {
-      developer.log('💾 Appending ${airspaces.length} airspaces to cache...');
-      developer.log(
-        '📊 Current box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}',
-      );
+      // Track performance of this operation
+      await PerformanceMonitor().measureAsync(
+        'appendAirspaces_${airspaces.length}',
+        () async {
+          developer.log('💾 Appending ${airspaces.length} airspaces to cache...');
+          developer.log(
+            '📊 Current box status: isOpen=${_airspacesBox.isOpen}, length=${_airspacesBox.length}',
+          );
 
-      // Cache airspaces as maps without clearing
-      Set<String> uniqueIds = {};
+          // Cache airspaces as maps without clearing
+          Set<String> uniqueIds = {};
+          
+          // Batch operations to reduce UI blocking
+          const batchSize = 50;
+          for (int i = 0; i < airspaces.length; i += batchSize) {
+            final batch = airspaces.skip(i).take(batchSize).toList();
+            
+            // Track each batch
+            PerformanceMonitor().startOperation('airspace_batch_${i ~/ batchSize}');
+            
+            for (final airspace in batch) {
+              try {
+                final json = airspace.toJson();
 
-      for (final airspace in airspaces) {
-        try {
-          final json = airspace.toJson();
+                // Check for duplicate IDs in this batch
+                if (uniqueIds.contains(airspace.id)) {
+                  developer.log(
+                    '⚠️ Duplicate airspace ID found in batch: ${airspace.id}',
+                  );
+                }
+                uniqueIds.add(airspace.id);
 
-          // Check for duplicate IDs in this batch
-          if (uniqueIds.contains(airspace.id)) {
-            developer.log(
-              '⚠️ Duplicate airspace ID found in batch: ${airspace.id}',
-            );
+                await _airspacesBox.put(airspace.id, json);
+              } catch (e) {
+                developer.log('⚠️ Error caching airspace ${airspace.id}: $e');
+              }
+            }
+            
+            PerformanceMonitor().endOperation();
+            
+            // Allow UI to update between batches
+            if (i + batchSize < airspaces.length) {
+              await Future.delayed(const Duration(milliseconds: 1));
+            }
           }
-          uniqueIds.add(airspace.id);
 
-          await _airspacesBox.put(airspace.id, json);
-        } catch (e) {
-          developer.log('⚠️ Error caching airspace ${airspace.id}: $e');
-        }
-      }
+          // Update last fetch timestamp
+          await _metadataBox.put(
+            _airspacesLastFetchKey,
+            DateTime.now().toIso8601String(),
+          );
 
-      // Update last fetch timestamp
-      await _metadataBox.put(
-        _airspacesLastFetchKey,
-        DateTime.now().toIso8601String(),
+          // Notify listeners about data change
+          notifyListeners();
+        },
       );
-
-      // Notify listeners about data change
-      notifyListeners();
     } catch (e) {
       developer.log('❌ Error appending airspaces: $e');
       developer.log('❌ Stack trace: ${StackTrace.current}');
@@ -610,7 +633,7 @@ class CacheService extends ChangeNotifier {
       );
 
       // iOS-specific: Force flush to disk
-      if (Platform.isIOS) {
+      if (!kIsWeb && Platform.isIOS) {
         await _reportingPointsBox.flush();
         await _metadataBox.flush();
       }
@@ -630,37 +653,59 @@ class CacheService extends ChangeNotifier {
     await _ensureInitialized();
 
     try {
-      developer.log(
-        '💾 Appending ${reportingPoints.length} reporting points to cache...',
+      // Track performance of this operation
+      await PerformanceMonitor().measureAsync(
+        'appendReportingPoints_${reportingPoints.length}',
+        () async {
+          developer.log(
+            '💾 Appending ${reportingPoints.length} reporting points to cache...',
+          );
+          developer.log(
+            '📊 Current box status: isOpen=${_reportingPointsBox.isOpen}, length=${_reportingPointsBox.length}',
+          );
+
+          // Batch operations to reduce UI blocking
+          const batchSize = 50;
+          for (int i = 0; i < reportingPoints.length; i += batchSize) {
+            final batch = reportingPoints.skip(i).take(batchSize).toList();
+            
+            // Track each batch
+            PerformanceMonitor().startOperation('points_batch_${i ~/ batchSize}');
+            
+            // Cache reporting points as maps without clearing
+            for (final point in batch) {
+              try {
+                await _reportingPointsBox.put(point.id, point.toJson());
+              } catch (e) {
+                developer.log('⚠️ Error caching reporting point ${point.id}: $e');
+              }
+            }
+            
+            PerformanceMonitor().endOperation();
+            
+            // Allow UI to update between batches
+            if (i + batchSize < reportingPoints.length) {
+              await Future.delayed(const Duration(milliseconds: 1));
+            }
+          }
+
+          // Update last fetch timestamp
+          await _metadataBox.put(
+            _reportingPointsLastFetchKey,
+            DateTime.now().toIso8601String(),
+          );
+
+          // iOS-specific: Force flush to disk
+          if (!kIsWeb && Platform.isIOS) {
+            await _reportingPointsBox.flush();
+            await _metadataBox.flush();
+          }
+
+
+          // Notify listeners about data change
+          notifyListeners();
+        },
       );
-      developer.log(
-        '📊 Current box status: isOpen=${_reportingPointsBox.isOpen}, length=${_reportingPointsBox.length}',
-      );
-
-      // Cache reporting points as maps without clearing
-      for (final point in reportingPoints) {
-        try {
-          await _reportingPointsBox.put(point.id, point.toJson());
-        } catch (e) {
-          developer.log('⚠️ Error caching reporting point ${point.id}: $e');
-        }
-      }
-
-      // Update last fetch timestamp
-      await _metadataBox.put(
-        _reportingPointsLastFetchKey,
-        DateTime.now().toIso8601String(),
-      );
-
-      // iOS-specific: Force flush to disk
-      if (Platform.isIOS) {
-        await _reportingPointsBox.flush();
-        await _metadataBox.flush();
-      }
-
-
-      // Notify listeners about data change
-      notifyListeners();
     } catch (e) {
       developer.log('❌ Error appending reporting points: $e');
       developer.log('❌ Stack trace: ${StackTrace.current}');

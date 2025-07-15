@@ -1,19 +1,17 @@
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:logger/logger.dart';
 
 /// Service for managing offline map tiles and caching
 class OfflineMapService {
   static const String _dbName = 'map_tiles.db';
   static const String _tableName = 'tiles';
-  static const int _maxZoomLevel = 16;
-  static const int _minZoomLevel = 4;
 
   final Logger _logger = Logger(
     level: Level.warning, // Only log warnings and errors in production
@@ -25,6 +23,13 @@ class OfflineMapService {
   /// Initialize the offline map service
   Future<void> initialize() async {
     if (_isInitialized) return;
+    
+    // Offline maps not supported on web
+    if (kIsWeb) {
+      _logger.i('Offline maps not supported on web platform');
+      _isInitialized = true;
+      return;
+    }
 
     try {
       final dbPath = await _getDatabasePath();
@@ -34,14 +39,14 @@ class OfflineMapService {
         onCreate: _createDatabase,
       );
       _isInitialized = true;
-      _logger.i('🗺️ Offline map service initialized');
+      _logger.i('📦 Offline map service initialized');
     } catch (e) {
-      _logger.e('❌ Error initializing offline map service: $e');
-      rethrow;
+      _logger.e('❌ Failed to initialize offline map service: $e');
+      throw Exception('Failed to initialize offline map service: $e');
     }
   }
 
-  /// Create the database table for storing tiles
+  /// Create the database schema
   Future<void> _createDatabase(Database db, int version) async {
     await db.execute('''
       CREATE TABLE $_tableName (
@@ -63,154 +68,208 @@ class OfflineMapService {
 
   /// Get the database path
   Future<String> _getDatabasePath() async {
+    if (kIsWeb) {
+      throw UnsupportedError('Offline maps not supported on web');
+    }
     final documentsDir = await getApplicationDocumentsDirectory();
     return path.join(documentsDir.path, _dbName);
   }
 
   /// Download and cache map tiles for a specific area
   Future<Map<String, int>> downloadAreaTiles({
-    required LatLng northEast,
-    required LatLng southWest,
+    required LatLngBounds bounds,
     required int minZoom,
     required int maxZoom,
-    required Function(int current, int total, int skipped, int downloaded)
-    onProgress,
     String tileServerUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    String userAgent = 'CaptainVFR/1.0',
+    Function(int current, int total, int skipped, int downloaded)? onProgress,
   }) async {
-    await initialize();
+    if (kIsWeb) {
+      return {'downloaded': 0, 'failed': 0, 'skipped': 0};
+    }
+    
+    if (!_isInitialized) await initialize();
 
-    // Reset cancellation flag at start of new download
-    _resetCancellation();
+    _isCancelled = false;
+    int downloadedCount = 0;
+    int failedCount = 0;
+    int skippedCount = 0;
 
-    if (minZoom < _minZoomLevel) minZoom = _minZoomLevel;
-    if (maxZoom > _maxZoomLevel) maxZoom = _maxZoomLevel;
-
-    _logger.i(
-      '🔄 Starting tile download for area: $southWest to $northEast, zoom: $minZoom-$maxZoom',
-    );
-
-    int totalTiles = 0;
+    // Calculate total tiles to download
+    final totalTiles = _calculateTotalTiles(bounds, minZoom, maxZoom);
     int processedTiles = 0;
-    int skippedTiles = 0;
-    int downloadedTiles = 0;
 
-    // Calculate total number of tiles to download
-    for (int zoom = minZoom; zoom <= maxZoom; zoom++) {
-      final bounds = _getTileBounds(northEast, southWest, zoom);
-      totalTiles +=
-          (bounds.maxX - bounds.minX + 1) * (bounds.maxY - bounds.minY + 1);
-    }
+    _logger.i('📥 Starting download of $totalTiles tiles');
 
-    _logger.i('📊 Total tiles to process: $totalTiles');
+    for (int z = minZoom; z <= maxZoom; z++) {
+      if (_isCancelled) break;
 
-    // Download tiles for each zoom level
-    for (int zoom = minZoom; zoom <= maxZoom; zoom++) {
-      // Check for cancellation at zoom level
-      if (_isCancelled) {
-        _logger.i('🛑 Download cancelled by user at zoom level $zoom');
-        throw Exception('Download cancelled by user');
-      }
+      final tileBounds = _getTileBounds(bounds, z);
+      
+      for (int x = tileBounds.minX; x <= tileBounds.maxX; x++) {
+        if (_isCancelled) break;
+        
+        for (int y = tileBounds.minY; y <= tileBounds.maxY; y++) {
+          if (_isCancelled) break;
 
-      final bounds = _getTileBounds(northEast, southWest, zoom);
-
-      for (int x = bounds.minX; x <= bounds.maxX; x++) {
-        // Check for cancellation at row level for more responsive cancellation
-        if (_isCancelled) {
-          _logger.i('🛑 Download cancelled by user');
-          throw Exception('Download cancelled by user');
-        }
-
-        for (int y = bounds.minY; y <= bounds.maxY; y++) {
-          try {
-            // Check if tile already exists
-            if (await _tileExists(zoom, x, y)) {
-              processedTiles++;
-              skippedTiles++;
-              onProgress(
-                processedTiles,
-                totalTiles,
-                skippedTiles,
-                downloadedTiles,
-              );
-              // No delay needed for skipped tiles
-              continue;
+          // Check if tile already exists
+          if (await hasTile(z, x, y)) {
+            skippedCount++;
+          } else {
+            // Download and save tile
+            final success = await _downloadAndSaveTile(
+              z: z,
+              x: x,
+              y: y,
+              tileServerUrl: tileServerUrl,
+              userAgent: userAgent,
+            );
+            
+            if (success) {
+              downloadedCount++;
+            } else {
+              failedCount++;
             }
-
-            // Download and store tile
-            await _downloadAndStoreTile(zoom, x, y, tileServerUrl);
-            processedTiles++;
-            downloadedTiles++;
-            onProgress(
-              processedTiles,
-              totalTiles,
-              skippedTiles,
-              downloadedTiles,
-            );
-
-            // Add small delay to avoid overwhelming the server (only for actual downloads)
-            await Future.delayed(const Duration(milliseconds: 50));
-          } catch (e) {
-            _logger.w('⚠️ Failed to download tile $zoom/$x/$y: $e');
-            processedTiles++;
-            onProgress(
-              processedTiles,
-              totalTiles,
-              skippedTiles,
-              downloadedTiles,
-            );
           }
+
+          processedTiles++;
+          
+          // Report progress
+          if (onProgress != null) {
+            onProgress(processedTiles, totalTiles, skippedCount, downloadedCount);
+          }
+
+          // Small delay to avoid overwhelming the server
+          await Future.delayed(const Duration(milliseconds: 50));
         }
       }
     }
 
     _logger.i(
-      '✅ Tile download completed: Downloaded $downloadedTiles, Skipped $skippedTiles (already cached), Total $processedTiles/$totalTiles',
+      '✅ Download complete: $downloadedCount downloaded, '
+      '$failedCount failed, $skippedCount skipped',
     );
 
     return {
-      'total': totalTiles,
-      'downloaded': downloadedTiles,
-      'skipped': skippedTiles,
-      'processed': processedTiles,
+      'downloaded': downloadedCount,
+      'failed': failedCount,
+      'skipped': skippedCount,
     };
   }
 
-  /// Get tile bounds for a geographic area at a specific zoom level
-  TileBounds _getTileBounds(LatLng northEast, LatLng southWest, int zoom) {
-    final nePoint = _latLngToTileCoordinates(
-      northEast.latitude,
-      northEast.longitude,
-      zoom,
-    );
-    final swPoint = _latLngToTileCoordinates(
-      southWest.latitude,
-      southWest.longitude,
-      zoom,
-    );
+  /// Cancel ongoing download
+  void cancelDownload() {
+    _isCancelled = true;
+    _logger.i('🛑 Download cancelled');
+  }
 
-    return TileBounds(
-      minX: swPoint.x.floor(),
-      maxX: nePoint.x.floor(),
-      minY: nePoint.y.floor(),
-      maxY: swPoint.y.floor(),
+  /// Download and save a single tile
+  Future<bool> _downloadAndSaveTile({
+    required int z,
+    required int x,
+    required int y,
+    required String tileServerUrl,
+    required String userAgent,
+  }) async {
+    try {
+      final url = tileServerUrl
+          .replaceAll('{z}', z.toString())
+          .replaceAll('{x}', x.toString())
+          .replaceAll('{y}', y.toString());
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'User-Agent': userAgent},
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        await saveTile(z, x, y, response.bodyBytes);
+        return true;
+      } else {
+        _logger.w('❌ Failed to download tile $z/$x/$y: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      _logger.e('❌ Error downloading tile $z/$x/$y: $e');
+      return false;
+    }
+  }
+
+  /// Calculate total number of tiles for an area
+  int _calculateTotalTiles(LatLngBounds bounds, int minZoom, int maxZoom) {
+    int total = 0;
+    for (int z = minZoom; z <= maxZoom; z++) {
+      final tileBounds = _getTileBounds(bounds, z);
+      final tilesX = tileBounds.maxX - tileBounds.minX + 1;
+      final tilesY = tileBounds.maxY - tileBounds.minY + 1;
+      total += tilesX * tilesY;
+    }
+    return total;
+  }
+
+  /// Get tile bounds for a geographic area at a specific zoom level
+  _TileBounds _getTileBounds(LatLngBounds bounds, int zoom) {
+    final minTile = _latLngToTile(bounds.southWest, zoom);
+    final maxTile = _latLngToTile(bounds.northEast, zoom);
+    
+    return _TileBounds(
+      minX: minTile.x.floor(),
+      minY: maxTile.y.floor(),
+      maxX: maxTile.x.floor(),
+      maxY: minTile.y.floor(),
     );
   }
 
-  /// Convert latitude/longitude to tile coordinates
-  TilePoint _latLngToTileCoordinates(double lat, double lng, int zoom) {
-    final n = (1 << zoom).toDouble();
-    final latRad = lat * (pi / 180);
-
-    final x = ((lng + 180) / 360) * n;
+  /// Convert lat/lng to tile coordinates
+  Point<double> _latLngToTile(LatLng latLng, int zoom) {
+    final n = pow(2, zoom);
+    final x = ((latLng.longitude + 180) / 360) * n;
+    final latRad = latLng.latitude * pi / 180;
     final y = (1 - (log(tan(latRad) + (1 / cos(latRad))) / pi)) / 2 * n;
+    return Point(x, y);
+  }
 
-    return TilePoint(x: x, y: y);
+  /// Save a tile to the database
+  Future<void> saveTile(int z, int x, int y, Uint8List data) async {
+    if (kIsWeb || _database == null) return;
+    
+    await _database!.insert(
+      _tableName,
+      {
+        'z': z,
+        'x': x,
+        'y': y,
+        'tile_data': data,
+        'download_time': DateTime.now().millisecondsSinceEpoch,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Get a tile from the database
+  Future<Uint8List?> getTile(int z, int x, int y) async {
+    if (kIsWeb || _database == null) return null;
+    
+    final result = await _database!.query(
+      _tableName,
+      columns: ['tile_data'],
+      where: 'z = ? AND x = ? AND y = ?',
+      whereArgs: [z, x, y],
+    );
+
+    if (result.isNotEmpty) {
+      return result.first['tile_data'] as Uint8List;
+    }
+    return null;
   }
 
   /// Check if a tile exists in the database
-  Future<bool> _tileExists(int z, int x, int y) async {
+  Future<bool> hasTile(int z, int x, int y) async {
+    if (kIsWeb || _database == null) return false;
+    
     final result = await _database!.query(
       _tableName,
+      columns: ['id'],
       where: 'z = ? AND x = ? AND y = ?',
       whereArgs: [z, x, y],
       limit: 1,
@@ -218,190 +277,126 @@ class OfflineMapService {
     return result.isNotEmpty;
   }
 
-  /// Download and store a single tile
-  Future<void> _downloadAndStoreTile(
-    int z,
-    int x,
-    int y,
-    String urlTemplate,
-  ) async {
-    final url = urlTemplate
-        .replaceAll('{z}', z.toString())
-        .replaceAll('{x}', x.toString())
-        .replaceAll('{y}', y.toString());
-
-    final response = await http.get(
-      Uri.parse(url),
-      headers: {'User-Agent': 'CaptainVFR/1.0.0'},
-    );
-
-    if (response.statusCode == 200) {
-      await _database!.insert(_tableName, {
-        'z': z,
-        'x': x,
-        'y': y,
-        'tile_data': response.bodyBytes,
-        'download_time': DateTime.now().millisecondsSinceEpoch,
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
-    } else {
-      throw Exception('HTTP ${response.statusCode}: Failed to download tile');
-    }
-  }
-
-  /// Store a tile directly (used by tile provider)
-  Future<void> storeTileDirectly(
-    int z,
-    int x,
-    int y,
-    Uint8List tileData,
-  ) async {
-    await initialize();
-
-    await _database!.insert(_tableName, {
-      'z': z,
-      'x': x,
-      'y': y,
-      'tile_data': tileData,
-      'download_time': DateTime.now().millisecondsSinceEpoch,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
-  }
-
-  /// Get a cached tile from the database
-  Future<Uint8List?> getCachedTile(int z, int x, int y) async {
-    await initialize();
-
-    final result = await _database!.query(
-      _tableName,
-      columns: ['tile_data'],
-      where: 'z = ? AND x = ? AND y = ?',
-      whereArgs: [z, x, y],
-      limit: 1,
-    );
-
-    if (result.isNotEmpty) {
-      return result.first['tile_data'] as Uint8List;
-    }
-
-    return null;
-  }
-
   /// Get statistics about cached tiles
   Future<Map<String, dynamic>> getCacheStatistics() async {
-    await initialize();
-
-    final totalTiles = await _database!.rawQuery(
+    if (kIsWeb || _database == null) {
+      return {
+        'totalTiles': 0,
+        'totalSizeBytes': 0,
+        'oldestTile': null,
+        'newestTile': null,
+      };
+    }
+    
+    final countResult = await _database!.rawQuery(
       'SELECT COUNT(*) as count FROM $_tableName',
     );
+    final count = countResult.first['count'] as int;
+
     final sizeResult = await _database!.rawQuery(
       'SELECT SUM(LENGTH(tile_data)) as size FROM $_tableName',
     );
-    final zoomStats = await _database!.rawQuery('''
-      SELECT z, COUNT(*) as count, SUM(LENGTH(tile_data)) as sizeBytes
-      FROM $_tableName 
-      GROUP BY z 
-      ORDER BY z
-    ''');
+    final size = sizeResult.first['size'] as int? ?? 0;
 
-    final totalCount = totalTiles.first['count'] as int;
-    final totalSize = sizeResult.first['size'] as int? ?? 0;
+    final oldestResult = await _database!.rawQuery(
+      'SELECT MIN(download_time) as oldest FROM $_tableName',
+    );
+    final oldest = oldestResult.first['oldest'] as int?;
 
-    // Convert zoom stats to the expected format
-    final Map<int, Map<String, int>> tilesByZoom = {};
-    for (final row in zoomStats) {
-      final zoom = row['z'] as int;
-      final count = row['count'] as int;
-      final sizeBytes = row['sizeBytes'] as int? ?? 0;
-      tilesByZoom[zoom] = {
-        'count': count,
-        'sizeBytes': sizeBytes,
-      };
-    }
+    final newestResult = await _database!.rawQuery(
+      'SELECT MAX(download_time) as newest FROM $_tableName',
+    );
+    final newest = newestResult.first['newest'] as int?;
 
     return {
-      'tileCount': totalCount,
-      'totalSizeBytes': totalSize,
-      'tilesByZoom': tilesByZoom,
+      'totalTiles': count,
+      'totalSizeBytes': size,
+      'oldestTile': oldest != null
+          ? DateTime.fromMillisecondsSinceEpoch(oldest)
+          : null,
+      'newestTile': newest != null
+          ? DateTime.fromMillisecondsSinceEpoch(newest)
+          : null,
     };
   }
 
   /// Clear all cached tiles
   Future<void> clearCache() async {
-    await initialize();
+    if (kIsWeb || _database == null) return;
+    
     await _database!.delete(_tableName);
-    _logger.i('🗑️ Map tile cache cleared');
+    _logger.i('🗑️ Cleared all cached tiles');
   }
 
-  /// Clear old tiles (older than specified days)
+  /// Clear old cached tiles
   Future<void> clearOldTiles(int daysOld) async {
-    await initialize();
-
+    if (kIsWeb || _database == null) return;
+    
     final cutoffTime = DateTime.now()
         .subtract(Duration(days: daysOld))
         .millisecondsSinceEpoch;
+    
     final deletedCount = await _database!.delete(
       _tableName,
       where: 'download_time < ?',
       whereArgs: [cutoffTime],
     );
-
+    
     _logger.i('🗑️ Cleared $deletedCount old tiles (older than $daysOld days)');
   }
 
   /// Check if device has sufficient storage for download
   Future<bool> hasEnoughStorage(int estimatedTiles) async {
+    if (kIsWeb) {
+      return false; // No offline storage on web
+    }
+    
     try {
       final dir = await getApplicationDocumentsDirectory();
       final stat = await dir.stat();
-
+      
       // Estimate ~20KB per tile on average
       final estimatedSizeBytes = estimatedTiles * 20 * 1024;
-
+      
       // Check if we have at least 2x the estimated size available
       return stat.size > estimatedSizeBytes * 2;
     } catch (e) {
-      _logger.w('⚠️ Could not check storage: $e');
-      return true; // Assume we have enough storage if we can't check
+      _logger.e('❌ Error checking storage: $e');
+      return false;
     }
   }
 
-  /// Cancel the current download operation
-  void cancelDownload() {
-    _isCancelled = true;
-    _logger.i('📊 Download cancellation requested');
+  /// Get a cached tile (alias for getTile for compatibility)
+  Future<Uint8List?> getCachedTile(int z, int x, int y) async {
+    return getTile(z, x, y);
   }
 
-  /// Reset cancellation flag
-  void _resetCancellation() {
-    _isCancelled = false;
+  /// Store a tile directly (alias for saveTile for compatibility)
+  Future<void> storeTileDirectly(int z, int x, int y, Uint8List data) async {
+    await saveTile(z, x, y, data);
   }
 
-  /// Dispose of resources
+  /// Close the database connection
   Future<void> dispose() async {
-    await _database?.close();
-    _database = null;
-    _isInitialized = false;
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+      _isInitialized = false;
+    }
   }
 }
 
 /// Helper class for tile bounds
-class TileBounds {
+class _TileBounds {
   final int minX;
-  final int maxX;
   final int minY;
+  final int maxX;
   final int maxY;
 
-  TileBounds({
+  _TileBounds({
     required this.minX,
-    required this.maxX,
     required this.minY,
+    required this.maxX,
     required this.maxY,
   });
-}
-
-/// Helper class for tile coordinates
-class TilePoint {
-  final double x;
-  final double y;
-
-  TilePoint({required this.x, required this.y});
 }

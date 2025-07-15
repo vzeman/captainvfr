@@ -114,15 +114,47 @@ class Airspace extends HiveObject implements SpatialIndexable {
       if (limit == null) return null;
       if (limit is num) return limit.toDouble();
       if (limit is Map && limit['value'] != null) {
-        return (limit['value'] as num).toDouble();
+        final value = (limit['value'] as num).toDouble();
+        final unit = limit['unit'];
+        
+        // Convert to feet based on unit code
+        if (unit is num) {
+          switch (unit) {
+            case 1: return value;           // Already in feet
+            case 6: return value * 100;     // Hundreds of feet (FL)
+            case 2: return value * 3.28084; // Meters to feet
+            default: return value;          // Assume feet
+          }
+        }
+        return value;
       }
       return null;
     }
 
     String? parseAltitudeReference(dynamic limit) {
       if (limit == null) return null;
-      if (limit is Map && limit['reference'] != null) {
-        return limit['reference'].toString();
+      if (limit is Map) {
+        // Check if this is a flight level based on unit
+        final unit = limit['unit'];
+        if (unit is num && unit == 6) {
+          return 'FL';  // Flight Level
+        }
+        
+        // Handle both 'reference' and 'referenceDatum' field names
+        final refValue = limit['reference'] ?? limit['referenceDatum'];
+        if (refValue != null) {
+          // Convert numeric reference codes to text
+          if (refValue is num) {
+            switch (refValue) {
+              case 0: return 'MSL';  // Mean Sea Level
+              case 1: return 'AGL';  // Above Ground Level  
+              case 2: return 'MSL';  // MSL variant
+              case 3: return 'FL';   // Flight Level
+              default: return 'MSL';
+            }
+          }
+          return refValue.toString();
+        }
       }
       return 'MSL';
     }
@@ -195,12 +227,22 @@ class Airspace extends HiveObject implements SpatialIndexable {
   String get formattedLowerLimit {
     if (lowerLimitFt == null) return 'GND';
     final ref = lowerLimitReference ?? 'MSL';
+    if (ref == 'FL') {
+      // For flight levels, show as FL XXX (convert feet back to flight level)
+      final flNumber = (lowerLimitFt! / 100).toStringAsFixed(0);
+      return 'FL$flNumber';
+    }
     return '${lowerLimitFt!.toStringAsFixed(0)} ft $ref';
   }
 
   String get formattedUpperLimit {
     if (upperLimitFt == null) return 'UNL';
     final ref = upperLimitReference ?? 'MSL';
+    if (ref == 'FL') {
+      // For flight levels, show as FL XXX (convert feet back to flight level)
+      final flNumber = (upperLimitFt! / 100).toStringAsFixed(0);
+      return 'FL$flNumber';
+    }
     return '${upperLimitFt!.toStringAsFixed(0)} ft $ref';
   }
 

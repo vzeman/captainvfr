@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import '../models/navaid.dart';
 import 'cache_service.dart';
+import 'bundled_navaid_service.dart';
 
 class NavaidService {
   static const String _baseUrl =
@@ -15,19 +16,33 @@ class NavaidService {
   List<Navaid> _navaids = [];
   bool _isLoading = false;
   final CacheService _cacheService = CacheService();
+  final BundledNavaidService _bundledService = BundledNavaidService();
+  bool _useBundledData = true;
 
   // Singleton pattern
   static final NavaidService _instance = NavaidService._internal();
   factory NavaidService() => _instance;
   NavaidService._internal();
 
-  bool get isLoading => _isLoading;
-  List<Navaid> get navaids => List.unmodifiable(_navaids);
+  bool get isLoading => _isLoading || _bundledService.isLoading;
+  List<Navaid> get navaids => _useBundledData ? _bundledService.navaids : List.unmodifiable(_navaids);
 
   /// Initialize the service and load cached data
   Future<void> initialize() async {
     await _cacheService.initialize();
-    await _loadFromCache();
+    
+    // Try bundled data first
+    await _bundledService.initialize();
+    
+    // If bundled data is available, use it
+    if (_bundledService.navaids.isNotEmpty) {
+      developer.log('✅ Using bundled navaid data (${_bundledService.navaids.length} navaids)');
+      _useBundledData = true;
+    } else {
+      // Fall back to old method
+      _useBundledData = false;
+      await _loadFromCache();
+    }
   }
 
   /// Load navaids from cache if available
@@ -43,13 +58,23 @@ class NavaidService {
   /// Force refresh data from network
   Future<void> refreshData() async {
     developer.log('🔄 Force refreshing navaids data...');
-    await _cacheService.clearNavaidsCache();
-    _navaids.clear();
-    await fetchNavaids(forceRefresh: true);
+    
+    if (_useBundledData) {
+      await _bundledService.refreshData();
+    } else {
+      await _cacheService.clearNavaidsCache();
+      _navaids.clear();
+      await fetchNavaids(forceRefresh: true);
+    }
   }
 
   /// Fetch all navaids from OurAirports
   Future<void> fetchNavaids({bool forceRefresh = false}) async {
+    if (_useBundledData) {
+      await _bundledService.fetchNavaids(forceRefresh: forceRefresh);
+      return;
+    }
+    
     if (_isLoading) {
       developer.log('⏳ Already loading navaids, skipping...');
       return;
@@ -57,12 +82,10 @@ class NavaidService {
 
     // If we already have navaids and not forcing refresh, no need to fetch again
     if (_navaids.isNotEmpty && !forceRefresh) {
-      developer.log('✅ Using cached navaids (${_navaids.length} navaids)');
       return;
     }
 
     _isLoading = true;
-    developer.log('🧭 Fetching all navaids...');
 
     try {
       final stopwatch = Stopwatch()..start();
@@ -162,6 +185,10 @@ class NavaidService {
 
   /// Get navaids within a bounding box
   List<Navaid> getNavaidsInBounds(LatLng southWest, LatLng northEast) {
+    if (_useBundledData) {
+      return _bundledService.getNavaidsInBounds(southWest, northEast);
+    }
+    
     return _navaids.where((navaid) {
       final lat = navaid.position.latitude;
       final lng = navaid.position.longitude;
@@ -175,6 +202,10 @@ class NavaidService {
 
   /// Find navaids near a position
   List<Navaid> findNavaidsNearby(LatLng position, {double radiusKm = 50.0}) {
+    if (_useBundledData) {
+      return _bundledService.findNavaidsNearby(position, radiusKm: radiusKm);
+    }
+    
     if (_navaids.isEmpty) return [];
 
     return _navaids.where((navaid) {
@@ -190,6 +221,10 @@ class NavaidService {
 
   /// Search navaids by identifier or name
   List<Navaid> searchNavaids(String query) {
+    if (_useBundledData) {
+      return _bundledService.searchNavaids(query);
+    }
+    
     if (query.isEmpty) return [];
 
     final searchQuery = query.toLowerCase().trim();
@@ -210,6 +245,10 @@ class NavaidService {
 
   /// Find navaid by exact identifier
   Navaid? findNavaidByIdent(String ident) {
+    if (_useBundledData) {
+      return _bundledService.findNavaidByIdent(ident);
+    }
+    
     try {
       return _navaids.firstWhere(
         (navaid) => navaid.ident.toLowerCase() == ident.toLowerCase(),
@@ -221,6 +260,10 @@ class NavaidService {
 
   /// Get navaids by type
   List<Navaid> getNavaidsByType(String type) {
+    if (_useBundledData) {
+      return _bundledService.getNavaidsByType(type);
+    }
+    
     return _navaids
         .where((navaid) => navaid.type.toLowerCase() == type.toLowerCase())
         .toList();
@@ -245,17 +288,22 @@ class NavaidService {
   }
 
   double _toRadians(double degrees) {
-    return degrees * pi / 180;
+    return degrees * 3.141592653589793 / 180;
   }
 
   /// Clean up resources
   void dispose() {
     _navaids.clear();
+    _bundledService.dispose();
   }
 
   /// Force reload navaids data
   Future<void> forceReload() async {
-    _navaids.clear();
-    await fetchNavaids(forceRefresh: true);
+    if (_useBundledData) {
+      await _bundledService.forceReload();
+    } else {
+      _navaids.clear();
+      await fetchNavaids(forceRefresh: true);
+    }
   }
 }

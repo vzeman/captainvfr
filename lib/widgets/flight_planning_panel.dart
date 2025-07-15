@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/flight_plan_service.dart';
 import '../services/aircraft_settings_service.dart';
 import '../services/settings_service.dart';
@@ -29,12 +30,15 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
   String? _selectedAircraftId;
   int? _selectedWaypointIndex;
   Timer? _autosaveTimer;
-  bool _isWaypointTableExpanded = true; // Track waypoint table expanded state
+  bool _isWaypointTableExpanded = false; // Track waypoint table expanded state - default collapsed
+  
+  static const String _waypointTableExpandedKey = 'waypoint_table_expanded';
 
   @override
   void initState() {
     super.initState();
     _isExpanded = widget.isExpanded ?? true;
+    _loadWaypointTableState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final flightPlanService = context.read<FlightPlanService>();
       final aircraftService = context.read<AircraftSettingsService>();
@@ -131,7 +135,7 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
         color: Colors.transparent,
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xB3000000), // Black with 0.7 opacity
+            color: const Color(0xE6000000), // Black with 0.9 opacity (less transparent)
             borderRadius: BorderRadius.circular(12.0),
             border: Border.all(
               color: const Color(0x7F448AFF),
@@ -249,7 +253,7 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
             child: Row(
               children: [
                 Text(
-                  'Edit Mode',
+                  'Edit',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.7),
                     fontSize: 12,
@@ -335,6 +339,7 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
                       setState(() {
                         _isWaypointTableExpanded = expanded;
                       });
+                      _saveWaypointTableState(expanded);
                     },
                     onWaypointSelected: (index) {
                       setState(() {
@@ -631,6 +636,29 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
         flightPlanService.saveCurrentFlightPlan();
       }
     });
+  }
+
+  Future<void> _loadWaypointTableState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isExpanded = prefs.getBool(_waypointTableExpandedKey) ?? false;
+      if (mounted) {
+        setState(() {
+          _isWaypointTableExpanded = isExpanded;
+        });
+      }
+    } catch (e) {
+      // Keep default state if loading fails
+    }
+  }
+
+  Future<void> _saveWaypointTableState(bool isExpanded) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_waypointTableExpandedKey, isExpanded);
+    } catch (e) {
+      // Ignore save errors
+    }
   }
 
 }

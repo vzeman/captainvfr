@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart' as path_provider;
 import 'package:hive/hive.dart';
@@ -13,12 +14,17 @@ class FlightStorageService {
   static Future<void> init() async {
     if (_initialized) return;
 
-    // Initialize Hive with a valid directory in your app
-    final appDocumentDir = await path_provider
-        .getApplicationDocumentsDirectory();
-
-    // Initialize Hive
-    Hive.init(appDocumentDir.path);
+    if (kIsWeb) {
+      // For web, Hive will use IndexedDB automatically
+      // No need to specify a directory
+    } else {
+      // Initialize Hive with a valid directory in your app
+      final appDocumentDir = await path_provider
+          .getApplicationDocumentsDirectory();
+      
+      // Initialize Hive
+      Hive.init(appDocumentDir.path);
+    }
 
     // Register adapters only if not already registered
     if (!Hive.isAdapterRegistered(0)) {

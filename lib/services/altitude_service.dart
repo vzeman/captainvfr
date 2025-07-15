@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:logger/logger.dart';
 
@@ -61,9 +62,12 @@ class AltitudeService {
 
     try {
       // Check if barometer is available on the device
-      if (Platform.isIOS || Platform.isAndroid) {
+      if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
         _isBarometerAvailable = await _checkBarometerAvailability();
         _logger.i('Barometer available: $_isBarometerAvailable');
+      } else if (kIsWeb) {
+        _logger.i('Barometer not available on web platform');
+        _isBarometerAvailable = false;
       }
       _isInitialized = true;
     } catch (e) {
@@ -74,6 +78,11 @@ class AltitudeService {
 
   /// Check if barometer is available on the device
   Future<bool> _checkBarometerAvailability() async {
+    // Not available on web
+    if (kIsWeb) {
+      return false;
+    }
+    
     try {
       if (Platform.isIOS) {
         // On iOS, we can use the altimeter API
@@ -101,7 +110,7 @@ class AltitudeService {
     _logger.i('Starting altitude tracking');
 
     try {
-      if (_isBarometerAvailable) {
+      if (_isBarometerAvailable && !kIsWeb) {
         if (Platform.isIOS) {
           // Use iOS altimeter API
           final stream = await _channel.invokeMethod<Stream>(

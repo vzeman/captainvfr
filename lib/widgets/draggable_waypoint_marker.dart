@@ -49,47 +49,54 @@ class _DraggableWaypointMarkerState extends State<DraggableWaypointMarker> {
 
   @override
   Widget build(BuildContext context) {
-    return Listener(
-      onPointerDown: (event) {
-        if (widget.isSelected && widget.isEditMode) {
-          setState(() {
-            _isDragging = true;
-            _lastPosition = event.position;
-          });
-          widget.onDraggingChanged?.call(true);
-        } else {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque, // This prevents tap from going through
+      onTap: () {
+        // Handle tap only when not dragging
+        if (!_isDragging) {
           widget.onWaypointTapped(widget.waypointIndex);
         }
       },
-      onPointerMove: (event) {
-        if (_isDragging && _lastPosition != null) {
-          // Update position during drag (visual feedback only)
-          setState(() {
-            _lastPosition = event.position;
-          });
-        }
-      },
-      onPointerUp: (event) {
-        if (_isDragging) {
-          // Calculate and apply the new position
-          _applyNewPosition(event.position);
-          setState(() {
-            _isDragging = false;
-            _lastPosition = null;
-          });
-          widget.onDraggingChanged?.call(false);
-        }
-      },
-      onPointerCancel: (event) {
-        if (_isDragging) {
-          setState(() {
-            _isDragging = false;
-            _lastPosition = null;
-          });
-          widget.onDraggingChanged?.call(false);
-        }
-      },
-      child: MouseRegion(
+      child: Listener(
+        behavior: HitTestBehavior.opaque, // Also prevent pointer events from going through
+        onPointerDown: (event) {
+          if (widget.isSelected && widget.isEditMode) {
+            setState(() {
+              _isDragging = true;
+              _lastPosition = event.position;
+            });
+            widget.onDraggingChanged?.call(true);
+          }
+        },
+        onPointerMove: (event) {
+          if (_isDragging && _lastPosition != null) {
+            // Update position during drag (visual feedback only)
+            setState(() {
+              _lastPosition = event.position;
+            });
+          }
+        },
+        onPointerUp: (event) {
+          if (_isDragging) {
+            // Calculate and apply the new position
+            _applyNewPosition(event.position);
+            setState(() {
+              _isDragging = false;
+              _lastPosition = null;
+            });
+            widget.onDraggingChanged?.call(false);
+          }
+        },
+        onPointerCancel: (event) {
+          if (_isDragging) {
+            setState(() {
+              _isDragging = false;
+              _lastPosition = null;
+            });
+            widget.onDraggingChanged?.call(false);
+          }
+        },
+        child: MouseRegion(
         cursor: widget.isSelected && widget.isEditMode
             ? (_isDragging
                   ? SystemMouseCursors.grabbing
@@ -125,6 +132,7 @@ class _DraggableWaypointMarkerState extends State<DraggableWaypointMarker> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

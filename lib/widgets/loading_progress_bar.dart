@@ -16,8 +16,13 @@ class _LoadingProgressBarState extends State<LoadingProgressBar> {
   Widget build(BuildContext context) {
     return Consumer<BackgroundDataService>(
       builder: (context, dataService, child) {
-        if (_isDismissed ||
-            (!dataService.isLoading && dataService.isFullyLoaded)) {
+        // Hide if user dismissed
+        if (_isDismissed) {
+          return const SizedBox.shrink();
+        }
+        
+        // Hide if not loading and airports are loaded (most important data)
+        if (!dataService.isLoading && dataService.loadedData['airports'] == true) {
           return const SizedBox.shrink();
         }
 

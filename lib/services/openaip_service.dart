@@ -1,8 +1,12 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
+import 'dart:io' show gzip;
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:archive/archive.dart';
 import '../models/airspace.dart';
 import '../models/reporting_point.dart';
 import '../config/api_config.dart';
@@ -20,6 +24,9 @@ class OpenAIPService {
   final CacheService _cacheService = CacheService();
   String? _apiKey;
   bool _initialized = false;
+  bool _bundledDataLoaded = false;
+  bool _bundledAirspacesLoaded = false;
+  bool _bundledReportingPointsLoaded = false;
 
   /// Check if API key is available (either user-provided or default)
   bool get hasApiKey => _apiKey != null && _apiKey!.isNotEmpty;
@@ -49,6 +56,9 @@ class OpenAIPService {
         developer.log('⚠️ No OpenAIP API key configured');
       }
 
+      // Try to load bundled data first
+      await _loadBundledData();
+      
       if (_apiKey != null && _apiKey!.isNotEmpty) {
         // Start loading in background without blocking initialization
         // This allows the map to show immediately
@@ -87,23 +97,223 @@ class OpenAIPService {
         '📍 Initial cache check: ${cachedPoints.length} reporting points found',
       );
 
-      if (cachedPoints.isEmpty) {
+      if (cachedPoints.isEmpty && !_bundledDataLoaded) {
         developer.log(
           '📍 No cached reporting points found, will load progressively as needed',
         );
         // Don't load all points at startup - let the map load them progressively
-      } else {
-        developer.log('✅ Found ${cachedPoints.length} cached reporting points');
       }
     } catch (e) {
       developer.log('❌ Error checking reporting points cache: $e');
+    }
+  }
+  
+  /// Load bundled data from assets
+  Future<void> _loadBundledData() async {
+    try {
+      developer.log('📦 Attempting to load bundled OpenAIP data...');
+      
+      // Try compressed data first, fallback to uncompressed
+      await _loadCompressedData();
+      
+      if (!_bundledDataLoaded) {
+        await _loadUncompressedData();
+      }
+      
+      if (_bundledDataLoaded) {
+        developer.log('🎉 Successfully loaded bundled OpenAIP data!');
+      } else {
+        developer.log('📡 No bundled data found, will fetch from API when needed');
+      }
+    } catch (e) {
+      developer.log('❌ Error loading bundled data: $e');
+    }
+  }
+  
+  /// Load compressed bundled data
+  Future<void> _loadCompressedData() async {
+    // Load compressed airspaces
+    try {
+      final airspacesBytes = await rootBundle.load('assets/data/airspaces_min.json.gz');
+      final compressedData = airspacesBytes.buffer.asUint8List();
+      
+      // Use platform-appropriate decompression
+      List<int> decompressed;
+      if (kIsWeb) {
+        // Use archive package for web
+        decompressed = GZipDecoder().decodeBytes(compressedData);
+      } else {
+        // Use dart:io gzip for native platforms
+        decompressed = gzip.decode(compressedData);
+      }
+      
+      final jsonString = utf8.decode(decompressed);
+      final data = json.decode(jsonString);
+      
+      if (data['airspaces'] != null) {
+        final List<dynamic> items = data['airspaces'];
+        final airspaces = items.map((item) => _parseMinifiedAirspace(item)).toList();
+        
+        if (airspaces.isNotEmpty) {
+          await _cacheService.cacheAirspaces(airspaces);
+          developer.log('✅ Loaded ${airspaces.length} airspaces from compressed data');
+          _bundledAirspacesLoaded = true;
+          _bundledDataLoaded = true;
+        }
+      }
+    } catch (e) {
+      developer.log('⚠️ Could not load compressed airspaces: $e');
+    }
+    
+    // Load compressed reporting points
+    try {
+      final pointsBytes = await rootBundle.load('assets/data/reporting_points_min.json.gz');
+      final compressedData = pointsBytes.buffer.asUint8List();
+      
+      // Use platform-appropriate decompression
+      List<int> decompressed;
+      if (kIsWeb) {
+        // Use archive package for web
+        decompressed = GZipDecoder().decodeBytes(compressedData);
+      } else {
+        // Use dart:io gzip for native platforms
+        decompressed = gzip.decode(compressedData);
+      }
+      
+      final jsonString = utf8.decode(decompressed);
+      final data = json.decode(jsonString);
+      
+      if (data['reporting_points'] != null) {
+        final List<dynamic> items = data['reporting_points'];
+        final points = items.map((item) => _parseMinifiedReportingPoint(item)).toList();
+        
+        if (points.isNotEmpty) {
+          await _cacheService.cacheReportingPoints(points);
+          developer.log('✅ Loaded ${points.length} reporting points from compressed data');
+          _bundledReportingPointsLoaded = true;
+          _bundledDataLoaded = true;
+        }
+      }
+    } catch (e) {
+      developer.log('⚠️ Could not load compressed reporting points: $e');
+    }
+  }
+  
+  /// Parse minified airspace data
+  Airspace _parseMinifiedAirspace(Map<String, dynamic> data) {
+    final expanded = <String, dynamic>{
+      '_id': data['_id'],
+      'name': data['name'],
+      'type': data['type'],
+      'icaoClass': data['icaoClass'],
+      'activity': data['activity'],
+      'geometry': data['geometry'],
+    };
+    
+    // Expand altitude limits to match expected format
+    if (data['altLimit'] != null) {
+      final alt = data['altLimit'];
+      
+      // Convert to expected lowerLimit/upperLimit format
+      if (alt['b'] != null) {
+        expanded['lowerLimit'] = {
+          'value': alt['b']?['v'],
+          'unit': alt['b']?['u'],
+          'reference': alt['b']?['r'],
+        };
+      }
+      
+      if (alt['t'] != null) {
+        expanded['upperLimit'] = {
+          'value': alt['t']?['v'],
+          'unit': alt['t']?['u'],
+          'reference': alt['t']?['r'],
+        };
+      }
+    }
+    
+    // Optional fields
+    if (data['country'] != null) expanded['country'] = data['country'];
+    if (data['onDemand'] != null) expanded['onDemand'] = data['onDemand'];
+    if (data['onRequest'] != null) expanded['onRequest'] = data['onRequest'];
+    if (data['schedule'] != null) expanded['schedule'] = data['schedule'];
+    
+    return Airspace.fromJson(expanded);
+  }
+  
+  /// Parse minified reporting point data
+  ReportingPoint _parseMinifiedReportingPoint(Map<String, dynamic> data) {
+    final expanded = <String, dynamic>{
+      '_id': data['_id'],
+      'name': data['name'],
+      'type': data['type'],
+    };
+    
+    // Expand geometry
+    if (data['g'] != null && data['g'].length >= 2) {
+      expanded['geometry'] = {
+        'type': 'Point',
+        'coordinates': data['g'], // [lon, lat]
+      };
+    }
+    
+    // Optional fields
+    if (data['country'] != null) expanded['country'] = data['country'];
+    if (data['desc'] != null) expanded['description'] = data['desc'];
+    if (data['airport'] != null) expanded['airport'] = data['airport'];
+    
+    return ReportingPoint.fromJson(expanded);
+  }
+  
+  /// Load uncompressed bundled data (fallback)
+  Future<void> _loadUncompressedData() async {
+    // Load airspaces
+    try {
+      final airspacesJson = await rootBundle.loadString('assets/data/airspaces.json');
+      final airspacesData = json.decode(airspacesJson);
+      
+      if (airspacesData['airspaces'] != null) {
+        final List<dynamic> airspacesList = airspacesData['airspaces'];
+        final airspaces = airspacesList.map((json) => Airspace.fromJson(json)).toList();
+        
+        if (airspaces.isNotEmpty) {
+          await _cacheService.cacheAirspaces(airspaces);
+          developer.log('✅ Loaded ${airspaces.length} airspaces from bundled data');
+          developer.log('📅 Data generated at: ${airspacesData['generated_at']}');
+          _bundledAirspacesLoaded = true;
+          _bundledDataLoaded = true;
+        }
+      }
+    } catch (e) {
+      developer.log('⚠️ Could not load bundled airspaces: $e');
+    }
+    
+    // Load reporting points
+    try {
+      final pointsJson = await rootBundle.loadString('assets/data/reporting_points.json');
+      final pointsData = json.decode(pointsJson);
+      
+      if (pointsData['reporting_points'] != null) {
+        final List<dynamic> pointsList = pointsData['reporting_points'];
+        final points = pointsList.map((json) => ReportingPoint.fromJson(json)).toList();
+        
+        if (points.isNotEmpty) {
+          await _cacheService.cacheReportingPoints(points);
+          developer.log('✅ Loaded ${points.length} reporting points from bundled data');
+          developer.log('📅 Data generated at: ${pointsData['generated_at']}');
+          _bundledReportingPointsLoaded = true;
+          _bundledDataLoaded = true;
+        }
+      }
+    } catch (e) {
+      developer.log('⚠️ Could not load bundled reporting points: $e');
     }
   }
 
   Future<void> _initializeAirspaces() async {
     try {
       final cachedAirspaces = await getCachedAirspaces();
-      if (cachedAirspaces.isEmpty) {
+      if (cachedAirspaces.isEmpty && !_bundledDataLoaded) {
         developer.log(
           '🌍 No cached airspaces found, will load progressively as needed',
         );
@@ -533,6 +743,13 @@ class OpenAIPService {
     required double maxLon,
     Function()? onDataLoaded,
   }) async {
+    // If bundled airspace data is loaded, we already have all airspaces
+    if (_bundledAirspacesLoaded) {
+      developer.log('📦 Using bundled airspace data for bounds');
+      onDataLoaded?.call();
+      return;
+    }
+    
     if (_apiKey == null || _apiKey!.isEmpty) {
       developer.log('❌ No API key for progressive airspace loading');
       return;
@@ -555,13 +772,11 @@ class OpenAIPService {
           );
         }).toList();
 
-        // If we have some data, use it first
-        if (airspacesInBounds.isNotEmpty) {
-          developer.log(
-            '📦 Found ${airspacesInBounds.length} cached airspaces for bounds',
-          );
+        // If we have bundled data or significant data for this area, use it
+        if (airspacesInBounds.isNotEmpty && cachedAirspaces.length > 1000) {
+          developer.log('📍 Found ${airspacesInBounds.length} airspaces in bounds from cache');
           onDataLoaded?.call();
-          return; // We have data, no need to fetch more for this area
+          return;
         }
       }
 
@@ -595,6 +810,14 @@ class OpenAIPService {
 
   // Load all airspace tiles in background
   Future<void> _loadAllAirspaceTilesInBackground() async {
+    // Skip if bundled airspace data is loaded
+    if (_bundledAirspacesLoaded) {
+      developer.log(
+        '📦 Using bundled airspace data, skipping API download',
+      );
+      return;
+    }
+    
     // Check if we already have airspaces cached
     final cachedAirspaces = await getCachedAirspaces();
     if (cachedAirspaces.length > 1000) {
@@ -739,6 +962,14 @@ class OpenAIPService {
 
   // Load all reporting points in background
   Future<void> _loadAllReportingPointsInBackground() async {
+    // Skip if bundled reporting points data is loaded
+    if (_bundledReportingPointsLoaded) {
+      developer.log(
+        '📦 Using bundled reporting points data, skipping API download',
+      );
+      return;
+    }
+    
     // Check if we already have points cached
     final cachedPoints = await getCachedReportingPoints();
     if (cachedPoints.length > 1000) {
@@ -795,9 +1026,6 @@ class OpenAIPService {
 
         // If we have some data, use it first
         if (pointsInBounds.isNotEmpty) {
-          developer.log(
-            '📦 Found ${pointsInBounds.length} cached reporting points for bounds',
-          );
           onDataLoaded?.call();
           return; // We have data, no need to fetch more for this area
         }

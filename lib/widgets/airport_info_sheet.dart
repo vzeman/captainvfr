@@ -7,7 +7,7 @@ import '../models/frequency.dart';
 import '../services/weather_service.dart';
 import '../services/weather_interpretation_service.dart';
 import '../services/runway_service.dart';
-import '../services/frequency_service.dart';
+import '../services/bundled_frequency_service.dart';
 import 'airport_info_sheet/airport_info_tab.dart';
 import 'airport_info_sheet/airport_weather_tab.dart';
 import 'airport_info_sheet/airport_runways_tab.dart';
@@ -67,7 +67,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet>
     super.didChangeDependencies();
     // Get services from Provider and initialize data fetcher
     final runwayService = Provider.of<RunwayService>(context, listen: false);
-    final frequencyService = Provider.of<FrequencyService>(
+    final frequencyService = Provider.of<BundledFrequencyService>(
       context,
       listen: false,
     );

@@ -1,11 +1,16 @@
 import 'dart:async';
 import 'dart:math' show pi;
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:logger/logger.dart';
 import 'flight_log_screen.dart';
 import 'offline_data_screen.dart';
 import 'flight_plans_screen.dart';
@@ -36,8 +41,9 @@ import '../widgets/flight_plan_overlay.dart';
 import '../widgets/flight_planning_panel.dart';
 import '../widgets/license_warning_widget.dart';
 import '../widgets/floating_waypoint_panel.dart';
-import '../widgets/spatial_airspaces_overlay.dart';
+import '../widgets/optimized_spatial_airspaces_overlay.dart';
 import '../widgets/airspace_flight_info.dart';
+import '../utils/frame_aware_scheduler.dart';
 import '../services/openaip_service.dart';
 import '../services/spatial_airspace_service.dart';
 import '../services/settings_service.dart';
@@ -58,6 +64,9 @@ class MapScreen extends StatefulWidget {
 
 class MapScreenState extends State<MapScreen>
     with SingleTickerProviderStateMixin {
+  // Logger
+  final Logger _logger = Logger(level: Level.warning);
+  
   // SharedPreferences key for flight planning panel state
   static const String _keyFlightPlanningExpanded = 'flight_planning_expanded';
   
@@ -162,7 +171,7 @@ class MapScreenState extends State<MapScreen>
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   // Map settings
-  static const double _initialZoom = 12.0;
+  static const double _initialZoom = 9.0; // 3 steps zoomed out from 12.0
   static const double _maxZoom = 18.0;
   static const double _minZoom = 3.0;
 
@@ -171,6 +180,11 @@ class MapScreenState extends State<MapScreen>
   Timer? _autoCenteringTimer;
   static const Duration _autoCenteringDelay = Duration(minutes: 3);
   bool _wasTracking = false;
+  
+  // Position tracking control
+  bool _positionTrackingEnabled = false;
+  Timer? _positionUpdateTimer;
+  static const Duration _positionUpdateInterval = Duration(seconds: 3);
 
   @override
   void initState() {
@@ -181,6 +195,17 @@ class MapScreenState extends State<MapScreen>
 
     // Load flight planning panel state from SharedPreferences
     _loadFlightPlanningPanelState();
+
+    // Add performance monitoring in debug mode
+    if (kDebugMode) {
+      SchedulerBinding.instance.addTimingsCallback((timings) {
+        for (final timing in timings) {
+          if (timing.totalSpan.inMilliseconds > 16) {
+            debugPrint('⚠️ Slow frame: ${timing.totalSpan.inMilliseconds}ms');
+          }
+        }
+      });
+    }
 
     // Start location loading in background without blocking UI
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -382,6 +407,9 @@ class MapScreenState extends State<MapScreen>
 
   @override
   void dispose() {
+    // Cancel all scheduled operations
+    FrameAwareScheduler().cancelAll();
+    
     _flightService.removeListener(_onFlightPathUpdated);
     _flightPlanService.removeListener(_onFlightPlanUpdated);
     _cacheService.removeListener(_onCacheUpdated);
@@ -389,6 +417,7 @@ class MapScreenState extends State<MapScreen>
     _airspaceDebounceTimer?.cancel();
     _notamPrefetchTimer?.cancel();
     _autoCenteringTimer?.cancel();
+    _positionUpdateTimer?.cancel();
     _mapController.dispose();
     _flightService.dispose();
     _spatialAirspaceService?.dispose();
@@ -562,8 +591,8 @@ class MapScreenState extends State<MapScreen>
     // Cancel any pending debounce timer
     _debounceTimer?.cancel();
 
-    // Set a new debounce timer (300ms delay)
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
+    // Set a new debounce timer (500ms delay for better performance)
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
       if (!mounted) return;
 
       try {
@@ -822,7 +851,8 @@ class MapScreenState extends State<MapScreen>
           _airspaces = airspaces;
         });
         
-        // Spatial index will be updated automatically by the service
+        // Rebuild spatial index with new data
+        await spatialAirspaceService.rebuildIndex();
       }
     } catch (e) {
       // debugPrint('❌ Error refreshing airspaces display: $e');
@@ -884,14 +914,29 @@ class MapScreenState extends State<MapScreen>
     }
   }
 
-  // Center map on current location
-  Future<void> _centerOnLocation() async {
+  // Toggle position tracking
+  Future<void> _togglePositionTracking() async {
+    setState(() {
+      _positionTrackingEnabled = !_positionTrackingEnabled;
+    });
+
+    if (_positionTrackingEnabled) {
+      // Start position tracking
+      await _startPositionTracking();
+    } else {
+      // Stop position tracking
+      _stopPositionTracking();
+    }
+  }
+
+  // Start position tracking
+  Future<void> _startPositionTracking() async {
+    // First, center on current location
     try {
       final position = await _locationService.getLastKnownOrCurrentLocation();
       if (mounted) {
         setState(() {
           _currentPosition = position;
-          // Re-enable auto-centering when user manually centers
           _autoCenteringEnabled = true;
         });
 
@@ -906,10 +951,57 @@ class MapScreenState extends State<MapScreen>
       }
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _positionTrackingEnabled = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not get current location')),
         );
+        return;
       }
+    }
+
+    // Start periodic position updates
+    _positionUpdateTimer?.cancel();
+    _positionUpdateTimer = Timer.periodic(_positionUpdateInterval, (_) async {
+      if (_positionTrackingEnabled && _autoCenteringEnabled && !_flightService.isTracking) {
+        await _updateCurrentPosition();
+      }
+    });
+  }
+
+  // Stop position tracking
+  void _stopPositionTracking() {
+    _positionUpdateTimer?.cancel();
+    _positionUpdateTimer = null;
+  }
+
+  // Update current position
+  Future<void> _updateCurrentPosition() async {
+    try {
+      final position = await _locationService.getLastKnownOrCurrentLocation();
+      if (mounted && _positionTrackingEnabled && _autoCenteringEnabled) {
+        setState(() {
+          _currentPosition = position;
+        });
+
+        final settingsService = context.read<SettingsService>();
+        
+        if (settingsService.rotateMapWithHeading) {
+          _mapController.moveAndRotate(
+            LatLng(position.latitude, position.longitude),
+            _mapController.camera.zoom,
+            -position.heading,
+          );
+        } else {
+          _mapController.move(
+            LatLng(position.latitude, position.longitude),
+            _mapController.camera.zoom,
+          );
+        }
+      }
+    } catch (e) {
+      // Silently ignore errors during periodic updates
     }
   }
 
@@ -1482,6 +1574,27 @@ class MapScreenState extends State<MapScreen>
       14.0, // Zoom level for airport focus
     );
 
+    // Handle auto-centering state the same way as manual map movement
+    if (_autoCenteringEnabled && _positionTrackingEnabled) {
+      setState(() {
+        _autoCenteringEnabled = false;
+      });
+      // Cancel any existing timer
+      _autoCenteringTimer?.cancel();
+      // Handle differently based on tracking mode
+      if (_flightService.isTracking) {
+        // During flight tracking, re-enable after 3 minutes
+        _autoCenteringTimer = Timer(_autoCenteringDelay, () {
+          if (mounted && _flightService.isTracking) {
+            setState(() {
+              _autoCenteringEnabled = true;
+            });
+          }
+        });
+      }
+      // For non-tracking mode, auto-centering stays disabled until manually re-enabled
+    }
+
     // Load airports in the new area
     _loadAirports();
 
@@ -1838,9 +1951,17 @@ class MapScreenState extends State<MapScreen>
       await _airportService.initialize();
       await _navaidService.initialize();
 
-      // Initialize offline map service
-      _offlineMapService = OfflineMapService();
-      await _offlineMapService!.initialize(); // Use ! since we just assigned it
+      // Initialize offline map service only on supported platforms
+      if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
+        try {
+          _offlineMapService = OfflineMapService();
+          await _offlineMapService!.initialize();
+        } catch (e) {
+          // Handle initialization errors gracefully
+          _logger.w('Offline maps not available: ${e.toString().split('(')[0]}');
+          // Continue without offline maps - they're optional
+        }
+      }
 
       // Only set servicesInitialized to true after all async initialization completes
       if (mounted) {
@@ -1871,8 +1992,8 @@ class MapScreenState extends State<MapScreen>
           return false;
         }
         
-        // Filter heliports based on toggle
-        if (airport.type == 'heliport' && !_showHeliports) {
+        // Filter heliports and balloonports based on toggle
+        if ((airport.type == 'heliport' || airport.type == 'balloonport') && !_showHeliports) {
           return false;
         }
         // Filter small airports based on toggle
@@ -1958,7 +2079,7 @@ class MapScreenState extends State<MapScreen>
               onPositionChanged: (position, hasGesture) {
                 if (hasGesture) {
                   // Disable auto-centering when user manually moves the map
-                  if (_autoCenteringEnabled && _flightService.isTracking) {
+                  if (_autoCenteringEnabled) {
                     setState(() {
                       _autoCenteringEnabled = false;
                     });
@@ -1966,32 +2087,67 @@ class MapScreenState extends State<MapScreen>
                     // Cancel any existing timer
                     _autoCenteringTimer?.cancel();
 
-                    // Start a new timer to re-enable auto-centering after 3 minutes
-                    _autoCenteringTimer = Timer(_autoCenteringDelay, () {
-                      if (mounted && _flightService.isTracking) {
-                        setState(() {
-                          _autoCenteringEnabled = true;
-                        });
-                      }
-                    });
+                    // Handle differently based on tracking mode
+                    if (_flightService.isTracking) {
+                      // During flight tracking, re-enable after 3 minutes
+                      _autoCenteringTimer = Timer(_autoCenteringDelay, () {
+                        if (mounted && _flightService.isTracking) {
+                          setState(() {
+                            _autoCenteringEnabled = true;
+                          });
+                        }
+                      });
+                    } else if (_positionTrackingEnabled) {
+                      // During position tracking, don't automatically re-enable
+                      // User must tap the button again to re-enable
+                      // Position tracking continues but map doesn't follow
+                    }
                   }
 
-                  _loadAirports();
-                  // Also load navaids if they're enabled
+                  // Use frame-aware scheduler for staggered loading
+                  final scheduler = FrameAwareScheduler();
+                  
+                  // Load airports first (highest priority)
+                  scheduler.scheduleOperation(
+                    id: 'load_airports',
+                    operation: _loadAirports,
+                    debounce: const Duration(milliseconds: 300),
+                    highPriority: true,
+                  );
+                  
+                  // Load navaids with delay
                   if (_showNavaids) {
-                    _loadNavaids();
+                    scheduler.scheduleOperation(
+                      id: 'load_navaids',
+                      operation: _loadNavaids,
+                      debounce: const Duration(milliseconds: 600),
+                    );
                   }
-                  // Load airspaces and reporting points if they're enabled
+                  
+                  // Reporting points with more delay
                   if (_showAirspaces) {
-                    _loadAirspaces();
-                    _loadReportingPoints();
+                    scheduler.scheduleOperation(
+                      id: 'load_reporting_points',
+                      operation: _loadReportingPoints,
+                      debounce: const Duration(milliseconds: 800),
+                    );
                   }
-                  // Load weather data for new airports if METAR overlay is enabled
+                  
+                  // Weather data with even more delay
                   if (_showMetar) {
-                    _loadWeatherForVisibleAirports();
+                    scheduler.scheduleOperation(
+                      id: 'load_weather',
+                      operation: _loadWeatherForVisibleAirports,
+                      debounce: const Duration(milliseconds: 1000),
+                    );
                   }
-                  // Prefetch NOTAMs for visible airports
-                  _schedulePrefetchVisibleAirportNotams();
+                  
+                  // NOTAMs with lowest priority
+                  scheduler.scheduleOperation(
+                    id: 'prefetch_notams',
+                    operation: _schedulePrefetchVisibleAirportNotams,
+                    debounce: const Duration(milliseconds: 1500),
+                  );
                 }
               },
             ),
@@ -2009,9 +2165,9 @@ class MapScreenState extends State<MapScreen>
                       )
                     : null,
               ),
-              // Airspaces overlay (spatial indexed)
+              // Airspaces overlay (optimized with debouncing)
               if (_showAirspaces)
-                SpatialAirspacesOverlay(
+                OptimizedSpatialAirspacesOverlay(
                   spatialService: spatialAirspaceService,
                   showAirspacesLayer: _showAirspaces,
                   onAirspaceTap: _onAirspaceSelected,
@@ -2026,8 +2182,8 @@ class MapScreenState extends State<MapScreen>
               // Airport markers with tap handling (optimized)
               OptimizedAirportMarkersLayer(
                 airports: _airports.where((airport) {
-                  // Filter heliports based on toggle
-                  if (airport.type == 'heliport' && !_showHeliports) {
+                  // Filter heliports and balloonports based on toggle
+                  if ((airport.type == 'heliport' || airport.type == 'balloonport') && !_showHeliports) {
                     return false;
                   }
                   // Filter small airports based on toggle
@@ -2365,9 +2521,7 @@ class MapScreenState extends State<MapScreen>
                         },
                       ),
                       _buildLayerToggle(
-                        icon: _showHeliports
-                            ? Icons.adjust
-                            : Icons.radio_button_unchecked,
+                        icon: FontAwesomeIcons.helicopter,
                         tooltip: 'Toggle Heliports',
                         isActive: _showHeliports,
                         onPressed: _toggleHeliports,
@@ -2876,13 +3030,17 @@ class MapScreenState extends State<MapScreen>
                   ),
                   IconButton(
                     icon: Icon(
-                      Icons.my_location,
-                      color: _autoCenteringEnabled ? Colors.black : Colors.grey,
+                      _positionTrackingEnabled ? Icons.gps_fixed : Icons.gps_not_fixed,
+                      color: _positionTrackingEnabled 
+                          ? (_autoCenteringEnabled ? Colors.blue : Colors.orange)
+                          : Colors.grey,
                     ),
-                    onPressed: _centerOnLocation,
-                    tooltip: _autoCenteringEnabled
-                        ? 'Center on location'
-                        : 'Center on location (auto-centering paused)',
+                    onPressed: _togglePositionTracking,
+                    tooltip: _positionTrackingEnabled
+                        ? (_autoCenteringEnabled 
+                            ? 'Position tracking active (tap to disable)'
+                            : 'Position tracking paused by map movement (tap to disable)')
+                        : 'Enable position tracking',
                   ),
                   IconButton(
                     icon: Icon(
@@ -2924,23 +3082,42 @@ class MapScreenState extends State<MapScreen>
               ),
             ),
 
-          // Error message
+          // Error message (dismissible)
           if (_errorMessage.isNotEmpty)
             Positioned(
               top: 100,
               left: 20,
               right: 20,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.red[100],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red),
-                ),
-                child: Text(
-                  _errorMessage,
-                  style: const TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.red[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _errorMessage,
+                          style: const TextStyle(color: Colors.red),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.red, size: 20),
+                        onPressed: () {
+                          setState(() {
+                            _errorMessage = '';
+                          });
+                        },
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -3007,9 +3184,10 @@ class MapScreenState extends State<MapScreen>
                             final panelWidth = isPhone
                                 ? screenSize.width - 16
                                 : 600;
+                            // Use actual panel heights that match FlightPlanningPanel constraints
                             final panelHeight = _flightPlanningExpanded
-                                ? 600
-                                : 50;
+                                ? 400  // Reduced from 600 - more realistic for most cases
+                                : 60;  // Match the actual collapsed height from FlightPlanningPanel
 
                             // Constrain position
                             final minMargin = isPhone ? 8.0 : 16.0;
@@ -3067,6 +3245,7 @@ class MapScreenState extends State<MapScreen>
                           flightPlanService.currentFlightPlan!.waypoints.length)
                     FloatingWaypointPanel(
                       waypointIndex: _selectedWaypointIndex!,
+                      isEditMode: flightPlanService.isPlanning,
                       onClose: () {
                         setState(() {
                           _selectedWaypointIndex = null;
@@ -3174,7 +3353,9 @@ class MapScreenState extends State<MapScreen>
     required VoidCallback onPressed,
   }) {
     return IconButton(
-      icon: Icon(icon, color: isActive ? Colors.blue : Colors.black),
+      icon: icon == FontAwesomeIcons.helicopter 
+          ? FaIcon(icon, color: isActive ? Colors.blue : Colors.black, size: 20)
+          : Icon(icon, color: isActive ? Colors.blue : Colors.black),
       tooltip: tooltip,
       onPressed: onPressed,
     );

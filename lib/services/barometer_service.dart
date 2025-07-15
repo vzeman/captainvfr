@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:logger/logger.dart';
 
@@ -77,6 +78,12 @@ class BarometerService {
 
   /// Check if barometer sensor is available
   Future<bool> _checkBarometerAvailability() async {
+    // Barometer is not available on web
+    if (kIsWeb) {
+      _logger.i('Barometer not available on web platform');
+      return false;
+    }
+    
     try {
       return await _methodChannel.invokeMethod('isBarometerAvailable') ?? false;
     } on PlatformException catch (e) {
@@ -101,8 +108,10 @@ class BarometerService {
 
     try {
       if (_isBarometerAvailable) {
-        // Start native barometer sensor
-        await _methodChannel.invokeMethod('startPressureUpdates');
+        // Start native barometer sensor (not on web)
+        if (!kIsWeb) {
+          await _methodChannel.invokeMethod('startPressureUpdates');
+        }
 
         // Listen for pressure updates via event channel
         _sensorSubscription = _eventChannel.receiveBroadcastStream().listen(
@@ -264,7 +273,7 @@ class BarometerService {
       // Clear the pressure window to prevent stale data
       _pressureWindow.clear();
 
-      if (_isBarometerAvailable) {
+      if (_isBarometerAvailable && !kIsWeb) {
         await _methodChannel.invokeMethod('stopPressureUpdates');
       }
     } catch (e) {

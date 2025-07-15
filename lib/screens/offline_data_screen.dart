@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:flutter_map/flutter_map.dart';
 import '../services/offline_map_service.dart';
 import '../services/cache_service.dart';
 import '../services/airport_service.dart';
 import '../services/navaid_service.dart';
-import '../services/runway_service.dart';
-import '../services/frequency_service.dart';
 import '../services/weather_service.dart';
 import '../services/openaip_service.dart';
 import '../utils/form_theme_helper.dart';
@@ -24,8 +23,6 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
   final CacheService _cacheService = CacheService();
   final AirportService _airportService = AirportService();
   final NavaidService _navaidService = NavaidService();
-  final RunwayService _runwayService = RunwayService();
-  final FrequencyService _frequencyService = FrequencyService();
   final WeatherService _weatherService = WeatherService();
   final OpenAIPService _openAIPService = OpenAIPService();
 
@@ -55,6 +52,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
   @override
   void initState() {
     super.initState();
+    // RunwayService is already initialized
     _loadAllCacheStats();
     _loadApiKey();
   }
@@ -335,8 +333,8 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       final futures = [
         _airportService.refreshData(),
         _navaidService.refreshData(),
-        _runwayService.fetchRunways(forceRefresh: true),
-        _frequencyService.fetchFrequencies(forceRefresh: true),
+        // Runways are now bundled with airports from OpenAIP
+        // Frequencies are now bundled from OurAirports data
         _weatherService.forceReload(),
       ];
 
@@ -846,8 +844,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
 
     try {
       await _offlineMapService.downloadAreaTiles(
-        northEast: northEast,
-        southWest: southWest,
+        bounds: LatLngBounds(northEast, southWest),
         minZoom: _minZoom,
         maxZoom: _maxZoom,
         onProgress: (current, total, skipped, downloaded) {

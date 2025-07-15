@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import '../models/runway.dart';
 import 'cache_service.dart';
+import 'bundled_runway_service.dart';
 
 class RunwayService {
   static const String _baseUrl =
@@ -12,19 +13,33 @@ class RunwayService {
   List<Runway> _runways = [];
   bool _isLoading = false;
   final CacheService _cacheService = CacheService();
+  final BundledRunwayService _bundledService = BundledRunwayService();
+  bool _useBundledData = true;
 
   // Singleton pattern
   static final RunwayService _instance = RunwayService._internal();
   factory RunwayService() => _instance;
   RunwayService._internal();
 
-  bool get isLoading => _isLoading;
-  List<Runway> get runways => List.unmodifiable(_runways);
+  bool get isLoading => _isLoading || _bundledService.isLoading;
+  List<Runway> get runways => _useBundledData ? _bundledService.runways : List.unmodifiable(_runways);
 
   /// Initialize the service and load cached data
   Future<void> initialize() async {
     await _cacheService.initialize();
-    await _loadCachedRunways();
+    
+    // Try bundled data first
+    await _bundledService.initialize();
+    
+    // If bundled data is available, use it
+    if (_bundledService.runways.isNotEmpty) {
+      developer.log('✅ Using bundled runway data (${_bundledService.runways.length} runways)');
+      _useBundledData = true;
+    } else {
+      // Fall back to old method
+      _useBundledData = false;
+      await _loadCachedRunways();
+    }
   }
 
   /// Load runways from cache
@@ -42,6 +57,11 @@ class RunwayService {
 
   /// Fetch runways from remote source
   Future<void> fetchRunways({bool forceRefresh = false}) async {
+    if (_useBundledData) {
+      await _bundledService.fetchRunways(forceRefresh: forceRefresh);
+      return;
+    }
+    
     if (_isLoading) return;
 
     // Check if we need to refresh
@@ -155,6 +175,10 @@ class RunwayService {
 
   /// Get runways for a specific airport
   List<Runway> getRunwaysForAirport(String airportIdent) {
+    if (_useBundledData) {
+      return _bundledService.getRunwaysForAirport(airportIdent);
+    }
+    
     return _runways
         .where(
           (runway) =>
@@ -165,6 +189,10 @@ class RunwayService {
 
   /// Get runways for multiple airports
   Map<String, List<Runway>> getRunwaysForAirports(List<String> airportIdents) {
+    if (_useBundledData) {
+      return _bundledService.getRunwaysForAirports(airportIdents);
+    }
+    
     final result = <String, List<Runway>>{};
 
     for (final ident in airportIdents) {

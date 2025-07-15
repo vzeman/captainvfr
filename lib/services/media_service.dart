@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
@@ -32,6 +33,9 @@ class MediaService {
 
   // Get app's documents directory
   Future<Directory> _getAppDirectory() async {
+    if (kIsWeb) {
+      throw UnsupportedError('File storage not supported on web');
+    }
     final directory = await getApplicationDocumentsDirectory();
     return directory;
   }

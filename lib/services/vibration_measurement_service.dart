@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:logger/logger.dart';
 
@@ -36,10 +37,16 @@ class VibrationMeasurementService {
     try {
       _logger.d('Initializing VibrationMeasurementService');
 
+      // Skip accelerometer on web platform
+      if (kIsWeb) {
+        _logger.i('Accelerometer not supported on web platform');
+        return;
+      }
+
       // Check if accelerometer is available
       final isAvailable = await _checkAccelerometerAvailable();
       if (!isAvailable) {
-        _logger.w('Accelerometer not available on this device');
+        _logger.i('Accelerometer not available on this device');
         return;
       }
 
@@ -48,7 +55,7 @@ class VibrationMeasurementService {
 
       _logger.d('VibrationMeasurementService initialized');
     } catch (e) {
-      _logger.e('Failed to initialize VibrationMeasurementService', error: e);
+      _logger.d('Failed to initialize VibrationMeasurementService', error: e);
     }
   }
 
@@ -74,7 +81,7 @@ class VibrationMeasurementService {
         ).listen(
           _processAccelerometerEvent,
           onError: (error) {
-            _logger.e('Accelerometer error', error: error);
+            _logger.d('Accelerometer error', error: error);
           },
         );
   }
