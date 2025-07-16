@@ -27,6 +27,10 @@ class OpenAIPService {
   bool _bundledDataLoaded = false;
   bool _bundledAirspacesLoaded = false;
   bool _bundledReportingPointsLoaded = false;
+  
+  // In-memory cache for reporting points (similar to airports)
+  List<ReportingPoint> _reportingPointsInMemory = [];
+  bool _reportingPointsLoaded = false;
 
   /// Check if API key is available (either user-provided or default)
   bool get hasApiKey => _apiKey != null && _apiKey!.isNotEmpty;
@@ -190,6 +194,11 @@ class OpenAIPService {
         if (points.isNotEmpty) {
           await _cacheService.cacheReportingPoints(points);
           developer.log('✅ Loaded ${points.length} reporting points from compressed data');
+          
+          // Also populate in-memory cache
+          _reportingPointsInMemory = points;
+          _reportingPointsLoaded = true;
+          
           _bundledReportingPointsLoaded = true;
           _bundledDataLoaded = true;
         }
@@ -301,6 +310,11 @@ class OpenAIPService {
           await _cacheService.cacheReportingPoints(points);
           developer.log('✅ Loaded ${points.length} reporting points from bundled data');
           developer.log('📅 Data generated at: ${pointsData['generated_at']}');
+          
+          // Also populate in-memory cache
+          _reportingPointsInMemory = points;
+          _reportingPointsLoaded = true;
+          
           _bundledReportingPointsLoaded = true;
           _bundledDataLoaded = true;
         }
@@ -1007,27 +1021,27 @@ class OpenAIPService {
     required double maxLon,
     Function()? onDataLoaded,
   }) async {
+    // First check in-memory cache (fast path)
+    if (_reportingPointsLoaded && _reportingPointsInMemory.isNotEmpty) {
+      // No need to reload - data is already in memory
+      onDataLoaded?.call();
+      return;
+    }
+    
     if (_apiKey == null || _apiKey!.isEmpty) {
       developer.log('❌ No API key for progressive reporting points loading');
       return;
     }
 
     try {
-      // Check if we already have data for this area in cache
-      final cachedPoints = await getCachedReportingPoints();
-
-      if (cachedPoints.isNotEmpty) {
-        final pointsInBounds = cachedPoints.where((point) {
-          return point.position.latitude >= minLat &&
-              point.position.latitude <= maxLat &&
-              point.position.longitude >= minLon &&
-              point.position.longitude <= maxLon;
-        }).toList();
-
-        // If we have some data, use it first
-        if (pointsInBounds.isNotEmpty) {
+      // Load from cache if not already in memory
+      if (!_reportingPointsLoaded) {
+        final cachedPoints = await getCachedReportingPoints();
+        
+        if (cachedPoints.isNotEmpty) {
+          // Data is now in memory, notify callback
           onDataLoaded?.call();
-          return; // We have data, no need to fetch more for this area
+          return; // We have data loaded
         }
       }
 
@@ -1394,9 +1408,16 @@ class OpenAIPService {
       if (append) {
         await _cacheService.appendReportingPoints(reportingPoints);
         developer.log('✅ Appended ${reportingPoints.length} reporting points');
+        
+        // Update in-memory cache by appending new points
+        _reportingPointsInMemory.addAll(reportingPoints);
       } else {
         await _cacheService.cacheReportingPoints(reportingPoints);
         developer.log('✅ Cached ${reportingPoints.length} reporting points');
+        
+        // Update in-memory cache completely
+        _reportingPointsInMemory = reportingPoints;
+        _reportingPointsLoaded = true;
       }
     } catch (e) {
       developer.log('❌ Error caching reporting points: $e');
@@ -1404,13 +1425,45 @@ class OpenAIPService {
   }
 
   Future<List<ReportingPoint>> getCachedReportingPoints() async {
+    // Return from memory if already loaded
+    if (_reportingPointsLoaded && _reportingPointsInMemory.isNotEmpty) {
+      return _reportingPointsInMemory;
+    }
+    
     try {
       final cached = await _cacheService.getCachedReportingPoints();
+      
+      // Store in memory for fast access
+      _reportingPointsInMemory = cached;
+      _reportingPointsLoaded = true;
+      
       return cached;
     } catch (e) {
       developer.log('❌ Error retrieving cached reporting points: $e');
       return [];
     }
+  }
+
+  /// Get reporting points in bounds - optimized for performance
+  List<ReportingPoint> getReportingPointsInBounds({
+    required double minLat,
+    required double minLon,
+    required double maxLat,
+    required double maxLon,
+  }) {
+    // Direct in-memory filtering (similar to airports)
+    if (!_reportingPointsLoaded || _reportingPointsInMemory.isEmpty) {
+      return [];
+    }
+    
+    return _reportingPointsInMemory.where((point) {
+      final lat = point.position.latitude;
+      final lng = point.position.longitude;
+      return lat >= minLat &&
+             lat <= maxLat &&
+             lng >= minLon &&
+             lng <= maxLon;
+    }).toList();
   }
 
   Future<List<ReportingPoint>> searchReportingPoints(String query) async {

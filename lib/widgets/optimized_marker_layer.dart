@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
 import '../models/reporting_point.dart';
@@ -103,17 +104,70 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
           .where((a) => a.type == 'large_airport')
           .toList();
     } else if (currentZoom < 9) {
-      // Show large and medium airports (hide small airports and heliports)
+      // Show large and medium airports (hide small airports, heliports, and balloonports)
       visibleAirports = airports
           .where((a) => a.type == 'large_airport' || a.type == 'medium_airport')
           .toList();
-    } else if (currentZoom < 9) {
-      // Show all airports except heliports
+    } else if (currentZoom < 11) {
+      // Show all airports except heliports and balloonports (they need higher zoom)
       visibleAirports = airports
-          .where((a) => a.type != 'heliport')
+          .where((a) => a.type != 'heliport' && a.type != 'balloonport')
           .toList();
     }
     // At zoom >= 11, show all airports (including small airports and heliports)
+
+    // Performance optimization: Limit number of markers to prevent slow frames
+    int maxMarkers;
+    if (currentZoom < 8) {
+      maxMarkers = 50;
+    } else if (currentZoom < 10) {
+      maxMarkers = 100;
+    } else if (currentZoom < 12) {
+      maxMarkers = 200;
+    } else {
+      maxMarkers = 300;
+    }
+    
+    // If we have too many airports, prioritize by type and distance from center
+    if (visibleAirports.length > maxMarkers) {
+      final mapController = MapController.maybeOf(context);
+      if (mapController != null) {
+        final center = mapController.camera.center;
+        
+        // Sort by priority (large > medium > small > heliport/balloonport) and distance
+        visibleAirports.sort((a, b) {
+          const priorities = {
+            'large_airport': 0,
+            'medium_airport': 1,
+            'small_airport': 2,
+            'heliport': 3,
+            'balloonport': 3,
+            'seaplane_base': 2,
+            'closed': 4,
+          };
+          
+          final aPriority = priorities[a.type] ?? 4;
+          final bPriority = priorities[b.type] ?? 4;
+          
+          if (aPriority != bPriority) {
+            return aPriority.compareTo(bPriority);
+          }
+          
+          // If same priority, sort by distance to center
+          final aDistance = Geolocator.distanceBetween(
+            center.latitude, center.longitude,
+            a.position.latitude, a.position.longitude,
+          );
+          final bDistance = Geolocator.distanceBetween(
+            center.latitude, center.longitude,
+            b.position.latitude, b.position.longitude,
+          );
+          return aDistance.compareTo(bDistance);
+        });
+        
+        visibleAirports = visibleAirports.take(maxMarkers).toList();
+      }
+    }
 
     final positions = visibleAirports.map((a) => a.position).toList();
 

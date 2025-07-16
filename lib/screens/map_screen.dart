@@ -44,6 +44,7 @@ import '../widgets/floating_waypoint_panel.dart';
 import '../widgets/optimized_spatial_airspaces_overlay.dart';
 import '../widgets/airspace_flight_info.dart';
 import '../utils/frame_aware_scheduler.dart';
+import '../utils/performance_monitor.dart';
 import '../services/openaip_service.dart';
 import '../services/spatial_airspace_service.dart';
 import '../services/settings_service.dart';
@@ -52,6 +53,7 @@ import '../models/reporting_point.dart';
 import '../utils/airspace_utils.dart';
 import '../widgets/loading_progress_bar.dart';
 import '../widgets/themed_dialog.dart';
+import '../widgets/performance_overlay_widget.dart';
 import '../services/cache_service.dart';
 import '../services/notam_service_v3.dart';
 
@@ -83,6 +85,7 @@ class MapScreenState extends State<MapScreen>
   SpatialAirspaceService? _spatialAirspaceService;
   late final MapController _mapController;
   late final CacheService _cacheService;
+  Timer? _performanceReportTimer;
 
   // Getter to ensure OpenAIPService is available
   OpenAIPService get openAIPService {
@@ -181,6 +184,10 @@ class MapScreenState extends State<MapScreen>
   static const Duration _autoCenteringDelay = Duration(minutes: 3);
   bool _wasTracking = false;
   
+  // Countdown display for auto-centering
+  int _autoCenteringCountdown = 0;
+  Timer? _countdownTimer;
+  
   // Position tracking control
   bool _positionTrackingEnabled = false;
   Timer? _positionUpdateTimer;
@@ -266,6 +273,13 @@ class MapScreenState extends State<MapScreen>
 
         // Initialize services with caching
         _initializeServices();
+        
+        // Start performance monitoring (only in debug mode)
+        if (kDebugMode) {
+          _performanceReportTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+            PerformanceMonitor().printPerformanceReport();
+          });
+        }
 
         // Listen to flight service updates
         _setupFlightServiceListener();
@@ -316,6 +330,8 @@ class MapScreenState extends State<MapScreen>
           // Re-enable auto-centering when tracking starts
           _autoCenteringEnabled = true;
           _autoCenteringTimer?.cancel();
+          _countdownTimer?.cancel();
+          _autoCenteringCountdown = 0;
         }
         _wasTracking = _flightService.isTracking;
 
@@ -409,6 +425,7 @@ class MapScreenState extends State<MapScreen>
   void dispose() {
     // Cancel all scheduled operations
     FrameAwareScheduler().cancelAll();
+    _performanceReportTimer?.cancel();
     
     _flightService.removeListener(_onFlightPathUpdated);
     _flightPlanService.removeListener(_onFlightPlanUpdated);
@@ -417,6 +434,7 @@ class MapScreenState extends State<MapScreen>
     _airspaceDebounceTimer?.cancel();
     _notamPrefetchTimer?.cancel();
     _autoCenteringTimer?.cancel();
+    _countdownTimer?.cancel();
     _positionUpdateTimer?.cancel();
     _mapController.dispose();
     _flightService.dispose();
@@ -588,6 +606,7 @@ class MapScreenState extends State<MapScreen>
 
   // Load airports in the current map view with debouncing
   Future<void> _loadAirports() async {
+    return MapProfiler.profileMapOperation('loadAirports', () async {
     // Cancel any pending debounce timer
     _debounceTimer?.cancel();
 
@@ -635,6 +654,7 @@ class MapScreenState extends State<MapScreen>
           });
         }
       }
+    });
     });
   }
 
@@ -738,54 +758,58 @@ class MapScreenState extends State<MapScreen>
 
   // Load navaids in the current map view
   Future<void> _loadNavaids() async {
-    if (!_showNavaids) {
-      return;
-    }
-
-    try {
-      // Check if map controller is ready
-      if (!mounted) {
+    return MapProfiler.profileMapOperation('loadNavaids', () async {
+      if (!_showNavaids) {
         return;
       }
 
-      // Ensure navaids are fetched
-      await _navaidService.fetchNavaids();
+      try {
+        // Check if map controller is ready
+        if (!mounted) {
+          return;
+        }
 
-      final totalNavaids = _navaidService.navaids.length;
+        // Ensure navaids are fetched
+        await _navaidService.fetchNavaids();
 
-      if (totalNavaids == 0) {
-        return;
+        final totalNavaids = _navaidService.navaids.length;
+
+        if (totalNavaids == 0) {
+          return;
+        }
+
+        final bounds = _mapController.camera.visibleBounds;
+
+        final navaids = _navaidService.getNavaidsInBounds(
+          bounds.southWest,
+          bounds.northEast,
+        );
+
+        if (mounted) {
+          setState(() {
+            _navaids = navaids;
+          });
+        }
+      } catch (e) {
+        // debugPrint('❌ Error loading navaids: $e');
       }
-
-      final bounds = _mapController.camera.visibleBounds;
-
-      final navaids = _navaidService.getNavaidsInBounds(
-        bounds.southWest,
-        bounds.northEast,
-      );
-
-      if (mounted) {
-        setState(() {
-          _navaids = navaids;
-        });
-      }
-    } catch (e) {
-      // debugPrint('❌ Error loading navaids: $e');
-    }
+    });
   }
 
   // Load airspaces in the current map view
   Future<void> _loadAirspaces() async {
-    if (!_showAirspaces) {
-      return;
-    }
+    return MapProfiler.profileMapOperation('loadAirspaces', () async {
+      if (!_showAirspaces) {
+        return;
+      }
 
-    // Cancel any pending debounce timer
-    _airspaceDebounceTimer?.cancel();
+      // Cancel any pending debounce timer
+      _airspaceDebounceTimer?.cancel();
 
-    // Set a new debounce timer (500ms delay for airspaces)
-    _airspaceDebounceTimer = Timer(const Duration(milliseconds: 500), () async {
-      await _loadAirspacesDebounced();
+      // Set a new debounce timer (500ms delay for airspaces)
+      _airspaceDebounceTimer = Timer(const Duration(milliseconds: 500), () async {
+        await _loadAirspacesDebounced();
+      });
     });
   }
 
@@ -861,27 +885,33 @@ class MapScreenState extends State<MapScreen>
 
   // Load reporting points in the current map view
   Future<void> _loadReportingPoints() async {
-    if (!_showAirspaces) {
-      return;
-    }
-
-    try {
-      // First load from cache for immediate display
-      final cachedPoints = await openAIPService.getCachedReportingPoints();
-
-      if (cachedPoints.isNotEmpty) {
-        if (mounted) {
-          setState(() {
-            _reportingPoints = cachedPoints;
-          });
-        }
+    return MapProfiler.profileMapOperation('loadReportingPoints', () async {
+      if (!_showAirspaces) {
+        return;
       }
 
-      // Then progressively load for current bounds if we have an API key
-      if (openAIPService.hasApiKey) {
+      try {
         final bounds = _mapController.camera.visibleBounds;
-
-        // Load reporting points for current area
+        
+        // Try fast in-memory filtering first (similar to airports)
+        final pointsInBounds = openAIPService.getReportingPointsInBounds(
+          minLat: bounds.southWest.latitude,
+          minLon: bounds.southWest.longitude,
+          maxLat: bounds.northEast.latitude,
+          maxLon: bounds.northEast.longitude,
+        );
+        
+        if (pointsInBounds.isNotEmpty) {
+          // Fast path - data already in memory
+          if (mounted) {
+            setState(() {
+              _reportingPoints = pointsInBounds;
+            });
+          }
+          return; // Done - no need for async operations
+        }
+        
+        // Fallback: Load from cache/network if not in memory
         await openAIPService.loadReportingPointsForBounds(
           minLat: bounds.southWest.latitude,
           minLon: bounds.southWest.longitude,
@@ -894,24 +924,68 @@ class MapScreenState extends State<MapScreen>
             }
           },
         );
+      } catch (e) {
+        // debugPrint('❌ Error loading reporting points: $e');
       }
-    } catch (e) {
-      // debugPrint('❌ Error loading reporting points: $e');
-    }
+    });
   }
 
   // Refresh reporting points display when new data is available
   Future<void> _refreshReportingPointsDisplay() async {
     try {
-      final points = await openAIPService.getCachedReportingPoints();
+      final bounds = _mapController.camera.visibleBounds;
+      
+      // Use optimized in-memory filtering
+      final pointsInBounds = openAIPService.getReportingPointsInBounds(
+        minLat: bounds.southWest.latitude,
+        minLon: bounds.southWest.longitude,
+        maxLat: bounds.northEast.latitude,
+        maxLon: bounds.northEast.longitude,
+      );
+      
       if (mounted) {
         setState(() {
-          _reportingPoints = points;
+          _reportingPoints = pointsInBounds;
         });
       }
     } catch (e) {
       // debugPrint('❌ Error refreshing reporting points display: $e');
     }
+  }
+
+  // Start auto-centering countdown
+  void _startAutoCenteringCountdown() {
+    setState(() {
+      _autoCenteringCountdown = _autoCenteringDelay.inSeconds;
+    });
+    
+    // Cancel any existing timers
+    _autoCenteringTimer?.cancel();
+    _countdownTimer?.cancel();
+    
+    // Start countdown timer that updates every second
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _autoCenteringCountdown--;
+        });
+        
+        if (_autoCenteringCountdown <= 0) {
+          timer.cancel();
+          _countdownTimer = null;
+        }
+      }
+    });
+    
+    // Start the actual auto-centering timer
+    _autoCenteringTimer = Timer(_autoCenteringDelay, () {
+      if (mounted && _flightService.isTracking) {
+        setState(() {
+          _autoCenteringEnabled = true;
+          _autoCenteringCountdown = 0;
+        });
+      }
+    });
   }
 
   // Toggle position tracking
@@ -938,10 +1012,12 @@ class MapScreenState extends State<MapScreen>
         setState(() {
           _currentPosition = position;
           _autoCenteringEnabled = true;
+          _autoCenteringCountdown = 0;
         });
 
-        // Cancel any existing auto-centering timer
+        // Cancel any existing timers
         _autoCenteringTimer?.cancel();
+        _countdownTimer?.cancel();
 
         _mapController.move(
           LatLng(position.latitude, position.longitude),
@@ -974,6 +1050,11 @@ class MapScreenState extends State<MapScreen>
   void _stopPositionTracking() {
     _positionUpdateTimer?.cancel();
     _positionUpdateTimer = null;
+    _autoCenteringTimer?.cancel();
+    _countdownTimer?.cancel();
+    setState(() {
+      _autoCenteringCountdown = 0;
+    });
   }
 
   // Update current position
@@ -1083,12 +1164,18 @@ class MapScreenState extends State<MapScreen>
   // Toggle airspaces visibility
   void _toggleAirspaces() {
     if (!_showAirspaces) {
-      // Turning airspaces ON
-      setState(() {
-        _showAirspaces = true;
-      });
+      // Turning airspaces ON - load data first, then update UI
       _loadAirspaces();
       _loadReportingPoints();
+      
+      // Use a small delay to ensure data loading starts before UI update
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          setState(() {
+            _showAirspaces = true;
+          });
+        }
+      });
     } else {
       // Turning airspaces OFF - clear data immediately before setState
       _airspaces = [];
@@ -1581,16 +1668,12 @@ class MapScreenState extends State<MapScreen>
       });
       // Cancel any existing timer
       _autoCenteringTimer?.cancel();
+      _countdownTimer?.cancel();
+      
       // Handle differently based on tracking mode
       if (_flightService.isTracking) {
         // During flight tracking, re-enable after 3 minutes
-        _autoCenteringTimer = Timer(_autoCenteringDelay, () {
-          if (mounted && _flightService.isTracking) {
-            setState(() {
-              _autoCenteringEnabled = true;
-            });
-          }
-        });
+        _startAutoCenteringCountdown();
       }
       // For non-tracking mode, auto-centering stays disabled until manually re-enabled
     }
@@ -1981,6 +2064,7 @@ class MapScreenState extends State<MapScreen>
   Future<void> _loadWeatherForVisibleAirports() async {
     if (_airports.isEmpty) return;
 
+    await MapProfiler.profileMapOperation('loadWeatherForVisibleAirports', () async {
     try {
       // Get the current map bounds
       final bounds = _mapController.camera.visibleBounds;
@@ -2044,10 +2128,29 @@ class MapScreenState extends State<MapScreen>
     } catch (e) {
       // debugPrint('❌ Error loading weather for visible airports: $e');
     }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Add keyboard listener for timing report
+    return KeyboardListener(
+      focusNode: FocusNode()..requestFocus(),
+      onKeyEvent: (event) {
+        if (event.character == 't' || event.character == 'T') {
+          PerformanceMonitor().printPerformanceReport();
+        }
+        if (event.character == 'p' || event.character == 'P') {
+          debugPrint('\n=== PERFORMANCE PROFILING REPORT ===');
+          PerformanceMonitor().printPerformanceReport();
+          debugPrint('=====================================\n');
+        }
+      },
+      child: _buildContent(context),
+    );
+  }
+  
+  Widget _buildContent(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
       body: Stack(
@@ -2086,17 +2189,12 @@ class MapScreenState extends State<MapScreen>
 
                     // Cancel any existing timer
                     _autoCenteringTimer?.cancel();
+                    _countdownTimer?.cancel();
 
                     // Handle differently based on tracking mode
                     if (_flightService.isTracking) {
                       // During flight tracking, re-enable after 3 minutes
-                      _autoCenteringTimer = Timer(_autoCenteringDelay, () {
-                        if (mounted && _flightService.isTracking) {
-                          setState(() {
-                            _autoCenteringEnabled = true;
-                          });
-                        }
-                      });
+                      _startAutoCenteringCountdown();
                     } else if (_positionTrackingEnabled) {
                       // During position tracking, don't automatically re-enable
                       // User must tap the button again to re-enable
@@ -3028,20 +3126,7 @@ class MapScreenState extends State<MapScreen>
                     onPressed: _showAirportSearch,
                     tooltip: 'Search airports',
                   ),
-                  IconButton(
-                    icon: Icon(
-                      _positionTrackingEnabled ? Icons.gps_fixed : Icons.gps_not_fixed,
-                      color: _positionTrackingEnabled 
-                          ? (_autoCenteringEnabled ? Colors.blue : Colors.orange)
-                          : Colors.grey,
-                    ),
-                    onPressed: _togglePositionTracking,
-                    tooltip: _positionTrackingEnabled
-                        ? (_autoCenteringEnabled 
-                            ? 'Position tracking active (tap to disable)'
-                            : 'Position tracking paused by map movement (tap to disable)')
-                        : 'Enable position tracking',
-                  ),
+                  _buildPositionTrackingButton(),
                   IconButton(
                     icon: Icon(
                       _showStats ? Icons.dashboard : Icons.dashboard_outlined,
@@ -3341,6 +3426,83 @@ class MapScreenState extends State<MapScreen>
               ],
             ),
           ),
+          // Performance overlay in debug mode
+          if (kDebugMode)
+            const PerformanceOverlayWidget(
+              showFPS: true,
+              showOperations: true,
+              alignRight: true,
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _formatCountdown(int seconds) {
+    if (seconds >= 120) {
+      final minutes = seconds ~/ 60;
+      final remainingSeconds = seconds % 60;
+      return remainingSeconds > 0 ? '${minutes}m' : '${minutes}m';
+    } else if (seconds >= 60) {
+      return '1m${seconds - 60 > 0 ? '+' : ''}';
+    } else {
+      return '$seconds';
+    }
+  }
+
+  Widget _buildPositionTrackingButton() {
+    final bool showCountdown = _positionTrackingEnabled && 
+                              !_autoCenteringEnabled && 
+                              _autoCenteringCountdown > 0 &&
+                              _flightService.isTracking;
+    
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: Stack(
+        children: [
+          IconButton(
+            icon: Icon(
+              _positionTrackingEnabled ? Icons.gps_fixed : Icons.gps_not_fixed,
+              color: _positionTrackingEnabled 
+                  ? (_autoCenteringEnabled ? Colors.blue : Colors.orange)
+                  : Colors.grey,
+            ),
+            onPressed: _togglePositionTracking,
+            tooltip: _positionTrackingEnabled
+                ? (_autoCenteringEnabled 
+                    ? 'Position tracking active (tap to disable)'
+                    : showCountdown
+                        ? 'Auto-centering in $_autoCenteringCountdown seconds'
+                        : 'Position tracking paused by map movement (tap to disable)')
+                : 'Enable position tracking',
+          ),
+          if (showCountdown)
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.orange,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 20,
+                  minHeight: 20,
+                ),
+                child: Center(
+                  child: Text(
+                    _formatCountdown(_autoCenteringCountdown),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

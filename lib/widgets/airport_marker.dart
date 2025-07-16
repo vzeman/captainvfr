@@ -106,7 +106,7 @@ class AirportMarker extends StatelessWidget {
       case 'heliport':
         return Icons.circle; // Circle represents helipad landing area
       case 'balloonport':
-        return Icons.cloud_circle; // Cloud-like icon for balloonports (balloon alternative)
+        return Icons.air; // Hot air balloon icon for balloonports
       case 'seaplane_base':
         return Icons.airplanemode_active;
       case 'large_airport':
