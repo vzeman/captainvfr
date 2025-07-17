@@ -3,23 +3,81 @@ frontend:
   phases:
     preBuild:
       commands:
+        # Install Hugo Extended
+        - wget https://github.com/gohugoio/hugo/releases/download/v0.146.5/hugo_extended_0.146.5_linux-amd64.tar.gz
+        - tar -xzf hugo_extended_0.146.5_linux-amd64.tar.gz
+        - mv hugo /usr/local/bin/
+        - hugo version
+        
         # Install Flutter
         - git clone https://github.com/flutter/flutter.git -b stable
         - export PATH="$PATH:`pwd`/flutter/bin"
         - flutter --version
         - flutter doctor
-        # Get dependencies
+        
+        # Install Node.js dependencies for Hugo site
+        - cd hugo
+        - npm ci
+        - cd ..
+        
+        # Get Flutter dependencies
         - flutter pub get
     build:
       commands:
-        # Build for web
-        - flutter build web --release
+        # Build the Flutter web app with base href /app/
+        - echo "Building Flutter web app..."
+        - flutter build web --release --base-href=/app/
+        
+        # Build the Hugo static site
+        - echo "Building Hugo site..."
+        - cd hugo
+        - npm run build
+        
+        # Copy Flutter web app to Hugo's public/app directory
+        - mkdir -p public/app
+        - cp -r ../build/web/* public/app/
+        
+        # Return to root for artifacts
+        - cd ..
   artifacts:
-    baseDirectory: build/web
+    # Base directory is hugo/public which contains both the website and the app
+    baseDirectory: hugo/public
     files:
       - '**/*'
   cache:
     paths:
+      - hugo/node_modules/**/*
       - flutter/**/*
       - .dart_tool/**/*
       - .pub-cache/**/*
+      
+# Custom headers for better performance and security
+customHeaders:
+  - pattern: '**/*'
+    headers:
+      - key: 'X-Frame-Options'
+        value: 'SAMEORIGIN'
+      - key: 'X-Content-Type-Options'
+        value: 'nosniff'
+      - key: 'X-XSS-Protection'
+        value: '1; mode=block'
+  - pattern: '**/*.html'
+    headers:
+      - key: 'Cache-Control'
+        value: 'public, max-age=0, must-revalidate'
+  - pattern: '**/*.css'
+    headers:
+      - key: 'Cache-Control'
+        value: 'public, max-age=31536000, immutable'
+  - pattern: '**/*.js'
+    headers:
+      - key: 'Cache-Control'
+        value: 'public, max-age=31536000, immutable'
+  - pattern: '**/*.{jpg,jpeg,png,webp,svg,ico}'
+    headers:
+      - key: 'Cache-Control'
+        value: 'public, max-age=31536000, immutable'
+  - pattern: '/app/**'
+    headers:
+      - key: 'Cache-Control'
+        value: 'public, max-age=0, must-revalidate'

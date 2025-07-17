@@ -1,0 +1,48 @@
+[params]
+  description = 'CaptainVFR - VFR Flight Planning'
+  dateFormat = 'January 2, 2006'
+  mainSections = ["blog", "features", "tutorials"]
+  featuredImageField = "image"
+  rssFullContent = true
+  favicon = "favicon.ico"
+  
+  [params.imaging]
+    resampleFilter = "Lanczos"
+    quality = 85
+    anchor = "smart"
+    bgColor = "#ffffff"
+    webpQuality = 85
+
+  [params.footer]
+    logoUrl = "/images/logo-white.svg"
+    company_name = "CaptainVFR"
+    copyright_start_year = "2025"
+    newsletter_action = ""
+    
+    prefooter_cta_1_url = "/get-started/"
+    prefooter_cta_2_url = "/contact/"
+    
+    [[params.footer.social_links]]
+    name = "facebook"
+    url = "https://facebook.com/captainvfr"
+    
+    [[params.footer.social_links]]
+    name = "instagram"
+    url = "https://instagram.com/captainvfr"
+    
+    [[params.footer.social_links]]
+    name = "x"
+    url = "https://x.com/captainvfr"
+    
+    [[params.footer.social_links]]
+    name = "youtube"
+    url = "https://youtube.com/captainvfr"
+
+  [params.linkbuilding]
+    maxSameKeywordReplacementsInPage = 5
+    maxSameUrlReplacementsInPage = 3
+    maxKeywordUrlReplacementsInPage = 1
+    charactersPerLinkInParagraphDensity = 50
+    maxAutomaticLinksInPage = 50
+    maxAutomaticLinksInParagraph = 5
+    minParagraphLength = 30

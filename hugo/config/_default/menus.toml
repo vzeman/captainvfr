@@ -1,0 +1,115 @@
+[[main]]
+  identifier = "web-app"
+  name = "Launch App"
+  url = "/app/"
+  weight = 10
+
+[[main]]
+  identifier = "download"
+  name = "Download"
+  weight = 20
+  
+  [[main]]
+    parent = "download"
+    identifier = "ios"
+    name = "Download for iOS"
+    url = "https://apps.apple.com/app/captainvfr"
+    weight = 10
+    
+  [[main]]
+    parent = "download"
+    identifier = "android"
+    name = "Download for Android"
+    url = "https://play.google.com/store/apps/details?id=com.captainvfr"
+    weight = 20
+    
+  [[main]]
+    parent = "download"
+    identifier = "macos"
+    name = "Download for macOS"
+    url = "/downloads/CaptainVFR-macOS.dmg"
+    weight = 30
+    
+  [[main]]
+    parent = "download"
+    identifier = "apk"
+    name = "Download APK"
+    url = "/downloads/CaptainVFR.apk"
+    weight = 40
+
+[[main]]
+  identifier = "features"
+  name = "Features"
+  url = "/features/"
+  weight = 30
+
+[[main]]
+  identifier = "pricing"
+  name = "Pricing"
+  url = "/pricing/"
+  weight = 40
+
+[[main]]
+  identifier = "language-switcher"
+  name = "Language"
+  weight = 100
+
+[[footer_solutions]]
+  identifier = "flight_planning"
+  url = "/flight-planning/"
+  weight = 10
+
+[[footer_solutions]]
+  identifier = "weather"
+  url = "/weather/"
+  weight = 20
+
+[[footer_solutions]]
+  identifier = "airports"
+  url = "/airports/"
+  weight = 30
+
+[[footer_solutions]]
+  identifier = "features"
+  url = "/features/"
+  weight = 40
+
+[[footer_support]]
+  identifier = "tutorials"
+  url = "/tutorials/"
+  weight = 10
+
+[[footer_support]]
+  identifier = "documentation"
+  url = "/docs/"
+  weight = 20
+
+[[footer_support]]
+  identifier = "blog"
+  url = "/blog/"
+  weight = 30
+
+[[footer_support]]
+  identifier = "faq"
+  url = "/faq/"
+  weight = 40
+
+[[footer_company]]
+  identifier = "about"
+  url = "/about/"
+  weight = 10
+
+[[footer_company]]
+  identifier = "contact"
+  url = "/contact/"
+  weight = 20
+
+[[footer_legal]]
+  identifier = "terms"
+  url = "/terms-of-service/"
+  weight = 10
+
+[[footer_legal]]
+  identifier = "privacy"
+  url = "/privacy-policy/"
+  weight = 20

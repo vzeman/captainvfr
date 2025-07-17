@@ -1,0 +1,26 @@
+<meta name="referrer" content="no-referrer">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+{{ if .Params.private }}
+<meta name="robots" content="noindex, nofollow">
+{{ end }}
+
+<!-- Favicon -->
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
+<link rel="manifest" href="/manifest.json">
+
+<title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ printf "%s | %s" .Title site.Title }}{{ end }}</title>
+{{ with .Permalink }}<link rel="canonical" href="{{ . }}">{{ end }}
+
+<!-- Generate hreflang alternate links -->
+{{ ( partialCached "helpers/generate-hreflang-links.html" (dict "currentPage" . "defaultLang" "en") .Permalink ) | safeHTML }}
+{{ partial "social-meta.html" . | safeHTML }}
+{{ partialCached "head/variables.html" . }}
+<link rel="stylesheet" href="/css/main.css?v={{ partialCached "helpers/build-timestamp.html" . }}" crossorigin="anonymous">
+<!-- Critical theme JS - loaded early with defer -->
+<script src="/js/main.js?v={{ partialCached "helpers/build-timestamp.html" . }}" defer></script>
+{{ partialCached "utils/analytics/google-analytics-consent.html" . }}

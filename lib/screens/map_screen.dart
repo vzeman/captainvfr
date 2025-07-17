@@ -2292,6 +2292,8 @@ class MapScreenState extends State<MapScreen>
                   return true;
                 }).toList(),
                 onAirportTap: _onAirportSelected,
+                showHeliports: _showHeliports,
+                showSmallAirports: _showSmallAirports,
               ),
               // Navaid markers (optimized)
               if (_showNavaids && _navaids.isNotEmpty)
@@ -3426,13 +3428,19 @@ class MapScreenState extends State<MapScreen>
               ],
             ),
           ),
-          // Performance overlay in debug mode
-          if (kDebugMode)
-            const PerformanceOverlayWidget(
-              showFPS: true,
-              showOperations: true,
-              alignRight: true,
-            ),
+          // Performance overlay when development mode is enabled
+          Consumer<SettingsService>(
+            builder: (context, settings, child) {
+              if (settings.developmentMode) {
+                return const PerformanceOverlayWidget(
+                  showFPS: true,
+                  showOperations: true,
+                  alignRight: true,
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
         ],
       ),
     );

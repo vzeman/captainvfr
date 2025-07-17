@@ -30,6 +30,7 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
   String? _selectedAircraftId;
   int? _selectedWaypointIndex;
   Timer? _autosaveTimer;
+  Timer? _cruiseSpeedDebouncer;
   bool _isWaypointTableExpanded = false; // Track waypoint table expanded state - default collapsed
   
   static const String _waypointTableExpandedKey = 'waypoint_table_expanded';
@@ -97,6 +98,7 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
   void dispose() {
     _cruiseSpeedController.dispose();
     _autosaveTimer?.cancel();
+    _cruiseSpeedDebouncer?.cancel();
     super.dispose();
   }
 
@@ -415,13 +417,7 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
                         borderSide: const BorderSide(color: Color(0x1A666666)),
                       ),
                     ),
-                    onChanged: (value) {
-                      final speed = double.tryParse(value);
-                      if (speed != null && speed > 0) {
-                        flightPlanService.updateCruiseSpeed(speed);
-                        _autosaveFlightPlan(flightPlanService);
-                      }
-                    },
+                    onChanged: (value) => _onCruiseSpeedChanged(value, flightPlanService),
                   ),
                 ),
               ],
@@ -571,14 +567,7 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
                             ),
                           ),
                         ),
-                        onChanged: (value) {
-                          final speed = double.tryParse(value);
-                          if (speed != null && speed > 0) {
-                            flightPlanService.updateCruiseSpeed(speed);
-                            // Implement autosave
-                            _autosaveFlightPlan(flightPlanService);
-                          }
-                        },
+                        onChanged: (value) => _onCruiseSpeedChanged(value, flightPlanService),
                       ),
                     ),
                   ],
@@ -634,6 +623,20 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
     _autosaveTimer = Timer(const Duration(seconds: 1), () {
       if (flightPlanService.currentFlightPlan != null) {
         flightPlanService.saveCurrentFlightPlan();
+      }
+    });
+  }
+
+  void _onCruiseSpeedChanged(String value, FlightPlanService flightPlanService) {
+    // Cancel any existing debouncer
+    _cruiseSpeedDebouncer?.cancel();
+    
+    // Only update after user stops typing for 500ms
+    _cruiseSpeedDebouncer = Timer(const Duration(milliseconds: 500), () {
+      final speed = double.tryParse(value);
+      if (speed != null && speed > 0) {
+        flightPlanService.updateCruiseSpeed(speed);
+        _autosaveFlightPlan(flightPlanService);
       }
     });
   }

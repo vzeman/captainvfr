@@ -1,0 +1,6 @@
+["text/plain"]
+    suffixes = ["txt"]
+["application/xml"]
+    suffixes = ["xml"]
+["text/css"]
+    suffixes = ["css"]

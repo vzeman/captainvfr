@@ -1,0 +1,21 @@
+keywords:
+  - keyword: "vfr"
+    url: "/de/glossar/vfr/"
+    exact: false
+    priority: 1
+    title: "Sichtflugregeln"
+  - keyword: "flugplanung"
+    url: "/de/flugplanung/"
+    exact: false
+    priority: 1
+    title: "Erweiterte Flugplanungstools"
+  - keyword: "wetterbriefing"
+    url: "/de/wetter/"
+    exact: false
+    priority: 1
+    title: "Echtzeit-Wetterbriefing"
+  - keyword: "flughäfen"
+    url: "/de/flughaefen/"
+    exact: false
+    priority: 1
+    title: "Flughafen-Informationsdatenbank"

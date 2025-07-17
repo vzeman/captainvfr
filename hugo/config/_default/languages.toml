@@ -1,0 +1,5 @@
+[en]
+  languageName = 'English'
+  weight = 1
+  title = 'CaptainVFR'
+  contentDir = 'content/en'

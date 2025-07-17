@@ -1,0 +1,10 @@
+# This file contains data for ALL languages, including those disabled in specific builds
+# Templates can use this data to show all languages regardless of active status
+[languages]
+  [languages.en]
+    languageName = "English"
+    contentDir = "content/en"
+    baseURL = "/"
+    baseDomainName = "https://www.captainvfr.com"
+    [languages.en.params]
+      bcp47Lang = "en-us"

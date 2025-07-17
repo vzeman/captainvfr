@@ -47,6 +47,19 @@ class SettingsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _buildSection(
+                title: 'Development',
+                children: [
+                  _buildSwitchTile(
+                    title: 'Development Mode',
+                    subtitle: 'Show performance debug information',
+                    value: settings.developmentMode,
+                    onChanged: (value) =>
+                        settings.setDevelopmentMode(value),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildSection(
                 title: 'Unit Settings',
                 children: [
                   // Legacy unit selector for quick presets
@@ -375,6 +388,17 @@ class SettingsDialog {
                     'High precision GPS',
                     settings.highPrecisionTracking,
                     (value) => settings.setHighPrecisionTracking(value),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _buildCompactSection(
+                title: 'Development',
+                children: [
+                  _buildCompactSwitch(
+                    'Development mode',
+                    settings.developmentMode,
+                    (value) => settings.setDevelopmentMode(value),
                   ),
                 ],
               ),

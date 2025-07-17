@@ -1,0 +1,21 @@
+keywords:
+  - keyword: "vfr"
+    url: "/glossary/vfr/"
+    exact: false
+    priority: 1
+    title: "Visual Flight Rules"
+  - keyword: "flight planning"
+    url: "/flight-planning/"
+    exact: false
+    priority: 1
+    title: "Advanced flight planning tools"
+  - keyword: "weather briefing"
+    url: "/weather/"
+    exact: false
+    priority: 1
+    title: "Real-time weather briefing"
+  - keyword: "airports"
+    url: "/airports/"
+    exact: false
+    priority: 1
+    title: "Airport information database"

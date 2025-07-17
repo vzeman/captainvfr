@@ -75,6 +75,8 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
   final ValueChanged<Airport>? onAirportTap;
   final bool showLabels;
   final double markerSize;
+  final bool showHeliports;
+  final bool showSmallAirports;
 
   const OptimizedAirportMarkersLayer({
     super.key,
@@ -82,6 +84,8 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
     this.onAirportTap,
     this.showLabels = true,
     this.markerSize = 40.0,
+    this.showHeliports = false,
+    this.showSmallAirports = true,
   });
 
   @override
@@ -104,17 +108,28 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
           .where((a) => a.type == 'large_airport')
           .toList();
     } else if (currentZoom < 9) {
-      // Show large and medium airports (hide small airports, heliports, and balloonports)
-      visibleAirports = airports
-          .where((a) => a.type == 'large_airport' || a.type == 'medium_airport')
-          .toList();
+      // Show large and medium airports
+      visibleAirports = airports.where((a) {
+        if (a.type == 'large_airport' || a.type == 'medium_airport') return true;
+        // Show heliports if toggle is on, regardless of zoom
+        if ((a.type == 'heliport' || a.type == 'balloonport') && showHeliports) return true;
+        return false;
+      }).toList();
     } else if (currentZoom < 11) {
-      // Show all airports except heliports and balloonports (they need higher zoom)
-      visibleAirports = airports
-          .where((a) => a.type != 'heliport' && a.type != 'balloonport')
-          .toList();
+      // Show all airports based on toggles
+      visibleAirports = airports.where((a) {
+        // Always show large and medium airports
+        if (a.type == 'large_airport' || a.type == 'medium_airport') return true;
+        // Show small airports based on toggle
+        if (a.type == 'small_airport' && showSmallAirports) return true;
+        // Show heliports based on toggle (override zoom restriction)
+        if ((a.type == 'heliport' || a.type == 'balloonport') && showHeliports) return true;
+        // Show other types
+        if (a.type == 'seaplane_base') return true;
+        return false;
+      }).toList();
     }
-    // At zoom >= 11, show all airports (including small airports and heliports)
+    // At zoom >= 11, show all airports that pass the toggle filters (already filtered in map_screen)
 
     // Performance optimization: Limit number of markers to prevent slow frames
     int maxMarkers;

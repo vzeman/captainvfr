@@ -17,6 +17,7 @@ class SettingsService extends ChangeNotifier {
   static const String _keyWeightUnit = 'weight_unit';
   static const String _keyFuelUnit = 'fuel_unit';
   static const String _keyWindUnit = 'wind_unit';
+  static const String _keyDevelopmentMode = 'development_mode';
 
   late SharedPreferences _prefs;
   bool _isInitialized = false;
@@ -37,6 +38,7 @@ class SettingsService extends ChangeNotifier {
   String _weightUnit = 'lbs'; // 'lbs' or 'kg'
   String _fuelUnit = 'gal'; // 'gal' or 'L'
   String _windUnit = 'kt'; // 'kt', 'mph', 'km/h'
+  bool _developmentMode = false;
 
   // Getters
   bool get rotateMapWithHeading => _rotateMapWithHeading;
@@ -54,6 +56,7 @@ class SettingsService extends ChangeNotifier {
   String get weightUnit => _weightUnit;
   String get fuelUnit => _fuelUnit;
   String get windUnit => _windUnit;
+  bool get developmentMode => _developmentMode;
   bool get isInitialized => _isInitialized;
 
   SettingsService() {
@@ -83,6 +86,7 @@ class SettingsService extends ChangeNotifier {
     _weightUnit = _prefs.getString(_keyWeightUnit) ?? 'lbs';
     _fuelUnit = _prefs.getString(_keyFuelUnit) ?? 'gal';
     _windUnit = _prefs.getString(_keyWindUnit) ?? 'kt';
+    _developmentMode = _prefs.getBool(_keyDevelopmentMode) ?? false;
   }
 
   // Setters
@@ -192,6 +196,14 @@ class SettingsService extends ChangeNotifier {
     if (value != _windUnit) {
       _windUnit = value;
       await _prefs.setString(_keyWindUnit, value);
+      notifyListeners();
+    }
+  }
+
+  Future<void> setDevelopmentMode(bool value) async {
+    if (value != _developmentMode) {
+      _developmentMode = value;
+      await _prefs.setBool(_keyDevelopmentMode, value);
       notifyListeners();
     }
   }

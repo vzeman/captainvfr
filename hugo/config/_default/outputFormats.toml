@@ -1,0 +1,20 @@
+[outputFormats.ROBOTS]
+  mediaType = "text/plain"
+  baseName = "robots"
+  isPlainText = true
+  notAlternative = true
+  permalinkable = true
+[outputFormats.SITEMAP]
+  mediaType = "application/xml"
+  baseName = "sitemap"
+  isPlainText = false
+  isHTML = false
+  noUgly = true
+  rel = "sitemap"
+[outputFormats.CSS]
+  mediaType = "text/css"
+  baseName = "styles"
+  isPlainText = true
+  isHTML = false
+  noUgly = true
+  permalinkable = true

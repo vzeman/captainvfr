@@ -1,0 +1,15 @@
+baseURL = 'https://www.captainvfr.com/'
+languageCode = 'en-us'
+title = 'CaptainVFR'
+theme = 'boilerplate'
+defaultContentLanguage = 'en'
+defaultContentLanguageInSubdir = false
+
+# Asset configuration for multilingual sites
+assetDir = "assets"
+
+# Multilingual settings
+[sitemap]
+  changefreq = "weekly"
+  filename = "sitemap.xml"
+  priority = 0.5
