@@ -15,7 +15,7 @@ frontend:
         - npm ci
     build:
       commands:
-        # Build the Hugo static site
+        # Build the Hugo static site (we're already in hugo directory from preBuild)
         - echo "Building Hugo site..."
         - npm run build
         
