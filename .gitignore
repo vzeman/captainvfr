@@ -127,3 +127,5 @@ lib/config/api_config.dart
 # Android release signing
 android/key.properties
 android/app/keystore/
+/captainvfr_x86_64.app/
+/captainvfr_arm64.app/

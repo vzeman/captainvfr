@@ -1,44 +1,25 @@
 version: 1
+env:
+  variables:
+    # Hugo version - this works with AWS Amplify Live Package Updates
+    HUGO_VERSION: 0.146.5
 frontend:
   phases:
     preBuild:
       commands:
-        # Install Hugo Extended
-        - wget https://github.com/gohugoio/hugo/releases/download/v0.146.5/hugo_extended_0.146.5_linux-amd64.tar.gz
-        - tar -xzf hugo_extended_0.146.5_linux-amd64.tar.gz
-        - mv hugo /usr/local/bin/
+        # Hugo Extended is now provided by AWS Amplify via Live Package Updates
         - hugo version
-        
-        # Install Flutter
-        - git clone https://github.com/flutter/flutter.git -b stable
-        - export PATH="$PATH:`pwd`/flutter/bin"
-        - flutter --version
-        - flutter doctor
         
         # Install Node.js dependencies for Hugo site
         - cd hugo
         - npm ci
-        - cd ..
-        
-        # Get Flutter dependencies
-        - flutter pub get
     build:
       commands:
-        # Build the Flutter web app with base href /app/
-        - echo "Building Flutter web app..."
-        - flutter build web --release --base-href=/app/
-        
         # Build the Hugo static site
         - echo "Building Hugo site..."
-        - cd hugo
         - npm run build
         
-        # Copy Flutter web app to Hugo's public/app directory
-        - mkdir -p public/app
-        - cp -r ../build/web/* public/app/
-        
-        # Return to root for artifacts
-        - cd ..
+        # The Flutter web app should already be in static/app (built locally and committed)
   artifacts:
     # Base directory is hugo/public which contains both the website and the app
     baseDirectory: hugo/public
@@ -47,9 +28,6 @@ frontend:
   cache:
     paths:
       - hugo/node_modules/**/*
-      - flutter/**/*
-      - .dart_tool/**/*
-      - .pub-cache/**/*
       
 # Custom headers for better performance and security
 customHeaders:

@@ -62,6 +62,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            
+            // Disable shrink resources to avoid symbol stripping issues
+            isShrinkResources = false
         }
     }
 }

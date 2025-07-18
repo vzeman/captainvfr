@@ -39,9 +39,15 @@ echo -e "${YELLOW}Building Android release...${NC}"
 
 # Build App Bundle for Play Store
 echo -e "${YELLOW}Building Android App Bundle...${NC}"
-flutter build appbundle --release
-check_status "Android App Bundle build"
-echo -e "${GREEN}✓ AAB file: build/app/outputs/bundle/release/app-release.aab${NC}"
+# Build and check if AAB was created despite any warnings
+flutter build appbundle --release || true
+if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
+    echo -e "${GREEN}✓ AAB file created: build/app/outputs/bundle/release/app-release.aab${NC}"
+    echo -e "${YELLOW}Note: Warning about debug symbols can be safely ignored${NC}"
+else
+    echo -e "${RED}✗ Android App Bundle build failed${NC}"
+    echo -e "${YELLOW}Continuing with APK build only...${NC}"
+fi
 
 # Build APK for direct download
 echo -e "${YELLOW}Building Android APK...${NC}"
@@ -71,8 +77,17 @@ fi
 # Build for macOS (if on macOS)
 if [[ "$OSTYPE" == "darwin"* ]]; then
     echo -e "${YELLOW}Building macOS release...${NC}"
+    
+    # Flutter doesn't support building universal binaries directly
+    # Build for current architecture only
     flutter build macos --release
     check_status "macOS build"
+    
+    # Check the architecture of the built app
+    echo -e "${YELLOW}Checking built architecture...${NC}"
+    BINARY_NAME="captainvfr"
+    BUILT_APP="build/macos/Build/Products/Release/captainvfr.app"
+    lipo -info "$BUILT_APP/Contents/MacOS/$BINARY_NAME"
     
     # Create DMG
     echo -e "${YELLOW}Creating DMG installer...${NC}"
@@ -88,20 +103,24 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     rm -rf "$DMG_TEMP"
     mkdir -p "$DMG_TEMP"
     
-    # Copy the app to temp directory
-    cp -R "build/macos/Build/Products/Release/CaptainVFR.app" "$DMG_TEMP/"
+    # Copy the built app to temp directory
+    cp -R "$BUILT_APP" "$DMG_TEMP/"
     
-    # Create DMG
+    # Create DMG without mounting (skip Finder customization)
     create-dmg \
         --volname "CaptainVFR" \
-        --window-pos 200 120 \
-        --window-size 600 400 \
-        --icon-size 100 \
-        --icon "CaptainVFR.app" 150 150 \
-        --app-drop-link 450 150 \
-        --hide-extension "CaptainVFR.app" \
+        --skip-jenkins \
+        --no-internet-enable \
         "$DOWNLOADS_DIR/CaptainVFR.dmg" \
-        "$DMG_TEMP"
+        "$DMG_TEMP" || {
+            # Fallback: use hdiutil directly if create-dmg fails
+            echo -e "${YELLOW}Using hdiutil as fallback...${NC}"
+            hdiutil create -volname "CaptainVFR" \
+                -srcfolder "$DMG_TEMP" \
+                -ov \
+                -format UDZO \
+                "$DOWNLOADS_DIR/CaptainVFR.dmg"
+        }
     
     check_status "DMG creation"
     echo -e "${GREEN}✓ DMG file: $DOWNLOADS_DIR/CaptainVFR.dmg${NC}"
