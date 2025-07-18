@@ -130,12 +130,5 @@ android/app/keystore/
 /captainvfr_x86_64.app/
 /captainvfr_arm64.app/
 
-# Large files and temporary build artifacts
+# Temporary build artifacts
 hugo/static/downloads/rw.*.dmg
-hugo/static/downloads/*.dmg
-hugo/static/downloads/*.apk
-hugo/static/downloads/*.aab
-
-# Large data files (should be downloaded during build)
-assets/data/airspaces.json
-assets/data/airports.json
