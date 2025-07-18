@@ -117,13 +117,13 @@ echo -e "${YELLOW}Building Web release...${NC}"
 flutter build web --release --base-href /app/
 check_status "Web build"
 
-# Create a zip file of the web build
-echo -e "${YELLOW}Creating web build archive...${NC}"
-cd build/web
-zip -r ../../"$DOWNLOADS_DIR/CaptainVFR-web.zip" .
-cd ../..
-check_status "Web archive creation"
-echo -e "${GREEN}✓ Web build archive: $DOWNLOADS_DIR/CaptainVFR-web.zip${NC}"
+# Copy web build to hugo/static/app
+echo -e "${YELLOW}Copying web build to hugo/static/app...${NC}"
+mkdir -p hugo/static/app
+rm -rf hugo/static/app/*
+cp -r build/web/* hugo/static/app/
+check_status "Web build copy to hugo/static/app"
+echo -e "${GREEN}✓ Web build copied to hugo/static/app${NC}"
 
 # Summary
 echo ""
@@ -138,8 +138,8 @@ fi
 if [ -f "$DOWNLOADS_DIR/CaptainVFR.dmg" ]; then
     echo "✓ macOS DMG: $DOWNLOADS_DIR/CaptainVFR.dmg"
 fi
-if [ -f "$DOWNLOADS_DIR/CaptainVFR-web.zip" ]; then
-    echo "✓ Web Build: $DOWNLOADS_DIR/CaptainVFR-web.zip"
+if [ -d "hugo/static/app" ]; then
+    echo "✓ Web Build: hugo/static/app/"
 fi
 
 echo ""

@@ -12,19 +12,30 @@ flutter clean
 echo "📦 Getting dependencies..."
 flutter pub get
 
-# Build for web
+# Build for web with base href
 echo "🏗️ Building web app..."
-flutter build web --release
+flutter build web --release --base-href /app/
 
 # Check if build was successful
 if [ -d "build/web" ]; then
     echo "✅ Build successful!"
-    echo "📁 Build output is in: build/web/"
+    
+    # Create hugo/static/app directory if it doesn't exist
+    echo "📁 Creating hugo/static/app directory..."
+    mkdir -p hugo/static/app
+    
+    # Clean existing content in hugo/static/app
+    echo "🧹 Cleaning hugo/static/app..."
+    rm -rf hugo/static/app/*
+    
+    # Copy build output to hugo/static/app
+    echo "📋 Copying build to hugo/static/app..."
+    cp -r build/web/* hugo/static/app/
+    
+    echo "✅ Web app copied to hugo/static/app/"
     echo ""
-    echo "🚀 To deploy to AWS Amplify:"
-    echo "1. Push this code to your Git repository"
-    echo "2. Connect your repository to AWS Amplify Console"
-    echo "3. Amplify will use amplify.yml to build and deploy"
+    echo "🚀 The web app is now ready in hugo/static/app"
+    echo "   Hugo will serve it at /app when built"
 else
     echo "❌ Build failed!"
     exit 1
