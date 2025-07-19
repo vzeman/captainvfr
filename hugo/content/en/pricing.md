@@ -4,6 +4,11 @@ description = "CaptainVFR is completely free to use on all platforms. No hidden 
 keywords = ["free flight planning", "no cost aviation app", "free VFR navigation", "complimentary pilot tools"]
 date = "2025-07-19"
 columns = "1"
+layout = "landing-page"
+
+tagline = "Simple and transparent"
+heading = "Pricing Plans"
+
 
 showCTA = false
 
