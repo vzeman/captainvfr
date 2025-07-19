@@ -142,6 +142,16 @@ mkdir -p hugo/static/app
 rm -rf hugo/static/app/*
 cp -r build/web/* hugo/static/app/
 check_status "Web build copy to hugo/static/app"
+
+# Remove source map references from production build to avoid 404 errors
+echo -e "${YELLOW}Removing source map references from production build...${NC}"
+if [ -f "hugo/static/app/flutter.js" ]; then
+    # Remove the sourceMappingURL comment from flutter.js
+    sed -i '' '/\/\/# sourceMappingURL=flutter.js.map/d' hugo/static/app/flutter.js 2>/dev/null || \
+    sed -i '/\/\/# sourceMappingURL=flutter.js.map/d' hugo/static/app/flutter.js
+    echo -e "${GREEN}✓ Removed source map reference from flutter.js${NC}"
+fi
+
 echo -e "${GREEN}✓ Web build copied to hugo/static/app${NC}"
 
 # Summary
@@ -171,3 +181,63 @@ echo "1. Test the release builds on real devices"
 echo "2. Upload to respective stores"
 echo "3. Build and deploy Hugo website to make downloads available"
 echo "4. Complete store listings and submit for review"
+
+# Git operations
+echo ""
+echo -e "${YELLOW}=== Git Operations ===${NC}"
+
+# Ensure Git LFS is initialized
+if ! git lfs version &> /dev/null; then
+    echo -e "${RED}Git LFS is not installed. Please install it first.${NC}"
+    echo "Run: brew install git-lfs && git lfs install"
+    exit 1
+fi
+
+# Track large files with Git LFS
+echo -e "${YELLOW}Setting up Git LFS tracking for large files...${NC}"
+git lfs track "hugo/static/downloads/*.apk"
+git lfs track "hugo/static/downloads/*.dmg"
+git lfs track "hugo/static/downloads/*.exe"
+git lfs track "hugo/static/downloads/*.msi"
+check_status "Git LFS tracking setup"
+
+# Add .gitattributes if it was modified
+if git diff --name-only | grep -q ".gitattributes"; then
+    git add .gitattributes
+    echo -e "${GREEN}✓ Added .gitattributes${NC}"
+fi
+
+# Add all build artifacts
+echo -e "${YELLOW}Adding build artifacts to Git...${NC}"
+git add hugo/static/downloads/CaptainVFR.apk
+git add hugo/static/downloads/CaptainVFR.dmg
+git add hugo/static/app/
+check_status "Git add"
+
+# Check if there are changes to commit
+if git diff --staged --quiet; then
+    echo -e "${YELLOW}No changes to commit${NC}"
+else
+    # Commit changes
+    echo -e "${YELLOW}Committing changes...${NC}"
+    BUILD_DATE=$(date +"%Y-%m-%d %H:%M")
+    COMMIT_MESSAGE="Build release: Update APK, DMG, and web app ($BUILD_DATE)
+
+- Updated Android APK
+- Updated macOS DMG  
+- Updated web application in /app/
+- All large files tracked with Git LFS"
+
+    git commit -m "$COMMIT_MESSAGE"
+    check_status "Git commit"
+    
+    # Push to remote
+    echo -e "${YELLOW}Pushing to remote repository...${NC}"
+    git push
+    check_status "Git push"
+    
+    echo -e "${GREEN}✓ All changes committed and pushed to repository${NC}"
+fi
+
+echo ""
+echo -e "${GREEN}=== Build and Deploy Complete ===${NC}"

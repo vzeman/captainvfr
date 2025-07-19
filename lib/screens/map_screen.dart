@@ -427,6 +427,8 @@ class MapScreenState extends State<MapScreen>
     // Cancel all scheduled operations
     FrameAwareScheduler().cancelAll();
     _performanceReportTimer?.cancel();
+    _locationRetryTimer?.cancel();
+    _locationStreamSubscription?.cancel();
     
     _flightService.removeListener(_onFlightPathUpdated);
     _flightPlanService.removeListener(_onFlightPlanUpdated);
@@ -444,6 +446,9 @@ class MapScreenState extends State<MapScreen>
   }
 
   // Initialize location in background without blocking the UI
+  Timer? _locationRetryTimer;
+  StreamSubscription<Position>? _locationStreamSubscription;
+  
   Future<void> _initLocationInBackground() async {
     try {
       final position = await _locationService.getCurrentLocation();
@@ -455,12 +460,14 @@ class MapScreenState extends State<MapScreen>
 
         // Location loaded successfully, handle the rest
         _onLocationLoaded();
+        // Start listening for location updates
+        _startLocationStream();
       }
     } catch (e) {
       // debugPrint('Error initializing location: $e');
       if (mounted) {
         setState(() {
-          _errorMessage = 'Location unavailable - using default position';
+          _errorMessage = 'Location unavailable - waiting for permission';
         });
 
         // Use a default position if location fails
@@ -482,8 +489,49 @@ class MapScreenState extends State<MapScreen>
 
         // Still trigger loading with default position
         _onLocationLoaded();
+        // Retry location after a delay (user might grant permission)
+        _scheduleLocationRetry();
       }
     }
+  }
+  
+  // Add method to retry location after permission might be granted
+  void _scheduleLocationRetry() {
+    _locationRetryTimer?.cancel();
+    _locationRetryTimer = Timer.periodic(const Duration(seconds: 10), (timer) async {
+      try {
+        final position = await _locationService.getCurrentLocation();
+        if (mounted) {
+          setState(() {
+            _currentPosition = position;
+            _errorMessage = '';
+          });
+          // Success - stop retrying and start location stream
+          timer.cancel();
+          _locationRetryTimer = null;
+          _startLocationStream();
+        }
+      } catch (e) {
+        // Still no permission, keep retrying
+      }
+    });
+  }
+
+  // Add location stream subscription
+  void _startLocationStream() {
+    _locationStreamSubscription?.cancel();
+    _locationStreamSubscription = _locationService.getPositionStream().listen(
+      (Position position) {
+        if (mounted) {
+          setState(() {
+            _currentPosition = position;
+          });
+        }
+      },
+      onError: (error) {
+        // Handle stream errors silently
+      },
+    );
   }
 
   // Load flight planning panel expanded state from SharedPreferences

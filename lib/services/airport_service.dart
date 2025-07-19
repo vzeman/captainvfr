@@ -172,7 +172,7 @@ class AirportService {
         case 4: return 'closed';
         case 5: return 'seaplane_base';
         case 6: return 'balloonport';
-        case 7: return 'small_airport';
+        case 7: return 'heliport'; // Fixed: was incorrectly mapped to small_airport
         case 8: return 'small_airport';
         case 9: return 'heliport';
         case 10: return 'small_airport';
