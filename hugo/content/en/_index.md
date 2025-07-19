@@ -7,7 +7,7 @@ date = "2025-07-17T11:00:00Z"
 +++
 
 {{< hero-simple-centered
-heading="Your Professional VFR Flight Planning Companion"
+heading="VFR Flight Planning"
 description="Plan, navigate, and fly with confidence. Real-time weather, NOTAMs, airspace information, and advanced flight planning tools all in one app."
 primaryCTAText="Launch Web version of CaptainVFR"
 primaryCTAUrl="/app/"
@@ -18,8 +18,8 @@ imageSrc="/images/screenshots/web/flight-plan.jpg"
 imageAlt="CaptainVFR Flight Planning Interface"
 imgBgClass=" "
 typewriterEnabled="true"
-typewriterWords=2
-typewriterWordAlternatives="Tracking,Planning,Navigation,Weather,Checklists"
+typewriterWords=1
+typewriterWordAlternatives="Tracking,Briefing"
 >}}
 
 <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
