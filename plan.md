@@ -13,6 +13,16 @@
 
 ## Completed tasks (continued)
 
+- [x] Add Windows build support to the Flutter app
+  - Enabled Windows desktop support in Flutter config
+  - Added Windows platform to the project using flutter create
+  - Updated build_release.sh script to include Windows build steps
+  - Windows build creates a ZIP package in downloads folder
+  - Added Git LFS tracking for *.zip files
+  - Note: Windows builds must be done on a Windows machine with Flutter
+
+## Completed tasks (continued)
+
 - [x] Fix heliports not showing when toggle button is clicked
   - Found that type 7 airports (7,794 entries) were incorrectly mapped to 'small_airport' instead of 'heliport'
   - Fixed the type mapping in airport_service.dart getAirportType() method

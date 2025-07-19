@@ -12,7 +12,7 @@ ctaPrimaryURL = "/contact/"
 
 [[faq]]
 question = "What platforms is CaptainVFR available on?"
-answer = "CaptainVFR is available on iOS (iPhone and iPad), Android devices, macOS desktop, and as a web application that works in any modern browser."
+answer = "CaptainVFR is available on iOS (iPhone and iPad), Android devices, Windows desktop, macOS desktop, and as a web application that works in any modern browser."
 
 [[faq]]
 question = "Is there a free trial available?"
@@ -24,7 +24,7 @@ answer = "Absolutely! Your CaptainVFR account syncs across all your devices, so 
 
 [[faq]]
 question = "What are the system requirements?"
-answer = "iOS 13.0+, Android 6.0+, macOS 10.15+, or any modern web browser (Chrome, Safari, Firefox, Edge)."
+answer = "iOS 13.0+, Android 6.0+, Windows 10+, macOS 10.15+, or any modern web browser (Chrome, Safari, Firefox, Edge)."
 
 [[faq]]
 question = "Do I need an internet connection to use CaptainVFR?"
@@ -44,41 +44,53 @@ answer = "While an internet connection is required for real-time weather and ini
 
 Download CaptainVFR for your device or use it directly in your web browser.
 
-{{< features-three-column
+{{< incentives-4-column-simple
   heading=""
-  description=""
-  backgroundColor="gray-50"
+  subheading=""
 >}}
 [
   {
     "icon": "device-phone-mobile",
-    "title": "iOS - iPhone & iPad",
-    "description": "Native iOS app optimized for iPhone and iPad with full offline capabilities. Universal app design, offline map downloads, Apple Watch companion app.",
+    "title": "iOS",
+    "subtitle": "iPhone & iPad",
+    "description": "Native app with offline maps",
     "link": {
-      "text": "Download on App Store",
+      "text": "App Store",
       "url": "https://apps.apple.com/app/captainvfr"
     }
   },
   {
     "icon": "device-phone-mobile",
     "title": "Android",
-    "description": "Full-featured Android app available on Google Play or direct APK download. Optimized for phones and tablets with offline navigation support.",
+    "subtitle": "Phones & Tablets",
+    "description": "Full features & offline nav",
     "link": {
-      "text": "Get on Google Play",
+      "text": "Google Play",
       "url": "https://play.google.com/store/apps/details?id=com.captainvfr"
     }
   },
   {
     "icon": "computer-desktop",
-    "title": "macOS Desktop",
-    "description": "Native macOS application with enhanced performance and desktop-optimized interface. Native Apple Silicon support, multi-window capability.",
+    "title": "macOS",
+    "subtitle": "Desktop App",
+    "description": "Native Apple Silicon app",
     "link": {
-      "text": "Download for Mac",
+      "text": "Download DMG",
       "url": "/downloads/CaptainVFR.dmg"
+    }
+  },
+  {
+    "icon": "computer-desktop",
+    "title": "Windows",
+    "subtitle": "Desktop App",
+    "description": "Windows 10+ compatible",
+    "link": {
+      "text": "Download ZIP",
+      "url": "/downloads/CaptainVFR-Windows.zip"
     }
   }
 ]
-{{< /features-three-column >}}
+{{< /incentives-4-column-simple >}}
 
 
 ### Alternative Download Options
