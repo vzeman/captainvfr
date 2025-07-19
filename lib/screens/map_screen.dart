@@ -3357,12 +3357,15 @@ class MapScreenState extends State<MapScreen>
               );
             },
           ),
-          // Loading progress bar at the bottom
+          // Loading progress bar at the bottom center
           const Positioned(
-            bottom: 0,
+            bottom: 60, // Above map controls
             left: 0,
             right: 0,
-            child: LoadingProgressBar(),
+            child: IgnorePointer(
+              ignoring: false, // Allow interaction with the close button
+              child: LoadingProgressBar(),
+            ),
           ),
           
           // Zoom controls in bottom left corner

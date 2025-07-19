@@ -35,6 +35,8 @@ answer = "While an internet connection is required for real-time weather and ini
 
 **Latest improvements (January 2025):**
 - Improved loading indicator positioning - now displays at the bottom of the screen for better visibility
+- Redesigned loading panel as a non-blocking, dismissible widget (max 400px wide)
+- Loading continues in background even when panel is closed for uninterrupted workflow
 - Added quick access to CaptainVFR website from the main menu
 - Enhanced user interface for better navigation experience
 
