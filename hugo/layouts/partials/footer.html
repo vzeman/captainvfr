@@ -21,9 +21,7 @@ Custom footer partial that uses the site configuration for the logo and company 
     )
     "column2Title" "Resources"
     "column2Links" (slice 
-        (dict "text" "Documentation" "url" "/docs/")
-        (dict "text" "Tutorials" "url" "/tutorials/")
-        (dict "text" "Support" "url" "/support/")
+        (dict "text" "Support" "url" "/contact/")
     )
     "column3Title" "Company"
     "column3Links" (slice 
@@ -36,6 +34,6 @@ Custom footer partial that uses the site configuration for the logo and company 
         (dict "text" "Privacy Policy" "url" "/privacy-policy/")
     )
     "socialLinks" $footer.social_links
-    "copyrightText" (printf "&copy; %s-%d %s. All rights reserved." $footer.copyright_start_year now.Year $footer.company_name)
+    "copyrightText" (printf "&copy; 2024-%d QualityUnit, s.r.o.. All rights reserved." now.Year)
     "currentPage" .
 ) }}
