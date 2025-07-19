@@ -1,4 +1,4 @@
-home = ["HTML", "SITEMAP", "ROBOTS", "JSON", "CSS"]
+home = ["HTML", "SITEMAP", "ROBOTS", "JSON"]
 section = ["HTML"]
 taxonomy = ["HTML"]
 term = ["HTML"]

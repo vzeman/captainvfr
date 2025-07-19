@@ -14,7 +14,7 @@
     webpQuality = 85
 
   [params.footer]
-    logoUrl = "/images/logo-white.svg"
+    logoUrl = "/images/logo.png"
     company_name = "CaptainVFR"
     copyright_start_year = "2025"
     newsletter_action = ""

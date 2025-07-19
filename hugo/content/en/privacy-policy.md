@@ -2,7 +2,7 @@
 title = "Privacy Policy"
 description = "CaptainVFR Privacy Policy - How we collect, use, and protect your data"
 date = "2025-07-17T11:00:00Z"
-url = "/privacy-policy/"
+
 +++
 
 # Privacy Policy

@@ -87,7 +87,6 @@ class SensorAvailabilityService extends ChangeNotifier {
             sensorName: 'Location Services Disabled',
             message: 'Enable location services for navigation and flight tracking',
             icon: Icons.location_off,
-            backgroundColor: Colors.orangeAccent,
           ),
         );
         return;
@@ -104,7 +103,6 @@ class SensorAvailabilityService extends ChangeNotifier {
                 ? 'Location permission denied. Enable in device settings.'
                 : 'Location permission needed for navigation features',
             icon: Icons.location_disabled,
-            backgroundColor: Colors.redAccent,
           ),
         );
       }
@@ -116,7 +114,6 @@ class SensorAvailabilityService extends ChangeNotifier {
           sensorName: 'Location Service Error',
           message: 'Unable to access location services',
           icon: Icons.error_outline,
-          backgroundColor: Colors.red,
         ),
       );
     }
@@ -156,7 +153,6 @@ class SensorAvailabilityService extends ChangeNotifier {
               sensorName: 'Barometer Permission Required',
               message: 'Sensor permission needed for altitude measurements',
               icon: Icons.speed,
-              backgroundColor: Colors.orangeAccent,
             ),
           );
           return;

@@ -1,13 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 /// A dismissible notification widget for displaying sensor availability warnings
-class SensorNotification extends StatelessWidget {
+class SensorNotification extends StatefulWidget {
   final String sensorName;
   final String message;
   final VoidCallback onDismiss;
   final IconData icon;
   final Color? backgroundColor;
   final Color? iconColor;
+  final Duration autoDismissAfter;
 
   const SensorNotification({
     super.key,
@@ -17,13 +19,33 @@ class SensorNotification extends StatelessWidget {
     this.icon = Icons.sensors_off,
     this.backgroundColor,
     this.iconColor,
+    this.autoDismissAfter = const Duration(seconds: 5),
   });
+
+  @override
+  State<SensorNotification> createState() => _SensorNotificationState();
+}
+
+class _SensorNotificationState extends State<SensorNotification> {
+  Timer? _autoDismissTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _autoDismissTimer = Timer(widget.autoDismissAfter, widget.onDismiss);
+  }
+
+  @override
+  void dispose() {
+    _autoDismissTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bgColor = backgroundColor ?? theme.colorScheme.surfaceContainerHighest;
-    final iColor = iconColor ?? theme.colorScheme.onSurfaceVariant;
+    final bgColor = widget.backgroundColor ?? const Color(0xFFFED8B1);
+    final iColor = widget.iconColor ?? const Color(0xFF6B4423);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
@@ -36,7 +58,7 @@ class SensorNotification extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                icon,
+                widget.icon,
                 color: iColor,
                 size: 24,
               ),
@@ -47,14 +69,14 @@ class SensorNotification extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      sensorName,
+                      widget.sensorName,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      message,
+                      widget.message,
                       style: theme.textTheme.bodySmall,
                     ),
                   ],
@@ -62,7 +84,10 @@ class SensorNotification extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.close),
-                onPressed: onDismiss,
+                onPressed: () {
+                  _autoDismissTimer?.cancel();
+                  widget.onDismiss();
+                },
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 iconSize: 20,

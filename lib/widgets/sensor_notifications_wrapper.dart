@@ -18,7 +18,7 @@ class SensorNotificationsWrapper extends StatelessWidget {
       children: [
         child,
         Positioned(
-          top: 0,
+          bottom: 0,
           left: 0,
           right: 0,
           child: Consumer<SensorAvailabilityService>(
@@ -27,9 +27,14 @@ class SensorNotificationsWrapper extends StatelessWidget {
                 return const SizedBox.shrink();
               }
 
-              return SensorNotificationContainer(
-                notifications: sensorService.notifications,
-                onDismiss: (id) => sensorService.dismissNotification(id),
+              return Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: SensorNotificationContainer(
+                    notifications: sensorService.notifications,
+                    onDismiss: (id) => sensorService.dismissNotification(id),
+                  ),
+                ),
               );
             },
           ),

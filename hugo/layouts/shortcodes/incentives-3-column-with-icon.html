@@ -1,0 +1,73 @@
+{{/* 
+  Example usage:
+  {{< incentives-3-column-with-icon 
+      backgroundColor="bg-gray-50" 
+      srTitle="Our advantages" 
+  >}}
+    [
+      {
+        "name": "Free shipping",
+        "description": "Free shipping on orders over $50",
+        "icon": "truck"
+      },
+      {
+        "name": "Guaranteed Returns",
+        "description": "30-day money back guarantee",
+        "icon": "shield-check"
+      },
+      {
+        "name": "Secure Payments",
+        "description": "Your payment information is secure",
+        "icon": "lock-closed"
+      }
+    ]
+  {{< /incentives-3-column-with-icon >}}
+
+  3-column incentives shortcode with Heroicon
+  
+  Parameters:
+  - backgroundColor: Background color class (default: "bg-white")
+  - srTitle: Screen reader title (default: "Our advantages")
+  
+  Inner Content:
+  JSON array of incentive objects with the following structure:
+  - name: Incentive name
+  - description: Incentive description
+  - icon: Name of the Heroicon to use (without the heroicon- prefix)
+  
+  If no inner content is provided, default incentives will be used.
+*/}}
+
+{{ $backgroundColor := .Get "backgroundColor" | default "bg-white" }}
+{{ $srTitle := .Get "srTitle" | default "Our advantages" }}
+
+{{ $defaultIncentives := slice 
+  (dict 
+    "name" "Free shipping" 
+    "description" "Free shipping on orders over $50" 
+    "icon" "truck"
+  )
+  (dict 
+    "name" "Guaranteed Returns" 
+    "description" "30-day money back guarantee" 
+    "icon" "shield-check"
+  )
+  (dict 
+    "name" "Secure Payments" 
+    "description" "Your payment information is secure" 
+    "icon" "lock-closed"
+  )
+}}
+
+{{ $incentives := $defaultIncentives }}
+{{ with .Inner }}
+  {{ if . }}
+    {{ $incentives = . | unmarshal }}
+  {{ end }}
+{{ end }}
+
+{{ partial "sections/incentives/3-column_with_icon.html" (dict 
+  "backgroundColor" $backgroundColor
+  "srTitle" $srTitle
+  "incentives" $incentives
+) }}

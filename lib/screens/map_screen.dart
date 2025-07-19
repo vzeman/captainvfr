@@ -11,6 +11,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:logger/logger.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'flight_log_screen.dart';
 import 'offline_data_screen.dart';
 import 'flight_plans_screen.dart';
@@ -3037,6 +3038,8 @@ class MapScreenState extends State<MapScreen>
                         );
                       } else if (value == 'settings') {
                         SettingsDialog.show(context);
+                      } else if (value == 'website') {
+                        launchUrl(Uri.parse('https://www.captainvfr.com'));
                       }
                     },
                     itemBuilder: (BuildContext context) => [
@@ -3117,6 +3120,17 @@ class MapScreenState extends State<MapScreen>
                             Icon(Icons.settings, size: 20),
                             SizedBox(width: 8),
                             Text('Settings'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(
+                        value: 'website',
+                        child: Row(
+                          children: [
+                            Icon(Icons.language, size: 20),
+                            SizedBox(width: 8),
+                            Text('Visit www.captainvfr.com'),
                           ],
                         ),
                       ),
@@ -3343,9 +3357,9 @@ class MapScreenState extends State<MapScreen>
               );
             },
           ),
-          // Loading progress bar at the top
+          // Loading progress bar at the bottom
           const Positioned(
-            top: 0,
+            bottom: 0,
             left: 0,
             right: 0,
             child: LoadingProgressBar(),

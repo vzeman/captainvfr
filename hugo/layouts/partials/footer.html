@@ -1,0 +1,41 @@
+{{/*
+Custom footer partial that uses the site configuration for the logo and company info
+*/}}
+
+{{ $footer := .Site.Params.footer }}
+
+{{ partial "layout/footers/4-column_with_call-to-action_on_dark" (dict 
+    "logoUrl" "/images/logo.png"
+    "logoAlt" $footer.company_name
+    "ctaTagline" "Ready to elevate your flying experience?"
+    "ctaHeading" "Start using CaptainVFR today"
+    "ctaDescription" "Join thousands of pilots who trust CaptainVFR for their VFR flight planning needs."
+    "ctaButtonText" "Download Now"
+    "ctaButtonUrl" "/download/"
+    "column1Title" "Features"
+    "column1Links" (slice 
+        (dict "text" "Flight Planning" "url" "/features#flight-planning")
+        (dict "text" "Weather & NOTAMs" "url" "/features#weather")
+        (dict "text" "Weight & Balance" "url" "/features#weight-balance")
+        (dict "text" "Offline Maps" "url" "/features#offline-maps")
+    )
+    "column2Title" "Resources"
+    "column2Links" (slice 
+        (dict "text" "Documentation" "url" "/docs/")
+        (dict "text" "Tutorials" "url" "/tutorials/")
+        (dict "text" "Support" "url" "/support/")
+    )
+    "column3Title" "Company"
+    "column3Links" (slice 
+        (dict "text" "About" "url" "/about/")
+        (dict "text" "Blog" "url" "/blog/")
+        (dict "text" "Contact" "url" "/contact/")
+    )
+    "column4Title" "Legal"
+    "column4Links" (slice 
+        (dict "text" "Privacy Policy" "url" "/privacy-policy/")
+    )
+    "socialLinks" $footer.social_links
+    "copyrightText" (printf "&copy; %s-%d %s. All rights reserved." $footer.copyright_start_year now.Year $footer.company_name)
+    "currentPage" .
+) }}

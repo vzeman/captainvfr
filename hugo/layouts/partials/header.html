@@ -1,0 +1,31 @@
+{{/*
+Custom header partial that uses the site configuration for the logo
+*/}}
+
+{{ partial "components/menus/header_menu" (dict 
+    "logoUrl" "/images/logo.png"
+    "logoAlt" "CaptainVFR"
+    "logoHeight" "h-10"
+    "siteTitle" "CaptainVFR"
+    "ctaText" "Download"
+    "ctaUrl" "/download/"
+    "ctaBgColor" "bg-indigo-600"
+    "ctaHoverBgColor" "hover:bg-indigo-500"
+    "ctaTextColor" "text-white"
+    "loginText" "Try in Browser"
+    "loginUrl" "/app/"
+    "menuItems" (slice
+        (dict
+            "title" "Home"
+            "url" "/"
+        )
+        (dict
+            "title" "Features"
+            "url" "/features/"
+        )
+        (dict
+            "title" "Pricing"
+            "url" "/pricing/"
+        )
+    )
+) }}
