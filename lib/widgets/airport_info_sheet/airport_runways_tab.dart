@@ -255,8 +255,7 @@ class RunwayCard extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withAlpha(
-                          51,
+                        color: theme.colorScheme.primary.withValues(alpha: 0.2
                         ), // 20% opacity
                         borderRadius: BorderRadius.circular(4),
                       ),

@@ -26,7 +26,7 @@ class ActionButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           side: BorderSide(
-            color: theme.colorScheme.outline.withAlpha(102), // 40% opacity
+            color: theme.colorScheme.outline.withValues(alpha: 0.4), // 40% opacity
           ),
         ),
       ),

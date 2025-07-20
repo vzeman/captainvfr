@@ -34,8 +34,7 @@ class PerformanceMonitor {
   final Queue<FrameTiming> _recentFrames = Queue<FrameTiming>();
   final Map<String, List<int>> _operationTimings = <String, List<int>>{};
   final Map<String, int> _operationCounts = <String, int>{};
-  static const int _maxRecentFrames = 60; // Keep last 60 frames (~1 second at 60fps)
-  
+
   // Threshold for slow frames (in microseconds)
   static const int _slowFrameThresholdMicros = 16667; // ~16.67ms for 60fps
   static const int _warnFrameThresholdMicros = 33334; // ~33.33ms for 30fps
@@ -95,53 +94,6 @@ class PerformanceMonitor {
   
   /// Handle frame timings
   void _onFrameTimings(List<FrameTiming> timings) {
-    for (final timing in timings) {
-      // Store recent frames for analysis
-      _recentFrames.add(timing);
-      if (_recentFrames.length > _maxRecentFrames) {
-        _recentFrames.removeFirst();
-      }
-      
-      final buildDuration = timing.buildDuration.inMicroseconds;
-      final rasterDuration = timing.rasterDuration.inMicroseconds;
-      final totalDuration = timing.totalSpan.inMicroseconds;
-      
-      // Check if frame is slow
-      if (totalDuration > _slowFrameThresholdMicros) {
-        final frameDurationMs = (totalDuration / 1000).toStringAsFixed(1);
-        final buildMs = (buildDuration / 1000).toStringAsFixed(1);
-        final rasterMs = (rasterDuration / 1000).toStringAsFixed(1);
-        
-        String message = '⚠️ Slow frame: ${frameDurationMs}ms';
-        
-        // Add details about what's slow
-        if (buildDuration > _slowFrameThresholdMicros) {
-          message += ' (Build: ${buildMs}ms)';
-        }
-        if (rasterDuration > _slowFrameThresholdMicros) {
-          message += ' (Raster: ${rasterMs}ms)';
-        }
-        
-        // Add current operation if any
-        if (_currentOperation != null) {
-          message += ' during "$_currentOperation"';
-        }
-        
-        // Check for very slow frames
-        if (totalDuration > _warnFrameThresholdMicros) {
-          message = '🚨 Very slow frame: ${frameDurationMs}ms';
-          
-          // Add more details for very slow frames
-          message += ' [Build: ${buildMs}ms, Raster: ${rasterMs}ms]';
-          
-          if (_currentOperation != null) {
-            message += ' during "$_currentOperation"';
-          }
-        }
-        
-        developer.log(message);
-      }
-    }
   }
   
   /// Measure async operation performance

@@ -173,13 +173,15 @@ class AirportWeatherTab extends StatelessWidget {
                 color: color,
               ),
               const SizedBox(width: 8),
-              Text(
-                isDangerous
-                    ? 'CAUTION - Dangerous Weather Conditions'
-                    : 'Interpretation',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: color,
+              Expanded(
+                child: Text(
+                  isDangerous
+                      ? 'CAUTION'
+                      : 'Interpretation',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
                 ),
               ),
             ],

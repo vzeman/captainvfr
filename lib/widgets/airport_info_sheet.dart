@@ -225,7 +225,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withAlpha(13), // 5% opacity
+                  color: Colors.black.withValues(alpha: 0.05), // 5% opacity
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),

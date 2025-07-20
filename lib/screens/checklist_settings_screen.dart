@@ -18,11 +18,18 @@ class ChecklistSettingsScreen extends StatefulWidget {
 
 class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
   final _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _updateSearchQuery(String value) {
+    setState(() {
+      _searchQuery = value.toLowerCase();
+    });
   }
 
   @override
@@ -48,18 +55,16 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            TextFormField(
+            // Search field outside of Consumer to prevent focus loss
+            _SearchField(
               controller: _searchController,
-              style: FormThemeHelper.inputTextStyle,
-              decoration: FormThemeHelper.getInputDecoration('Search')
-                  .copyWith(prefixIcon: Icon(Icons.search, color: FormThemeHelper.secondaryTextColor)),
-              onChanged: (_) => setState(() {}),
+              onChanged: _updateSearchQuery,
             ),
             const SizedBox(height: 16),
             Expanded(
               child: Consumer2<ChecklistService, AircraftSettingsService>(
                 builder: (context, checklistSvc, aircraftSvc, child) {
-                  final query = _searchController.text.toLowerCase();
+                  final query = _searchQuery;
                   final lists = checklistSvc.checklists.where((c) {
                     final m = aircraftSvc.manufacturers.firstWhere(
                       (m) => m.id == c.manufacturerId,
@@ -187,6 +192,33 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// Separate stateful widget for search field to maintain focus
+class _SearchField extends StatefulWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  const _SearchField({
+    required this.controller,
+    required this.onChanged,
+  });
+
+  @override
+  State<_SearchField> createState() => _SearchFieldState();
+}
+
+class _SearchFieldState extends State<_SearchField> {
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: widget.controller,
+      style: FormThemeHelper.inputTextStyle,
+      decoration: FormThemeHelper.getInputDecoration('Search')
+          .copyWith(prefixIcon: Icon(Icons.search, color: FormThemeHelper.secondaryTextColor)),
+      onChanged: widget.onChanged,
     );
   }
 }

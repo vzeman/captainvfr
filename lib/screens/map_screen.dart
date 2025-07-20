@@ -3,7 +3,6 @@ import 'dart:math' show pi;
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:latlong2/latlong.dart' show LatLng;
@@ -36,7 +35,7 @@ import '../widgets/navaid_marker.dart';
 import '../widgets/optimized_marker_layer.dart';
 import '../widgets/airport_info_sheet.dart';
 import '../widgets/flight_dashboard.dart';
-import '../widgets/airport_search_delegate.dart';
+import '../widgets/airport_search_dialog.dart';
 import '../widgets/metar_overlay.dart';
 import '../widgets/flight_plan_overlay.dart';
 import '../widgets/flight_planning_panel.dart';
@@ -66,7 +65,7 @@ class MapScreen extends StatefulWidget {
 }
 
 class MapScreenState extends State<MapScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver, RouteAware {
   // Logger
   final Logger _logger = Logger(level: Level.warning);
   
@@ -168,7 +167,6 @@ class MapScreenState extends State<MapScreen>
   List<flight_seg.FlightSegment> _flightSegments = [];
   List<Airport> _airports = [];
   List<Navaid> _navaids = [];
-  List<Airspace> _airspaces = [];
   List<ReportingPoint> _reportingPoints = [];
 
   // UI state
@@ -194,26 +192,28 @@ class MapScreenState extends State<MapScreen>
   Timer? _positionUpdateTimer;
   static const Duration _positionUpdateInterval = Duration(seconds: 3);
 
+  // Helper to check if any input field has focus
+  bool get _hasInputFocus {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    if (primaryFocus == null) return false;
+    
+    // Check if the focused widget is a text input
+    final focusedWidget = primaryFocus.context?.widget;
+    return focusedWidget is EditableText || 
+           primaryFocus.context?.widget.toString().contains('TextField') == true ||
+           primaryFocus.context?.widget.toString().contains('TextFormField') == true;
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     // Initialize map controller
     _mapController = MapController();
 
     // Load flight planning panel state from SharedPreferences
     _loadFlightPlanningPanelState();
-
-    // Add performance monitoring in debug mode
-    if (kDebugMode) {
-      SchedulerBinding.instance.addTimingsCallback((timings) {
-        for (final timing in timings) {
-          if (timing.totalSpan.inMilliseconds > 16) {
-            debugPrint('⚠️ Slow frame: ${timing.totalSpan.inMilliseconds}ms');
-          }
-        }
-      });
-    }
 
     // Start location loading in background without blocking UI
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -324,7 +324,7 @@ class MapScreenState extends State<MapScreen>
 
   // Handle flight path updates from the flight service
   void _onFlightPathUpdated() {
-    if (mounted) {
+    if (mounted && !_hasInputFocus) {
       setState(() {
         // Check if tracking just started
         if (_flightService.isTracking && !_wasTracking) {
@@ -407,7 +407,7 @@ class MapScreenState extends State<MapScreen>
 
   // Handle flight plan updates from the flight plan service
   void _onFlightPlanUpdated() {
-    if (mounted) {
+    if (mounted && !_hasInputFocus) {
       setState(() {
         // Show flight plan panel when a plan is loaded
         if (_flightPlanService.currentFlightPlan != null) {
@@ -423,7 +423,46 @@ class MapScreenState extends State<MapScreen>
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+        // Pause all timers when app is not active
+        _pauseAllTimers();
+        break;
+      case AppLifecycleState.resumed:
+        // Resume timers when app is active
+        _resumeAllTimers();
+        break;
+      case AppLifecycleState.detached:
+        break;
+    }
+  }
+  
+  void _pauseAllTimers() {
+    _positionUpdateTimer?.cancel();
+    _autoCenteringTimer?.cancel();
+    _countdownTimer?.cancel();
+    _airspaceDebounceTimer?.cancel();
+    _locationStreamSubscription?.pause();
+  }
+  
+  void _resumeAllTimers() {
+    // Resume position updates if tracking was enabled
+    if (_positionTrackingEnabled && !_flightService.isTracking) {
+      _startPositionTracking();
+    }
+    
+    // Resume location stream
+    _locationStreamSubscription?.resume();
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     // Cancel all scheduled operations
     FrameAwareScheduler().cancelAll();
     _performanceReportTimer?.cancel();
@@ -522,7 +561,7 @@ class MapScreenState extends State<MapScreen>
     _locationStreamSubscription?.cancel();
     _locationStreamSubscription = _locationService.getPositionStream().listen(
       (Position position) {
-        if (mounted) {
+        if (mounted && !_hasInputFocus) {
           setState(() {
             _currentPosition = position;
           });
@@ -865,17 +904,6 @@ class MapScreenState extends State<MapScreen>
   Future<void> _loadAirspacesDebounced() async {
     // Check if we have API key (either user or default)
     if (!openAIPService.hasApiKey) {
-      // debugPrint('🌍 _loadAirspaces: No API key available');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Please set your OpenAIP API key in Offline Data settings to view airspaces',
-            ),
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
       return;
     }
 
@@ -884,13 +912,7 @@ class MapScreenState extends State<MapScreen>
       final cachedAirspaces = await openAIPService.getCachedAirspaces();
 
       if (cachedAirspaces.isNotEmpty) {
-        if (mounted) {
-          setState(() {
-            _airspaces = cachedAirspaces;
-          });
-          
-          // Spatial index will be built automatically by the service
-        }
+        // Spatial index will be built automatically by the service
       }
 
       // Then progressively load data for current bounds
@@ -910,25 +932,21 @@ class MapScreenState extends State<MapScreen>
         },
       );
     } catch (e) {
-      // debugPrint('❌ Error loading airspaces: $e');
-      // debugPrint('❌ Stack trace: ${StackTrace.current}');
+      // Silently ignore errors during data loading initialization
     }
   }
 
   // Refresh airspaces display when new data is available
   Future<void> _refreshAirspacesDisplay() async {
     try {
-      final airspaces = await openAIPService.getCachedAirspaces();
+      await openAIPService.getCachedAirspaces();
       if (mounted) {
-        setState(() {
-          _airspaces = airspaces;
-        });
-        
         // Rebuild spatial index with new data
         await spatialAirspaceService.rebuildIndex();
       }
     } catch (e) {
-      // debugPrint('❌ Error refreshing airspaces display: $e');
+      // Silently ignore errors during airspace refresh
+      // This is non-critical functionality
     }
   }
 
@@ -1014,7 +1032,7 @@ class MapScreenState extends State<MapScreen>
     
     // Start countdown timer that updates every second
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
+      if (mounted && !_hasInputFocus) {
         setState(() {
           _autoCenteringCountdown--;
         });
@@ -1110,7 +1128,7 @@ class MapScreenState extends State<MapScreen>
   Future<void> _updateCurrentPosition() async {
     try {
       final position = await _locationService.getLastKnownOrCurrentLocation();
-      if (mounted && _positionTrackingEnabled && _autoCenteringEnabled) {
+      if (mounted && _positionTrackingEnabled && _autoCenteringEnabled && !_hasInputFocus) {
         setState(() {
           _currentPosition = position;
         });
@@ -1173,11 +1191,8 @@ class MapScreenState extends State<MapScreen>
     // Load navaids immediately when toggled on
     if (_showNavaids) {
       _loadNavaids();
-    } else {
-      setState(() {
-        _navaids = [];
-      });
     }
+    // Keep navaids in memory when toggled off for fast toggling
   }
 
   // Toggle METAR overlay visibility
@@ -1213,26 +1228,16 @@ class MapScreenState extends State<MapScreen>
   // Toggle airspaces visibility
   void _toggleAirspaces() {
     if (!_showAirspaces) {
-      // Turning airspaces ON - load data first, then update UI
+      // Turning airspaces ON - just update UI state
+      setState(() {
+        _showAirspaces = true;
+      });
+      
+      // Load/refresh data if needed
       _loadAirspaces();
       _loadReportingPoints();
-      
-      // Use a small delay to ensure data loading starts before UI update
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (mounted) {
-          setState(() {
-            _showAirspaces = true;
-          });
-        }
-      });
     } else {
-      // Turning airspaces OFF - clear data immediately before setState
-      _airspaces = [];
-      _reportingPoints = [];
-      // Clear the spatial index to free memory
-      spatialAirspaceService.clearIndex();
-      
-      // Now update UI
+      // Turning airspaces OFF - just hide them, keep data and index in memory
       setState(() {
         _showAirspaces = false;
       });
@@ -1240,7 +1245,7 @@ class MapScreenState extends State<MapScreen>
   }
 
   // Handle map tap - updated to support flight planning and airspace selection
-  void _onMapTapped(TapPosition tapPosition, LatLng point) {
+  void _onMapTapped(TapPosition tapPosition, LatLng point) async {
     // If a waypoint was just tapped, ignore this map tap
     if (_waypointJustTapped) {
       return;
@@ -1254,10 +1259,9 @@ class MapScreenState extends State<MapScreen>
     }
 
     // Check if any airspaces contain the tapped point
-    if (_showAirspaces && _airspaces.isNotEmpty) {
-      final tappedAirspaces = _airspaces.where((airspace) {
-        return airspace.containsPoint(point);
-      }).toList();
+    if (_showAirspaces) {
+      // Use spatial service to find airspaces at the tapped point
+      final tappedAirspaces = await spatialAirspaceService.getAirspacesAtPoint(point);
 
       if (tappedAirspaces.isNotEmpty) {
         _showAirspacesAtPoint(tappedAirspaces, point);
@@ -1393,8 +1397,7 @@ class MapScreenState extends State<MapScreen>
 
     // Get current altitude if available
     final currentAltitudeFt = _currentPosition?.altitude != null
-        ? _currentPosition!.altitude *
-              3.28084 // Convert meters to feet
+        ? _currentPosition!.altitude * 3.28084 // Convert meters to feet
         : null;
 
     // Sort airspaces by altitude (lower first)
@@ -1410,142 +1413,190 @@ class MapScreenState extends State<MapScreen>
       return;
     }
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isPhone = screenWidth < 600;
+    final fontSize = isPhone ? 11.0 : 12.0;
+    final titleFontSize = isPhone ? 10.0 : 11.0;
+
     // Show selection dialog for multiple airspaces
-    await ThemedDialog.show(
+    await showDialog(
       context: context,
-      title: 'Airspaces at Location',
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (currentAltitudeFt != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12.0),
-              child: IntrinsicWidth(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: isPhone ? screenWidth * 0.9 : 400,
+              maxHeight: MediaQuery.of(context).size.height * 0.7,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.black87,
+              borderRadius: BorderRadius.circular(8.0),
+              border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.all(12.0),
                   decoration: BoxDecoration(
-                    color: const Color(0x1A448AFF),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0x33448AFF)),
+                    color: Colors.black.withValues(alpha: 0.3),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(8.0),
+                      topRight: Radius.circular(8.0),
+                    ),
                   ),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Icon(
-                        Icons.height,
-                        size: 16,
-                        color: Color(0xFF448AFF),
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'Current altitude: ${currentAltitudeFt.round()} ft',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                      Text(
+                        'AIRSPACES AT LOCATION',
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontSize: titleFontSize,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
                         ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white70, size: 16),
+                        onPressed: () => Navigator.of(context).pop(),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ),
-          ...airspaces.map<Widget>((airspace) {
-            // Check if current altitude is within this airspace
-            final isAtCurrentAltitude =
-                currentAltitudeFt != null &&
-                airspace.isAtAltitude(currentAltitudeFt);
-
-            return Container(
-              decoration: isAtCurrentAltitude
-                  ? BoxDecoration(
-                      color: const Color(0x1A448AFF),
-                      border: Border.all(
-                        color: const Color(0xFF448AFF),
-                        width: 2,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    )
-                  : BoxDecoration(
-                      border: Border.all(
-                        color: const Color(0x33448AFF),
-                        width: 1,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-              margin: const EdgeInsets.symmetric(vertical: 4),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _onAirspaceSelected(airspace);
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
+                // Current altitude indicator
+                if (currentAltitudeFt != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                    color: Colors.black.withValues(alpha: 0.2),
                     child: Row(
                       children: [
                         Icon(
-                          _getAirspaceIcon(airspace.type),
-                          color: _getAirspaceColor(
-                            airspace.type,
-                            airspace.icaoClass,
-                          ),
-                          size: isAtCurrentAltitude ? 28 : 24,
+                          Icons.flight,
+                          size: 14,
+                          color: Colors.blue.shade300,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                airspace.name,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${AirspaceUtils.getAirspaceTypeName(airspace.type)} ${AirspaceUtils.getIcaoClassName(airspace.icaoClass)}',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              Text(
-                                airspace.altitudeRange,
-                                style: TextStyle(
-                                  color: const Color(0xFF448AFF),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
+                        const SizedBox(width: 8),
+                        Text(
+                          'Current altitude: ${currentAltitudeFt.round()} ft',
+                          style: TextStyle(
+                            fontSize: fontSize,
+                            color: Colors.white70,
                           ),
                         ),
-                        Icon(Icons.chevron_right, color: Colors.white30),
                       ],
                     ),
                   ),
+                // Airspaces list
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: airspaces.map<Widget>((airspace) {
+                        // Check if current altitude is within this airspace
+                        final isAtCurrentAltitude = currentAltitudeFt != null &&
+                            airspace.isAtAltitude(currentAltitudeFt);
+
+                        return Container(
+                          decoration: isAtCurrentAltitude
+                              ? BoxDecoration(
+                                  color: Colors.orange.withValues(alpha: 0.1),
+                                  border: Border.all(
+                                    color: Colors.orange,
+                                    width: 2,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : BoxDecoration(
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                    width: 1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                _onAirspaceSelected(airspace);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _getAirspaceIcon(airspace.type),
+                                      color: _getAirspaceColor(
+                                        airspace.type,
+                                        airspace.icaoClass,
+                                      ),
+                                      size: isPhone ? 20 : 24,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            airspace.name,
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: fontSize,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${AirspaceUtils.getAirspaceTypeName(airspace.type)} ${AirspaceUtils.getIcaoClassName(airspace.icaoClass)}',
+                                            style: TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: isPhone ? 10 : 11,
+                                            ),
+                                          ),
+                                          Text(
+                                            airspace.altitudeRange,
+                                            style: TextStyle(
+                                              color: isAtCurrentAltitude 
+                                                  ? Colors.orange 
+                                                  : Colors.white60,
+                                              fontSize: isPhone ? 10 : 11,
+                                              fontWeight: isAtCurrentAltitude 
+                                                  ? FontWeight.bold 
+                                                  : FontWeight.normal,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(
+                                      Icons.chevron_right, 
+                                      color: Colors.white30,
+                                      size: isPhone ? 18 : 20,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
                 ),
-              ),
-            );
-          }),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
-        ),
-      ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1752,9 +1803,9 @@ class MapScreenState extends State<MapScreen>
 
   // Show airport search
   void _showAirportSearch() {
-    showSearch(
+    showDialog(
       context: context,
-      delegate: AirportSearchDelegate(
+      builder: (context) => AirportSearchDialog(
         airportService: _airportService,
         onAirportSelected: _onAirportSelectedFromSearch,
       ),
@@ -2180,23 +2231,10 @@ class MapScreenState extends State<MapScreen>
     });
   }
 
+  
   @override
   Widget build(BuildContext context) {
-    // Add keyboard listener for timing report
-    return KeyboardListener(
-      focusNode: FocusNode()..requestFocus(),
-      onKeyEvent: (event) {
-        if (event.character == 't' || event.character == 'T') {
-          PerformanceMonitor().printPerformanceReport();
-        }
-        if (event.character == 'p' || event.character == 'P') {
-          debugPrint('\n=== PERFORMANCE PROFILING REPORT ===');
-          PerformanceMonitor().printPerformanceReport();
-          debugPrint('=====================================\n');
-        }
-      },
-      child: _buildContent(context),
-    );
+    return _buildContent(context);
   }
   
   Widget _buildContent(BuildContext context) {
@@ -3016,26 +3054,29 @@ class MapScreenState extends State<MapScreen>
                     tooltip: 'Menu',
                     onSelected: (value) {
                       if (value == 'flight_log') {
+                        _pauseAllTimers();
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => const FlightLogScreen(),
                           ),
-                        );
+                        ).then((_) => _resumeAllTimers());
                       } else if (value == 'offline_maps') {
+                        _pauseAllTimers();
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => const OfflineDataScreen(),
                           ),
-                        );
+                        ).then((_) => _resumeAllTimers());
                       } else if (value == 'flight_plans') {
+                        _pauseAllTimers();
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => const FlightPlansScreen(),
                           ),
-                        );
+                        ).then((_) => _resumeAllTimers());
                       } else if (value == 'toggle_flight_planning') {
                         setState(() {
                           _showFlightPlanning = !_showFlightPlanning;
@@ -3055,37 +3096,42 @@ class MapScreenState extends State<MapScreen>
                         // Users must explicitly enable it from within the panel
                         // debugPrint('Flight planning panel toggled: $_showFlightPlanning');
                       } else if (value == 'checklists') {
+                        _pauseAllTimers();
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
                                 const ChecklistSettingsScreen(),
                           ),
-                        );
+                        ).then((_) => _resumeAllTimers());
                       } else if (value == 'airplane_settings') {
+                        _pauseAllTimers();
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
                                 const AircraftSettingsScreen(),
                           ),
-                        );
+                        ).then((_) => _resumeAllTimers());
                       } else if (value == 'licenses') {
+                        _pauseAllTimers();
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => const LicensesScreen(),
                           ),
-                        );
+                        ).then((_) => _resumeAllTimers());
                       } else if (value == 'calculators') {
+                        _pauseAllTimers();
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => const CalculatorsScreen(),
                           ),
-                        );
+                        ).then((_) => _resumeAllTimers());
                       } else if (value == 'settings') {
-                        SettingsDialog.show(context);
+                        _pauseAllTimers();
+                        SettingsDialog.show(context).then((_) => _resumeAllTimers());
                       } else if (value == 'website') {
                         launchUrl(Uri.parse('https://www.captainvfr.com'));
                       }
@@ -3416,83 +3462,6 @@ class MapScreenState extends State<MapScreen>
             ),
           ),
           
-          // Zoom controls in bottom left corner
-          Positioned(
-            bottom: 20,
-            left: 16,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Zoom in button
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(6),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.add, size: 18),
-                    padding: EdgeInsets.zero,
-                    onPressed: () {
-                      final currentZoom = _mapController.camera.zoom;
-                      if (currentZoom < _maxZoom) {
-                        _mapController.move(
-                          _mapController.camera.center,
-                          currentZoom + 1,
-                        );
-                        // Trigger updates for all layers
-                        _loadAirports();
-                        if (_showNavaids) _loadNavaids();
-                      }
-                    },
-                    tooltip: 'Zoom In',
-                  ),
-                ),
-                const SizedBox(height: 4),
-                // Zoom out button
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(6),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.remove, size: 18),
-                    padding: EdgeInsets.zero,
-                    onPressed: () {
-                      final currentZoom = _mapController.camera.zoom;
-                      if (currentZoom > _minZoom) {
-                        _mapController.move(
-                          _mapController.camera.center,
-                          currentZoom - 1,
-                        );
-                        // Trigger updates for all layers
-                        _loadAirports();
-                        if (_showNavaids) _loadNavaids();
-                      }
-                    },
-                    tooltip: 'Zoom Out',
-                  ),
-                ),
-              ],
-            ),
-          ),
           // Performance overlay when development mode is enabled
           Consumer<SettingsService>(
             builder: (context, settings, child) {
@@ -3508,7 +3477,7 @@ class MapScreenState extends State<MapScreen>
           ),
         ],
       ),
-    );
+    ); // Closing Scaffold
   }
 
   String _formatCountdown(int seconds) {

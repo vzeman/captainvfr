@@ -13,11 +13,8 @@ const String _baseUrl = 'https://api.core.openaip.net/api';
 const String _reportingPointsEndpoint = '/reporting-points';
 
 void main(List<String> args) async {
-  // Default API key from app config
-  const String defaultApiKey = '04cf90fde37c629b3cec5468572dd804';
-  
   // Parse command line arguments
-  String? apiKey = defaultApiKey;
+  String? apiKey;
   for (int i = 0; i < args.length; i++) {
     if (args[i] == '--api-key' && i + 1 < args.length) {
       apiKey = args[i + 1];
@@ -26,8 +23,12 @@ void main(List<String> args) async {
 
   if (apiKey == null || apiKey.isEmpty) {
     print('❌ Error: API key is required');
-    print('Usage: dart scripts/download_reporting_points.dart [--api-key YOUR_API_KEY]');
-    print('Note: Using default API key if not specified');
+    print('Usage: dart scripts/download_reporting_points.dart --api-key YOUR_API_KEY');
+    print('');
+    print('The API key should be provided via:');
+    print('1. Command line argument: --api-key YOUR_KEY');
+    print('2. Environment variable: OPENAIP_API_KEY in .env file');
+    print('3. Run via download_all_data.sh which handles .env loading');
     exit(1);
   }
 

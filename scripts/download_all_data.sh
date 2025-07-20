@@ -13,6 +13,15 @@ FORCE_DOWNLOAD=false
 API_KEY=""
 MAX_AGE_HOURS=24
 
+# Load API key from .env file if it exists
+if [ -f ".env" ]; then
+    export $(grep -E '^OPENAIP_API_KEY=' .env | xargs)
+    if [ ! -z "$OPENAIP_API_KEY" ]; then
+        API_KEY="--api-key $OPENAIP_API_KEY"
+        echo "📍 API key loaded from .env file"
+    fi
+fi
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in

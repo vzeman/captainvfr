@@ -72,12 +72,15 @@ class _SensorNotificationState extends State<SensorNotification> {
                       widget.sensorName,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
+                        color: Colors.black,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       widget.message,
-                      style: theme.textTheme.bodySmall,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.black87,
+                      ),
                     ),
                   ],
                 ),
@@ -91,6 +94,7 @@ class _SensorNotificationState extends State<SensorNotification> {
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 iconSize: 20,
+                color: Colors.black54,
               ),
             ],
           ),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class WatchConnectivityService {
@@ -23,7 +24,7 @@ class WatchConnectivityService {
     try {
       await _channel.invokeMethod('sendTrackingState', {'isTracking': isTracking});
     } catch (e) {
-      print('Error sending tracking state to watch: $e');
+      debugPrint('Error sending tracking state to watch: $e');
     }
   }
   
@@ -47,7 +48,7 @@ class WatchConnectivityService {
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       });
     } catch (e) {
-      print('Error sending flight data to watch: $e');
+      debugPrint('Error sending flight data to watch: $e');
     }
   }
   

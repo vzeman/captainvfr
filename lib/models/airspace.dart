@@ -308,7 +308,15 @@ class Airspace extends HiveObject implements SpatialIndexable {
   }
 
   bool isAtAltitude(double altitudeFt, {String reference = 'MSL'}) {
-    if (lowerLimitFt != null && altitudeFt < lowerLimitFt!) return false;
+    // For ground-level airspaces (null or 0 lower limit), accept any altitude >= sea level
+    // This handles negative altitudes (below sea level) correctly
+    if (lowerLimitFt == null || lowerLimitFt == 0) {
+      // Ground level airspace - no lower limit check needed
+      // (negative altitudes are still "at ground level" for airspace purposes)
+    } else if (altitudeFt < lowerLimitFt!) {
+      return false;
+    }
+    
     if (upperLimitFt != null && altitudeFt > upperLimitFt!) return false;
     return true;
   }

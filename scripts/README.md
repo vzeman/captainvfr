@@ -6,8 +6,9 @@ These scripts download aviation data from OpenAIP (airports, airspaces, reportin
 
 1. Dart SDK installed
 2. Good internet connection (downloads ~80 tiles each for airspaces and reporting points)
-3. Optional: Your own OpenAIP API key (get one from https://www.openaip.net/)
-   - If not provided, the scripts use the default API key from the app
+3. OpenAIP API key (get one from https://www.openaip.net/)
+   - Copy `.env.example` to `.env` and add your API key
+   - The download_all_data.sh script will automatically load the key from .env
 
 ## Usage
 
@@ -22,7 +23,7 @@ The easiest way is to use the convenience script:
 # Force download all data regardless of age
 ./scripts/download_all_data.sh --force
 
-# Using your own OpenAIP API key
+# Using a specific OpenAIP API key (overrides .env)
 ./scripts/download_all_data.sh YOUR_API_KEY
 
 # Force download with custom API key
@@ -46,13 +47,13 @@ This will download all data types:
 If you want to download only one type of data:
 
 ```bash
-# Download only airports (using default key)
-dart scripts/download_airports.dart
+# Download only airports (requires API key)
+dart scripts/download_airports.dart --api-key YOUR_API_KEY
 
-# Download only airspaces (using default key)
-dart scripts/download_airspaces.dart
+# Download only airspaces (requires API key)
+dart scripts/download_airspaces.dart --api-key YOUR_API_KEY
 
-# Download only reporting points (using your own key)
+# Download only reporting points (requires API key)
 dart scripts/download_reporting_points.dart --api-key YOUR_API_KEY
 
 # Download frequencies from OurAirports

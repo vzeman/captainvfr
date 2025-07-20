@@ -106,6 +106,12 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     # Copy the built app to temp directory
     cp -R "$BUILT_APP" "$DMG_TEMP/"
     
+    # Remove existing DMG file if it exists
+    if [ -f "$DOWNLOADS_DIR/CaptainVFR.dmg" ]; then
+        echo -e "${YELLOW}Removing existing CaptainVFR.dmg...${NC}"
+        rm -f "$DOWNLOADS_DIR/CaptainVFR.dmg"
+    fi
+    
     # Create DMG without mounting (skip Finder customization)
     create-dmg \
         --volname "CaptainVFR" \
@@ -125,38 +131,16 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     check_status "DMG creation"
     echo -e "${GREEN}✓ DMG file: $DOWNLOADS_DIR/CaptainVFR.dmg${NC}"
     
+    # Clean up temporary DMG files (rw.*.dmg)
+    echo -e "${YELLOW}Cleaning up temporary DMG files...${NC}"
+    rm -f rw.*.dmg 2>/dev/null
+    
     # Clean up
     rm -rf "$DMG_TEMP"
 else
     echo -e "${YELLOW}Skipping macOS build (not on macOS)${NC}"
 fi
 
-# Build for Windows (if on Windows)
-if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OS" == "Windows_NT" ]]; then
-    echo -e "${YELLOW}Building Windows release...${NC}"
-    
-    # Build Windows executable
-    flutter build windows --release
-    check_status "Windows build"
-    
-    # Create installer or ZIP package
-    echo -e "${YELLOW}Creating Windows installer...${NC}"
-    
-    # Create a ZIP file with the Windows build
-    WINDOWS_BUILD_DIR="build/windows/x64/runner/Release"
-    if [ -d "$WINDOWS_BUILD_DIR" ]; then
-        cd "$WINDOWS_BUILD_DIR"
-        # Use PowerShell to create ZIP on Windows
-        powershell -Command "Compress-Archive -Path * -DestinationPath '../../../../../$DOWNLOADS_DIR/CaptainVFR-Windows.zip' -Force"
-        cd -
-        echo -e "${GREEN}✓ Windows ZIP: $DOWNLOADS_DIR/CaptainVFR-Windows.zip${NC}"
-    else
-        echo -e "${RED}Windows build directory not found${NC}"
-    fi
-else
-    echo -e "${YELLOW}Skipping Windows build (not on Windows)${NC}"
-    echo -e "${YELLOW}To build for Windows, run this script on a Windows machine with Flutter installed${NC}"
-fi
 
 # Build for Web
 echo -e "${YELLOW}Building Web release...${NC}"
@@ -194,9 +178,6 @@ fi
 if [ -f "$DOWNLOADS_DIR/CaptainVFR.dmg" ]; then
     echo "✓ macOS DMG: $DOWNLOADS_DIR/CaptainVFR.dmg"
 fi
-if [ -f "$DOWNLOADS_DIR/CaptainVFR-Windows.zip" ]; then
-    echo "✓ Windows ZIP: $DOWNLOADS_DIR/CaptainVFR-Windows.zip"
-fi
 if [ -d "hugo/static/app" ]; then
     echo "✓ Web Build: hugo/static/app/"
 fi
@@ -227,9 +208,6 @@ fi
 echo -e "${YELLOW}Setting up Git LFS tracking for large files...${NC}"
 git lfs track "hugo/static/downloads/*.apk"
 git lfs track "hugo/static/downloads/*.dmg"
-git lfs track "hugo/static/downloads/*.exe"
-git lfs track "hugo/static/downloads/*.msi"
-git lfs track "hugo/static/downloads/*.zip"
 check_status "Git LFS tracking setup"
 
 # Add .gitattributes if it was modified
@@ -242,9 +220,6 @@ fi
 echo -e "${YELLOW}Adding build artifacts to Git...${NC}"
 git add hugo/static/downloads/CaptainVFR.apk
 git add hugo/static/downloads/CaptainVFR.dmg
-if [ -f "hugo/static/downloads/CaptainVFR-Windows.zip" ]; then
-    git add hugo/static/downloads/CaptainVFR-Windows.zip
-fi
 git add hugo/static/app/
 check_status "Git add"
 

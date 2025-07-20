@@ -36,7 +36,7 @@ class NavaidMarker extends StatelessWidget {
           width: visualSize,
           height: visualSize,
           decoration: BoxDecoration(
-            color: Colors.white.withAlpha(230),
+            color: Colors.white.withValues(alpha: 0.9),
             shape: BoxShape.circle,
             border: Border.all(color: borderColor, width: borderWidth),
             boxShadow: [
@@ -174,7 +174,7 @@ class NavaidInfoSheet extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF000000).withAlpha(51),
+            color: const Color(0xFF000000).withValues(alpha: 0.2),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),

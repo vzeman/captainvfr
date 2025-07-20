@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/airport.dart';
 import '../services/airport_service.dart';
-import 'keyboard_aware_focus_field.dart';
 import '../utils/form_theme_helper.dart';
 
 class AirportSearchDialog extends StatefulWidget {
@@ -65,7 +64,7 @@ class _AirportSearchDialogState extends State<AirportSearchDialog> {
           // Search field
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: KeyboardAwareFocusField(
+            child: TextField(
               controller: _searchController,
               autofocus: true,
               style: FormThemeHelper.inputTextStyle,
@@ -94,7 +93,7 @@ class _AirportSearchDialogState extends State<AirportSearchDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
           style: FormThemeHelper.getSecondaryButtonStyle(),
           child: const Text('Cancel'),
         ),
@@ -165,7 +164,7 @@ class _AirportSearchDialogState extends State<AirportSearchDialog> {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: FormThemeHelper.primaryAccent.withOpacity(0.1),
+            color: FormThemeHelper.primaryAccent.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
@@ -208,7 +207,7 @@ class _AirportSearchDialogState extends State<AirportSearchDialog> {
         ),
         onTap: () {
           widget.onAirportSelected(airport);
-          Navigator.of(context).pop();
+          Navigator.of(context, rootNavigator: true).pop();
         },
       ),
     );

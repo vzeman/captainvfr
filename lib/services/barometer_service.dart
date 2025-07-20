@@ -114,10 +114,23 @@ class BarometerService {
         }
 
         // Listen for pressure updates via event channel
-        _sensorSubscription = _eventChannel.receiveBroadcastStream().listen(
-          _handlePressureUpdate,
-          onError: _handleSensorError,
-        );
+        try {
+          _sensorSubscription = _eventChannel.receiveBroadcastStream().listen(
+            _handlePressureUpdate,
+            onError: _handleSensorError,
+            cancelOnError: false, // Continue listening even if an error occurs
+          );
+        } on PlatformException catch (e) {
+          if (e.code == 'UNAVAILABLE') {
+            _logger.w('Barometer sensor not available on this device');
+            _isBarometerAvailable = false;
+            _isListening = false;
+            // Fallback to simulated data
+            _startSimulatedPressureUpdates();
+            return;
+          }
+          rethrow;
+        }
       } else {
         // Fallback to simulated pressure data for testing
         _logger.w('Barometer not available, using simulated data');
@@ -203,6 +216,18 @@ class BarometerService {
 
   /// Handle sensor errors
   void _handleSensorError(dynamic error) {
+    // Check if it's a PlatformException for unavailable sensor
+    if (error is PlatformException && error.code == 'UNAVAILABLE') {
+      _logger.w('Barometer sensor not available on this device: ${error.message}');
+      _isBarometerAvailable = false;
+      _isListening = false;
+      // Cancel the current subscription
+      _sensorSubscription?.cancel();
+      // Fallback to simulated data
+      _startSimulatedPressureUpdates();
+      return;
+    }
+    
     _logger.e('Barometer sensor error: $error');
     _updateController.addError(error);
   }

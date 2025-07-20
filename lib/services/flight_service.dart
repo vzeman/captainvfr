@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -14,6 +15,7 @@ import '../models/moving_segment.dart';
 import 'barometer_service.dart';
 import 'altitude_service.dart';
 import 'flight_storage_service.dart';
+import 'watch_connectivity_service.dart';
 
 // Constants for sensor data collection
 const double _gravity = 9.80665; // Standard gravity (m/s²)
@@ -23,12 +25,16 @@ class FlightService with ChangeNotifier {
   final List<FlightSegment> _flightSegments = [];
   StreamSubscription<Position>? _positionSubscription;
   StreamSubscription? _barometerSubscription;
+  StreamSubscription<bool>? _watchTrackingSubscription;
   bool _isTracking = false;
   double? _currentHeading;
   double? _currentBaroAltitude;
   DateTime? _startTime;
   double _totalDistance = 0.0;
   double _averageSpeed = 0.0;
+  
+  // Watch connectivity
+  final WatchConnectivityService _watchService = WatchConnectivityService();
 
   // New comprehensive time tracking variables
   DateTime? _recordingStartedZulu;
@@ -108,11 +114,25 @@ class FlightService with ChangeNotifier {
   FlightService({this.onFlightPathUpdated, BarometerService? barometerService})
     : _barometerService = barometerService ?? BarometerService() {
     _initializeStorage();
+    _initializeWatchConnectivity();
   }
 
   Future<void> _initializeStorage() async {
     await FlightStorageService.init();
     await _loadFlights();
+  }
+  
+  // Initialize watch connectivity
+  void _initializeWatchConnectivity() {
+    if (!kIsWeb && Platform.isIOS) {
+      _watchTrackingSubscription = _watchService.trackingStateStream.listen((shouldTrack) {
+        if (shouldTrack && !_isTracking) {
+          startTracking();
+        } else if (!shouldTrack && _isTracking) {
+          stopTracking();
+        }
+      });
+    }
   }
 
   // Start sensor subscriptions when tracking begins
@@ -220,6 +240,11 @@ class FlightService with ChangeNotifier {
 
     // Enable wakelock to keep screen on during tracking
     WakelockPlus.enable();
+    
+    // Notify watch about tracking state
+    if (!kIsWeb && Platform.isIOS) {
+      _watchService.sendTrackingState(true);
+    }
 
     // Start sensors only when tracking begins
     _startSensors();
@@ -396,6 +421,11 @@ class FlightService with ChangeNotifier {
     _updateFlightSegments(point);
 
     _updateFlightStats();
+    
+    // Send data to watch
+    if (!kIsWeb && Platform.isIOS) {
+      _sendDataToWatch(point, calculatedVerticalSpeed);
+    }
 
     // Throttle notifications to avoid excessive UI updates
     _throttledNotifyListeners();
@@ -700,6 +730,11 @@ class FlightService with ChangeNotifier {
 
     // Disable wakelock when tracking stops
     WakelockPlus.disable();
+    
+    // Notify watch about tracking state
+    if (!kIsWeb && Platform.isIOS) {
+      _watchService.sendTrackingState(false);
+    }
 
     // Set recording stopped time
     _recordingStoppedZulu = DateTime.now().toUtc();
@@ -1058,6 +1093,7 @@ class FlightService with ChangeNotifier {
   static const _notifyThrottleMs = 250; // Max 4 updates per second
 
   void _throttledNotifyListeners() {
+    
     final now = DateTime.now();
     if (_lastNotifyTime == null ||
         now.difference(_lastNotifyTime!).inMilliseconds > _notifyThrottleMs) {
@@ -1082,6 +1118,27 @@ class FlightService with ChangeNotifier {
     _gyroscopeSubscription?.cancel();
     _gyroscopeSubscription = null;
   }
+  
+  // Send flight data to watch
+  void _sendDataToWatch(FlightPoint point, double verticalSpeed) {
+    // Convert altitude from meters to feet
+    final altitudeFeet = point.altitude * 3.28084;
+    // Convert speed from m/s to knots
+    final speedKnots = point.speed * 1.94384;
+    // Convert vertical speed from m/s to feet per minute
+    final verticalSpeedFpm = verticalSpeed * 196.85;
+    // Get pressure in inHg (convert from hPa)
+    final pressureInHg = (point.pressure / 33.863886666667);
+    
+    _watchService.sendFlightData(
+      altitude: altitudeFeet,
+      groundSpeed: speedKnots,
+      heading: point.heading,
+      track: point.heading, // Use heading as track for now
+      verticalSpeed: verticalSpeedFpm,
+      pressure: pressureInHg,
+    );
+  }
 
   @override
   void dispose() {
@@ -1090,10 +1147,12 @@ class FlightService with ChangeNotifier {
     _barometerSubscription?.cancel();
     _barometerService?.dispose();
     _notifyTimer?.cancel();
+    _watchTrackingSubscription?.cancel();
     _isTracking = false;
     _flightPath.clear();
     // Ensure wakelock is disabled when service is disposed
     WakelockPlus.disable();
+    _watchService.dispose();
     super.dispose();
   }
 }

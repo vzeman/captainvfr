@@ -123,6 +123,7 @@ app.*.map.json
 
 # API Configuration - contains sensitive keys
 lib/config/api_config.dart
+.env
 
 # Android release signing
 android/key.properties

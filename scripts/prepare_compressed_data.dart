@@ -61,7 +61,6 @@ void main() async {
     print(indexResult.stderr);
   }
   
-  print('');
   print('✅ Data preparation complete!');
   print('📝 Update pubspec.yaml to use the _min.json.gz files');
 }

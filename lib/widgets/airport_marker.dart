@@ -32,8 +32,8 @@ class AirportMarker extends StatelessWidget {
 
     // The visual size of the marker based on zoom
     // Use the size parameter which is already adjusted for zoom
-    // Make heliport and balloonport markers slightly larger to accommodate their special icons
-    final visualSize = (airport.type == 'heliport' || airport.type == 'balloonport') ? size * 1.2 : size;
+    // Make heliport markers slightly larger to accommodate their special icons
+    final visualSize = airport.type == 'heliport' ? size * 1.2 : size;
 
     // Weather indicator dot size
     final weatherDotSize = visualSize * 0.3;
@@ -56,8 +56,8 @@ class AirportMarker extends StatelessWidget {
                 height: visualSize,
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? Colors.amber.withAlpha(51)
-                      : Colors.white.withAlpha(230),
+                      ? Colors.amber.withValues(alpha: 0.2)
+                      : Colors.white.withValues(alpha: 0.9),
                   shape: BoxShape.circle,
                   border: Border.all(color: borderColor, width: borderWidth),
                   boxShadow: [
@@ -74,6 +74,10 @@ class AirportMarker extends StatelessWidget {
                           offset: Offset(visualSize * 0.02, visualSize * 0.02), // Slight offset to compensate for icon's visual weight
                           child: FaIcon(FontAwesomeIcons.helicopter, size: visualSize * 0.45, color: color),
                         ),
+                      )
+                    : airport.type == 'balloonport'
+                    ? Center(
+                        child: Icon(Icons.air, size: visualSize * 0.5, color: color),
                       )
                     : Icon(icon, size: visualSize * 0.6, color: color),
               ),
@@ -178,8 +182,8 @@ class AirportMarkersLayer extends StatelessWidget {
     final baseMarkerSize = mapZoom >= 12 ? 40.0 : 28.0;
 
     final markers = airports.map((airport) {
-      // Small airports get 25% smaller markers (75% of base size)
-      final airportMarkerSize = airport.type == 'small_airport'
+      // Small airports and balloonports get 25% smaller markers (75% of base size)
+      final airportMarkerSize = (airport.type == 'small_airport' || airport.type == 'balloonport')
           ? baseMarkerSize * 0.75
           : baseMarkerSize;
 

@@ -56,9 +56,15 @@ class ConnectivityService extends ChangeNotifier {
       }
     }
 
+    // Store previous state to detect changes
+    final previousConnectionState = _hasInternetConnection;
+    final previousCheckingState = _isCheckingConnection;
+
     if (!silent) {
       _isCheckingConnection = true;
-      notifyListeners();
+      if (previousCheckingState != _isCheckingConnection) {
+        notifyListeners();
+      }
     }
 
     try {
@@ -69,7 +75,10 @@ class ConnectivityService extends ChangeNotifier {
         // debugPrint('❌ No network connectivity');
         _hasInternetConnection = false;
         _lastConnectionCheck = DateTime.now();
-        notifyListeners();
+        // Only notify if connection state changed and no text field has focus
+        if (previousConnectionState != _hasInternetConnection && !silent) {
+          notifyListeners();
+        }
         return false;
       }
 
@@ -101,7 +110,11 @@ class ConnectivityService extends ChangeNotifier {
       if (!silent) {
         _isCheckingConnection = false;
       }
-      notifyListeners();
+      // Only notify if state actually changed and no text field has focus
+      if ((previousConnectionState != _hasInternetConnection || 
+           previousCheckingState != _isCheckingConnection) && !silent) {
+        notifyListeners();
+      }
     }
 
     return _hasInternetConnection;
@@ -135,7 +148,8 @@ class ConnectivityService extends ChangeNotifier {
   void startPeriodicChecks() {
     Timer.periodic(_checkInterval, (timer) async {
       if (!_isCheckingConnection) {
-        await checkInternetConnection();
+        // Use silent mode for periodic checks to avoid unnecessary UI updates
+        await checkInternetConnection(silent: true);
       }
     });
   }

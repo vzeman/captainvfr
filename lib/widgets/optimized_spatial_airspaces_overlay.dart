@@ -234,9 +234,9 @@ class _OptimizedSpatialAirspacesOverlayState
       );
 
       // Use spatial service for ultra-fast queries
+      // Don't pass currentAltitude to show all airspaces regardless of altitude
       final airspaces = await widget.spatialService.getAirspacesInBounds(
         paddedBounds,
-        currentAltitude: widget.currentAltitude > 0 ? widget.currentAltitude : null,
         typeFilter: widget.typeFilter,
       );
 
@@ -286,8 +286,8 @@ class _OptimizedSpatialAirspacesOverlayState
 
     return Polygon(
       points: airspace.geometry,
-      color: color.withValues(alpha: opacity * 0.2),
-      borderColor: color.withValues(alpha: opacity * 0.8),
+      color: color.withValues(alpha: opacity * 0.4), // Increased from 0.2 to 0.4 (20% less transparent)
+      borderColor: color.withValues(alpha: 1.0), // Fully opaque borders
       borderStrokeWidth: zoom > 12 ? 2.0 : 1.5,
       hitValue: airspace,
     );
