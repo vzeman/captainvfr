@@ -179,11 +179,10 @@ if [ "$BUILD_APK" = true ]; then
     fi
 fi
 
-# Copy AAB to a more accessible location
-RELEASE_DIR="android/release"
-mkdir -p "$RELEASE_DIR"
-cp "$AAB_PATH" "$RELEASE_DIR/captainvfr-$CURRENT_VERSION_NUMBER-$CURRENT_BUILD_NUMBER.aab"
-print_status "Copied AAB to: $RELEASE_DIR/captainvfr-$CURRENT_VERSION_NUMBER-$CURRENT_BUILD_NUMBER.aab"
+# Don't copy AAB to release directory - it's too large for GitHub
+# AAB files are available in build/app/outputs/bundle/release/
+print_info "AAB file is available at: $AAB_PATH"
+print_info "Note: AAB files are not stored in git due to size constraints"
 
 # Upload to Google Play if requested
 if [ "$UPLOAD_TO_PLAY" = true ]; then

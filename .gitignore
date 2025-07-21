@@ -134,3 +134,7 @@ android/app/keystore/
 # Temporary build artifacts
 hugo/static/downloads/rw.*.dmg
 /ios/build/
+
+# Android App Bundle files - too large for GitHub
+*.aab
+android/release/
