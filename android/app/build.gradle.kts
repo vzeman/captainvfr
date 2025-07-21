@@ -56,15 +56,18 @@ android {
                 signingConfigs.getByName("debug")
             }
             
-            // Enable ProGuard for code optimization
-            isMinifyEnabled = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            // Temporarily disable ProGuard to fix build issues
+            isMinifyEnabled = false
             
             // Disable shrink resources to avoid symbol stripping issues
             isShrinkResources = false
+        }
+    }
+    
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            keepDebugSymbols += "**/*.so"
         }
     }
 }

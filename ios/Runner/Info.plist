@@ -63,5 +63,7 @@
 	<string>This app needs access to your photo library to allow you to select photos of your aircraft and pilot licenses.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>This app needs permission to save photos to your photo library.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

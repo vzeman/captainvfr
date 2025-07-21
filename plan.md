@@ -2,25 +2,16 @@
 
 ## tasks
 
-- [x] Airspaces at location popup panel 
-    - change the design of the popup panel to match the design of current airspaces panel
-    - highlight the airspace at the current altitude
-    - make sure font size is correct for each size of display
-- [x] Airspaces map layer
-    - airspaces in other altitudes are not visible in the airspaces map layer properly - review if the transparency is set correctly ... borders of airspace should not be transparent (doesnt matter what altitude is current)
-    - Fixed by removing altitude filtering in getAirspacesInBounds call
-    - Borders are already fully opaque (alpha: 1.0) regardless of altitude
-- [x] Fix focus loss in all text input forms
-    - **ACTUAL ROOT CAUSE FOUND**: KeyboardListener in MapScreen was creating a FocusNode with `..requestFocus()` which was stealing focus from all text fields
-    - Fixed by:
-        - Removing the KeyboardListener that was stealing focus
-        - Completely removed KeyboardListener since performance monitoring can be activated through settings
-    - Cleaned up all debug logging and focus tracking code after fixing the issue
-    - Removed all temporary fixes:
-        - Deleted FocusManagerService
-        - Deleted FocusAwareTextField widget
-        - Deleted KeyboardAwareFocusField
-        - Reverted all TextField/TextFormField widgets back to their original implementations
-- [x] Fix barometer sensor exception
-    - Added proper error handling for PlatformException with code 'UNAVAILABLE'
-    - Falls back to simulated data when barometer sensor is not available on the device
+- [ ] QNH setting in the flight tracking mode
+    - [ ] Add a field in flight tracking popup to set QNH
+    - [ ] Initialize the QNH value from the current barometric pressure when the tracking starts
+    - [ ] Use the QNH value to calculate the altitude in the flight tracking popup
+- [ ] ETA calculation if flight tracking is running and the flight plan is selected in flight tracking panel
+  - Add a value in flight tracking popup to show ETA of whole flight and to next waypoint
+  - Calculate ETA based on the current position and speed of the aircraft
+
+
+## Bugs
+- [ ] web app crashes during loading of data on mobile devices (e.g. iphone), than restarts and than crashes again and shows error. Desktop version of chrome doesn't crash, it is working fine in normal desktop chrome.
+    - mobile version of browsers always crashes, but desktop version of chrome works fine
+    - how to debug javascript in mobile browsers?

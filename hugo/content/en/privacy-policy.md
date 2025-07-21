@@ -42,6 +42,12 @@ With your explicit permission, we collect:
 
 All of those data are stored locally on your device and are not sent to our servers unless you choose to share them.
 
+### Camera and Photos
+When you grant permission, we may access:
+- Camera to take photos of aircraft and pilot documents
+- Photo library to select and store aircraft images and documentation
+- These photos are stored locally on your device and are not uploaded to our servers
+
 ## How We Use Your Information
 
 We use the collected information to:
