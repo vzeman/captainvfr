@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'dart:math' as math;
 import '../models/airport.dart';
 import '../models/runway.dart';
+import 'runway_painter.dart';
 
 class AirportMarker extends StatelessWidget {
   final Airport airport;
@@ -55,15 +56,24 @@ class AirportMarker extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             // Runway visualization (behind the marker)
-            // For now, check if airport has OpenAIP runway data
-            if (mapZoom >= 13 && airport.openAIPRunways.isNotEmpty)
-              Positioned(
-                child: _buildRunwayVisualizationFromOpenAIP(
-                  airport.openAIPRunways,
-                  runwayVisualizationSize,
-                  isSelected,
+            if (mapZoom >= 13)
+              if (runways != null && runways!.isNotEmpty)
+                Positioned(
+                  child: RunwayVisualization(
+                    runways: runways!,
+                    zoom: mapZoom,
+                    size: runwayVisualizationSize,
+                    runwayColor: isSelected ? Colors.amber : Colors.black87,
+                  ),
+                )
+              else if (airport.openAIPRunways.isNotEmpty)
+                Positioned(
+                  child: _buildRunwayVisualizationFromOpenAIP(
+                    airport.openAIPRunways,
+                    runwayVisualizationSize,
+                    isSelected,
+                  ),
                 ),
-              ),
             
             // Main marker
             OverflowBox(
@@ -199,6 +209,7 @@ class AirportMarker extends StatelessWidget {
 // Airport marker layer for the map
 class AirportMarkersLayer extends StatelessWidget {
   final List<Airport> airports;
+  final Map<String, List<Runway>>? airportRunways;
   final ValueChanged<Airport>? onAirportTap;
   final bool showLabels;
   final double markerSize;
@@ -207,6 +218,7 @@ class AirportMarkersLayer extends StatelessWidget {
   const AirportMarkersLayer({
     super.key,
     required this.airports,
+    this.airportRunways,
     this.onAirportTap,
     this.showLabels = true,
     this.markerSize = 24.0,
@@ -224,8 +236,12 @@ class AirportMarkersLayer extends StatelessWidget {
           ? baseMarkerSize * 0.75
           : baseMarkerSize;
 
+      // Get runway data for this airport
+      final runways = airportRunways?[airport.icao];
+
       // Increase marker bounds for runway visualization at higher zoom levels
-      final hasRunways = (airport.runways != null && airport.runways!.isNotEmpty) || 
+      final hasRunways = (runways != null && runways.isNotEmpty) ||
+                        (airport.runways != null && airport.runways!.isNotEmpty) || 
                         airport.openAIPRunways.isNotEmpty;
       final markerBounds = mapZoom >= 13 && hasRunways
           ? airportMarkerSize * 3.5  // Match the runway visualization size multiplier
@@ -237,6 +253,7 @@ class AirportMarkersLayer extends StatelessWidget {
         point: airport.position,
         child: AirportMarker(
           airport: airport,
+          runways: runways,
           onTap: onAirportTap != null ? () => onAirportTap!(airport) : null,
           size: airportMarkerSize,
           showLabel: showLabels,

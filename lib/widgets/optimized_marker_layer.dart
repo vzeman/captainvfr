@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/airport.dart';
+import '../models/runway.dart';
 import '../models/navaid.dart';
 import '../models/reporting_point.dart';
 import '../models/obstacle.dart';
@@ -76,6 +77,7 @@ class OptimizedMarkerLayer extends StatelessWidget {
 /// Optimized airport markers layer that only renders visible airports
 class OptimizedAirportMarkersLayer extends StatelessWidget {
   final List<Airport> airports;
+  final Map<String, List<Runway>>? airportRunways;
   final ValueChanged<Airport>? onAirportTap;
   final bool showLabels;
   final double markerSize;
@@ -84,6 +86,7 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
   const OptimizedAirportMarkersLayer({
     super.key,
     required this.airports,
+    this.airportRunways,
     this.onAirportTap,
     this.showLabels = true,
     this.markerSize = 40.0,
@@ -223,6 +226,7 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
     // Check if any airport has runway data (either format)
     if (currentZoom >= 13) {
       final hasRunways = visibleAirports.any((a) => 
+        (airportRunways != null && airportRunways![a.icao] != null && airportRunways![a.icao]!.isNotEmpty) ||
         (a.runways != null && a.runways!.isNotEmpty) || 
         a.openAIPRunways.isNotEmpty
       );
@@ -251,6 +255,7 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
 
         return AirportMarker(
           airport: airport,
+          runways: airportRunways?[airport.icao],
           onTap: onAirportTap != null ? () => onAirportTap!(airport) : null,
           size: airportMarkerSize,
           showLabel: showLabels,
