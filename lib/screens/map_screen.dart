@@ -245,9 +245,7 @@ class MapScreenState extends State<MapScreen>
         _airportService = Provider.of<AirportService>(context, listen: false);
         _runwayService = RunwayService();
         // Initialize runway service
-        _runwayService.initialize().then((_) {
-          print('🛫 RunwayService initialized');
-        });
+        _runwayService.initialize();
         _navaidService = Provider.of<NavaidService>(context, listen: false);
         _weatherService = Provider.of<WeatherService>(context, listen: false);
         _flightPlanService = Provider.of<FlightPlanService>(
@@ -711,7 +709,6 @@ class MapScreenState extends State<MapScreen>
         final zoom = _mapController.camera.zoom;
 
         // First, load runway data for the visible area
-        print('🛫 Loading runway data for area: ${bounds.southWest.latitude}, ${bounds.southWest.longitude} to ${bounds.northEast.latitude}, ${bounds.northEast.longitude}');
         await _runwayService.loadRunwaysForArea(
           minLat: bounds.southWest.latitude,
           maxLat: bounds.northEast.latitude,
@@ -724,22 +721,16 @@ class MapScreenState extends State<MapScreen>
           bounds.southWest,
           bounds.northEast,
         );
-        print('🛫 Found ${airports.length} airports in bounds');
 
         // Get runway data for airports if zoom level is appropriate
         final runwayDataMap = <String, List<Runway>>{};
         if (zoom >= 13) {
-          print('🛫 Zoom level $zoom >= 13, loading runway data for airports');
           for (final airport in airports) {
             final runways = _runwayService.getRunwaysForAirport(airport.icao);
             if (runways.isNotEmpty) {
               runwayDataMap[airport.icao] = runways;
-              print('🛫 Found ${runways.length} runways for ${airport.icao} (${airport.name})');
             }
           }
-          print('🛫 Total airports with runway data: ${runwayDataMap.length}');
-        } else {
-          print('🛫 Zoom level $zoom < 13, skipping runway data');
         }
 
         if (mounted) {

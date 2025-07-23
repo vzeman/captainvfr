@@ -120,14 +120,32 @@ class RunwayService {
         maxLon: maxLon,
       );
       
-      // Group by airport
+      // Group by airport and prevent duplicates
       for (final runway in runways) {
-        _runwaysByAirport.putIfAbsent(runway.airportIdent, () => []).add(runway);
+        final airportRunways = _runwaysByAirport.putIfAbsent(runway.airportIdent, () => []);
+        
+        // Check if this runway already exists (by ID to avoid duplicates)
+        final existingRunway = airportRunways.firstWhere(
+          (r) => r.id == runway.id,
+          orElse: () => runway, // Return the runway itself if not found
+        );
+        
+        // Only add if it's not already in the list
+        if (identical(existingRunway, runway)) {
+          airportRunways.add(runway);
+        }
       }
       
       _loadedAreas.add(areaKey);
       
-      developer.log('✅ Loaded ${runways.length} runways for area');
+      // Log unique airports with runway counts
+      final uniqueAirports = <String>{};
+      for (final entry in _runwaysByAirport.entries) {
+        if (runways.any((r) => r.airportIdent == entry.key)) {
+          uniqueAirports.add(entry.key);
+        }
+      }
+      developer.log('✅ Loaded ${runways.length} runways for area, ${uniqueAirports.length} airports updated');
     } catch (e) {
       developer.log('❌ Error loading runways for area: $e');
     }
