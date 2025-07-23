@@ -116,6 +116,11 @@
    - Removed scripts/monitor_build.dart - associated script not in active use
    - Keeping codebase clean per CLAUDE.md guidelines
 
+12. **Consolidated build scripts** - ✓ DONE
+   - Removed build_web.sh as its functionality is already in build_release.sh
+   - build_release.sh now builds all platforms: Android (APK & AAB), iOS, macOS, and Web
+   - Single script for all release builds improves maintainability
+
 2. **Unified marker sizing across all types** - ✓ DONE
    - All navigation markers now use consistent sizing:
      - 20px at zoom >= 12, 14px otherwise (navaids, reporting points, obstacles, hotspots)

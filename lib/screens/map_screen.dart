@@ -1057,9 +1057,7 @@ class MapScreenState extends State<MapScreen>
           maxLat: bounds.northEast.latitude,
           maxLon: bounds.northEast.longitude,
         );
-        
-        print('DEBUG: Loaded ${hotspots.length} hotspots for bounds: ${bounds.southWest.latitude},${bounds.southWest.longitude} to ${bounds.northEast.latitude},${bounds.northEast.longitude}');
-        
+
         if (mounted) {
           setState(() {
             _hotspots = hotspots;
