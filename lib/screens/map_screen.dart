@@ -729,6 +729,7 @@ class MapScreenState extends State<MapScreen>
             final runways = _runwayService.getRunwaysForAirport(airport.icao);
             if (runways.isNotEmpty) {
               runwayDataMap[airport.icao] = runways;
+              print('🛫 Airport ${airport.icao} has ${runways.length} runways');
             }
           }
         }

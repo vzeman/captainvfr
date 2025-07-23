@@ -19,6 +19,12 @@ class RunwayPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (runways.isEmpty) return;
 
+    // Debug: Log runway details
+    if (runways.length <= 10) { // Only log for small airports to avoid spam
+      for (final r in runways) {
+        print('🛬 Runway ${r.designation} (ID: ${r.id}): ${r.leIdent}/${r.heIdent}, heading: ${r.leHeadingDegT}°, length: ${r.lengthFt}ft, closed: ${r.closed}');
+      }
+    }
 
     final paint = Paint()
       ..color = runwayColor
@@ -34,23 +40,31 @@ class RunwayPainter extends CustomPainter {
     final zoomScale = math.pow(2, (zoom - 13) / 2);
     final feetPerPixel = (8200 / size.width) / zoomScale; // 8200ft (2500m) reference length
     
-    // Track drawn runways to avoid duplicates
-    final drawnRunways = <String>{};
+    // Track drawn runways to avoid duplicates - use runway ID for uniqueness
+    final drawnRunways = <int>{};
+    int skippedClosed = 0;
+    int skippedNoHeading = 0;
+    int drawnCount = 0;
     
     for (final runway in runways) {
       // Skip closed runways
-      if (runway.closed) continue;
+      if (runway.closed) {
+        skippedClosed++;
+        continue;
+      }
+      
+      // Skip if we've already drawn this runway (by ID)
+      if (drawnRunways.contains(runway.id)) continue;
+      drawnRunways.add(runway.id);
       
       // Use the low end heading as the primary heading
       final heading = runway.leHeadingDegT;
-      if (heading == null) continue;
-
-      // Create a unique key for this runway including length
-      final runwayKey = '${heading.round()}-${runway.lengthFt}';
+      if (heading == null) {
+        skippedNoHeading++;
+        continue;
+      }
       
-      // Skip if we've already drawn this exact runway
-      if (drawnRunways.contains(runwayKey)) continue;
-      drawnRunways.add(runwayKey);
+      drawnCount++;
 
       // Calculate actual runway length in pixels
       final runwayLengthPx = runway.lengthFt / feetPerPixel;
@@ -137,6 +151,8 @@ class RunwayPainter extends CustomPainter {
         canvas.restore();
       }
     }
+    
+    print('🛬 Runway painting summary: ${runways.length} total, $drawnCount drawn, $skippedClosed closed, $skippedNoHeading no heading');
   }
 
   @override
