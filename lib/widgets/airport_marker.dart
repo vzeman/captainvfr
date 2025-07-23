@@ -33,7 +33,14 @@ class AirportMarker extends StatelessWidget {
     final borderColor = isSelected ? Colors.amber : color;
     final borderWidth = isSelected ? 3.0 : 2.0;
 
-    // Removed debug prints for performance
+    // Debug runway data
+    if (mapZoom >= 13) {
+      if (runways != null && runways!.isNotEmpty) {
+        print('🛫 Airport ${airport.icao} has ${runways!.length} runways from RunwayService');
+      } else if (airport.openAIPRunways.isNotEmpty) {
+        print('🛫 Airport ${airport.icao} has ${airport.openAIPRunways.length} OpenAIP runways');
+      }
+    }
 
     // The visual size of the marker based on zoom
     // Use the size parameter which is already adjusted for zoom
