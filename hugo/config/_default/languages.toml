@@ -3,3 +3,6 @@
   weight = 1
   title = 'CaptainVFR'
   contentDir = 'content/en'
+  [en.params]
+    description = "CaptainVFR - Digital Copilot for Pilots"
+    gaMeasurementID = 'G-TGBQT1HP15'
