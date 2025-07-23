@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'dart:math' as math;
 import '../models/airport.dart';
-import 'runway_painter.dart';
+import '../models/runway.dart';
 
 class AirportMarker extends StatelessWidget {
   final Airport airport;
+  final List<Runway>? runways;
   final VoidCallback? onTap;
   final double size;
   final bool showLabel;
@@ -15,6 +17,7 @@ class AirportMarker extends StatelessWidget {
   const AirportMarker({
     super.key,
     required this.airport,
+    this.runways,
     this.onTap,
     this.size = 24.0,
     this.showLabel = true,
@@ -52,13 +55,13 @@ class AirportMarker extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             // Runway visualization (behind the marker)
+            // For now, check if airport has OpenAIP runway data
             if (mapZoom >= 13 && airport.openAIPRunways.isNotEmpty)
               Positioned(
-                child: RunwayVisualization(
-                  runways: airport.openAIPRunways,
-                  zoom: mapZoom,
-                  size: runwayVisualizationSize,
-                  runwayColor: isSelected ? Colors.amber : Colors.black87,
+                child: _buildRunwayVisualizationFromOpenAIP(
+                  airport.openAIPRunways,
+                  runwayVisualizationSize,
+                  isSelected,
                 ),
               ),
             
@@ -139,6 +142,23 @@ class AirportMarker extends StatelessWidget {
     }
   }
 
+  // Build runway visualization from OpenAIP runway data
+  Widget _buildRunwayVisualizationFromOpenAIP(
+    List<dynamic> openAIPRunways,
+    double size,
+    bool isSelected,
+  ) {
+    // Convert OpenAIP runways to simple visualization
+    return CustomPaint(
+      size: Size(size, size),
+      painter: SimpleRunwayPainter(
+        runways: openAIPRunways,
+        runwayColor: isSelected ? Colors.amber : Colors.black87,
+        strokeWidth: mapZoom >= 15 ? 3.0 : 2.0,
+      ),
+    );
+  }
+
   // Get color based on flight category or airport type
   Color _getAirportColor(String type) {
     // If we have weather data, use the flight category color
@@ -204,7 +224,9 @@ class AirportMarkersLayer extends StatelessWidget {
           : baseMarkerSize;
 
       // Increase marker bounds for runway visualization at higher zoom levels
-      final markerBounds = mapZoom >= 13 && airport.openAIPRunways.isNotEmpty
+      final hasRunways = (airport.runways != null && airport.runways!.isNotEmpty) || 
+                        airport.openAIPRunways.isNotEmpty;
+      final markerBounds = mapZoom >= 13 && hasRunways
           ? airportMarkerSize * 3.5  // Match the runway visualization size multiplier
           : airportMarkerSize;
 
@@ -225,5 +247,101 @@ class AirportMarkersLayer extends StatelessWidget {
     }).toList();
 
     return MarkerLayer(markers: markers);
+  }
+}
+
+// Simple runway painter for OpenAIP runway data
+class SimpleRunwayPainter extends CustomPainter {
+  final List<dynamic> runways;
+  final Color runwayColor;
+  final double strokeWidth;
+
+  SimpleRunwayPainter({
+    required this.runways,
+    required this.runwayColor,
+    required this.strokeWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (runways.isEmpty) return;
+
+    final paint = Paint()
+      ..color = runwayColor
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final baseLength = size.width * 0.4;
+    
+    // Track drawn runways to avoid duplicates
+    final drawnHeadings = <int>{};
+
+    for (final runway in runways) {
+      // Extract heading from designator (e.g., "04" -> 40 degrees)
+      String designator = '';
+      if (runway is Map && runway['des'] != null) {
+        designator = runway['des'].toString();
+      } else if (runway.toString().isNotEmpty) {
+        designator = runway.toString();
+      }
+      
+      // Extract numeric part from designator
+      final match = RegExp(r'^(\d{1,2})').firstMatch(designator);
+      if (match == null) continue;
+      
+      final runwayNumber = int.tryParse(match.group(1)!);
+      if (runwayNumber == null) continue;
+      
+      final heading = runwayNumber * 10; // Convert to degrees
+      
+      // Skip if we've already drawn this heading
+      if (drawnHeadings.contains(heading)) continue;
+      drawnHeadings.add(heading);
+
+      // Convert heading to radians
+      final radians = heading * (math.pi / 180);
+      
+      // Calculate runway endpoints
+      // Rotate by -90 degrees because 0 degrees is north, not east
+      final adjustedRadians = radians - (math.pi / 2);
+      
+      final dx = math.cos(adjustedRadians) * baseLength / 2;
+      final dy = math.sin(adjustedRadians) * baseLength / 2;
+
+      final start = Offset(center.dx - dx, center.dy - dy);
+      final end = Offset(center.dx + dx, center.dy + dy);
+
+      // Draw runway line
+      canvas.drawLine(start, end, paint);
+
+      // Draw runway end markers
+      final markerLength = baseLength * 0.1;
+      final perpRadians = adjustedRadians + (math.pi / 2);
+      final mdx = math.cos(perpRadians) * markerLength / 2;
+      final mdy = math.sin(perpRadians) * markerLength / 2;
+
+      // Start end marker
+      canvas.drawLine(
+        Offset(start.dx - mdx, start.dy - mdy),
+        Offset(start.dx + mdx, start.dy + mdy),
+        paint,
+      );
+
+      // End marker
+      canvas.drawLine(
+        Offset(end.dx - mdx, end.dy - mdy),
+        Offset(end.dx + mdx, end.dy + mdy),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(SimpleRunwayPainter oldDelegate) {
+    return oldDelegate.runways != runways ||
+        oldDelegate.runwayColor != runwayColor ||
+        oldDelegate.strokeWidth != strokeWidth;
   }
 }

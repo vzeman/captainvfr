@@ -220,8 +220,15 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
     }
     
     // Increase marker bounds for runway visualization at higher zoom levels
-    if (currentZoom >= 13 && visibleAirports.any((a) => a.openAIPRunways.isNotEmpty)) {
-      maxMarkerSize = maxMarkerSize * 3.5;  // Match the runway visualization size multiplier
+    // Check if any airport has runway data (either format)
+    if (currentZoom >= 13) {
+      final hasRunways = visibleAirports.any((a) => 
+        (a.runways != null && a.runways!.isNotEmpty) || 
+        a.openAIPRunways.isNotEmpty
+      );
+      if (hasRunways) {
+        maxMarkerSize = maxMarkerSize * 3.5;  // Match the runway visualization size multiplier
+      }
     }
 
     return OptimizedMarkerLayer(

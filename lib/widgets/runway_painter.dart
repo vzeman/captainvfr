@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import '../models/openaip_runway.dart';
+import '../models/runway.dart';
 
 class RunwayPainter extends CustomPainter {
-  final List<OpenAIPRunway> runways;
+  final List<Runway> runways;
   final double zoom;
   final Color runwayColor;
   final double strokeWidth;
@@ -31,10 +31,25 @@ class RunwayPainter extends CustomPainter {
     // Base length for runway visualization (will scale with zoom)
     final baseLength = size.width * 0.4;
     
+    // Track drawn runways to avoid duplicates
+    final drawnRunways = <String>{};
+    
     for (final runway in runways) {
-      // Extract runway heading from designator (e.g., "04" -> 40 degrees)
-      final heading = runway.headingDegrees;
+      // Skip closed runways
+      if (runway.closed) continue;
+      
+      // Use the low end heading as the primary heading
+      final heading = runway.leHeadingDegT;
       if (heading == null) continue;
+
+      // Create a unique key for this runway orientation
+      // Round to nearest 10 degrees to group similar runways
+      final roundedHeading = (heading / 10).round() * 10;
+      final runwayKey = '$roundedHeading';
+      
+      // Skip if we've already drawn a runway with similar heading
+      if (drawnRunways.contains(runwayKey)) continue;
+      drawnRunways.add(runwayKey);
 
       // Convert heading to radians
       final radians = heading * (math.pi / 180);
@@ -84,7 +99,7 @@ class RunwayPainter extends CustomPainter {
 }
 
 class RunwayVisualization extends StatelessWidget {
-  final List<OpenAIPRunway> runways;
+  final List<Runway> runways;
   final double zoom;
   final double size;
   final Color? runwayColor;
