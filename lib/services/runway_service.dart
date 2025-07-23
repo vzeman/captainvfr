@@ -125,13 +125,10 @@ class RunwayService {
         final airportRunways = _runwaysByAirport.putIfAbsent(runway.airportIdent, () => []);
         
         // Check if this runway already exists (by ID to avoid duplicates)
-        final existingRunway = airportRunways.firstWhere(
-          (r) => r.id == runway.id,
-          orElse: () => runway, // Return the runway itself if not found
-        );
+        final alreadyExists = airportRunways.any((r) => r.id == runway.id);
         
         // Only add if it's not already in the list
-        if (identical(existingRunway, runway)) {
+        if (!alreadyExists) {
           airportRunways.add(runway);
         }
       }
