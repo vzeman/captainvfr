@@ -149,3 +149,12 @@
    - Added -Xlint:-options to suppress obsolete Java version warnings
    - Updated gradle.properties to disable auto-detection/download
 
+### Runway Visualization Implementation (2025-07-23)
+1. **Implemented runway visualization on airport markers** - ✓ DONE
+   - Created RunwayPainter to draw runway lines at correct angles
+   - Added SimpleRunwayPainter to handle OpenAIP runway format
+   - Shows runway visualization at zoom level 13 and above
+   - Runway lines drawn based on designator (e.g., 04 = 40°)
+   - Note: Currently limited by data availability - OpenAIP airports don't include runway data
+   - Future improvement: Load and merge OurAirports runway data with airport markers
+
