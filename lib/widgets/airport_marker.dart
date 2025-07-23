@@ -52,6 +52,7 @@ class AirportMarker extends StatelessWidget {
 
     // Get runway visualization size based on zoom
     final runwayVisualizationSize = mapZoom >= 13 ? visualSize * 3.5 : 0.0;
+    print('🛫 Marker size: $visualSize, runway viz size: $runwayVisualizationSize');
 
     return GestureDetector(
       onTap: () {

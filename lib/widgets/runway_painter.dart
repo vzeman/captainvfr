@@ -19,6 +19,8 @@ class RunwayPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (runways.isEmpty) return;
 
+    print('🎨 RunwayPainter: Painting ${runways.length} runways, canvas size: $size');
+
     final paint = Paint()
       ..color = runwayColor
       ..strokeWidth = strokeWidth
@@ -38,18 +40,29 @@ class RunwayPainter extends CustomPainter {
     
     for (final runway in runways) {
       // Skip closed runways
-      if (runway.closed) continue;
+      if (runway.closed) {
+        print('🎨 Skipping closed runway: ${runway.designation}');
+        continue;
+      }
       
       // Use the low end heading as the primary heading
       final heading = runway.leHeadingDegT;
-      if (heading == null) continue;
+      if (heading == null) {
+        print('🎨 Skipping runway ${runway.designation} - no heading data');
+        continue;
+      }
 
       // Create a unique key for this runway including length
       final runwayKey = '${heading.round()}-${runway.lengthFt}';
       
       // Skip if we've already drawn this exact runway
-      if (drawnRunways.contains(runwayKey)) continue;
+      if (drawnRunways.contains(runwayKey)) {
+        print('🎨 Skipping duplicate runway: ${runway.designation}');
+        continue;
+      }
       drawnRunways.add(runwayKey);
+      
+      print('🎨 Drawing runway ${runway.designation} heading: $heading°, length: ${runway.lengthFt}ft');
 
       // Calculate actual runway length in pixels
       final runwayLengthPx = runway.lengthFt / feetPerPixel;
@@ -163,10 +176,14 @@ class RunwayVisualization extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('🎨 RunwayVisualization build: ${runways.length} runways, zoom: $zoom, size: $size');
+    
     if (runways.isEmpty || zoom < 13) {
+      print('🎨 RunwayVisualization: Not showing (empty: ${runways.isEmpty}, zoom < 13: ${zoom < 13})');
       return const SizedBox.shrink();
     }
 
+    print('🎨 RunwayVisualization: Creating CustomPaint widget');
     return CustomPaint(
       size: Size(size, size),
       painter: RunwayPainter(
