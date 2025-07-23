@@ -1,0 +1,1 @@
+{"version":1,"format":"csv","dataType":"navaids","headers":["id","ident","name","type","frequency_khz","lat","lon","elevation_ft","country","dme_frequency_khz","dme_channel","magnetic_variation_deg","usage_type","filename","associated_airport"],"tileSize":{"width":10.0,"height":10.0},"tilesX":36,"tilesY":18,"tiles":[],"totalItems":0,"generated_at":"2025-07-23T06:02:09.777847Z"}
