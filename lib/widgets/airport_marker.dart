@@ -155,6 +155,7 @@ class AirportMarker extends StatelessWidget {
         runways: openAIPRunways,
         runwayColor: isSelected ? Colors.amber : Colors.black87,
         strokeWidth: mapZoom >= 15 ? 3.0 : 2.0,
+        zoom: mapZoom,
       ),
     );
   }
@@ -255,11 +256,13 @@ class SimpleRunwayPainter extends CustomPainter {
   final List<dynamic> runways;
   final Color runwayColor;
   final double strokeWidth;
+  final double zoom;
 
   SimpleRunwayPainter({
     required this.runways,
     required this.runwayColor,
     required this.strokeWidth,
+    this.zoom = 13,
   });
 
   @override
@@ -273,18 +276,24 @@ class SimpleRunwayPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     final center = Offset(size.width / 2, size.height / 2);
-    final baseLength = size.width * 0.4;
+    
+    // Base scale for runway length visualization
+    // At zoom 13, 1000m runway = 40% of marker size
+    // Adjust scale based on zoom level
+    final zoomScale = math.pow(2, (zoom - 13) / 2);
+    final metersPerPixel = (2500 / size.width) / zoomScale; // 2500m reference length
     
     // Track drawn runways to avoid duplicates
-    final drawnHeadings = <int>{};
+    final drawnRunways = <String>{};
 
     for (final runway in runways) {
-      // Extract heading from designator (e.g., "04" -> 40 degrees)
+      // Extract runway data
       String designator = '';
-      if (runway is Map && runway['des'] != null) {
-        designator = runway['des'].toString();
-      } else if (runway.toString().isNotEmpty) {
-        designator = runway.toString();
+      int? lengthM;
+      
+      if (runway is Map) {
+        designator = runway['des']?.toString() ?? '';
+        lengthM = runway['len'] as int?;
       }
       
       // Extract numeric part from designator
@@ -296,9 +305,20 @@ class SimpleRunwayPainter extends CustomPainter {
       
       final heading = runwayNumber * 10; // Convert to degrees
       
-      // Skip if we've already drawn this heading
-      if (drawnHeadings.contains(heading)) continue;
-      drawnHeadings.add(heading);
+      // Create unique key including length to allow different length runways at same heading
+      final runwayKey = '$heading-${lengthM ?? 'unknown'}';
+      
+      // Skip if we've already drawn this exact runway
+      if (drawnRunways.contains(runwayKey)) continue;
+      drawnRunways.add(runwayKey);
+
+      // Calculate actual runway length in pixels
+      // Default to 1000m if no length data available
+      final actualLengthM = lengthM ?? 1000;
+      final runwayLengthPx = actualLengthM / metersPerPixel;
+      
+      // Cap maximum visual length to prevent overflow
+      final visualLength = math.min(runwayLengthPx, size.width * 0.8);
 
       // Convert heading to radians
       final radians = heading * (math.pi / 180);
@@ -307,17 +327,24 @@ class SimpleRunwayPainter extends CustomPainter {
       // Rotate by -90 degrees because 0 degrees is north, not east
       final adjustedRadians = radians - (math.pi / 2);
       
-      final dx = math.cos(adjustedRadians) * baseLength / 2;
-      final dy = math.sin(adjustedRadians) * baseLength / 2;
+      final dx = math.cos(adjustedRadians) * visualLength / 2;
+      final dy = math.sin(adjustedRadians) * visualLength / 2;
 
       final start = Offset(center.dx - dx, center.dy - dy);
       final end = Offset(center.dx + dx, center.dy + dy);
 
+      // Vary stroke width based on runway length (longer = thicker)
+      final runwayPaint = Paint()
+        ..color = runwayColor
+        ..strokeWidth = strokeWidth + (actualLengthM > 2000 ? 1.0 : 0.0)
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+
       // Draw runway line
-      canvas.drawLine(start, end, paint);
+      canvas.drawLine(start, end, runwayPaint);
 
       // Draw runway end markers
-      final markerLength = baseLength * 0.1;
+      final markerLength = visualLength * 0.1;
       final perpRadians = adjustedRadians + (math.pi / 2);
       final mdx = math.cos(perpRadians) * markerLength / 2;
       final mdy = math.sin(perpRadians) * markerLength / 2;
@@ -335,6 +362,42 @@ class SimpleRunwayPainter extends CustomPainter {
         Offset(end.dx + mdx, end.dy + mdy),
         paint,
       );
+      
+      // Add length label for longer runways at higher zoom levels
+      if (zoom >= 14 && lengthM != null && lengthM >= 1000) {
+        final textPainter = TextPainter(
+          text: TextSpan(
+            text: lengthM >= 1000 ? '${(lengthM / 1000.0).toStringAsFixed(1)}km' : '${lengthM}m',
+            style: TextStyle(
+              color: runwayColor.withAlpha(200),
+              fontSize: 9,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        );
+        textPainter.layout();
+        
+        // Position text along the runway
+        final midpoint = Offset(
+          (start.dx + end.dx) / 2,
+          (start.dy + end.dy) / 2,
+        );
+        
+        // Rotate text to align with runway
+        canvas.save();
+        canvas.translate(midpoint.dx, midpoint.dy);
+        
+        // Adjust rotation so text is always readable (not upside down)
+        var textAngle = adjustedRadians;
+        if (textAngle > math.pi / 2 || textAngle < -math.pi / 2) {
+          textAngle += math.pi;
+        }
+        
+        canvas.rotate(textAngle);
+        textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height - 2));
+        canvas.restore();
+      }
     }
   }
 
