@@ -287,7 +287,6 @@ class TiledDataLoader {
       final typeCache = _tileCache[dataType];
       if (typeCache != null && typeCache.containsKey(tileKey)) {
         final cachedData = typeCache[tileKey];
-        _logger.d('Returning cached tile $tileKey for $dataType');
         return cachedData as List<List<dynamic>>?;
       }
     }
