@@ -48,6 +48,7 @@ import '../widgets/airspace_flight_info.dart';
 import '../utils/frame_aware_scheduler.dart';
 import '../utils/performance_monitor.dart';
 import '../services/openaip_service.dart';
+import '../services/analytics_service.dart';
 import '../services/spatial_airspace_service.dart';
 import '../services/settings_service.dart';
 import '../models/airspace.dart';
@@ -221,6 +222,10 @@ class MapScreenState extends State<MapScreen>
     // Start location loading in background without blocking UI
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initLocationInBackground();
+      
+      // Log screen view
+      final analytics = Provider.of<AnalyticsService>(context, listen: false);
+      analytics.logScreenView(screenName: 'map_screen');
     });
   }
 

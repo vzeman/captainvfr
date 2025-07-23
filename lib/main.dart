@@ -41,6 +41,7 @@ import 'models/flight_plan.dart';
 import 'models/airspace.dart';
 import 'models/reporting_point.dart';
 import 'utils/performance_monitor.dart';
+import 'services/analytics_service.dart';
 
 void main() async {
   // Ensure Flutter binding is initialized
@@ -170,6 +171,10 @@ void main() async {
 
     // Initialize OpenAIP service
     final openAIPService = OpenAIPService();
+    
+    // Initialize analytics service
+    final analyticsService = AnalyticsService();
+    await analyticsService.initialize();
 
     // Initialize OpenAIP service and load bundled data
     try {
@@ -269,6 +274,7 @@ void main() async {
           ChangeNotifierProvider<SensorAvailabilityService>.value(
             value: sensorAvailabilityService,
           ),
+          Provider<AnalyticsService>.value(value: analyticsService),
         ],
         child: const CaptainVFRApp(),
       ),

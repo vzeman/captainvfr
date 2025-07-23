@@ -49,7 +49,11 @@ class SpatialAirspaceService extends ChangeNotifier {
       _isIndexBuilt = true;
       notifyListeners();
     } else {
-      developer.log('⚠️ No airspaces available for spatial index initialization');
+      developer.log('⚠️ No cached airspaces available, initializing with empty index');
+      developer.log('📡 Airspaces will be loaded on-demand from tiled data');
+      _allAirspaces = [];
+      _isIndexBuilt = true; // Allow queries even with empty initial data
+      notifyListeners();
     }
   }
 

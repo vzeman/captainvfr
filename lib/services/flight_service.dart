@@ -16,6 +16,7 @@ import 'barometer_service.dart';
 import 'altitude_service.dart';
 import 'flight_storage_service.dart';
 import 'watch_connectivity_service.dart';
+import 'analytics_service.dart';
 
 // Constants for sensor data collection
 const double _gravity = 9.80665; // Standard gravity (m/s²)
@@ -245,6 +246,11 @@ class FlightService with ChangeNotifier {
     if (!kIsWeb && Platform.isIOS) {
       _watchService.sendTrackingState(true);
     }
+
+    // Log analytics event
+    AnalyticsService().logFlightStarted(
+      planId: _recordingStartedZulu?.toIso8601String() ?? '',
+    );
 
     // Start sensors only when tracking begins
     _startSensors();
@@ -799,6 +805,17 @@ class FlightService with ChangeNotifier {
     if (_flightPath.isNotEmpty) {
       Flight flight = _createFlight();
       await addFlight(flight);
+      
+      // Log analytics event
+      final duration = _recordingStoppedZulu != null && _recordingStartedZulu != null
+          ? _recordingStoppedZulu!.difference(_recordingStartedZulu!)
+          : Duration.zero;
+      
+      AnalyticsService().logFlightEnded(
+        planId: _recordingStartedZulu?.toIso8601String() ?? '',
+        flightDuration: duration,
+        distanceCovered: _totalDistance / 1852, // Convert meters to nautical miles
+      );
     }
 
     // Reset tracking state

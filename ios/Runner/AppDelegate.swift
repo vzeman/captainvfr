@@ -1,6 +1,8 @@
 import Flutter
 import UIKit
 import CoreMotion
+import Firebase
+import AppTrackingTransparency
 
 // AltitudePlugin implementation moved to this file to avoid module issues
 class AltitudePlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
@@ -219,6 +221,9 @@ import Flutter
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // Initialize Firebase
+    FirebaseApp.configure()
+    
     GeneratedPluginRegistrant.register(with: self)
 
     // Register native plugins

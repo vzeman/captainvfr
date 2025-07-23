@@ -137,9 +137,9 @@ class PerformanceMonitor {
   }
   
   /// Get performance statistics
-  Map<String, dynamic> getPerformanceStats() {
+  Map<String, dynamic>? getPerformanceStats() {
     if (_recentFrames.isEmpty) {
-      return {};
+      return null;
     }
     
     final totalFrames = _recentFrames.length;
@@ -195,6 +195,9 @@ class PerformanceMonitor {
   /// Print detailed performance report
   void printPerformanceReport() {
     final stats = getPerformanceStats();
+    if (stats == null || stats.isEmpty) {
+      return;
+    }
     if (stats.containsKey('error')) {
       developer.log('📊 ${stats['error']}');
       return;

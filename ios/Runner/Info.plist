@@ -65,5 +65,7 @@
 	<string>This app needs permission to save photos to your photo library.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>This app would like to track your activity to help us understand how you use the app and improve your experience by focusing on the most important features.</string>
 </dict>
 </plist>
