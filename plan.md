@@ -151,10 +151,17 @@
 
 ### Runway Visualization Implementation (2025-07-23)
 1. **Implemented runway visualization on airport markers** - ✓ DONE
-   - Created RunwayPainter to draw runway lines at correct angles
+   - Created RunwayPainter to draw runway lines at correct angles with proportional lengths
    - Added SimpleRunwayPainter to handle OpenAIP runway format
    - Shows runway visualization at zoom level 13 and above
-   - Runway lines drawn based on designator (e.g., 04 = 40°)
-   - Note: Currently limited by data availability - OpenAIP airports don't include runway data
-   - Future improvement: Load and merge OurAirports runway data with airport markers
+   - Runway lines drawn based on actual heading data and scaled by length
+   - Longer runways (>2000m) appear with thicker lines
+   - Runway length labels appear at zoom 14+ (e.g., "2.5km", "8.2k ft")
+   
+2. **Integrated RunwayService for actual runway data** - ✓ DONE
+   - Map screen now loads runway data from OurAirports tiles for visible area
+   - Runway data is fetched and attached to airports when zoom >= 13
+   - Modified OptimizedAirportMarkersLayer to accept and pass runway data
+   - AirportMarker prioritizes actual runway data over OpenAIP format
+   - Falls back to OpenAIP runway data if OurAirports data not available
 
