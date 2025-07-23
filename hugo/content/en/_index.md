@@ -23,7 +23,7 @@ typewriterWordAlternatives="Tracking,Briefing"
 >}}
 
 <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto justify-center text-center">
-  <a href="https://apps.apple.com/app/captainvfr" class="flex flex-col items-center p-4 bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
+  <a href="https://apps.apple.com/sk/app/captainvfr/id6748603359" class="flex flex-col items-center p-4 bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
     <svg class="w-12 h-12 mb-2" fill="currentColor" viewBox="0 0 24 24">
       <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
     </svg>
@@ -136,7 +136,7 @@ typewriterWordAlternatives="Tracking,Briefing"
   },
   {
     "title": "Flight Tracking",
-    "description": "Real-time GPS tracking with breadcrumb trail and flight recording.",
+    "description": "Real-time GPS tracking with breadcrumb trail, flight recording, and ETA calculations for your flight plan.",
     "image": "/images/screenshots/web/flight-tracking.jpg",
     "imageAlt": "Flight tracking interface",
     "imagePosition": "top"
@@ -189,7 +189,7 @@ typewriterWordAlternatives="Tracking,Briefing"
         "title": "In-flight Navigation",
         "content": {
           "title": "Navigate with Confidence",
-          "description": "Real-time GPS navigation with moving map, terrain awareness, and traffic display.",
+          "description": "Real-time GPS navigation with moving map, terrain awareness, traffic display, QNH altitude setting, and live ETA calculations for your entire flight plan.",
           "imageUrl": "/images/screenshots/web/flight-tracking.jpg",
           "imageAlt": "In-flight navigation screen showing moving map and flight instruments"
         }
@@ -206,6 +206,35 @@ typewriterWordAlternatives="Tracking,Briefing"
       }
     ]
   {{< /features-with-intro-and-tabs >}}
+
+{{< info-grid
+  id="data-sources"
+  heading="Trusted Data Sources"
+  description="CaptainVFR uses the most reliable and up-to-date aviation data sources"
+  columns="3"
+  >}}
+  {{< info-grid-item
+    icon="map"
+    title="Map Data"
+    description="Map data © OpenStreetMap contributors. High-quality, community-maintained map data covering the entire world."
+    link="https://openstreetmap.org/copyright"
+    linkText="OpenStreetMap"
+  >}}
+  {{< info-grid-item
+    icon="flight"
+    title="Aviation Data"
+    description="Airport, navaid, and frequency data from OurAirports - comprehensive, open-source aviation database."
+    link="https://ourairports.com/"
+    linkText="OurAirports"
+  >}}
+  {{< info-grid-item
+    icon="cloud"
+    title="Airspace & Weather"
+    description="Airspace information from OpenAIP. Real-time weather data from NOAA Aviation Weather Center."
+    link="https://www.openaip.net/"
+    linkText="OpenAIP"
+  >}}
+{{< /info-grid >}}
 
 {{< cta-dark-panel 
   id="download"

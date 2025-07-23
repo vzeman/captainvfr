@@ -21,6 +21,8 @@ import 'calculators_screen.dart';
 import 'settings_screen.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
+import '../models/obstacle.dart';
+import '../models/hotspot.dart';
 import '../models/flight_segment.dart' as flight_seg;
 import '../models/flight_plan.dart';
 import '../services/airport_service.dart';
@@ -112,16 +114,15 @@ class MapScreenState extends State<MapScreen>
   // State variables
   bool _isLocationLoaded = false; // Track if location has been loaded
   bool _showStats = false;
-  bool _showNavaids = true; // Toggle for navaid display
-  bool _showMetar = true; // Toggle for METAR overlay (default on)
+  final bool _showNavaids = true; // Navaids always shown based on zoom level
+  final bool _showMetar = true; // METAR overlay always shown when data available
   bool _showHeliports = false; // Toggle for heliport display (default hidden)
-  bool _showSmallAirports =
-      true; // Toggle for small airport display (default visible)
   bool _showAirspaces = true; // Toggle for airspaces display
+  bool _showObstacles = true; // Toggle for obstacles display
+  bool _showHotspots = true; // Toggle for hotspots display
   bool _servicesInitialized = false;
   bool _isInitializing = false; // Guard against concurrent initialization
   bool _showFlightPlanning = false; // Toggle for integrated flight planning
-  String _errorMessage = '';
   Timer? _debounceTimer;
   Timer? _airspaceDebounceTimer;
   Timer? _notamPrefetchTimer;
@@ -168,6 +169,8 @@ class MapScreenState extends State<MapScreen>
   List<Airport> _airports = [];
   List<Navaid> _navaids = [];
   List<ReportingPoint> _reportingPoints = [];
+  List<Obstacle> _obstacles = [];
+  List<Hotspot> _hotspots = [];
 
   // UI state
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -494,7 +497,6 @@ class MapScreenState extends State<MapScreen>
       if (mounted) {
         setState(() {
           _currentPosition = position;
-          _errorMessage = '';
         });
 
         // Location loaded successfully, handle the rest
@@ -503,15 +505,10 @@ class MapScreenState extends State<MapScreen>
         _startLocationStream();
       }
     } catch (e) {
-      // debugPrint('Error initializing location: $e');
+      // Don't show error popup, just use default location silently
       if (mounted) {
         setState(() {
-          _errorMessage = 'Location unavailable - waiting for permission';
-        });
-
-        // Use a default position if location fails
-        setState(() {
-          // Default to San Francisco or any other default location
+          // Use a default position if location fails
           _currentPosition = Position(
             latitude: 37.7749,
             longitude: -122.4194,
@@ -528,34 +525,11 @@ class MapScreenState extends State<MapScreen>
 
         // Still trigger loading with default position
         _onLocationLoaded();
-        // Retry location after a delay (user might grant permission)
-        _scheduleLocationRetry();
+        // Don't retry automatically - wait for user to enable position tracking
       }
     }
   }
   
-  // Add method to retry location after permission might be granted
-  void _scheduleLocationRetry() {
-    _locationRetryTimer?.cancel();
-    _locationRetryTimer = Timer.periodic(const Duration(seconds: 10), (timer) async {
-      try {
-        final position = await _locationService.getCurrentLocation();
-        if (mounted) {
-          setState(() {
-            _currentPosition = position;
-            _errorMessage = '';
-          });
-          // Success - stop retrying and start location stream
-          timer.cancel();
-          _locationRetryTimer = null;
-          _startLocationStream();
-        }
-      } catch (e) {
-        // Still no permission, keep retrying
-      }
-    });
-  }
-
   // Add location stream subscription
   void _startLocationStream() {
     _locationStreamSubscription?.cancel();
@@ -688,6 +662,16 @@ class MapScreenState extends State<MapScreen>
           _loadAirspaces();
           _loadReportingPoints();
         }
+        
+        // Load obstacles if they should be shown
+        if (_showObstacles) {
+          _loadObstacles();
+        }
+        
+        // Load hotspots if they should be shown
+        if (_showHotspots) {
+          _loadHotspots();
+        }
       }
     });
   }
@@ -736,11 +720,7 @@ class MapScreenState extends State<MapScreen>
         }
       } catch (e) {
         // debugPrint('Error loading airports: $e');
-        if (mounted) {
-          setState(() {
-            _errorMessage = 'Failed to load airports. Please try again.';
-          });
-        }
+        // Don't show error popup for failed airport loading
       }
     });
     });
@@ -1019,6 +999,77 @@ class MapScreenState extends State<MapScreen>
       // debugPrint('❌ Error refreshing reporting points display: $e');
     }
   }
+  
+  // Load obstacles within the current map bounds
+  Future<void> _loadObstacles() async {
+    return MapProfiler.profileMapOperation('loadObstacles', () async {
+      if (!_showObstacles) {
+        return;
+      }
+
+      try {
+        final bounds = _mapController.camera.visibleBounds;
+        
+        // Load obstacles from tiled data
+        final obstacles = await openAIPService.getObstaclesForArea(
+          minLat: bounds.southWest.latitude,
+          minLon: bounds.southWest.longitude,
+          maxLat: bounds.northEast.latitude,
+          maxLon: bounds.northEast.longitude,
+        );
+        
+        debugPrint('📍 Loaded ${obstacles.length} obstacles for area');
+        if (obstacles.isNotEmpty) {
+          // Show some sample obstacles for debugging
+          final tall = obstacles.where((o) => o.totalHeightFt > 200).toList();
+          debugPrint('   - Tall obstacles (>200ft): ${tall.length}');
+          if (tall.isNotEmpty) {
+            debugPrint('   - Sample tall obstacle: ${tall.first.name} at ${tall.first.position}, totalHeight: ${tall.first.totalHeightFt}ft');
+          }
+          debugPrint('   - Current zoom: ${_mapController.camera.zoom}');
+        }
+        
+        if (mounted) {
+          setState(() {
+            _obstacles = obstacles;
+          });
+        }
+      } catch (e) {
+        debugPrint('❌ Error loading obstacles: $e');
+      }
+    });
+  }
+  
+  // Load hotspots within the current map bounds
+  Future<void> _loadHotspots() async {
+    return MapProfiler.profileMapOperation('loadHotspots', () async {
+      if (!_showHotspots) {
+        return;
+      }
+
+      try {
+        final bounds = _mapController.camera.visibleBounds;
+        
+        // Load hotspots from tiled data
+        final hotspots = await openAIPService.getHotspotsForArea(
+          minLat: bounds.southWest.latitude,
+          minLon: bounds.southWest.longitude,
+          maxLat: bounds.northEast.latitude,
+          maxLon: bounds.northEast.longitude,
+        );
+        
+        print('DEBUG: Loaded ${hotspots.length} hotspots for bounds: ${bounds.southWest.latitude},${bounds.southWest.longitude} to ${bounds.northEast.latitude},${bounds.northEast.longitude}');
+        
+        if (mounted) {
+          setState(() {
+            _hotspots = hotspots;
+          });
+        }
+      } catch (e) {
+        // debugPrint('❌ Error loading hotspots: $e');
+      }
+    });
+  }
 
   // Start auto-centering countdown
   void _startAutoCenteringCountdown() {
@@ -1046,7 +1097,7 @@ class MapScreenState extends State<MapScreen>
     
     // Start the actual auto-centering timer
     _autoCenteringTimer = Timer(_autoCenteringDelay, () {
-      if (mounted && _flightService.isTracking) {
+      if (mounted && (_flightService.isTracking || _positionTrackingEnabled)) {
         setState(() {
           _autoCenteringEnabled = true;
           _autoCenteringCountdown = 0;
@@ -1097,9 +1148,17 @@ class MapScreenState extends State<MapScreen>
         setState(() {
           _positionTrackingEnabled = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not get current location')),
-        );
+        
+        // Check if it's a permission error
+        if (e.toString().contains('denied') || e.toString().contains('permission')) {
+          // Show dialog to request permission
+          _showLocationPermissionDialog();
+        } else {
+          // Other location errors
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not get current location')),
+          );
+        }
         return;
       }
     }
@@ -1182,34 +1241,7 @@ class MapScreenState extends State<MapScreen>
     });
   }
 
-  // Toggle navaid visibility
-  void _toggleNavaids() {
-    setState(() {
-      _showNavaids = !_showNavaids;
-    });
 
-    // Load navaids immediately when toggled on
-    if (_showNavaids) {
-      _loadNavaids();
-    }
-    // Keep navaids in memory when toggled off for fast toggling
-  }
-
-  // Toggle METAR overlay visibility
-  void _toggleMetar() async {
-    setState(() {
-      _showMetar = !_showMetar;
-    });
-
-    // When METAR overlay is turned on, load weather for currently visible airports
-    if (_showMetar) {
-      try {
-        await _loadWeatherForVisibleAirports();
-      } catch (e) {
-        debugPrint('Error loading weather: $e');
-      }
-    }
-  }
 
   // Toggle heliport visibility
   void _toggleHeliports() {
@@ -1218,12 +1250,6 @@ class MapScreenState extends State<MapScreen>
     });
   }
 
-  // Toggle small airport visibility
-  void _toggleSmallAirports() {
-    setState(() {
-      _showSmallAirports = !_showSmallAirports;
-    });
-  }
 
   // Toggle airspaces visibility
   void _toggleAirspaces() {
@@ -1241,6 +1267,30 @@ class MapScreenState extends State<MapScreen>
       setState(() {
         _showAirspaces = false;
       });
+    }
+  }
+  
+  // Toggle obstacles visibility
+  void _toggleObstacles() {
+    setState(() {
+      _showObstacles = !_showObstacles;
+    });
+    
+    if (_showObstacles) {
+      // Load obstacles if needed
+      _loadObstacles();
+    }
+  }
+  
+  // Toggle hotspots visibility
+  void _toggleHotspots() {
+    setState(() {
+      _showHotspots = !_showHotspots;
+    });
+    
+    if (_showHotspots) {
+      // Load hotspots if needed
+      _loadHotspots();
     }
   }
 
@@ -1755,6 +1805,9 @@ class MapScreenState extends State<MapScreen>
 
   // Handle airport selection from search
   void _onAirportSelectedFromSearch(Airport airport) {
+    // Close the search dialog first
+    Navigator.of(context).pop();
+    
     // Focus map on the selected airport
     _mapController.move(
       airport.position,
@@ -1773,6 +1826,9 @@ class MapScreenState extends State<MapScreen>
       // Handle differently based on tracking mode
       if (_flightService.isTracking) {
         // During flight tracking, re-enable after 3 minutes
+        _startAutoCenteringCountdown();
+      } else if (_positionTrackingEnabled) {
+        // During position tracking (without flight tracking), re-enable after delay
         _startAutoCenteringCountdown();
       }
       // For non-tracking mode, auto-centering stays disabled until manually re-enabled
@@ -2077,6 +2133,100 @@ class MapScreenState extends State<MapScreen>
       }
     }
   }
+  
+  // Handle obstacle selection
+  Future<void> _onObstacleSelected(Obstacle obstacle) async {
+    if (!mounted) {
+      return;
+    }
+    try {
+      // Create a themed dialog to show obstacle information
+      await ThemedDialog.show(
+        context: context,
+        title: obstacle.displayName,
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildThemedInfoRow('Name', obstacle.name),
+            if (obstacle.type != null)
+              _buildThemedInfoRow('Type', obstacle.type!),
+            if (obstacle.heightFt != null)
+              _buildThemedInfoRow('Height', '${obstacle.heightFt} ft'),
+            if (obstacle.elevationFt != null)
+              _buildThemedInfoRow('Elevation', '${obstacle.elevationFt} ft'),
+            _buildThemedInfoRow('Total Height', '${obstacle.totalHeightFt} ft MSL'),
+            _buildThemedInfoRow('Lighted', obstacle.lighted ? 'Yes' : 'No'),
+            if (obstacle.marking != null && obstacle.marking!.isNotEmpty)
+              _buildThemedInfoRow('Marking', obstacle.marking!),
+            if (obstacle.country != null)
+              _buildThemedInfoRow('Country', obstacle.country!),
+            const SizedBox(height: 8),
+            Text(
+              'Position: ${obstacle.latitude.toStringAsFixed(5)}, ${obstacle.longitude.toStringAsFixed(5)}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error showing obstacle details'),
+          ),
+        );
+      }
+    }
+  }
+  
+  // Handle hotspot selection
+  Future<void> _onHotspotSelected(Hotspot hotspot) async {
+    if (!mounted) {
+      return;
+    }
+    try {
+      // Create a themed dialog to show hotspot information
+      await ThemedDialog.show(
+        context: context,
+        title: hotspot.displayName,
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildThemedInfoRow('Name', hotspot.name),
+            if (hotspot.type != null)
+              _buildThemedInfoRow('Type', hotspot.type!),
+            if (hotspot.elevationFt != null)
+              _buildThemedInfoRow('Elevation', hotspot.elevationString),
+            if (hotspot.reliability != null)
+              _buildThemedInfoRow('Reliability', hotspot.reliabilityString),
+            if (hotspot.occurrence != null && hotspot.occurrence!.isNotEmpty)
+              _buildThemedInfoRow('Occurrence', hotspot.occurrence!),
+            if (hotspot.conditions != null && hotspot.conditions!.isNotEmpty)
+              _buildThemedInfoRow('Conditions', hotspot.conditions!),
+            if (hotspot.description != null && hotspot.description!.isNotEmpty)
+              _buildThemedInfoRow('Description', hotspot.description!),
+            if (hotspot.country != null)
+              _buildThemedInfoRow('Country', hotspot.country!),
+            const SizedBox(height: 8),
+            Text(
+              'Position: ${hotspot.latitude.toStringAsFixed(5)}, ${hotspot.longitude.toStringAsFixed(5)}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error showing hotspot details'),
+          ),
+        );
+      }
+    }
+  }
 
   Widget _buildThemedInfoRow(String label, String value) {
     return Padding(
@@ -2171,6 +2321,12 @@ class MapScreenState extends State<MapScreen>
       
       // Get only the airports that are actually visible on the map (same filtering as markers)
       final visibleAirports = _airports.where((airport) {
+        // Small airports are always shown (filtered by zoom level automatically)
+        // Filter closed airports (use correct lowercase "closed" check)
+        if (airport.type.toLowerCase() == 'closed') {
+          return false;
+        }
+
         // First check if airport is within visible bounds
         if (!bounds.contains(airport.position)) {
           return false;
@@ -2178,14 +2334,6 @@ class MapScreenState extends State<MapScreen>
         
         // Filter heliports and balloonports based on toggle
         if ((airport.type == 'heliport' || airport.type == 'balloonport') && !_showHeliports) {
-          return false;
-        }
-        // Filter small airports based on toggle
-        if (airport.type == 'small_airport' && !_showSmallAirports) {
-          return false;
-        }
-        // Filter closed airports (use correct lowercase "closed" check)
-        if (airport.type.toLowerCase() == 'closed') {
           return false;
         }
         // Show medium and large airports always, and show small airports/heliports based on toggles
@@ -2283,9 +2431,8 @@ class MapScreenState extends State<MapScreen>
                       // During flight tracking, re-enable after 3 minutes
                       _startAutoCenteringCountdown();
                     } else if (_positionTrackingEnabled) {
-                      // During position tracking, don't automatically re-enable
-                      // User must tap the button again to re-enable
-                      // Position tracking continues but map doesn't follow
+                      // During position tracking, re-enable after delay
+                      _startAutoCenteringCountdown();
                     }
                   }
 
@@ -2315,6 +2462,24 @@ class MapScreenState extends State<MapScreen>
                       id: 'load_reporting_points',
                       operation: _loadReportingPoints,
                       debounce: const Duration(milliseconds: 800),
+                    );
+                  }
+                  
+                  // Obstacles with delay
+                  if (_showObstacles) {
+                    scheduler.scheduleOperation(
+                      id: 'load_obstacles',
+                      operation: _loadObstacles,
+                      debounce: const Duration(milliseconds: 900),
+                    );
+                  }
+                  
+                  // Hotspots with delay  
+                  if (_showHotspots) {
+                    scheduler.scheduleOperation(
+                      id: 'load_hotspots',
+                      operation: _loadHotspots,
+                      debounce: const Duration(milliseconds: 950),
                     );
                   }
                   
@@ -2364,6 +2529,18 @@ class MapScreenState extends State<MapScreen>
                   reportingPoints: _reportingPoints,
                   onReportingPointTap: _onReportingPointSelected,
                 ),
+              // Obstacles overlay (optimized)
+              if (_showObstacles && _obstacles.isNotEmpty)
+                OptimizedObstaclesLayer(
+                  obstacles: _obstacles,
+                  onObstacleTap: _onObstacleSelected,
+                ),
+              // Hotspots overlay (optimized)  
+              if (_showHotspots && _hotspots.isNotEmpty)
+                OptimizedHotspotsLayer(
+                  hotspots: _hotspots,
+                  onHotspotTap: _onHotspotSelected,
+                ),
               // Airport markers with tap handling (optimized)
               OptimizedAirportMarkersLayer(
                 airports: _airports.where((airport) {
@@ -2371,16 +2548,12 @@ class MapScreenState extends State<MapScreen>
                   if ((airport.type == 'heliport' || airport.type == 'balloonport') && !_showHeliports) {
                     return false;
                   }
-                  // Filter small airports based on toggle
-                  if (airport.type == 'small_airport' && !_showSmallAirports) {
-                    return false;
-                  }
+                  // Small airports are always shown (filtered by zoom level automatically)
                   // Show medium and large airports always, and show small airports/heliports based on toggles
                   return true;
                 }).toList(),
                 onAirportTap: _onAirportSelected,
                 showHeliports: _showHeliports,
-                showSmallAirports: _showSmallAirports,
               ),
               // Navaid markers (optimized)
               if (_showNavaids && _navaids.isNotEmpty)
@@ -2690,36 +2863,10 @@ class MapScreenState extends State<MapScreen>
                         ),
                       ),
                       _buildLayerToggle(
-                        icon: _showNavaids
-                            ? Icons.explore
-                            : Icons.explore_outlined,
-                        tooltip: 'Toggle Navaids',
-                        isActive: _showNavaids,
-                        onPressed: () {
-                          _toggleNavaids();
-                        },
-                      ),
-                      _buildLayerToggle(
-                        icon: _showMetar ? Icons.cloud : Icons.cloud_outlined,
-                        tooltip: 'Toggle METAR Overlay',
-                        isActive: _showMetar,
-                        onPressed: () {
-                          _toggleMetar();
-                        },
-                      ),
-                      _buildLayerToggle(
                         icon: FontAwesomeIcons.helicopter,
                         tooltip: 'Toggle Heliports',
                         isActive: _showHeliports,
                         onPressed: _toggleHeliports,
-                      ),
-                      _buildLayerToggle(
-                        icon: _showSmallAirports
-                            ? Icons.airplanemode_active
-                            : Icons.airplanemode_inactive,
-                        tooltip: 'Toggle Small Airports',
-                        isActive: _showSmallAirports,
-                        onPressed: _toggleSmallAirports,
                       ),
                       _buildLayerToggle(
                         icon: _showAirspaces
@@ -2728,6 +2875,18 @@ class MapScreenState extends State<MapScreen>
                         tooltip: 'Toggle Airspaces',
                         isActive: _showAirspaces,
                         onPressed: _toggleAirspaces,
+                      ),
+                      _buildLayerToggle(
+                        icon: Icons.warning_amber_rounded,
+                        tooltip: 'Toggle Obstacles',
+                        isActive: _showObstacles,
+                        onPressed: _toggleObstacles,
+                      ),
+                      _buildLayerToggle(
+                        icon: Icons.location_on,
+                        tooltip: 'Toggle Hotspots',
+                        isActive: _showHotspots,
+                        onPressed: _toggleHotspots,
                       ),
                       _buildLayerToggle(
                         icon: _showCurrentAirspacePanel
@@ -3024,6 +3183,7 @@ class MapScreenState extends State<MapScreen>
             );
               },
             ),
+          
           ],
 
           // Navigation and action controls positioned on the left side
@@ -3277,45 +3437,6 @@ class MapScreenState extends State<MapScreen>
               ),
             ),
 
-          // Error message (dismissible)
-          if (_errorMessage.isNotEmpty)
-            Positioned(
-              top: 100,
-              left: 20,
-              right: 20,
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.red[100],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _errorMessage,
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.red, size: 20),
-                        onPressed: () {
-                          setState(() {
-                            _errorMessage = '';
-                          });
-                        },
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
 
           // License warning widget - only show when not tracking
           if (!_flightService.isTracking)
@@ -3475,6 +3596,43 @@ class MapScreenState extends State<MapScreen>
               return const SizedBox.shrink();
             },
           ),
+          
+          // OpenStreetMap attribution in bottom right corner - always on top
+          Positioned(
+            bottom: 8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(4),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: InkWell(
+                onTap: () async {
+                  const url = 'https://openstreetmap.org/copyright';
+                  if (await canLaunchUrl(Uri.parse(url))) {
+                    await launchUrl(Uri.parse(url));
+                  }
+                },
+                child: const Text(
+                  'Map data © OpenStreetMap',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.black87,
+                    decoration: TextDecoration.underline,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     ); // Closing Scaffold
@@ -3491,17 +3649,99 @@ class MapScreenState extends State<MapScreen>
       return '$seconds';
     }
   }
+  
+  // Show location permission dialog
+  void _showLocationPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Location Permission Required'),
+          content: const Text(
+            'CaptainVFR needs access to your location to show your position on the map and enable navigation features.\n\n'
+            'Please grant location permission to use these features.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                
+                // Request permission directly
+                try {
+                  final permission = await _locationService.requestPermission();
+                  // If permission granted, try to start tracking again
+                  if (permission == LocationPermission.whileInUse || 
+                      permission == LocationPermission.always) {
+                    setState(() {
+                      _positionTrackingEnabled = true;
+                    });
+                    await _startPositionTracking();
+                  }
+                } catch (e) {
+                  // If permission is permanently denied, show settings prompt
+                  if (e.toString().contains('permanently denied')) {
+                    _showOpenSettingsDialog();
+                  }
+                }
+              },
+              child: const Text('Grant Permission'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+  
+  // Show dialog to open app settings
+  void _showOpenSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Permission Denied'),
+          content: const Text(
+            'Location permission has been permanently denied. '
+            'Please open app settings and grant location permission manually.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                // Open app settings
+                await Geolocator.openAppSettings();
+              },
+              child: const Text('Open Settings'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   Widget _buildPositionTrackingButton() {
     final bool showCountdown = _positionTrackingEnabled && 
                               !_autoCenteringEnabled && 
-                              _autoCenteringCountdown > 0 &&
-                              _flightService.isTracking;
+                              _autoCenteringCountdown > 0;
     
     return SizedBox(
-      width: 48,
+      width: showCountdown ? null : 48,
       height: 48,
-      child: Stack(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           IconButton(
             icon: Icon(
@@ -3519,32 +3759,24 @@ class MapScreenState extends State<MapScreen>
                         : 'Position tracking paused by map movement (tap to disable)')
                 : 'Enable position tracking',
           ),
-          if (showCountdown)
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: Colors.orange,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                constraints: const BoxConstraints(
-                  minWidth: 20,
-                  minHeight: 20,
-                ),
-                child: Center(
-                  child: Text(
-                    _formatCountdown(_autoCenteringCountdown),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+          if (showCountdown) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.orange,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                _formatCountdown(_autoCenteringCountdown),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
+            const SizedBox(width: 8),
+          ],
         ],
       ),
     );

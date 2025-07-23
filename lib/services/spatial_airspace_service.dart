@@ -1,32 +1,25 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer' as developer;
-import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:archive/archive.dart';
 import '../models/airspace.dart';
-import '../utils/spatial_index.dart';
-import '../utils/serializable_spatial_index.dart';
 import 'openaip_service.dart';
+import 'tiled_data_loader.dart';
 
 /// Enhanced airspace service with spatial indexing for high-performance queries
 class SpatialAirspaceService extends ChangeNotifier {
   final OpenAIPService _openAIPService;
-  final HybridSpatialIndex _spatialIndex = HybridSpatialIndex();
-  SerializableSpatialIndex? _prebuiltIndex;
+  final TiledDataLoader _tiledDataLoader = TiledDataLoader();
   
   List<Airspace> _allAirspaces = [];
   bool _isIndexBuilt = false;
   Timer? _rebuildTimer;
-  bool _prebuiltIndexLoaded = false;
   
 
   SpatialAirspaceService(this._openAIPService) {
-    // Initialize service and try to load pre-built index
+    // Initialize service
     _initializeIndex();
     
     // Set up a periodic check to ensure index is up to date
@@ -37,12 +30,7 @@ class SpatialAirspaceService extends ChangeNotifier {
       final currentCount = await _openAIPService.getCachedAirspaces().then((a) => a.length);
       if (currentCount != _allAirspaces.length) {
         developer.log('📊 Airspace count changed: ${_allAirspaces.length} -> $currentCount');
-        // Update airspace list without rebuilding if we have pre-built index
-        if (_prebuiltIndexLoaded && _prebuiltIndex != null) {
-          await _updateAirspaceList();
-        } else {
-          await rebuildIndex();
-        }
+        await rebuildIndex();
       }
     });
   }
@@ -53,27 +41,12 @@ class SpatialAirspaceService extends ChangeNotifier {
       return;
     }
     
-    // Try to load pre-built index first
-    await _loadPrebuiltIndex();
-    
     final airspaces = await _openAIPService.getCachedAirspaces();
     if (airspaces.isNotEmpty) {
       _allAirspaces = airspaces;
-      
-      if (_prebuiltIndexLoaded && _prebuiltIndex != null) {
-        developer.log('🚀 Pre-built spatial index loaded successfully!');
-        developer.log('📊 Index contains ${_prebuiltIndex!.gridIndex.length} grid cells');
-        developer.log('📊 Managing ${airspaces.length} airspaces');
-        _isIndexBuilt = true;
-      } else {
-        developer.log('🚀 Building runtime spatial index with ${airspaces.length} airspaces');
-        developer.log('⚠️ Pre-built index not available, falling back to runtime indexing');
-        _spatialIndex.clear();
-        for (final airspace in airspaces) {
-          _spatialIndex.insert(airspace);
-        }
-        _isIndexBuilt = true;
-      }
+      developer.log('🚀 Spatial index will be built dynamically as tiles are loaded');
+      developer.log('📊 Managing ${airspaces.length} airspaces');
+      _isIndexBuilt = true;
       notifyListeners();
     } else {
       developer.log('⚠️ No airspaces available for spatial index initialization');
@@ -101,17 +74,24 @@ class SpatialAirspaceService extends ChangeNotifier {
 
     final startTime = DateTime.now();
     
-    List<Airspace> candidates;
+    // First, ensure the tiles for this area are loaded
+    await _tiledDataLoader.loadAirspacesForArea(
+      minLat: bounds.southWest.latitude,
+      maxLat: bounds.northEast.latitude,
+      minLon: bounds.southWest.longitude,
+      maxLon: bounds.northEast.longitude,
+    );
     
-    // Use pre-built index if available, otherwise fall back to runtime index
-    if (_prebuiltIndexLoaded && _prebuiltIndex != null) {
-      final airspaceIds = _prebuiltIndex!.queryBounds(bounds);
-      candidates = _getAirspacesByIds(airspaceIds);
-      developer.log('🗂️ Using pre-built index: found ${airspaceIds.length} IDs, matched ${candidates.length} airspaces');
-    } else {
-      candidates = _spatialIndex.search(bounds).whereType<Airspace>().toList();
-      developer.log('🔨 Using runtime index: found ${candidates.length} airspaces');
+    // Use the spatial index from TiledDataLoader
+    final spatialIndex = _tiledDataLoader.getSpatialIndex('airspaces');
+    if (spatialIndex == null) {
+      developer.log('⚠️ No spatial index available for airspaces');
+      return [];
     }
+    
+    // Query the spatial index
+    var candidates = spatialIndex.search(bounds).whereType<Airspace>().toList();
+    developer.log('🔨 Using dynamic spatial index: found ${candidates.length} airspaces');
     
     // Apply additional filters
     if (currentAltitude != null || typeFilter != null || icaoClassFilter != null) {
@@ -156,17 +136,25 @@ class SpatialAirspaceService extends ChangeNotifier {
 
     final startTime = DateTime.now();
     
-    List<Airspace> candidates;
+    // First, ensure the tiles for this area are loaded (small area around the point)
+    const buffer = 0.1; // degrees
+    await _tiledDataLoader.loadAirspacesForArea(
+      minLat: point.latitude - buffer,
+      maxLat: point.latitude + buffer,
+      minLon: point.longitude - buffer,
+      maxLon: point.longitude + buffer,
+    );
     
-    // Use pre-built index if available, otherwise fall back to runtime index
-    if (_prebuiltIndexLoaded && _prebuiltIndex != null) {
-      final airspaceIds = _prebuiltIndex!.queryPoint(point);
-      candidates = _getAirspacesByIds(airspaceIds.toSet());
-      developer.log('🗂️ Using pre-built index for point: found ${airspaceIds.length} IDs, matched ${candidates.length} airspaces');
-    } else {
-      candidates = _spatialIndex.searchPoint(point).whereType<Airspace>().toList();
-      developer.log('🔨 Using runtime index for point: found ${candidates.length} airspaces');
+    // Use the spatial index from TiledDataLoader
+    final spatialIndex = _tiledDataLoader.getSpatialIndex('airspaces');
+    if (spatialIndex == null) {
+      developer.log('⚠️ No spatial index available for airspaces');
+      return [];
     }
+    
+    // Query the spatial index
+    var candidates = spatialIndex.searchPoint(point).whereType<Airspace>().toList();
+    developer.log('🔨 Using dynamic spatial index for point: found ${candidates.length} airspaces');
     
     // Apply additional filters
     if (currentAltitude != null || typeFilter != null || icaoClassFilter != null) {
@@ -232,41 +220,35 @@ class SpatialAirspaceService extends ChangeNotifier {
 
   /// Force rebuild of spatial index
   Future<void> rebuildIndex() async {
-    // If we have a pre-built index, just update the airspace list
-    if (_prebuiltIndexLoaded && _prebuiltIndex != null) {
-      await _updateAirspaceList();
-      return;
-    }
+    // Update the airspace list
+    await _updateAirspaceList();
     
-    final startTime = DateTime.now();
-    developer.log('🔨 Rebuilding spatial index...');
+    developer.log('🔨 Clearing spatial index cache for airspaces...');
+    
+    // Clear the spatial index for airspaces in TiledDataLoader
+    _tiledDataLoader.clearCacheForType('airspaces');
     
     _allAirspaces = await _openAIPService.getCachedAirspaces();
     
     if (_allAirspaces.isNotEmpty) {
-      _spatialIndex.clear();
-      for (final airspace in _allAirspaces) {
-        _spatialIndex.insert(airspace);
-      }
       _isIndexBuilt = true;
-      
-      final buildTime = DateTime.now().difference(startTime).inMilliseconds;
-      developer.log('✅ Spatial index rebuilt in ${buildTime}ms for ${_allAirspaces.length} airspaces');
-      
+      developer.log('✅ Spatial index cache cleared. Index will be rebuilt dynamically as tiles are loaded.');
+      developer.log('📊 Managing ${_allAirspaces.length} airspaces');
       notifyListeners();
     } else {
-      developer.log('⚠️ No airspaces available for indexing');
+      developer.log('⚠️ No airspaces available');
       _isIndexBuilt = false;
     }
   }
 
   /// Get index statistics
   Map<String, dynamic> getIndexStats() {
+    final spatialIndex = _tiledDataLoader.getSpatialIndex('airspaces');
     return {
       'isBuilt': _isIndexBuilt,
       'airspaceCount': _allAirspaces.length,
-      'indexSize': _spatialIndex.size,
-      'prebuiltIndexLoaded': _prebuiltIndexLoaded,
+      'indexSize': spatialIndex?.size ?? 0,
+      'dynamicIndexing': true,
     };
   }
 
@@ -295,7 +277,7 @@ class SpatialAirspaceService extends ChangeNotifier {
 
   /// Clear the spatial index and free memory
   void clearIndex() {
-    _spatialIndex.clear();
+    _tiledDataLoader.clearCacheForType('airspaces');
     _isIndexBuilt = false;
     notifyListeners();
   }
@@ -335,45 +317,6 @@ class SpatialAirspaceService extends ChangeNotifier {
     return earthRadius * c;
   }
   
-  /// Load pre-built spatial index from assets
-  Future<void> _loadPrebuiltIndex() async {
-    // Skip if already loaded
-    if (_prebuiltIndexLoaded || _prebuiltIndex != null) {
-      return;
-    }
-    
-    try {
-      developer.log('📦 Loading pre-built airspace spatial index...');
-      final byteData = await rootBundle.load('assets/data/airspaces_index.json.gz');
-      final compressed = byteData.buffer.asUint8List();
-      
-      List<int> decompressed;
-      if (kIsWeb) {
-        decompressed = GZipDecoder().decodeBytes(compressed);
-      } else {
-        decompressed = gzip.decode(compressed);
-      }
-      
-      final jsonData = json.decode(utf8.decode(decompressed)) as Map<String, dynamic>;
-      _prebuiltIndex = SerializableSpatialIndex.fromJson(jsonData);
-      _prebuiltIndexLoaded = true;
-      
-      developer.log('✅ Pre-built spatial index loaded successfully');
-    } catch (e) {
-      developer.log('⚠️ Failed to load pre-built spatial index: $e');
-      _prebuiltIndexLoaded = false;
-    }
-  }
-  
-  /// Get airspaces by their IDs
-  List<Airspace> _getAirspacesByIds(Set<String> ids) {
-    final results = _allAirspaces.where((airspace) => ids.contains(airspace.id)).toList();
-    if (results.isEmpty && ids.isNotEmpty) {
-      developer.log('⚠️ No airspaces found for ${ids.length} IDs. Sample IDs: ${ids.take(3).join(", ")}');
-      developer.log('⚠️ Sample airspace IDs in memory: ${_allAirspaces.take(3).map((a) => a.id).join(", ")}');
-    }
-    return results;
-  }
   
   /// Update airspace list without rebuilding spatial index
   Future<void> _updateAirspaceList() async {

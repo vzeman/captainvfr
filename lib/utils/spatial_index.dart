@@ -6,16 +6,26 @@ import '../models/airspace.dart';
 abstract class SpatialIndexable {
   LatLngBounds? get boundingBox;
   bool containsPoint(LatLng point);
+  String get uniqueId; // Unique identifier for deduplication
 }
 
 /// A spatial index using simplified approach for efficient spatial queries
 /// This dramatically improves performance when searching for objects in a geographic area
 class SpatialIndex {
   final List<SpatialIndexable> _items = [];
+  final Set<String> _addedIds = {}; // Track added items by ID to prevent duplicates
   
   /// Insert an item into the spatial index
   void insert(SpatialIndexable item) {
     if (item.boundingBox == null) return;
+    
+    // Prevent duplicates using unique ID
+    final id = item.uniqueId;
+    if (_addedIds.contains(id)) {
+      return; // Skip duplicate
+    }
+    _addedIds.add(id);
+    
     _items.add(item);
   }
 
@@ -42,6 +52,7 @@ class SpatialIndex {
   /// Clear the index
   void clear() {
     _items.clear();
+    _addedIds.clear();
   }
 
   /// Get the number of indexed items
@@ -53,7 +64,7 @@ class SpatialIndex {
     
     for (final airspace in airspaces) {
       insert(airspace);
-        }
+    }
   }
 }
 
@@ -62,10 +73,18 @@ class GridSpatialIndex {
   static const double _gridSize = 0.1; // ~11km at equator
   
   final Map<String, List<SpatialIndexable>> _grid = {};
+  final Set<String> _addedIds = {}; // Track added items by ID to prevent duplicates
   
   void insert(SpatialIndexable item) {
     final bounds = item.boundingBox;
     if (bounds == null) return;
+    
+    // Prevent duplicates using unique ID
+    final id = item.uniqueId;
+    if (_addedIds.contains(id)) {
+      return; // Skip duplicate
+    }
+    _addedIds.add(id);
     
     final cells = _getCellsForBounds(bounds);
     for (final cell in cells) {
@@ -97,13 +116,14 @@ class GridSpatialIndex {
 
   void clear() {
     _grid.clear();
+    _addedIds.clear();
   }
 
   void buildFromAirspaces(List<Airspace> airspaces) {
     clear();
     for (final airspace in airspaces) {
       insert(airspace);
-        }
+    }
   }
 
   List<String> _getCellsForBounds(LatLngBounds bounds) {

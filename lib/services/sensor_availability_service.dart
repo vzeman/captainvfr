@@ -62,17 +62,42 @@ class SensorAvailabilityService extends ChangeNotifier {
     ]);
   }
 
+  /// Add notifications for macOS platform limitations
+  void _addMacOSNotifications() {
+    _notifications.addAll([
+      const SensorNotificationData(
+        id: 'macos_accelerometer',
+        sensorName: 'Accelerometer Not Available',
+        message: 'Vibration measurement is not supported on macOS',
+        icon: Icons.vibration,
+      ),
+      const SensorNotificationData(
+        id: 'macos_barometer',
+        sensorName: 'Barometer Not Available', 
+        message: 'Altitude sensors are not available on macOS',
+        icon: Icons.speed,
+      ),
+    ]);
+  }
+
   /// Check mobile platform sensors
   Future<void> _checkMobileSensors() async {
     // Check GPS/Location
     await _checkLocationSensor();
     
-    // Check accelerometer
-    await _checkAccelerometer();
+    // Check accelerometer (not available on macOS)
+    if (!Platform.isMacOS) {
+      await _checkAccelerometer();
+    }
     
     // Check barometer (platform specific)
     if (Platform.isIOS || Platform.isAndroid) {
       await _checkBarometer();
+    }
+    
+    // Add macOS-specific notifications
+    if (Platform.isMacOS) {
+      _addMacOSNotifications();
     }
   }
 

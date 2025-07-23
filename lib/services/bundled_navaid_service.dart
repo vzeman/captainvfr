@@ -1,10 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer' as developer;
-import 'dart:io';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
-import 'package:archive/archive.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:math' show sin, cos, sqrt, atan2;
 import '../models/navaid.dart';
@@ -51,64 +46,7 @@ class BundledNavaidService {
     if (_bundledDataLoaded) return;
     
     try {
-      developer.log('📦 Loading bundled navaid data...');
-      
-      // Try to load compressed data first
-      try {
-        final byteData = await rootBundle.load('assets/data/navaids_min.json.gz');
-        final compressed = byteData.buffer.asUint8List();
-        
-        List<int> decompressed;
-        if (kIsWeb) {
-          // Use archive package for web
-          decompressed = GZipDecoder().decodeBytes(compressed);
-        } else {
-          // Use dart:io gzip for native platforms
-          decompressed = gzip.decode(compressed);
-        }
-        
-        final jsonString = utf8.decode(decompressed);
-        final data = json.decode(jsonString) as Map<String, dynamic>;
-        
-        if (data['navaids'] != null) {
-          final items = data['navaids'] as List;
-          final navaids = items.map((item) => Navaid.fromJson(item)).toList();
-          
-          if (navaids.isNotEmpty) {
-            _navaids = navaids;
-            
-            // Also cache them for offline use
-            await _cacheService.cacheNavaids(_navaids);
-            
-            developer.log('✅ Loaded ${_navaids.length} navaids from bundled data');
-            developer.log('📅 Data generated at: ${data['generated_at']}');
-            _bundledDataLoaded = true;
-          }
-        }
-      } catch (e) {
-        developer.log('⚠️ Could not load compressed navaids: $e');
-        
-        // Try to load uncompressed data as fallback
-        try {
-          final jsonString = await rootBundle.loadString('assets/data/navaids.json');
-          final data = json.decode(jsonString) as Map<String, dynamic>;
-          
-          if (data['navaids'] != null) {
-            final items = data['navaids'] as List;
-            final navaids = items.map((item) => Navaid.fromJson(item)).toList();
-            
-            if (navaids.isNotEmpty) {
-              _navaids = navaids;
-              await _cacheService.cacheNavaids(_navaids);
-              developer.log('✅ Loaded ${_navaids.length} navaids from bundled JSON');
-              developer.log('📅 Data generated at: ${data['generated_at']}');
-              _bundledDataLoaded = true;
-            }
-          }
-        } catch (e2) {
-          developer.log('⚠️ Could not load uncompressed navaids: $e2');
-        }
-      }
+      // TODO load bundled navaids from assets
     } catch (e) {
       developer.log('❌ Error loading bundled navaids: $e');
     }

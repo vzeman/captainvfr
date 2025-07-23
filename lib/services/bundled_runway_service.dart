@@ -1,10 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer' as developer;
-import 'dart:io';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
-import 'package:archive/archive.dart';
 import '../models/runway.dart';
 import 'cache_service.dart';
 
@@ -52,6 +47,13 @@ class BundledRunwayService {
     try {
       developer.log('📦 Loading bundled runway data...');
       
+      // Note: Runway data is typically included with airport data from APIs
+      // The old standalone runway JSON files have been removed
+      // Runways should be loaded as part of airport data
+      
+      developer.log('ℹ️ Runway data should be loaded as part of airport data from APIs');
+      
+      /* Old compressed/uncompressed data loading code - no longer used
       // Try to load compressed data first
       try {
         final byteData = await rootBundle.load('assets/data/runways_min.json.gz');
@@ -142,6 +144,7 @@ class BundledRunwayService {
           developer.log('⚠️ Could not load uncompressed runways: $e2');
         }
       }
+      */
     } catch (e) {
       developer.log('❌ Error loading bundled runways: $e');
     }

@@ -56,7 +56,7 @@ Download CaptainVFR for your device or use it directly in your web browser.
     "description": "Native iOS app optimized for iPhone and iPad with full offline capabilities. Universal app design, offline map downloads, Apple Watch companion app.",
     "link": {
       "text": "Download on App Store",
-      "url": "https://apps.apple.com/app/captainvfr"
+      "url": "https://apps.apple.com/sk/app/captainvfr/id6748603359"
     }
   },
   {

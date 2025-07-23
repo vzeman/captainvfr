@@ -93,7 +93,7 @@ class _AirportSearchDialogState extends State<AirportSearchDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+          onPressed: () => Navigator.of(context).pop(),
           style: FormThemeHelper.getSecondaryButtonStyle(),
           child: const Text('Cancel'),
         ),
@@ -207,7 +207,6 @@ class _AirportSearchDialogState extends State<AirportSearchDialog> {
         ),
         onTap: () {
           widget.onAirportSelected(airport);
-          Navigator.of(context, rootNavigator: true).pop();
         },
       ),
     );

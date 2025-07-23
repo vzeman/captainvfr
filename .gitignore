@@ -138,3 +138,10 @@ hugo/static/downloads/rw.*.dmg
 # Android App Bundle files - too large for GitHub
 *.aab
 android/release/
+
+# Data files
+assets/data/*.json
+assets/data/*.json.gz
+assets/data/tiles/
+assets/data/tiles_csv/
+scripts/*_progress.json

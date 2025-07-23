@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../models/runway.dart';
 import 'cache_service.dart';
 import 'bundled_runway_service.dart';
+import 'tiled_data_loader.dart';
 
 class RunwayService {
   static const String _baseUrl =
@@ -14,7 +15,13 @@ class RunwayService {
   bool _isLoading = false;
   final CacheService _cacheService = CacheService();
   final BundledRunwayService _bundledService = BundledRunwayService();
+  final TiledDataLoader _tiledDataLoader = TiledDataLoader();
   bool _useBundledData = true;
+  bool _useTiledData = true;
+  
+  // Cache for tiled data
+  final Map<String, List<Runway>> _runwaysByAirport = {};
+  final Set<String> _loadedAreas = {};
 
   // Singleton pattern
   static final RunwayService _instance = RunwayService._internal();
@@ -22,13 +29,40 @@ class RunwayService {
   RunwayService._internal();
 
   bool get isLoading => _isLoading || _bundledService.isLoading;
-  List<Runway> get runways => _useBundledData ? _bundledService.runways : List.unmodifiable(_runways);
+  List<Runway> get runways {
+    if (_useTiledData) {
+      // Return all runways from tiled data cache
+      return _runwaysByAirport.values.expand((runways) => runways).toList();
+    }
+    return _useBundledData ? _bundledService.runways : List.unmodifiable(_runways);
+  }
 
   /// Initialize the service and load cached data
   Future<void> initialize() async {
     await _cacheService.initialize();
     
-    // Try bundled data first
+    // Check if tiled data is available
+    try {
+      // Try to load a test tile to see if tiled data exists
+      final testRunways = await _tiledDataLoader.loadRunwaysForArea(
+        minLat: 40.0,
+        maxLat: 50.0,
+        minLon: -80.0,
+        maxLon: -70.0,
+      );
+      
+      if (testRunways.isNotEmpty) {
+        developer.log('✅ Using tiled runway data');
+        _useTiledData = true;
+        _useBundledData = false;
+        return;
+      }
+    } catch (e) {
+      developer.log('ℹ️ Tiled runway data not available: $e');
+    }
+    
+    // Fall back to bundled data
+    _useTiledData = false;
     await _bundledService.initialize();
     
     // If bundled data is available, use it
@@ -52,6 +86,50 @@ class RunwayService {
       }
     } catch (e) {
       developer.log('❌ Error loading cached runways: $e');
+    }
+  }
+  
+  /// Load runways for a given map area (for tiled data)
+  Future<void> loadRunwaysForArea({
+    required double minLat,
+    required double maxLat,
+    required double minLon,
+    required double maxLon,
+  }) async {
+    if (!_useTiledData) {
+      // If not using tiled data, this is a no-op
+      return;
+    }
+    
+    // Create area key for tracking
+    final areaKey = '${minLat.toStringAsFixed(2)}_${maxLat.toStringAsFixed(2)}_${minLon.toStringAsFixed(2)}_${maxLon.toStringAsFixed(2)}';
+    
+    // Skip if already loaded
+    if (_loadedAreas.contains(areaKey)) {
+      return;
+    }
+    
+    try {
+      developer.log('📍 Loading runways for area: ($minLat, $minLon) to ($maxLat, $maxLon)');
+      
+      // Load runways from tiles
+      final runways = await _tiledDataLoader.loadRunwaysForArea(
+        minLat: minLat,
+        maxLat: maxLat,
+        minLon: minLon,
+        maxLon: maxLon,
+      );
+      
+      // Group by airport
+      for (final runway in runways) {
+        _runwaysByAirport.putIfAbsent(runway.airportIdent, () => []).add(runway);
+      }
+      
+      _loadedAreas.add(areaKey);
+      
+      developer.log('✅ Loaded ${runways.length} runways for area');
+    } catch (e) {
+      developer.log('❌ Error loading runways for area: $e');
     }
   }
 
@@ -175,6 +253,13 @@ class RunwayService {
 
   /// Get runways for a specific airport
   List<Runway> getRunwaysForAirport(String airportIdent) {
+    if (_useTiledData) {
+      // Return from tiled data cache
+      return _runwaysByAirport[airportIdent.toUpperCase()] ?? 
+             _runwaysByAirport[airportIdent] ?? 
+             [];
+    }
+    
     if (_useBundledData) {
       return _bundledService.getRunwaysForAirport(airportIdent);
     }
@@ -276,6 +361,9 @@ class RunwayService {
   Future<void> clearCache() async {
     await _cacheService.clearRunwaysCache();
     _runways.clear();
+    _runwaysByAirport.clear();
+    _loadedAreas.clear();
+    _tiledDataLoader.clearCacheForType('runways');
     developer.log('🗑️ Runway cache cleared');
   }
 }

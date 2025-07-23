@@ -1,16 +1,15 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
-import 'dart:io' show gzip;
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:archive/archive.dart';
 import '../models/airspace.dart';
 import '../models/reporting_point.dart';
+import '../models/obstacle.dart';
+import '../models/hotspot.dart';
 import '../config/api_config.dart';
 import 'cache_service.dart';
+import 'tiled_data_loader.dart';
 
 class OpenAIPService {
   static final OpenAIPService _instance = OpenAIPService._internal();
@@ -22,10 +21,14 @@ class OpenAIPService {
   static const String _reportingPointsEndpoint = '/reporting-points';
 
   final CacheService _cacheService = CacheService();
+  final TiledDataLoader _tiledDataLoader = TiledDataLoader();
   String? _apiKey;
   bool _initialized = false;
+  // ignore: prefer_final_fields
   bool _bundledDataLoaded = false;
+  // ignore: prefer_final_fields
   bool _bundledAirspacesLoaded = false;
+  // ignore: prefer_final_fields
   bool _bundledReportingPointsLoaded = false;
   
   // In-memory cache for reporting points (similar to airports)
@@ -136,6 +139,13 @@ class OpenAIPService {
   
   /// Load compressed bundled data
   Future<void> _loadCompressedData() async {
+    // Note: Compressed JSON files have been replaced with tiled CSV format
+    // Airspaces and other data are now loaded through TiledDataLoader on demand
+    // See getAirspacesForArea, getObstaclesForArea, etc.
+    
+    developer.log('ℹ️ Using TiledDataLoader for on-demand data loading from tiled CSV files');
+    
+    /* Old compressed data loading code - no longer used
     // Load compressed airspaces
     try {
       final airspacesBytes = await rootBundle.load('assets/data/airspaces_min.json.gz');
@@ -206,76 +216,19 @@ class OpenAIPService {
     } catch (e) {
       developer.log('⚠️ Could not load compressed reporting points: $e');
     }
+    */
   }
   
-  /// Parse minified airspace data
-  Airspace _parseMinifiedAirspace(Map<String, dynamic> data) {
-    final expanded = <String, dynamic>{
-      '_id': data['_id'],
-      'name': data['name'],
-      'type': data['type'],
-      'icaoClass': data['icaoClass'],
-      'activity': data['activity'],
-      'geometry': data['geometry'],
-    };
-    
-    // Expand altitude limits to match expected format
-    if (data['altLimit'] != null) {
-      final alt = data['altLimit'];
-      
-      // Convert to expected lowerLimit/upperLimit format
-      if (alt['b'] != null) {
-        expanded['lowerLimit'] = {
-          'value': alt['b']?['v'],
-          'unit': alt['b']?['u'],
-          'reference': alt['b']?['r'],
-        };
-      }
-      
-      if (alt['t'] != null) {
-        expanded['upperLimit'] = {
-          'value': alt['t']?['v'],
-          'unit': alt['t']?['u'],
-          'reference': alt['t']?['r'],
-        };
-      }
-    }
-    
-    // Optional fields
-    if (data['country'] != null) expanded['country'] = data['country'];
-    if (data['onDemand'] != null) expanded['onDemand'] = data['onDemand'];
-    if (data['onRequest'] != null) expanded['onRequest'] = data['onRequest'];
-    if (data['schedule'] != null) expanded['schedule'] = data['schedule'];
-    
-    return Airspace.fromJson(expanded);
-  }
-  
-  /// Parse minified reporting point data
-  ReportingPoint _parseMinifiedReportingPoint(Map<String, dynamic> data) {
-    final expanded = <String, dynamic>{
-      '_id': data['_id'],
-      'name': data['name'],
-      'type': data['type'],
-    };
-    
-    // Expand geometry
-    if (data['g'] != null && data['g'].length >= 2) {
-      expanded['geometry'] = {
-        'type': 'Point',
-        'coordinates': data['g'], // [lon, lat]
-      };
-    }
-    
-    // Optional fields
-    if (data['country'] != null) expanded['country'] = data['country'];
-    if (data['desc'] != null) expanded['description'] = data['desc'];
-    if (data['airport'] != null) expanded['airport'] = data['airport'];
-    
-    return ReportingPoint.fromJson(expanded);
-  }
+  // NOTE: _parseMinifiedAirspace and _parseMinifiedReportingPoint methods removed - no longer needed with tiled data
   
   /// Load uncompressed bundled data (fallback)
   Future<void> _loadUncompressedData() async {
+    // Note: Uncompressed JSON files have been replaced with tiled CSV format
+    // Data is loaded on-demand through TiledDataLoader for better performance
+    
+    developer.log('ℹ️ Skipping uncompressed data loading - using TiledDataLoader instead');
+    
+    /* Old uncompressed data loading code - no longer used
     // Load airspaces
     try {
       final airspacesJson = await rootBundle.loadString('assets/data/airspaces.json');
@@ -322,6 +275,7 @@ class OpenAIPService {
     } catch (e) {
       developer.log('⚠️ Could not load bundled reporting points: $e');
     }
+    */
   }
 
   Future<void> _initializeAirspaces() async {
@@ -1021,48 +975,47 @@ class OpenAIPService {
     required double maxLon,
     Function()? onDataLoaded,
   }) async {
-    // First check in-memory cache (fast path)
-    if (_reportingPointsLoaded && _reportingPointsInMemory.isNotEmpty) {
-      // No need to reload - data is already in memory
-      onDataLoaded?.call();
-      return;
-    }
-    
-    if (_apiKey == null || _apiKey!.isEmpty) {
-      developer.log('❌ No API key for progressive reporting points loading');
-      return;
-    }
-
     try {
-      // Load from cache if not already in memory
-      if (!_reportingPointsLoaded) {
-        final cachedPoints = await getCachedReportingPoints();
-        
-        if (cachedPoints.isNotEmpty) {
-          // Data is now in memory, notify callback
-          onDataLoaded?.call();
-          return; // We have data loaded
-        }
-      }
-
-      final freshPoints = await _fetchReportingPointsRaw(
-        bbox: [minLon, minLat, maxLon, maxLat],
-        limit: 1000,
+      // Use tiled data loader to get reporting points for the area
+      final tiledPoints = await _tiledDataLoader.loadReportingPointsForArea(
+        minLat: minLat,
+        maxLat: maxLat,
+        minLon: minLon,
+        maxLon: maxLon,
       );
-
-      if (freshPoints.isNotEmpty) {
+      
+      if (tiledPoints.isNotEmpty) {
         developer.log(
-          '✅ Loaded ${freshPoints.length} reporting points for current bounds',
+          '✅ Loaded ${tiledPoints.length} reporting points from tiles',
         );
-
-        // Append to cache without clearing existing data
-        await _cacheReportingPoints(freshPoints, append: true);
-
+        
+        // Update in-memory cache
+        _reportingPointsInMemory = tiledPoints;
+        _reportingPointsLoaded = true;
+        
+        // Cache for offline use
+        await _cacheReportingPoints(tiledPoints, append: false);
+        
         // Notify that new data is available
         onDataLoaded?.call();
+      } else {
+        // If no tiled data, try cache
+        final cachedPoints = await getCachedReportingPoints();
+        if (cachedPoints.isNotEmpty) {
+          onDataLoaded?.call();
+        }
       }
     } catch (e) {
-      developer.log('❌ Error loading reporting points for bounds: $e');
+      developer.log('❌ Error loading reporting points: $e');
+      // Try to load from cache as fallback
+      try {
+        final cachedPoints = await getCachedReportingPoints();
+        if (cachedPoints.isNotEmpty) {
+          onDataLoaded?.call();
+        }
+      } catch (cacheError) {
+        developer.log('❌ Error loading from cache: $cacheError');
+      }
     }
   }
 
@@ -1517,6 +1470,108 @@ class OpenAIPService {
     } catch (e) {
       developer.log('❌ Error refreshing reporting points cache: $e');
       developer.log('❌ Stack trace: ${StackTrace.current}');
+    }
+  }
+  
+  Future<void> loadObstaclesForBounds({
+    required double minLat,
+    required double minLon,
+    required double maxLat,
+    required double maxLon,
+    Function()? onDataLoaded,
+  }) async {
+    try {
+      // Use tiled data loader to get obstacles for the area
+      final tiledObstacles = await _tiledDataLoader.loadObstaclesForArea(
+        minLat: minLat,
+        maxLat: maxLat,
+        minLon: minLon,
+        maxLon: maxLon,
+      );
+      
+      if (tiledObstacles.isNotEmpty) {
+        developer.log(
+          '✅ Loaded ${tiledObstacles.length} obstacles from tiles',
+        );
+        
+        // Notify that new data is available
+        onDataLoaded?.call();
+      }
+    } catch (e) {
+      developer.log('❌ Error loading obstacles from tiles: $e');
+    }
+  }
+  
+  Future<List<Obstacle>> getObstaclesForArea({
+    required double minLat,
+    required double maxLat,
+    required double minLon,
+    required double maxLon,
+  }) async {
+    try {
+      // Use tiled data loader to get obstacles for the area
+      final tiledObstacles = await _tiledDataLoader.loadObstaclesForArea(
+        minLat: minLat,
+        maxLat: maxLat,
+        minLon: minLon,
+        maxLon: maxLon,
+      );
+      
+      return tiledObstacles;
+    } catch (e) {
+      developer.log('❌ Error loading obstacles: $e');
+      return [];
+    }
+  }
+  
+  Future<void> loadHotspotsForBounds({
+    required double minLat,
+    required double minLon,
+    required double maxLat,
+    required double maxLon,
+    Function()? onDataLoaded,
+  }) async {
+    try {
+      // Use tiled data loader to get hotspots for the area
+      final tiledHotspots = await _tiledDataLoader.loadHotspotsForArea(
+        minLat: minLat,
+        maxLat: maxLat,
+        minLon: minLon,
+        maxLon: maxLon,
+      );
+      
+      if (tiledHotspots.isNotEmpty) {
+        developer.log(
+          '✅ Loaded ${tiledHotspots.length} hotspots from tiles',
+        );
+        
+        // Notify that new data is available
+        onDataLoaded?.call();
+      }
+    } catch (e) {
+      developer.log('❌ Error loading hotspots from tiles: $e');
+    }
+  }
+  
+  Future<List<Hotspot>> getHotspotsForArea({
+    required double minLat,
+    required double maxLat,
+    required double minLon,
+    required double maxLon,
+  }) async {
+    try {
+      // Use tiled data loader to get hotspots for the area
+      final tiledHotspots = await _tiledDataLoader.loadHotspotsForArea(
+        minLat: minLat,
+        maxLat: maxLat,
+        minLon: minLon,
+        maxLon: maxLon,
+      );
+      
+      return tiledHotspots;
+    } catch (e) {
+      developer.log('❌ Error loading hotspots: $e');
+      return [];
     }
   }
 }

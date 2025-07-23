@@ -2,12 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:math' show sin, cos, sqrt, atan2;
-import 'dart:io' show gzip;
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:archive/archive.dart';
 import '../models/airport.dart';
 import 'cache_service.dart';
 
@@ -44,6 +40,7 @@ class AirportService {
 
   List<Airport> _airports = [];
   bool _isLoading = false;
+  // ignore: prefer_final_fields
   bool _bundledDataLoaded = false;
   final CacheService _cacheService = CacheService();
 
@@ -92,8 +89,16 @@ class AirportService {
   /// Load bundled airports data
   Future<void> _loadBundledAirports() async {
     try {
-      developer.log('📦 Attempting to load bundled airports data...');
+      developer.log('📦 Bundled airport data loading...');
       
+      // Note: Bundled airport data is now loaded through TiledDataLoader when needed
+      // The old JSON files have been replaced with tiled CSV format
+      // OpenAIPService uses TiledDataLoader to load airports from tiles
+      
+      // This service currently relies on OurAirports API for initial data
+      developer.log('ℹ️ AirportService uses OurAirports API. For bundled data, use OpenAIPService with TiledDataLoader.');
+      
+      /* Old compressed data loading code - no longer used
       // Try compressed data first
       try {
         final airportsBytes = await rootBundle.load('assets/data/airports_min.json.gz');
@@ -119,7 +124,7 @@ class AirportService {
           if (airports.isNotEmpty) {
             // Filter out closed airports
             _airports = airports
-                .where((airport) => airport.type.toLowerCase() != 'closed')
+                .where((airport) => airport.type?.toLowerCase() != 'closed')
                 .toList();
             
             // Also cache them for offline use
@@ -143,7 +148,7 @@ class AirportService {
           if (airports.isNotEmpty) {
             // Filter out closed airports
             _airports = airports
-                .where((airport) => airport.type.toLowerCase() != 'closed')
+                .where((airport) => airport.type?.toLowerCase() != 'closed')
                 .toList();
             
             // Also cache them for offline use
@@ -155,68 +160,13 @@ class AirportService {
           }
         }
       }
+      */
     } catch (e) {
       developer.log('📡 No bundled airports data found, will use cache or fetch: $e');
     }
   }
   
-  /// Parse minified airport data
-  Airport _parseMinifiedAirport(Map<String, dynamic> data) {
-    // Map airport types from numeric to string
-    String getAirportType(dynamic type) {
-      switch (type) {
-        case 0: return 'heliport';
-        case 1: return 'small_airport';
-        case 2: return 'medium_airport';
-        case 3: return 'large_airport';
-        case 4: return 'closed';
-        case 5: return 'seaplane_base';
-        case 6: return 'balloonport';
-        case 7: return 'heliport'; // Fixed: was incorrectly mapped to small_airport
-        case 8: return 'small_airport';
-        case 9: return 'heliport';
-        case 10: return 'small_airport';
-        case 11: return 'small_airport';
-        case 12: return 'small_airport';
-        case 13: return 'small_airport';
-        default: return 'small_airport';
-      }
-    }
-    
-    final expanded = <String, dynamic>{
-      '_id': data['_id'],
-      'name': data['name'],
-      'icao': data['icao'],
-      'iata': data['iata'],
-      'type': getAirportType(data['type']),
-    };
-    
-    // Expand geometry
-    if (data['g'] != null && data['g'].length >= 2) {
-      expanded['latitude'] = data['g'][1];  // lat
-      expanded['longitude'] = data['g'][0]; // lon
-    }
-    
-    // Elevation
-    if (data['elev'] != null) {
-      if (data['elev'] is Map) {
-        expanded['elevation_ft'] = data['elev']['value'] ?? 0;
-      } else {
-        expanded['elevation_ft'] = data['elev'];
-      }
-    }
-    
-    // Optional fields
-    if (data['country'] != null) expanded['country'] = data['country'];
-    
-    // Expand runways if needed
-    if (data['rwy'] != null) {
-      final runways = data['rwy'] as List;
-      expanded['runways'] = json.encode(runways);
-    }
-    
-    return Airport.fromJson(expanded);
-  }
+  // NOTE: _parseMinifiedAirport method removed - no longer needed with tiled data
 
   // Get current location (placeholder - will be implemented with location service)
   Future<LatLng?> getCurrentLocation() async {

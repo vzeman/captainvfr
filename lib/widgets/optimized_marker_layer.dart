@@ -5,8 +5,12 @@ import 'package:geolocator/geolocator.dart';
 import '../models/airport.dart';
 import '../models/navaid.dart';
 import '../models/reporting_point.dart';
+import '../models/obstacle.dart';
+import '../models/hotspot.dart';
 import 'airport_marker.dart';
 import 'navaid_marker.dart';
+import 'obstacle_marker.dart';
+import 'hotspot_marker.dart';
 
 /// An optimized marker layer that only builds markers within the visible bounds
 class OptimizedMarkerLayer extends StatelessWidget {
@@ -76,7 +80,6 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
   final bool showLabels;
   final double markerSize;
   final bool showHeliports;
-  final bool showSmallAirports;
 
   const OptimizedAirportMarkersLayer({
     super.key,
@@ -85,7 +88,6 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
     this.showLabels = true,
     this.markerSize = 40.0,
     this.showHeliports = false,
-    this.showSmallAirports = true,
   });
 
   @override
@@ -119,9 +121,7 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
       // Show all airports based on toggles
       visibleAirports = airports.where((a) {
         // Always show large and medium airports
-        if (a.type == 'large_airport' || a.type == 'medium_airport') return true;
-        // Show small airports based on toggle
-        if (a.type == 'small_airport' && showSmallAirports) return true;
+        if (a.type == 'large_airport' || a.type == 'medium_airport' || a.type == 'small_airport') return true;
         // Show heliports based on toggle (override zoom restriction)
         if ((a.type == 'heliport' || a.type == 'balloonport') && showHeliports) return true;
         // Show other types
@@ -455,5 +455,135 @@ class OptimizedReportingPointsLayer extends StatelessWidget {
       default:
         return Icons.place;
     }
+  }
+}
+
+/// Optimized obstacles layer that only renders visible obstacles
+class OptimizedObstaclesLayer extends StatelessWidget {
+  final List<Obstacle> obstacles;
+  final ValueChanged<Obstacle>? onObstacleTap;
+
+  const OptimizedObstaclesLayer({
+    super.key,
+    required this.obstacles,
+    this.onObstacleTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Get map controller from context to access zoom
+    final mapController = MapController.maybeOf(context);
+    if (mapController == null) {
+      return const SizedBox.shrink();
+    }
+
+    final currentZoom = mapController.camera.zoom;
+
+    // Only show obstacles when zoomed in enough
+    if (currentZoom < 9) {
+      return const SizedBox.shrink();
+    }
+
+    // Filter obstacles based on zoom level and height
+    List<Obstacle> visibleObstacles = obstacles;
+
+
+    final positions = visibleObstacles.map((o) => o.position).toList();
+
+    // Calculate dynamic marker size based on zoom level - same as navaid/reporting points
+    final markerSize = currentZoom >= 12 ? 20.0 : 14.0;
+    final showLabel = currentZoom >= 11;
+    // Add extra height for label if shown
+    final totalHeight = showLabel ? markerSize + 25.0 : markerSize;
+
+    return OptimizedMarkerLayer(
+      markerPositions: positions,
+      markerWidth: markerSize,
+      markerHeight: totalHeight,
+      boundsPadding: 0.2,
+      markerBuilder: (index, position) {
+        final obstacle = visibleObstacles[index];
+        return ObstacleMarker(
+          obstacle: obstacle,
+          onTap: onObstacleTap != null ? () => onObstacleTap!(obstacle) : null,
+          size: markerSize,
+          mapZoom: currentZoom,
+        );
+      },
+    );
+  }
+}
+
+/// Optimized hotspots layer that only renders visible hotspots
+class OptimizedHotspotsLayer extends StatelessWidget {
+  final List<Hotspot> hotspots;
+  final ValueChanged<Hotspot>? onHotspotTap;
+
+  const OptimizedHotspotsLayer({
+    super.key,
+    required this.hotspots,
+    this.onHotspotTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Get map controller from context to access zoom
+    final mapController = MapController.maybeOf(context);
+    if (mapController == null) {
+      return const SizedBox.shrink();
+    }
+
+    final currentZoom = mapController.camera.zoom;
+
+    // Only show hotspots when zoomed in enough
+    if (currentZoom < 8) {
+      return const SizedBox.shrink();
+    }
+
+    // Filter hotspots based on reliability at lower zoom levels
+    List<Hotspot> visibleHotspots = hotspots;
+    
+    if (currentZoom < 10) {
+      // Only show high reliability hotspots when very zoomed out
+      visibleHotspots = hotspots.where((h) {
+        final reliability = h.reliability?.toLowerCase();
+        return reliability == 'high' || reliability == '2';
+      }).toList();
+    }
+
+    // Limit number of markers based on zoom
+    final maxMarkers = currentZoom >= 12 ? 150 : 75;
+    
+    if (visibleHotspots.length > maxMarkers) {
+      // Prioritize by reliability
+      visibleHotspots.sort((a, b) {
+        const reliabilityOrder = {'high': 0, '2': 0, 'medium': 1, '1': 1, 'low': 2, '0': 2};
+        final aOrder = reliabilityOrder[a.reliability?.toLowerCase()] ?? 3;
+        final bOrder = reliabilityOrder[b.reliability?.toLowerCase()] ?? 3;
+        return aOrder.compareTo(bOrder);
+      });
+      visibleHotspots = visibleHotspots.take(maxMarkers).toList();
+    }
+
+    final positions = visibleHotspots.map((h) => h.position).toList();
+
+    // Calculate dynamic marker size based on zoom level - same as navaid/obstacle/reporting points
+    final markerSize = currentZoom >= 12 ? 20.0 : 14.0;
+
+    return OptimizedMarkerLayer(
+      markerPositions: positions,
+      markerWidth: markerSize * 3, // Extra width for label
+      markerHeight: markerSize + (currentZoom >= 11 ? 20 : 0), // Extra height for label
+      boundsPadding: 0.2,
+      markerBuilder: (index, position) {
+        final hotspot = visibleHotspots[index];
+        return HotspotMarker(
+          hotspot: hotspot,
+          onTap: onHotspotTap != null ? () => onHotspotTap!(hotspot) : null,
+          size: markerSize,
+          mapZoom: currentZoom,
+        );
+      },
+    );
   }
 }

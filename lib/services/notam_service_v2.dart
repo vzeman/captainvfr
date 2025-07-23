@@ -1,4 +1,4 @@
-import 'dart:convert';
+import 'dart:convert' show json, latin1;
 import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import '../models/notam.dart';
@@ -101,8 +101,18 @@ class NotamServiceV2 {
       developer.log('📏 Response length: ${response.body.length}');
 
       if (response.statusCode == 200) {
+        // Convert ISO-8859-1 to UTF-8 if needed
+        String responseBody = response.body;
+        if (response.headers['content-type']?.contains('ISO-8859-1') ?? false) {
+          try {
+            responseBody = latin1.decode(response.bodyBytes);
+          } catch (e) {
+            developer.log('⚠️ Failed to decode ISO-8859-1: $e');
+          }
+        }
+        
         // Parse HTML response to extract NOTAMs
-        final notams = _parseHtmlNotams(response.body, icaoCode);
+        final notams = _parseHtmlNotams(responseBody, icaoCode);
 
         if (notams.isNotEmpty) {
           await _cacheNotams(icaoCode, notams);
@@ -131,59 +141,103 @@ class NotamServiceV2 {
           .replaceAll('&gt;', '>')
           .replaceAll('&amp;', '&');
       
-      // Remove URL encoding artifacts
-      try {
-        cleanHtml = Uri.decodeComponent(cleanHtml);
-      } catch (e) {
-        // If decoding fails, just use the original
-        developer.log('⚠️ Failed to decode URI: $e');
+      // Don't try to URL decode the entire HTML - it's not URL encoded
+      // Just clean up any specific URL-encoded characters that might appear
+      cleanHtml = cleanHtml.replaceAll('%0A', '\n');
+      cleanHtml = cleanHtml.replaceAll('%20', ' ');
+      cleanHtml = cleanHtml.replaceAll('%2F', '/');
+      cleanHtml = cleanHtml.replaceAll('%3A', ':');
+      cleanHtml = cleanHtml.replaceAll('%28', '(');
+      cleanHtml = cleanHtml.replaceAll('%29', ')');
+
+      // Debug: Log a sample of the HTML to understand its structure
+      if (cleanHtml.length > 1000) {
+        developer.log('📄 HTML Sample (first 1000 chars): ${cleanHtml.substring(0, 1000)}');
       }
-
+      
       // Look for NOTAM text patterns in HTML
-      // NOTAMs typically start with location code and have specific format
-      final notamPattern = RegExp(
-        r'<pre[^>]*>([\s\S]*?)</pre>|'
-        r'<div[^>]*class="notam[^"]*"[^>]*>([\s\S]*?)</div>',
-        multiLine: true,
-        dotAll: true,
-      );
+      // FAA website typically shows NOTAMs in a specific format
+      // Try multiple patterns to find NOTAMs
+      final patterns = [
+        // Pattern 1: Look for content between <PRE> tags (common for FAA NOTAMs)
+        RegExp(r'<PRE[^>]*>([\s\S]*?)</PRE>', caseSensitive: false, multiLine: true),
+        // Pattern 2: Look for NOTAM ID pattern (like M1031/25 or 1/2345) directly in text
+        RegExp(r'(\d/\d{4}[\s\S]*?)(?=(?:\d/\d{4})|(?:</PRE>)|$)', multiLine: true),
+        // Pattern 3: Look for traditional NOTAM format (A1234/23)
+        RegExp(r'([A-Z]\d{4}/\d{2}[\s\S]*?)(?=(?:[A-Z]\d{4}/\d{2})|$)', multiLine: true),
+        // Pattern 4: Table cells that might contain NOTAMs
+        RegExp(r'<td[^>]*>([\s\S]*?(?:\d/\d{4}|[A-Z]\d{4}/\d{2})[\s\S]*?)</td>', caseSensitive: false, multiLine: true),
+        // Pattern 5: Look for text that starts with the airport code
+        RegExp(icaoCode + r'\s+[\s\S]*?(?:E\)|END)', caseSensitive: false, multiLine: true),
+      ];
+      
+      final allMatches = <String>{};
+      
+      // First try to find all <PRE> content
+      final prePattern = RegExp(r'<PRE[^>]*>([\s\S]*?)</PRE>', caseSensitive: false, multiLine: true);
+      final preMatches = prePattern.allMatches(cleanHtml);
+      
+      developer.log('🔍 Found ${preMatches.length} <PRE> blocks');
+      
+      for (final preMatch in preMatches) {
+        final preContent = preMatch.group(1) ?? '';
+        if (preContent.trim().isNotEmpty) {
+          // Split by double newlines or NOTAM boundaries
+          final notamBlocks = preContent.split(RegExp(r'\n\s*\n|\r\n\s*\r\n'));
+          for (final block in notamBlocks) {
+            if (block.trim().isNotEmpty && 
+                (block.contains(RegExp(r'\d/\d{4}')) || 
+                 block.contains(RegExp(r'[A-Z]\d{4}/\d{2}')) ||
+                 block.contains(icaoCode))) {
+              allMatches.add(block.trim());
+            }
+          }
+        }
+      }
+      
+      // If no PRE blocks found, try other patterns
+      if (allMatches.isEmpty) {
+        for (final pattern in patterns) {
+          final matches = pattern.allMatches(cleanHtml);
+          for (final match in matches) {
+            final text = match.group(match.groupCount > 0 ? 1 : 0) ?? '';
+            if (text.trim().isNotEmpty) {
+              allMatches.add(text);
+            }
+          }
+        }
+      }
+      
+      developer.log('🔍 Found ${allMatches.length} potential NOTAM blocks');
 
-      final matches = notamPattern.allMatches(cleanHtml);
-      developer.log(
-        '🔍 Found ${matches.length} potential NOTAM matches in HTML',
-      );
-
-      for (final match in matches) {
-        String notamText =
-            match.group(1) ?? match.group(2) ?? match.group(3) ?? '';
-        
-        // Clean up the text
-        notamText = notamText.trim();
+      for (final notamText in allMatches) {
+        String cleanedText = notamText.trim();
         
         // Remove any remaining HTML tags or attributes
-        notamText = notamText.replaceAll(RegExp(r'<[^>]+>'), '');
+        cleanedText = cleanedText.replaceAll(RegExp(r'<[^>]+>'), '');
         
-        // Remove any URL encoding remnants
-        notamText = notamText.replaceAll(RegExp(r'%[0-9A-Fa-f]{2}'), '');
+        // Remove HTML entities
+        cleanedText = cleanedText
+            .replaceAll('&nbsp;', ' ')
+            .replaceAll('&amp;', '&')
+            .replaceAll('&lt;', '<')
+            .replaceAll('&gt;', '>')
+            .replaceAll('&quot;', '"')
+            .replaceAll('&#39;', "'");
         
-        // Remove any control characters
-        notamText = notamText.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
+        // Remove any control characters except newlines
+        cleanedText = cleanedText.replaceAll(RegExp(r'[\x00-\x08\x0B-\x1F\x7F]'), '');
         
-        if (notamText.isNotEmpty && notamText.length > 20) {
-          // Additional cleaning for edge cases
-          // Remove any quotes and HTML attributes that might have slipped through
-          notamText = notamText
-              .replaceAll(RegExp(r'"[^"]*"'), '') // Remove quoted attributes
-              .replaceAll(RegExp(r'id\s*=\s*\S+'), '') // Remove id attributes
-              .replaceAll(RegExp(r'[<>"]'), '') // Remove any remaining HTML chars
-              .trim();
-          
+        // Normalize whitespace
+        cleanedText = cleanedText.replaceAll(RegExp(r'\s+'), ' ').trim();
+        
+        if (cleanedText.isNotEmpty && cleanedText.length > 20) {
           developer.log(
-            '📄 Cleaned NOTAM text: ${notamText.substring(0, notamText.length > 100 ? 100 : notamText.length)}...',
+            '📄 Found potential NOTAM: ${cleanedText.substring(0, cleanedText.length > 100 ? 100 : cleanedText.length)}...',
           );
 
           // Try to parse ICAO format NOTAM
-          final parsedNotam = _parseIcaoNotam(notamText, icaoCode);
+          final parsedNotam = _parseIcaoNotam(cleanedText, icaoCode);
           if (parsedNotam != null) {
             notams.add(parsedNotam);
           }
@@ -199,6 +253,16 @@ class NotamServiceV2 {
   /// Parse ICAO format NOTAM text
   Notam? _parseIcaoNotam(String notamText, String icaoCode) {
     try {
+      // First, ensure the text is properly cleaned
+      String cleanedNotamText = notamText
+          .replaceAll(RegExp(r'&quot;'), '"')
+          .replaceAll(RegExp(r'&apos;'), "'")
+          .replaceAll(RegExp(r'&lt;'), '<')
+          .replaceAll(RegExp(r'&gt;'), '>')
+          .replaceAll(RegExp(r'&amp;'), '&')
+          .replaceAll(RegExp(r'&#\d+;'), '') // Remove numeric entities
+          .replaceAll(RegExp(r'%[0-9A-Fa-f]{2}'), '') // Remove URL encoding
+          .trim();
       // ICAO NOTAM format example:
       // A1234/23 NOTAMN
       // Q) ZNY/QMXLC/IV/NBO/A/000/999/4038N07347W005
@@ -206,36 +270,78 @@ class NotamServiceV2 {
       // E) RWY 04L/22R CLSD
       // F) SFC G) UNL
 
-      // Extract NOTAM ID
-      final idMatch = RegExp(r'([A-Z]\d{4}/\d{2})').firstMatch(notamText);
-      if (idMatch == null) return null;
-
-      String notamId = idMatch.group(1)!;
+      // Extract NOTAM ID - try multiple formats
+      String? notamId;
       
-      // Clean up NOTAM ID - remove any URL encoding or control characters
-      notamId = notamId.replaceAll(RegExp(r'%[0-9A-Fa-f]{2}'), '');
-      notamId = notamId.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
+      // Try format like M1031/25
+      var idMatch = RegExp(r'([A-Z]\d{3,4}/\d{2})').firstMatch(cleanedNotamText);
+      if (idMatch != null) {
+        notamId = idMatch.group(1);
+      } else {
+        // Try format like 1/2345
+        idMatch = RegExp(r'(\d/\d{4})').firstMatch(cleanedNotamText);
+        if (idMatch != null) {
+          notamId = idMatch.group(1);
+        } else {
+          // Try any word/number combination
+          idMatch = RegExp(r'([\w\d]+/\d{2,4})').firstMatch(cleanedNotamText);
+          if (idMatch != null) {
+            notamId = idMatch.group(1);
+          }
+        }
+      }
+      
+      if (notamId == null) {
+        developer.log('⚠️ No NOTAM ID found in: ${cleanedNotamText.substring(0, cleanedNotamText.length > 50 ? 50 : cleanedNotamText.length)}...');
+        return null;
+      }
+      
       notamId = notamId.trim();
 
       // Extract dates
       DateTime? effectiveFrom;
       DateTime? effectiveUntil;
 
-      final bMatch = RegExp(r'B\)\s*(\d{10})').firstMatch(notamText);
+      final bMatch = RegExp(r'B\)\s*(\d{10})').firstMatch(cleanedNotamText);
       if (bMatch != null) {
         effectiveFrom = _parseNotamDateTime(bMatch.group(1)!);
       }
 
-      final cMatch = RegExp(r'C\)\s*(\d{10}|PERM)').firstMatch(notamText);
+      final cMatch = RegExp(r'C\)\s*(\d{10}|PERM)').firstMatch(cleanedNotamText);
       if (cMatch != null && cMatch.group(1) != 'PERM') {
         effectiveUntil = _parseNotamDateTime(cMatch.group(1)!);
       }
 
       // Extract message
+      String message;
+      
+      // Try to find E) section
       final eMatch = RegExp(
         r'E\)\s*([^\n]+(?:\n(?![A-Z]\))[^\n]+)*)',
-      ).firstMatch(notamText);
-      final message = eMatch?.group(1)?.trim() ?? notamText;
+      ).firstMatch(cleanedNotamText);
+      
+      if (eMatch != null) {
+        message = eMatch.group(1)?.trim() ?? '';
+      } else {
+        // If no E) section, try to extract the main content
+        // Look for the NOTAM ID and take everything after it
+        final idIndex = cleanedNotamText.indexOf(notamId);
+        if (idIndex >= 0) {
+          message = cleanedNotamText.substring(idIndex + notamId.length).trim();
+          // Remove any leading punctuation or whitespace
+          message = message.replaceFirst(RegExp(r'^[%\s\-_]+'), '');
+        } else {
+          message = cleanedNotamText;
+        }
+      }
+      
+      // Clean the message further
+      message = message
+          .replaceAll(RegExp(r'\s+'), ' ') // Normalize whitespace
+          .replaceAll(RegExp(r'<[^>]+>'), '') // Remove any remaining HTML tags
+          .replaceAll(RegExp(r'id\s*=\s*"[^"]*"'), '') // Remove id attributes
+          .replaceAll(RegExp(r'%\d+'), '') // Remove %0 type artifacts
+          .trim();
 
       // Set effective from to now if not found
       effectiveFrom ??= DateTime.now().toUtc();
@@ -247,7 +353,7 @@ class NotamServiceV2 {
         effectiveFrom: effectiveFrom,
         effectiveUntil: effectiveUntil,
         schedule: '',
-        text: notamText,
+        text: cleanedNotamText, // Use cleaned text
         decodedText: message,
         fetchedAt: DateTime.now().toUtc(),
         category: NotamCategory.categorizeFromText(message),

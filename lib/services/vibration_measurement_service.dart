@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -37,9 +38,9 @@ class VibrationMeasurementService {
     try {
       _logger.d('Initializing VibrationMeasurementService');
 
-      // Skip accelerometer on web platform
-      if (kIsWeb) {
-        _logger.i('Accelerometer not supported on web platform');
+      // Skip accelerometer on web platform and macOS
+      if (kIsWeb || (!kIsWeb && Platform.isMacOS)) {
+        _logger.i('Accelerometer not supported on this platform');
         return;
       }
 

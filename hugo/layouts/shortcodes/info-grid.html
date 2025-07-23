@@ -1,0 +1,54 @@
+{{/* 
+  Info Grid Shortcode
+  
+  Parameters:
+  - id: Optional ID for the section
+  - heading: Main heading text
+  - description: Description text below the heading
+  - columns: Number of columns (default: "3")
+  
+  Inner Content:
+  Uses nested {{< info-grid-item >}} shortcodes
+  
+  Example usage:
+  {{< info-grid
+    id="data-sources"
+    heading="Trusted Data Sources"
+    description="CaptainVFR uses the most reliable and up-to-date aviation data sources"
+    columns="3"
+  >}}
+    {{< info-grid-item
+      icon="map"
+      title="Map Data"
+      description="Map data © OpenStreetMap contributors."
+      link="https://openstreetmap.org/copyright"
+      linkText="OpenStreetMap"
+    >}}
+  {{< /info-grid >}}
+*/}}
+
+{{ $id := .Get "id" }}
+{{ $heading := .Get "heading" }}
+{{ $description := .Get "description" }}
+{{ $columns := .Get "columns" | default "3" }}
+
+<div {{ with $id }}id="{{ . }}"{{ end }} class="bg-white py-24 sm:py-32">
+  <div class="mx-auto max-w-7xl px-6 lg:px-8">
+    {{ if or $heading $description }}
+    <div class="mx-auto max-w-2xl text-center">
+      {{ with $heading }}
+      <h2 class="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">{{ . }}</h2>
+      {{ end }}
+      {{ with $description }}
+      <p class="mt-4 text-lg leading-8 text-gray-600">{{ . }}</p>
+      {{ end }}
+    </div>
+    {{ end }}
+    
+    <div class="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
+      <dl class="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-{{ $columns }}">
+        {{ .Inner }}
+      </dl>
+    </div>
+  </div>
+</div>

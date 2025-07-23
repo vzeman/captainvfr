@@ -9,6 +9,9 @@ part 'airspace.g.dart';
 class Airspace extends HiveObject implements SpatialIndexable {
   @HiveField(0)
   final String id;
+  
+  @override
+  String get uniqueId => id;
 
   @HiveField(1)
   final String name;

@@ -274,6 +274,11 @@ class FlightService with ChangeNotifier {
     _barometerService?.startListening();
     _altitudeService.startTracking();
 
+    // Initialize QNH from current barometric pressure when tracking starts
+    if (_barometerService != null && _barometerService.pressureHPa != null) {
+      _barometerService.setSeaLevelPressure(_barometerService.pressureHPa!);
+    }
+
     // Listen to barometer updates
     _barometerSubscription = _barometerService?.onBarometerUpdate.listen((_) {
       _currentBaroAltitude = _barometerService.altitudeMeters;

@@ -139,7 +139,7 @@ class PerformanceMonitor {
   /// Get performance statistics
   Map<String, dynamic> getPerformanceStats() {
     if (_recentFrames.isEmpty) {
-      return {'error': 'No frame data available'};
+      return {};
     }
     
     final totalFrames = _recentFrames.length;

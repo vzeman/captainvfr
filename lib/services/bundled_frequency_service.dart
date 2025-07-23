@@ -1,12 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer' as developer;
-import 'dart:io';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
-import 'package:archive/archive.dart';
 import '../models/frequency.dart';
 import 'cache_service.dart';
+import 'tiled_data_loader.dart';
 
 /// Service to provide frequency data from bundled assets
 class BundledFrequencyService {
@@ -15,6 +11,9 @@ class BundledFrequencyService {
   final bool _isLoading = false;
   bool _bundledDataLoaded = false;
   late final CacheService _cacheService;
+  final TiledDataLoader _tiledDataLoader = TiledDataLoader();
+  bool _useTiledData = false;
+  final Set<String> _loadedAreas = {};
 
   // Singleton pattern
   static final BundledFrequencyService _instance = BundledFrequencyService._internal();
@@ -32,13 +31,29 @@ class BundledFrequencyService {
     await _cacheService.initialize();
     developer.log('🔧 BundledFrequencyService: Cache service initialized');
     
-    // Try to load bundled data first
-    await _loadBundledFrequencies();
-    
-    // If no bundled data, try cache
-    if (!_bundledDataLoaded) {
-      await _loadCachedFrequencies();
+    // Check if tiled data is available
+    try {
+      // Try to load a test tile to see if tiled data exists
+      final testFrequencies = await _tiledDataLoader.loadFrequenciesForArea(
+        minLat: 40.0,
+        maxLat: 50.0,
+        minLon: -80.0,
+        maxLon: -70.0,
+      );
+      
+      if (testFrequencies.isNotEmpty) {
+        developer.log('✅ Using tiled frequency data');
+        _useTiledData = true;
+        _bundledDataLoaded = true;
+        return;
+      }
+    } catch (e) {
+      developer.log('ℹ️ Tiled frequency data not available: $e');
     }
+    
+    // Fall back to cached data
+    _useTiledData = false;
+    await _loadCachedFrequencies();
     
     developer.log(
       '🔧 BundledFrequencyService: Initialization complete, frequencies: ${_frequencies.length}',
@@ -52,72 +67,16 @@ class BundledFrequencyService {
     try {
       developer.log('📦 Loading bundled frequency data...');
       
-      // Try to load compressed data first
-      try {
-        final byteData = await rootBundle.load('assets/data/frequencies_min.json.gz');
-        final compressed = byteData.buffer.asUint8List();
-        
-        List<int> decompressed;
-        if (kIsWeb) {
-          // Use archive package for web
-          decompressed = GZipDecoder().decodeBytes(compressed);
-        } else {
-          // Use dart:io gzip for native platforms
-          decompressed = gzip.decode(compressed);
-        }
-        
-        final jsonString = utf8.decode(decompressed);
-        final data = json.decode(jsonString) as Map<String, dynamic>;
-        
-        if (data['frequencies'] != null) {
-          final items = data['frequencies'] as List;
-          final frequencies = items.map((item) => _parseMinifiedFrequency(item)).toList();
-          
-          if (frequencies.isNotEmpty) {
-            _frequencies = frequencies;
-            
-            // Build by-airport map
-            _frequenciesByAirport.clear();
-            if (data['by_airport'] != null) {
-              final byAirport = data['by_airport'] as Map<String, dynamic>;
-              for (final entry in byAirport.entries) {
-                final airportIdent = entry.key;
-                final freqList = (entry.value as List).map((f) => _parseMinifiedFrequency(f)).toList();
-                _frequenciesByAirport[airportIdent] = freqList;
-              }
-            } else {
-              // Build map from frequency list
-              for (final freq in _frequencies) {
-                _frequenciesByAirport.putIfAbsent(freq.airportIdent, () => []).add(freq);
-              }
-            }
-            
-            // Also cache them for offline use
-            await _cacheService.cacheFrequencies(_frequencies);
-            
-            developer.log('✅ Loaded ${_frequencies.length} frequencies from bundled data');
-            developer.log('✅ Frequencies available for ${_frequenciesByAirport.length} airports');
-            _bundledDataLoaded = true;
-          }
-        }
-      } catch (e) {
-        developer.log('⚠️ Could not load compressed frequencies: $e');
-      }
+      // TODO: Implement tiled frequency loading when frequencies tiles are available
+      // For now, frequencies will be loaded from cache only
+      developer.log('ℹ️ Frequency tiles not yet available, using cache only');
+      _bundledDataLoaded = true;
+      
     } catch (e) {
       developer.log('❌ Error loading bundled frequencies: $e');
     }
   }
 
-  /// Parse minified frequency data
-  Frequency _parseMinifiedFrequency(Map<String, dynamic> data) {
-    return Frequency(
-      id: data['id'] ?? 0,
-      airportIdent: data['airport_ident'] ?? '',
-      type: data['type'] ?? '',
-      description: data['description'],
-      frequencyMhz: (data['frequency_mhz'] ?? 0.0).toDouble(),
-    );
-  }
 
   /// Load frequencies from cache
   Future<void> _loadCachedFrequencies() async {
@@ -145,6 +104,13 @@ class BundledFrequencyService {
 
   /// Get frequencies for a specific airport
   List<Frequency> getFrequenciesForAirport(String airportIdent) {
+    if (_useTiledData) {
+      // Return from tiled data cache
+      return _frequenciesByAirport[airportIdent.toUpperCase()] ?? 
+             _frequenciesByAirport[airportIdent] ?? 
+             [];
+    }
+    
     // Use the pre-built map for O(1) lookup
     return _frequenciesByAirport[airportIdent.toUpperCase()] ?? 
            _frequenciesByAirport[airportIdent] ?? 
@@ -212,11 +178,57 @@ class BundledFrequencyService {
     await _loadBundledFrequencies();
   }
 
+  /// Load frequencies for a given map area (for tiled data)
+  Future<void> loadFrequenciesForArea({
+    required double minLat,
+    required double maxLat,
+    required double minLon,
+    required double maxLon,
+  }) async {
+    if (!_useTiledData) {
+      // If not using tiled data, this is a no-op
+      return;
+    }
+    
+    // Create area key for tracking
+    final areaKey = '${minLat.toStringAsFixed(2)}_${maxLat.toStringAsFixed(2)}_${minLon.toStringAsFixed(2)}_${maxLon.toStringAsFixed(2)}';
+    
+    // Skip if already loaded
+    if (_loadedAreas.contains(areaKey)) {
+      return;
+    }
+    
+    try {
+      developer.log('📍 Loading frequencies for area: ($minLat, $minLon) to ($maxLat, $maxLon)');
+      
+      // Load frequencies from tiles
+      final frequencies = await _tiledDataLoader.loadFrequenciesForArea(
+        minLat: minLat,
+        maxLat: maxLat,
+        minLon: minLon,
+        maxLon: maxLon,
+      );
+      
+      // Group by airport
+      for (final frequency in frequencies) {
+        _frequenciesByAirport.putIfAbsent(frequency.airportIdent, () => []).add(frequency);
+      }
+      
+      _loadedAreas.add(areaKey);
+      
+      developer.log('✅ Loaded ${frequencies.length} frequencies for area');
+    } catch (e) {
+      developer.log('❌ Error loading frequencies for area: $e');
+    }
+  }
+  
   /// Clear all cached frequency data
   Future<void> clearCache() async {
     await _cacheService.clearFrequenciesCache();
     _frequencies.clear();
     _frequenciesByAirport.clear();
+    _loadedAreas.clear();
+    _tiledDataLoader.clearCacheForType('frequencies');
     developer.log('🗑️ Frequency cache cleared');
   }
 

@@ -69,11 +69,29 @@ class AirportDataFetcher {
     }
   }
 
-  List<Runway> fetchRunways(String icao) {
-    return runwayService.getRunwaysForAirport(icao);
+  Future<List<Runway>> fetchRunways(Airport airport) async {
+    // For tiled data, we need to load the area around the airport first
+    const buffer = 0.5; // degrees - small buffer around airport
+    await runwayService.loadRunwaysForArea(
+      minLat: airport.position.latitude - buffer,
+      maxLat: airport.position.latitude + buffer,
+      minLon: airport.position.longitude - buffer,
+      maxLon: airport.position.longitude + buffer,
+    );
+    
+    return runwayService.getRunwaysForAirport(airport.icao);
   }
 
-  List<Frequency> fetchFrequencies(Airport airport) {
+  Future<List<Frequency>> fetchFrequencies(Airport airport) async {
+    // For tiled data, we need to load the area around the airport first
+    const buffer = 0.5; // degrees - small buffer around airport
+    await frequencyService.loadFrequenciesForArea(
+      minLat: airport.position.latitude - buffer,
+      maxLat: airport.position.latitude + buffer,
+      minLon: airport.position.longitude - buffer,
+      maxLon: airport.position.longitude + buffer,
+    );
+    
     // log('🔍 Looking for frequencies for airport: ${airport.icao}');
     // log('📋 Airport details - ICAO: ${airport.icao}, IATA: ${airport.iata}, Local: ${airport.localCode}, GPS: ${airport.gpsCode}');
 

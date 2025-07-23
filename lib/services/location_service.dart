@@ -8,22 +8,11 @@ class LocationService {
 
   /// Checks if location services are enabled
   Future<bool> isLocationServiceEnabled() async {
-    if (!kIsWeb && Platform.isMacOS) {
-      // On macOS, we'll simulate location services being enabled
-      // since the plugin might not work the same way as on mobile
-      return true;
-    }
     return await _geolocator.isLocationServiceEnabled();
   }
 
   /// Requests location permissions from the user
   Future<LocationPermission> requestPermission() async {
-    if (!kIsWeb && Platform.isMacOS) {
-      // On macOS, we'll simulate having location permissions
-      // since the plugin might not work the same way as on mobile
-      return LocationPermission.whileInUse;
-    }
-
     bool serviceEnabled = await isLocationServiceEnabled();
     if (!serviceEnabled) {
       return Future.error('Location services are disabled.');
@@ -41,8 +30,8 @@ class LocationService {
       return Future.error('Location permissions are permanently denied');
     }
 
-    // Request background location permission for tracking
-    if (permission == LocationPermission.whileInUse) {
+    // Request background location permission for tracking (mobile only)
+    if (!kIsWeb && !Platform.isMacOS && permission == LocationPermission.whileInUse) {
       // Try to get always permission for background tracking
       // Note: On iOS, this will show another permission dialog
       // On Android 10+, this requires separate permission request
@@ -54,24 +43,6 @@ class LocationService {
 
   /// Gets the current position of the device
   Future<Position> getCurrentLocation() async {
-    if (!kIsWeb && Platform.isMacOS) {
-      // Return a default position for macOS
-      final position = Position(
-        latitude: 37.7749, // Default to San Francisco
-        longitude: -122.4194,
-        timestamp: DateTime.now(),
-        accuracy: 100,
-        altitude: 0.0,
-        heading: 0.0,
-        speed: 0.0,
-        speedAccuracy: 0.0,
-        altitudeAccuracy: 0.0,
-        headingAccuracy: 0.0,
-      );
-      _lastKnownPosition = position;
-      return position;
-    }
-
     await requestPermission();
     final position = await _geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(
@@ -101,25 +72,6 @@ class LocationService {
 
   /// Gets the position stream for continuous location updates
   Stream<Position> getPositionStream() {
-    if (!kIsWeb && Platform.isMacOS) {
-      // On macOS, return a stream with a single default position
-      // since we can't get real location updates
-      return Stream.value(
-        Position(
-          latitude: 37.7749, // Default to San Francisco
-          longitude: -122.4194,
-          timestamp: DateTime.now(),
-          accuracy: 100,
-          altitude: 0.0,
-          heading: 0.0,
-          speed: 0.0,
-          speedAccuracy: 0.0,
-          altitudeAccuracy: 0.0,
-          headingAccuracy: 0.0,
-        ),
-      );
-    }
-
     return _geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.bestForNavigation,

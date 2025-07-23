@@ -148,7 +148,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet>
     });
 
     try {
-      final runways = _dataFetcher.fetchRunways(widget.airport.icao);
+      final runways = await _dataFetcher.fetchRunways(widget.airport);
       if (mounted) {
         setState(() {
           _runways = runways;
@@ -179,7 +179,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet>
     });
 
     try {
-      final frequencies = _dataFetcher.fetchFrequencies(widget.airport);
+      final frequencies = await _dataFetcher.fetchFrequencies(widget.airport);
       if (mounted) {
         setState(() {
           _frequencies = frequencies;

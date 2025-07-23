@@ -3,6 +3,8 @@ import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import '../models/frequency.dart';
 import 'cache_service.dart';
+import 'tiled_data_loader.dart';
+import 'bundled_frequency_service.dart';
 
 class FrequencyService {
   static const String _baseUrl =
@@ -12,6 +14,14 @@ class FrequencyService {
   List<Frequency> _frequencies = [];
   bool _isLoading = false;
   late final CacheService _cacheService;
+  final TiledDataLoader _tiledDataLoader = TiledDataLoader();
+  final BundledFrequencyService _bundledService = BundledFrequencyService();
+  bool _useTiledData = true;
+  bool _useBundledData = false;
+  
+  // Cache for tiled data
+  final Map<String, List<Frequency>> _frequenciesByAirport = {};
+  final Set<String> _loadedAreas = {};
 
   // Singleton pattern
   static final FrequencyService _instance = FrequencyService._internal();
@@ -21,18 +31,57 @@ class FrequencyService {
     _cacheService = CacheService();
   }
 
-  bool get isLoading => _isLoading;
-  List<Frequency> get frequencies => List.unmodifiable(_frequencies);
+  bool get isLoading => _isLoading || _bundledService.isLoading;
+  List<Frequency> get frequencies {
+    if (_useTiledData) {
+      // Return all frequencies from tiled data cache
+      return _frequenciesByAirport.values.expand((frequencies) => frequencies).toList();
+    }
+    return _useBundledData ? _bundledService.frequencies : List.unmodifiable(_frequencies);
+  }
 
   /// Initialize the service and load cached data
   Future<void> initialize() async {
     developer.log('🔧 FrequencyService: Starting initialization...');
     await _cacheService.initialize();
     developer.log('🔧 FrequencyService: Cache service initialized');
-    await _loadCachedFrequencies();
-    developer.log(
-      '🔧 FrequencyService: Cached frequencies loaded, count: ${_frequencies.length}',
-    );
+    
+    // Check if tiled data is available
+    try {
+      // Try to load a test tile to see if tiled data exists
+      final testFrequencies = await _tiledDataLoader.loadFrequenciesForArea(
+        minLat: 40.0,
+        maxLat: 50.0,
+        minLon: -80.0,
+        maxLon: -70.0,
+      );
+      
+      if (testFrequencies.isNotEmpty) {
+        developer.log('✅ Using tiled frequency data');
+        _useTiledData = true;
+        _useBundledData = false;
+        return;
+      }
+    } catch (e) {
+      developer.log('ℹ️ Tiled frequency data not available: $e');
+    }
+    
+    // Fall back to bundled data
+    _useTiledData = false;
+    await _bundledService.initialize();
+    
+    // If bundled data is available, use it
+    if (_bundledService.frequencies.isNotEmpty) {
+      developer.log('✅ Using bundled frequency data (${_bundledService.frequencies.length} frequencies)');
+      _useBundledData = true;
+    } else {
+      // Fall back to old method
+      _useBundledData = false;
+      await _loadCachedFrequencies();
+      developer.log(
+        '🔧 FrequencyService: Cached frequencies loaded, count: ${_frequencies.length}',
+      );
+    }
   }
 
   /// Load frequencies from cache
@@ -49,9 +98,58 @@ class FrequencyService {
       developer.log('❌ Error loading cached frequencies: $e');
     }
   }
+  
+  /// Load frequencies for a given map area (for tiled data)
+  Future<void> loadFrequenciesForArea({
+    required double minLat,
+    required double maxLat,
+    required double minLon,
+    required double maxLon,
+  }) async {
+    if (!_useTiledData) {
+      // If not using tiled data, this is a no-op
+      return;
+    }
+    
+    // Create area key for tracking
+    final areaKey = '${minLat.toStringAsFixed(2)}_${maxLat.toStringAsFixed(2)}_${minLon.toStringAsFixed(2)}_${maxLon.toStringAsFixed(2)}';
+    
+    // Skip if already loaded
+    if (_loadedAreas.contains(areaKey)) {
+      return;
+    }
+    
+    try {
+      developer.log('📍 Loading frequencies for area: ($minLat, $minLon) to ($maxLat, $maxLon)');
+      
+      // Load frequencies from tiles
+      final frequencies = await _tiledDataLoader.loadFrequenciesForArea(
+        minLat: minLat,
+        maxLat: maxLat,
+        minLon: minLon,
+        maxLon: maxLon,
+      );
+      
+      // Group by airport
+      for (final frequency in frequencies) {
+        _frequenciesByAirport.putIfAbsent(frequency.airportIdent, () => []).add(frequency);
+      }
+      
+      _loadedAreas.add(areaKey);
+      
+      developer.log('✅ Loaded ${frequencies.length} frequencies for area');
+    } catch (e) {
+      developer.log('❌ Error loading frequencies for area: $e');
+    }
+  }
 
   /// Fetch frequencies from remote source
   Future<void> fetchFrequencies({bool forceRefresh = false}) async {
+    if (_useBundledData) {
+      await _bundledService.fetchFrequencies(forceRefresh: forceRefresh);
+      return;
+    }
+    
     if (_isLoading) return;
 
     // Check if we need to refresh
@@ -150,6 +248,16 @@ class FrequencyService {
 
   /// Get frequencies for a specific airport
   List<Frequency> getFrequenciesForAirport(String airportIdent) {
+    if (_useTiledData) {
+      // Return from tiled data cache
+      return _frequenciesByAirport[airportIdent.toUpperCase()] ?? 
+             _frequenciesByAirport[airportIdent] ?? 
+             [];
+    }
+    
+    if (_useBundledData) {
+      return _bundledService.getFrequenciesForAirport(airportIdent);
+    }
 
     if (_frequencies.isEmpty) {
       return [];
@@ -235,6 +343,9 @@ class FrequencyService {
       developer.log('🧹 Clearing frequency cache...');
       await _cacheService.clearFrequencies();
       _frequencies.clear();
+      _frequenciesByAirport.clear();
+      _loadedAreas.clear();
+      _tiledDataLoader.clearCacheForType('frequencies');
       developer.log('✅ Frequency cache cleared');
     } catch (e) {
       developer.log('❌ Error clearing frequency cache: $e');

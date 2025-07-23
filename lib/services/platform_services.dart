@@ -51,6 +51,10 @@ class PlatformServices {
         'getNetworkDiagnostics',
       );
       return Map<String, dynamic>.from(result as Map);
+    } on MissingPluginException {
+      // Method channel not implemented - this is expected on some platforms
+      _logger.d('Network diagnostics not available - platform method not implemented');
+      return {'available': false, 'reason': 'Method not implemented'};
     } catch (e) {
       _logger.e('Error getting network diagnostics', error: e);
       return {'error': e.toString()};

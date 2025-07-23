@@ -545,10 +545,20 @@ class CacheService extends ChangeNotifier {
       final navaids = <Navaid>[];
 
       for (final key in _navaidsBox.keys) {
-        final data = _navaidsBox.get(key);
-        if (data != null) {
-          final navaid = Navaid.fromMap(Map<String, dynamic>.from(data));
-          navaids.add(navaid);
+        try {
+          final data = _navaidsBox.get(key);
+          if (data != null) {
+            final navaid = Navaid.fromMap(Map<String, dynamic>.from(data));
+            navaids.add(navaid);
+          }
+        } catch (e) {
+          // Handle corrupted entries
+          if (e.toString().contains('RangeError')) {
+            developer.log('⚠️ Corrupted navaid entry for key $key, skipping...');
+            continue;
+          } else {
+            rethrow;
+          }
         }
       }
 

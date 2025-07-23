@@ -701,6 +701,14 @@ class _FlightDashboardState extends State<FlightDashboard> {
                   Icons.flag,
                 ),
               ),
+            if (hasFlightPlan)
+              Expanded(
+                child: _buildSmallIndicator(
+                  'ETA',
+                  _buildTotalFlightETA(flightService, context),
+                  Icons.flight_land,
+                ),
+              ),
           ],
         );
       },
@@ -724,6 +732,16 @@ class _FlightDashboardState extends State<FlightDashboard> {
             ? displayPressure.toStringAsFixed(2)
             : displayPressure.toStringAsFixed(0);
 
+        // Convert QNH based on user preference
+        final qnhValue = barometerService.seaLevelPressure;
+        final displayQNH = settings.pressureUnit == 'inHg'
+            ? qnhValue *
+                  0.02953 // Convert hPa to inHg
+            : qnhValue;
+        final qnhStr = settings.pressureUnit == 'inHg'
+            ? displayQNH.toStringAsFixed(2)
+            : displayQNH.toStringAsFixed(0);
+
         // Check if aircraft is selected
         final hasAircraft = aircraftService.selectedAircraft != null;
 
@@ -735,6 +753,16 @@ class _FlightDashboardState extends State<FlightDashboard> {
                 'PRESS',
                 '$pressureStr ${settings.pressureUnit}',
                 Icons.compress,
+              ),
+            ),
+            Expanded(
+              child: InkWell(
+                onTap: () => _showQNHDialog(context, barometerService, settings),
+                child: _buildSmallIndicator(
+                  'QNH',
+                  '$qnhStr ${settings.pressureUnit}',
+                  Icons.settings_input_antenna,
+                ),
               ),
             ),
             if (hasAircraft)
@@ -942,5 +970,153 @@ class _FlightDashboardState extends State<FlightDashboard> {
       // Fallback in case of any unexpected errors
       return '--';
     }
+  }
+
+  /// Calculate total ETA for entire flight plan
+  String _buildTotalFlightETA(
+    FlightService flightService,
+    BuildContext context,
+  ) {
+    final planSvc = Provider.of<FlightPlanService>(context, listen: false);
+    final plan = planSvc.currentFlightPlan;
+    
+    // Check for all required conditions
+    if (plan == null ||
+        plan.waypoints.isEmpty ||
+        flightService.flightPath.isEmpty ||
+        flightService.currentSpeed <= 0) {
+      return '--';
+    }
+
+    try {
+      final currentPos = flightService.flightPath.last.toLatLng();
+      final distance = const Distance();
+      double totalDistanceMeters = 0;
+      
+      // Find the current waypoint index (next unvisited waypoint)
+      int currentWaypointIndex = 0;
+      // For now, assume we're heading to the first waypoint
+      // In a real implementation, you'd track which waypoints have been passed
+      
+      // Calculate distance from current position to first waypoint
+      if (currentWaypointIndex < plan.waypoints.length) {
+        final firstWp = plan.waypoints[currentWaypointIndex];
+        totalDistanceMeters += distance.as(
+          LengthUnit.Meter,
+          currentPos,
+          LatLng(firstWp.latitude, firstWp.longitude),
+        );
+      }
+      
+      // Add distances between remaining waypoints
+      for (int i = currentWaypointIndex; i < plan.waypoints.length - 1; i++) {
+        final wp1 = plan.waypoints[i];
+        final wp2 = plan.waypoints[i + 1];
+        totalDistanceMeters += distance.as(
+          LengthUnit.Meter,
+          LatLng(wp1.latitude, wp1.longitude),
+          LatLng(wp2.latitude, wp2.longitude),
+        );
+      }
+      
+      // Convert speed to appropriate units
+      final speedMs = flightService.currentSpeed;
+      final speedKmh = speedMs * 3.6;
+      
+      // Calculate ETA in minutes
+      final etaMinutes = speedKmh > 0
+          ? (totalDistanceMeters / 1000 / speedKmh) * 60
+          : 0;
+      
+      // Format as hours:minutes if over 60 minutes
+      if (etaMinutes >= 60) {
+        final hours = etaMinutes ~/ 60;
+        final minutes = (etaMinutes % 60).round();
+        return '${hours}h${minutes}m';
+      } else {
+        return '${etaMinutes.round()}min';
+      }
+    } catch (e) {
+      // Fallback in case of any unexpected errors
+      return '--';
+    }
+  }
+
+  void _showQNHDialog(BuildContext context, BarometerService barometerService, SettingsService settings) {
+    final TextEditingController controller = TextEditingController();
+    final isInHg = settings.pressureUnit == 'inHg';
+    
+    // Get current QNH value
+    final currentQNH = barometerService.seaLevelPressure;
+    final displayValue = isInHg ? currentQNH * 0.02953 : currentQNH;
+    controller.text = isInHg 
+        ? displayValue.toStringAsFixed(2) 
+        : displayValue.toStringAsFixed(0);
+
+    ThemedDialog.show(
+      context: context,
+      title: 'Set QNH',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Set the current sea level pressure (QNH) for accurate altitude calculation.',
+            style: TextStyle(color: Colors.grey[400], fontSize: 14),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: controller,
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'QNH (${settings.pressureUnit})',
+              hintText: isInHg ? '29.92' : '1013',
+              border: OutlineInputBorder(),
+              suffixIcon: IconButton(
+                icon: Icon(Icons.refresh),
+                tooltip: 'Set to current pressure',
+                onPressed: () {
+                  final currentPressure = barometerService.pressureHPa ?? 1013.25;
+                  final displayPressure = isInHg ? currentPressure * 0.02953 : currentPressure;
+                  controller.text = isInHg 
+                      ? displayPressure.toStringAsFixed(2) 
+                      : displayPressure.toStringAsFixed(0);
+                },
+              ),
+            ),
+            autofocus: true,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () {
+            final value = double.tryParse(controller.text);
+            if (value != null) {
+              // Convert to hPa if needed
+              final qnhHPa = isInHg ? value / 0.02953 : value;
+              
+              // Validate range
+              if (qnhHPa >= 900 && qnhHPa <= 1100) {
+                barometerService.setSeaLevelPressure(qnhHPa);
+                Navigator.of(context).pop();
+              } else {
+                // Show error
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Invalid QNH value. Valid range: ${isInHg ? "26.50-32.48 inHg" : "900-1100 hPa"}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
+          },
+          child: const Text('Set'),
+        ),
+      ],
+    );
   }
 }

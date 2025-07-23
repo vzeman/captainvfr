@@ -1,10 +1,12 @@
 import 'package:hive/hive.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:flutter_map/flutter_map.dart';
+import '../utils/spatial_index.dart';
 
 part 'reporting_point.g.dart';
 
 @HiveType(typeId: 31)
-class ReportingPoint extends HiveObject {
+class ReportingPoint extends HiveObject implements SpatialIndexable {
   @HiveField(0)
   final String id;
 
@@ -137,5 +139,26 @@ class ReportingPoint extends HiveObject {
       'airportId': airportId,
       'airportName': airportName,
     };
+  }
+
+  @override
+  String get uniqueId => id;
+
+  @override
+  LatLngBounds? get boundingBox {
+    // Reporting points are points, so create a small bounding box around the position
+    const delta = 0.001; // Small delta for point features
+    return LatLngBounds(
+      LatLng(position.latitude - delta, position.longitude - delta),
+      LatLng(position.latitude + delta, position.longitude + delta),
+    );
+  }
+
+  @override
+  bool containsPoint(LatLng point) {
+    // For point features, check if the point is very close
+    const tolerance = 0.001;
+    return (point.latitude - position.latitude).abs() < tolerance &&
+           (point.longitude - position.longitude).abs() < tolerance;
   }
 }

@@ -286,27 +286,15 @@ class _OptimizedSpatialAirspacesOverlayState
 
     return Polygon(
       points: airspace.geometry,
-      color: color.withValues(alpha: opacity * 0.4), // Increased from 0.2 to 0.4 (20% less transparent)
-      borderColor: color.withValues(alpha: 1.0), // Fully opaque borders
+      color: color.withValues(alpha: opacity * 0.2), // 20% opacity for 50% map visibility
+      borderColor: color.withValues(alpha: 0.8), // Slightly transparent borders
       borderStrokeWidth: zoom > 12 ? 2.0 : 1.5,
       hitValue: airspace,
     );
   }
 
   double _calculateOpacity(Airspace airspace, double zoom) {
-    // Base opacity
-    double opacity = 0.8;
-
-    // Reduce opacity for overlapping airspaces
-    if (_visibleAirspaces.length > 20) {
-      opacity *= 0.7;
-    }
-
-    // Reduce opacity at lower zoom levels
-    if (zoom < 10) {
-      opacity *= 0.6;
-    }
-
-    return opacity;
+    // Fixed opacity - ensures consistent map visibility at all zoom levels
+    return 0.5;
   }
 }

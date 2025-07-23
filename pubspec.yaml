@@ -63,6 +63,7 @@ dependencies:
 
   # HTTP Client
   http: ^1.2.1  # For making HTTP requests
+  csv: ^6.0.0  # For CSV file handling
   
   # GeoJSON support will be added later with a compatible package
   
@@ -144,20 +145,16 @@ flutter:
     - assets/icons/
     - assets/map_style/
     
-    # Bundled OpenAIP data (compressed)
-    - assets/data/airports_min.json.gz
-    - assets/data/airspaces_min.json.gz
-    - assets/data/reporting_points_min.json.gz
-    
-    # Bundled OurAirports data (compressed)
-    - assets/data/frequencies_min.json.gz
-    - assets/data/navaids_min.json.gz
-    - assets/data/runways_min.json.gz
-    
-    # Pre-built spatial indexes (compressed)
-    - assets/data/airspaces_index.json.gz
-    - assets/data/airports_index.json.gz
-    - assets/data/reporting_points_index.json.gz
+    # Tiled data
+    - assets/data/tiles/
+    - assets/data/tiles/airports/
+    - assets/data/tiles/airspaces/
+    - assets/data/tiles/frequencies/
+    - assets/data/tiles/navaids/
+    - assets/data/tiles/reporting_points/
+    - assets/data/tiles/runways/
+    - assets/data/tiles/obstacles/
+    - assets/data/tiles/hotspots/
     
     # Map assets for offline use
     # Uncomment and configure these paths after adding map tiles

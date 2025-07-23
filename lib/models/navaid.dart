@@ -1,7 +1,9 @@
 import 'package:latlong2/latlong.dart';
+import 'package:flutter_map/flutter_map.dart';
+import '../utils/spatial_index.dart';
 
 /// Model for radio navigation aids (navaids)
-class Navaid {
+class Navaid implements SpatialIndexable {
   final int id;
   final String filename;
   final String ident;
@@ -186,5 +188,26 @@ class Navaid {
   @override
   String toString() {
     return 'Navaid{ident: $ident, name: $name, type: $type, frequency: ${frequencyMhz}MHz}';
+  }
+
+  @override
+  String get uniqueId => id.toString();
+
+  @override
+  LatLngBounds? get boundingBox {
+    // Navaids are points, so create a small bounding box around the position
+    const delta = 0.001; // Small delta for point features
+    return LatLngBounds(
+      LatLng(position.latitude - delta, position.longitude - delta),
+      LatLng(position.latitude + delta, position.longitude + delta),
+    );
+  }
+
+  @override
+  bool containsPoint(LatLng point) {
+    // For point features, check if the point is very close
+    const tolerance = 0.001;
+    return (point.latitude - position.latitude).abs() < tolerance &&
+           (point.longitude - position.longitude).abs() < tolerance;
   }
 }

@@ -6,7 +6,7 @@ import 'dart:io';
 /// Returns exit code 0 if file needs updating (doesn't exist or is too old)
 /// Returns exit code 1 if file is fresh enough
 /// 
-/// Usage: dart scripts/check_file_age.dart <file_path> [hours]
+/// Usage: dart scripts/check_file_age.dart &lt;file_path&gt; [hours]
 
 void main(List<String> args) async {
   if (args.isEmpty) {
