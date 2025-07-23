@@ -229,8 +229,8 @@ typewriterWordAlternatives="Tracking,Briefing"
   >}}
   {{< info-grid-item
     icon="cloud"
-    title="Airspace & Weather"
-    description="Airspace information from OpenAIP. Real-time weather data from NOAA Aviation Weather Center."
+    title="Airspace"
+    description="Airspace information from OpenAIP. Provides detailed airspace structure for navigation."
     link="https://www.openaip.net/"
     linkText="OpenAIP"
   >}}

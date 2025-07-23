@@ -29,6 +29,19 @@ print_info() {
     echo -e "${BLUE}[i]${NC} $1"
 }
 
+# Function to increment version number
+increment_version() {
+    local version=$1
+    local major=$(echo $version | cut -d'.' -f1)
+    local minor=$(echo $version | cut -d'.' -f2)
+    local patch=$(echo $version | cut -d'.' -f3)
+    
+    # Increment patch version
+    patch=$((patch + 1))
+    
+    echo "$major.$minor.$patch"
+}
+
 # Function to show usage
 usage() {
     echo "Usage: $0 [OPTIONS]"
@@ -37,6 +50,7 @@ usage() {
     echo "  -v, --version VERSION    Set version (e.g., 1.0.1)"
     echo "  -b, --build BUILD        Set build number (e.g., 2)"
     echo "  -i, --increment          Auto-increment build number"
+    echo "  -I, --increment-version  Auto-increment version number (patch)"
     echo "  -c, --clean              Clean build folders before building"
     echo "  -t, --test               Run tests before building"
     echo "  -f, --fix-warnings       Apply iOS warning fixes before building"
@@ -47,6 +61,7 @@ usage() {
     echo "  $0                       # Build and upload with current version"
     echo "  $0 -v 1.0.1 -b 2        # Set version to 1.0.1+2"
     echo "  $0 -i                    # Auto-increment build number"
+    echo "  $0 -I                    # Auto-increment version number"
     echo "  $0 -c -t                # Clean build and run tests"
     echo "  $0 -f -i                # Fix warnings and increment build"
     exit 1
@@ -56,6 +71,7 @@ usage() {
 CLEAN_BUILD=false
 RUN_TESTS=false
 INCREMENT_BUILD=false
+INCREMENT_VERSION=false
 FIX_WARNINGS=false
 QUIET_MODE=false
 NEW_VERSION=""
@@ -73,6 +89,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -i|--increment)
             INCREMENT_BUILD=true
+            shift
+            ;;
+        -I|--increment-version)
+            INCREMENT_VERSION=true
             shift
             ;;
         -c|--clean)
@@ -139,9 +159,19 @@ CURRENT_BUILD_NUMBER=$(echo $CURRENT_VERSION | cut -d'+' -f2)
 
 print_info "Current version: $CURRENT_VERSION_NUMBER+$CURRENT_BUILD_NUMBER"
 
+# Check if version needs to be incremented based on common scenarios
+if [ "$CURRENT_VERSION_NUMBER" = "1.0.0" ] && [ "$INCREMENT_VERSION" = false ] && [ -z "$NEW_VERSION" ]; then
+    print_warning "Version 1.0.0 is commonly closed for new submissions after initial release."
+    print_warning "Consider using -I flag to auto-increment to 1.0.1"
+    echo ""
+fi
+
 # Handle version updates
 if [ -n "$NEW_VERSION" ]; then
     CURRENT_VERSION_NUMBER=$NEW_VERSION
+elif [ "$INCREMENT_VERSION" = true ]; then
+    CURRENT_VERSION_NUMBER=$(increment_version $CURRENT_VERSION_NUMBER)
+    print_status "Auto-incrementing version to: $CURRENT_VERSION_NUMBER"
 fi
 
 if [ -n "$NEW_BUILD" ]; then
@@ -250,14 +280,16 @@ fi
 IPA_SIZE=$(du -h "$IPA_PATH" | cut -f1)
 print_info "IPA size: $IPA_SIZE"
 
-# Upload
-xcrun altool --upload-app \
+# Upload - capture output for error analysis
+UPLOAD_OUTPUT=$(xcrun altool --upload-app \
     -f "$IPA_PATH" \
     -t ios \
     -u "$APPLE_USERNAME" \
-    -p "$APPLE_APP_PASSWORD"
+    -p "$APPLE_APP_PASSWORD" 2>&1)
 
-if [ $? -eq 0 ]; then
+UPLOAD_RESULT=$?
+
+if [ $UPLOAD_RESULT -eq 0 ]; then
     print_status "Upload successful!"
     echo ""
     print_status "Build Summary:"
@@ -281,5 +313,27 @@ if [ $? -eq 0 ]; then
     fi
 else
     print_error "Upload failed!"
+    
+    # Check for specific error messages
+    if echo "$UPLOAD_OUTPUT" | grep -q "closed for new build submissions"; then
+        print_error "Version $CURRENT_VERSION_NUMBER is closed for new submissions!"
+        print_warning "You need to increment the version number."
+        echo ""
+        print_info "Suggested fix - run one of these commands:"
+        echo "  $0 -I    # Auto-increment to $(increment_version $CURRENT_VERSION_NUMBER)"
+        echo "  $0 -v $(increment_version $CURRENT_VERSION_NUMBER)    # Manually set version"
+        echo ""
+    elif echo "$UPLOAD_OUTPUT" | grep -q "must contain a higher version"; then
+        print_error "Version $CURRENT_VERSION_NUMBER has already been submitted!"
+        print_warning "You need to increment the version number."
+        echo ""
+        print_info "Suggested fix - run one of these commands:"
+        echo "  $0 -I    # Auto-increment to $(increment_version $CURRENT_VERSION_NUMBER)"
+        echo "  $0 -v $(increment_version $CURRENT_VERSION_NUMBER)    # Manually set version"
+        echo ""
+    fi
+    
+    # Show the full error output
+    echo "$UPLOAD_OUTPUT"
     exit 1
 fi
