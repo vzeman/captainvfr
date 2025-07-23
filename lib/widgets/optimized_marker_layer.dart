@@ -218,6 +218,11 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
       // Only heliports
       maxMarkerSize = baseMarkerSize * 0.6;
     }
+    
+    // Increase marker bounds for runway visualization at higher zoom levels
+    if (currentZoom >= 13 && visibleAirports.any((a) => a.openAIPRunways.isNotEmpty)) {
+      maxMarkerSize = maxMarkerSize * 3.5;  // Match the runway visualization size multiplier
+    }
 
     return OptimizedMarkerLayer(
       markerPositions: positions,

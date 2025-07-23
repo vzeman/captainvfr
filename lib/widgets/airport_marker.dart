@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../models/airport.dart';
+import 'runway_painter.dart';
 
 class AirportMarker extends StatelessWidget {
   final Airport airport;
@@ -38,6 +39,9 @@ class AirportMarker extends StatelessWidget {
     // Weather indicator dot size
     final weatherDotSize = visualSize * 0.3;
 
+    // Get runway visualization size based on zoom
+    final runwayVisualizationSize = mapZoom >= 13 ? visualSize * 3.5 : 0.0;
+
     return GestureDetector(
       onTap: () {
         onTap?.call();
@@ -45,7 +49,19 @@ class AirportMarker extends StatelessWidget {
       child: Center(
         child: Stack(
           alignment: Alignment.center,
+          clipBehavior: Clip.none,
           children: [
+            // Runway visualization (behind the marker)
+            if (mapZoom >= 13 && airport.openAIPRunways.isNotEmpty)
+              Positioned(
+                child: RunwayVisualization(
+                  runways: airport.openAIPRunways,
+                  zoom: mapZoom,
+                  size: runwayVisualizationSize,
+                  runwayColor: isSelected ? Colors.amber : Colors.black87,
+                ),
+              ),
+            
             // Main marker
             OverflowBox(
               // Allow the marker to visually overflow its bounds
@@ -187,9 +203,14 @@ class AirportMarkersLayer extends StatelessWidget {
           ? baseMarkerSize * 0.75
           : baseMarkerSize;
 
+      // Increase marker bounds for runway visualization at higher zoom levels
+      final markerBounds = mapZoom >= 13 && airport.openAIPRunways.isNotEmpty
+          ? airportMarkerSize * 3.5  // Match the runway visualization size multiplier
+          : airportMarkerSize;
+
       return Marker(
-        width: airportMarkerSize,
-        height: airportMarkerSize,
+        width: markerBounds,
+        height: markerBounds,
         point: airport.position,
         child: AirportMarker(
           airport: airport,
