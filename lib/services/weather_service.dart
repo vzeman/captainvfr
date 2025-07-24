@@ -138,7 +138,19 @@ class WeatherService {
   /// Save weather data to persistent cache
   Future<void> _saveToPersistentCache() async {
     try {
-      await _cacheService.cacheWeatherBulk(_metarCache, _tafCache);
+      // Combine METAR and TAF data into a single map
+      final weatherData = <String, dynamic>{};
+      _metarCache.forEach((icao, metar) {
+        weatherData[icao] = {'metar': metar};
+      });
+      _tafCache.forEach((icao, taf) {
+        if (weatherData.containsKey(icao)) {
+          weatherData[icao]['taf'] = taf;
+        } else {
+          weatherData[icao] = {'taf': taf};
+        }
+      });
+      await _cacheService.cacheWeatherBulk(weatherData);
       _logger.d('💾 Saved weather data to persistent cache');
     } catch (e) {
       _logger.w('⚠️ Failed to save weather data to cache: $e');

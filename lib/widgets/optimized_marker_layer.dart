@@ -82,6 +82,7 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
   final bool showLabels;
   final double markerSize;
   final bool showHeliports;
+  final String? distanceUnit;
 
   const OptimizedAirportMarkersLayer({
     super.key,
@@ -91,6 +92,7 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
     this.showLabels = true,
     this.markerSize = 40.0,
     this.showHeliports = false,
+    this.distanceUnit,
   });
 
   @override
@@ -261,6 +263,7 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
           showLabel: showLabels,
           isSelected: false,
           mapZoom: currentZoom,
+          distanceUnit: distanceUnit,
         );
       },
     );

@@ -15,6 +15,7 @@ class AirportMarker extends StatelessWidget {
   final bool showLabel;
   final bool isSelected;
   final double mapZoom;
+  final String? distanceUnit;
 
   const AirportMarker({
     super.key,
@@ -25,6 +26,7 @@ class AirportMarker extends StatelessWidget {
     this.showLabel = true,
     this.isSelected = false,
     this.mapZoom = 10,
+    this.distanceUnit,
   });
 
   @override
@@ -93,6 +95,7 @@ class AirportMarker extends StatelessWidget {
                     runwayColor: isSelected ? Colors.amber : Colors.black87,
                     latitude: airport.position.latitude,
                     longitude: airport.position.longitude,
+                    distanceUnit: distanceUnit,
                   ),
                 )
               else if (airport.openAIPRunways.isNotEmpty)
@@ -105,6 +108,7 @@ class AirportMarker extends StatelessWidget {
                     runwayColor: isSelected ? Colors.amber : Colors.black87,
                     latitude: airport.position.latitude,
                     longitude: airport.position.longitude,
+                    distanceUnit: distanceUnit,
                   ),
                 ),
             
@@ -229,6 +233,7 @@ class AirportMarkersLayer extends StatelessWidget {
   final bool showLabels;
   final double markerSize;
   final double mapZoom;
+  final String? distanceUnit;
 
   const AirportMarkersLayer({
     super.key,
@@ -238,6 +243,7 @@ class AirportMarkersLayer extends StatelessWidget {
     this.showLabels = true,
     this.markerSize = 24.0,
     this.mapZoom = 10,
+    this.distanceUnit,
   });
 
   @override
@@ -288,6 +294,7 @@ class AirportMarkersLayer extends StatelessWidget {
           isSelected:
               false, // Default to false, can be set based on selection state
           mapZoom: mapZoom,
+          distanceUnit: distanceUnit,
         ),
       );
     }).toList();

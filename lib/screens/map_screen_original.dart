@@ -63,12 +63,6 @@ import '../widgets/map_zoom_controls.dart';
 import '../services/cache_service.dart';
 import '../services/notam_service_v3.dart';
 
-// Extracted components
-import 'map/constants/map_constants.dart';
-import 'map/controllers/map_state_controller.dart';
-import 'map/components/position_tracking_button.dart';
-import 'map/components/layer_toggle_button.dart';
-
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
 
@@ -81,8 +75,37 @@ class MapScreenState extends State<MapScreen>
   // Logger
   final Logger _logger = Logger(level: Level.warning);
   
-  // Controllers
-  late MapStateController _mapStateController;
+  // SharedPreferences key for flight planning panel state
+  static const String _keyFlightPlanningExpanded = 'flight_planning_expanded';
+  
+  // Constants for map operations
+  static const double _boundsPaddingFactor = 0.1;  // 10% padding for flight plan bounds
+  static const double _maxFitZoom = 16.0;          // Maximum zoom when fitting bounds
+  static const double _fitPadding = 50.0;          // Edge padding when fitting bounds
+  static const double _singlePointZoom = 14.0;     // Default zoom for single waypoint
+  
+  // Constants for waypoint drop detection
+  static const double _baseSearchRadius = 2000.0;  // Base search radius at zoom 9 (meters)
+  static const double _searchRadiusZoomFactor = 0.5; // Halves radius per zoom level
+  static const int _searchRadiusZoomBase = 9;      // Base zoom level for radius calculation
+  
+  // Lookup table for search radius by zoom level (precomputed for performance)
+  static final Map<int, double> _searchRadiusLookup = {
+    5: 32000.0,   // 2000 * 0.5^(5-9) = 2000 * 16
+    6: 16000.0,   // 2000 * 0.5^(6-9) = 2000 * 8
+    7: 8000.0,    // 2000 * 0.5^(7-9) = 2000 * 4
+    8: 4000.0,    // 2000 * 0.5^(8-9) = 2000 * 2
+    9: 2000.0,    // 2000 * 0.5^(9-9) = 2000 * 1
+    10: 1000.0,   // 2000 * 0.5^(10-9) = 2000 * 0.5
+    11: 500.0,    // 2000 * 0.5^(11-9) = 2000 * 0.25
+    12: 250.0,    // 2000 * 0.5^(12-9) = 2000 * 0.125
+    13: 125.0,    // 2000 * 0.5^(13-9) = 2000 * 0.0625
+    14: 62.5,     // 2000 * 0.5^(14-9) = 2000 * 0.03125
+    15: 31.25,    // 2000 * 0.5^(15-9) = 2000 * 0.015625
+    16: 15.625,   // 2000 * 0.5^(16-9) = 2000 * 0.0078125
+    17: 7.8125,   // 2000 * 0.5^(17-9) = 2000 * 0.00390625
+    18: 3.90625,  // 2000 * 0.5^(18-9) = 2000 * 0.001953125
+  };
   
   // Services
   late final FlightService _flightService;
@@ -124,6 +147,13 @@ class MapScreenState extends State<MapScreen>
 
   // State variables
   bool _isLocationLoaded = false; // Track if location has been loaded
+  bool _showStats = false;
+  final bool _showNavaids = true; // Navaids always shown based on zoom level
+  final bool _showMetar = true; // METAR overlay always shown when data available
+  bool _showHeliports = false; // Toggle for heliport display (default hidden)
+  bool _showAirspaces = true; // Toggle for airspaces display
+  bool _showObstacles = false; // Toggle for obstacles display
+  bool _showHotspots = false; // Toggle for hotspots display
   bool _servicesInitialized = false;
   bool _isInitializing = false; // Guard against concurrent initialization
   bool _showFlightPlanning = false; // Toggle for integrated flight planning
@@ -180,12 +210,15 @@ class MapScreenState extends State<MapScreen>
   // UI state
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Map settings are now in MapConstants
+  // Map settings
+  static const double _initialZoom = 9.0; // 3 steps zoomed out from 12.0
+  static const double _maxZoom = 18.0;
+  static const double _minZoom = 3.0;
 
   // Auto-centering control
   bool _autoCenteringEnabled = true;
   Timer? _autoCenteringTimer;
-  // Auto-centering delay is now in MapConstants
+  static const Duration _autoCenteringDelay = Duration(minutes: 3);
   bool _wasTracking = false;
   
   // Countdown display for auto-centering
@@ -195,7 +228,7 @@ class MapScreenState extends State<MapScreen>
   // Position tracking control
   bool _positionTrackingEnabled = false;
   Timer? _positionUpdateTimer;
-  // Position update interval is now in MapConstants
+  static const Duration _positionUpdateInterval = Duration(seconds: 3);
 
   // Helper to check if any input field has focus
   bool get _hasInputFocus {
@@ -214,9 +247,8 @@ class MapScreenState extends State<MapScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Initialize controllers
+    // Initialize map controller
     _mapController = MapController();
-    _mapStateController = MapStateController();
 
     // Load flight planning panel state from SharedPreferences
     _loadFlightPlanningPanelState();
@@ -259,14 +291,14 @@ class MapScreenState extends State<MapScreen>
             
             // Load data for the new area
             _loadAirports();
-            if (_mapStateController.showNavaids) {
+            if (_showNavaids) {
               _loadNavaids();
             }
-            if (_mapStateController.showAirspaces) {
+            if (_showAirspaces) {
               _loadAirspaces();
               _loadReportingPoints();
             }
-            if (_mapStateController.showMetar) {
+            if (_showMetar) {
               _loadWeatherForVisibleAirports();
             }
           }
@@ -284,7 +316,6 @@ class MapScreenState extends State<MapScreen>
 
         // Initialize services with caching
         _initializeServices();
-        
         
         // Start performance monitoring (only in debug mode)
         if (kDebugMode) {
@@ -319,7 +350,7 @@ class MapScreenState extends State<MapScreen>
   // Handle cache updates
   void _onCacheUpdated() {
     // Refresh airspaces if they're enabled
-    if (_mapStateController.showAirspaces && mounted) {
+    if (_showAirspaces && mounted) {
       _refreshAirspacesDisplay();
       _refreshReportingPointsDisplay();
     }
@@ -559,7 +590,7 @@ class MapScreenState extends State<MapScreen>
   Future<void> _loadFlightPlanningPanelState() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final isExpanded = prefs.getBool(MapConstants.keyFlightPlanningExpanded) ?? false; // Default collapsed
+      final isExpanded = prefs.getBool(_keyFlightPlanningExpanded) ?? false; // Default collapsed
       if (mounted) {
         setState(() {
           _flightPlanningExpanded = isExpanded;
@@ -574,7 +605,7 @@ class MapScreenState extends State<MapScreen>
   Future<void> _saveFlightPlanningPanelState(bool isExpanded) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(MapConstants.keyFlightPlanningExpanded, isExpanded);
+      await prefs.setBool(_keyFlightPlanningExpanded, isExpanded);
     } catch (e) {
       // Ignore save errors - not critical functionality
     }
@@ -628,13 +659,13 @@ class MapScreenState extends State<MapScreen>
               _flightService.currentHeading != null) {
             _mapController.moveAndRotate(
               LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-              MapConstants.initialZoom,
+              _initialZoom,
               -_flightService.currentHeading!,
             );
           } else {
             _mapController.move(
               LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-              MapConstants.initialZoom,
+              _initialZoom,
             );
           }
         } catch (e) {
@@ -648,7 +679,7 @@ class MapScreenState extends State<MapScreen>
                     _currentPosition!.latitude,
                     _currentPosition!.longitude,
                   ),
-                  MapConstants.initialZoom,
+                  _initialZoom,
                 );
               } catch (e) {
                 // debugPrint('Error moving map (retry): $e');
@@ -661,23 +692,23 @@ class MapScreenState extends State<MapScreen>
         _loadAirports();
 
         // Load navaids if they should be shown
-        if (_mapStateController.showNavaids) {
+        if (_showNavaids) {
           _loadNavaids();
         }
 
         // Load airspaces if they should be shown
-        if (_mapStateController.showAirspaces) {
+        if (_showAirspaces) {
           _loadAirspaces();
           _loadReportingPoints();
         }
         
         // Load obstacles if they should be shown
-        if (_mapStateController.showObstacles) {
+        if (_showObstacles) {
           _loadObstacles();
         }
         
         // Load hotspots if they should be shown
-        if (_mapStateController.showHotspots) {
+        if (_showHotspots) {
           _loadHotspots();
         }
       }
@@ -742,7 +773,7 @@ class MapScreenState extends State<MapScreen>
           });
 
           // Refresh weather data for visible airports if METAR overlay is enabled
-          if (_mapStateController.showMetar) {
+          if (_showMetar) {
             _refreshWeatherForVisibleAirports(airports);
           }
 
@@ -762,7 +793,7 @@ class MapScreenState extends State<MapScreen>
 
   /// Refresh weather data for visible airports when map focus changes
   Future<void> _refreshWeatherForVisibleAirports(List<Airport> airports) async {
-    if (!_mapStateController.showMetar || airports.isEmpty) return;
+    if (!_showMetar || airports.isEmpty) return;
 
     try {
       // Filter airports that should have weather data (medium/large airports)
@@ -861,7 +892,7 @@ class MapScreenState extends State<MapScreen>
   // Load navaids in the current map view
   Future<void> _loadNavaids() async {
     return MapProfiler.profileMapOperation('loadNavaids', () async {
-      if (!_mapStateController.showNavaids) {
+      if (!_showNavaids) {
         return;
       }
 
@@ -901,7 +932,7 @@ class MapScreenState extends State<MapScreen>
   // Load airspaces in the current map view
   Future<void> _loadAirspaces() async {
     return MapProfiler.profileMapOperation('loadAirspaces', () async {
-      if (!_mapStateController.showAirspaces) {
+      if (!_showAirspaces) {
         return;
       }
 
@@ -967,7 +998,7 @@ class MapScreenState extends State<MapScreen>
   // Load reporting points in the current map view
   Future<void> _loadReportingPoints() async {
     return MapProfiler.profileMapOperation('loadReportingPoints', () async {
-      if (!_mapStateController.showAirspaces) {
+      if (!_showAirspaces) {
         return;
       }
 
@@ -1037,7 +1068,7 @@ class MapScreenState extends State<MapScreen>
   // Load obstacles within the current map bounds
   Future<void> _loadObstacles() async {
     return MapProfiler.profileMapOperation('loadObstacles', () async {
-      if (!_mapStateController.showObstacles) {
+      if (!_showObstacles) {
         return;
       }
 
@@ -1068,7 +1099,7 @@ class MapScreenState extends State<MapScreen>
   // Load hotspots within the current map bounds
   Future<void> _loadHotspots() async {
     return MapProfiler.profileMapOperation('loadHotspots', () async {
-      if (!_mapStateController.showHotspots) {
+      if (!_showHotspots) {
         return;
       }
 
@@ -1097,7 +1128,7 @@ class MapScreenState extends State<MapScreen>
   // Start auto-centering countdown
   void _startAutoCenteringCountdown() {
     setState(() {
-      _autoCenteringCountdown = MapConstants.autoCenteringDelay.inSeconds;
+      _autoCenteringCountdown = _autoCenteringDelay.inSeconds;
     });
     
     // Cancel any existing timers
@@ -1119,7 +1150,7 @@ class MapScreenState extends State<MapScreen>
     });
     
     // Start the actual auto-centering timer
-    _autoCenteringTimer = Timer(MapConstants.autoCenteringDelay, () {
+    _autoCenteringTimer = Timer(_autoCenteringDelay, () {
       if (mounted && (_flightService.isTracking || _positionTrackingEnabled)) {
         setState(() {
           _autoCenteringEnabled = true;
@@ -1127,56 +1158,6 @@ class MapScreenState extends State<MapScreen>
         });
       }
     });
-  }
-  
-  // Handle zoom button changes to trigger map updates
-  void _onZoomButtonPressed() {
-    // Use frame-aware scheduler for staggered loading (same as gesture-based zoom)
-    final scheduler = FrameAwareScheduler();
-    
-    // Load airports first (highest priority)
-    scheduler.scheduleOperation(
-      id: 'load_airports',
-      operation: _loadAirports,
-      debounce: const Duration(milliseconds: 300),
-      highPriority: true,
-    );
-    
-    // Load navaids with delay
-    if (_mapStateController.showNavaids) {
-      scheduler.scheduleOperation(
-        id: 'load_navaids',
-        operation: _loadNavaids,
-        debounce: const Duration(milliseconds: 600),
-      );
-    }
-    
-    // Reporting points with more delay
-    if (_mapStateController.showAirspaces) {
-      scheduler.scheduleOperation(
-        id: 'load_reporting_points',
-        operation: _loadReportingPoints,
-        debounce: const Duration(milliseconds: 800),
-      );
-    }
-    
-    // Obstacles with delay
-    if (_mapStateController.showObstacles) {
-      scheduler.scheduleOperation(
-        id: 'load_obstacles',
-        operation: _loadObstacles,
-        debounce: const Duration(milliseconds: 900),
-      );
-    }
-    
-    // Hotspots with delay  
-    if (_mapStateController.showHotspots) {
-      scheduler.scheduleOperation(
-        id: 'load_hotspots',
-        operation: _loadHotspots,
-        debounce: const Duration(milliseconds: 950),
-      );
-    }
   }
 
   // Toggle position tracking
@@ -1238,7 +1219,7 @@ class MapScreenState extends State<MapScreen>
 
     // Start periodic position updates
     _positionUpdateTimer?.cancel();
-    _positionUpdateTimer = Timer.periodic(MapConstants.positionUpdateInterval, (_) async {
+    _positionUpdateTimer = Timer.periodic(_positionUpdateInterval, (_) async {
       if (_positionTrackingEnabled && _autoCenteringEnabled && !_flightService.isTracking) {
         await _updateCurrentPosition();
       }
@@ -1310,7 +1291,7 @@ class MapScreenState extends State<MapScreen>
   // Toggle flight dashboard visibility
   void _toggleStats() {
     setState(() {
-      _mapStateController.toggleStats();
+      _showStats = !_showStats;
     });
   }
 
@@ -1319,31 +1300,37 @@ class MapScreenState extends State<MapScreen>
   // Toggle heliport visibility
   void _toggleHeliports() {
     setState(() {
-      _mapStateController.toggleHeliports();
+      _showHeliports = !_showHeliports;
     });
   }
 
 
   // Toggle airspaces visibility
   void _toggleAirspaces() {
-    setState(() {
-      _mapStateController.toggleAirspaces();
-    });
-    
-    if (_mapStateController.showAirspaces) {
+    if (!_showAirspaces) {
+      // Turning airspaces ON - just update UI state
+      setState(() {
+        _showAirspaces = true;
+      });
+      
       // Load/refresh data if needed
       _loadAirspaces();
       _loadReportingPoints();
+    } else {
+      // Turning airspaces OFF - just hide them, keep data and index in memory
+      setState(() {
+        _showAirspaces = false;
+      });
     }
   }
   
   // Toggle obstacles visibility
   void _toggleObstacles() {
     setState(() {
-      _mapStateController.toggleObstacles();
+      _showObstacles = !_showObstacles;
     });
     
-    if (_mapStateController.showObstacles) {
+    if (_showObstacles) {
       // Load obstacles if needed
       _loadObstacles();
     }
@@ -1352,24 +1339,13 @@ class MapScreenState extends State<MapScreen>
   // Toggle hotspots visibility
   void _toggleHotspots() {
     setState(() {
-      _mapStateController.toggleHotspots();
+      _showHotspots = !_showHotspots;
     });
     
-    if (_mapStateController.showHotspots) {
+    if (_showHotspots) {
       // Load hotspots if needed
       _loadHotspots();
     }
-  }
-  
-  // Toggle METAR weather display
-  void _toggleMetar() {
-    setState(() {
-      _mapStateController.toggleMetar();
-      if (_mapStateController.showMetar) {
-        // Load weather data when enabled
-        _loadWeatherForVisibleAirports();
-      }
-    });
   }
 
 
@@ -1388,7 +1364,7 @@ class MapScreenState extends State<MapScreen>
     }
 
     // Check if any airspaces contain the tapped point
-    if (_mapStateController.showAirspaces) {
+    if (_showAirspaces) {
       // Use spatial service to find airspaces at the tapped point
       final tappedAirspaces = await spatialAirspaceService.getAirspacesAtPoint(point);
 
@@ -1888,8 +1864,8 @@ class MapScreenState extends State<MapScreen>
       final zoomInt = zoom.round();
       
       // Use lookup table for common zoom levels, fallback to calculation for others
-      final searchRadiusMeters = MapConstants.searchRadiusLookup[zoomInt] ?? 
-          MapConstants.baseSearchRadius * math.pow(MapConstants.searchRadiusZoomFactor, zoom - MapConstants.searchRadiusZoomBase);
+      final searchRadiusMeters = _searchRadiusLookup[zoomInt] ?? 
+          _baseSearchRadius * math.pow(_searchRadiusZoomFactor, zoom - _searchRadiusZoomBase);
       
       // Get all airports in the current view
       final bounds = _mapController.camera.visibleBounds;
@@ -2056,18 +2032,18 @@ class MapScreenState extends State<MapScreen>
     _loadAirports();
 
     // Load navaids if they're enabled
-    if (_mapStateController.showNavaids) {
+    if (_showNavaids) {
       _loadNavaids();
     }
 
     // Load airspaces and reporting points if they're enabled
-    if (_mapStateController.showAirspaces) {
+    if (_showAirspaces) {
       _loadAirspaces();
       _loadReportingPoints();
     }
 
     // Load weather data for new airports if METAR overlay is enabled
-    if (_mapStateController.showMetar) {
+    if (_showMetar) {
       _loadWeatherForVisibleAirports();
     }
 
@@ -2144,15 +2120,15 @@ class MapScreenState extends State<MapScreen>
       // Single point or all waypoints at same location
       _mapController.move(
         LatLng(bounds.north, bounds.east),
-        MapConstants.singlePointZoom,
+        _singlePointZoom,
       );
       _disableAutoCentering();
       return;
     }
     
     // Calculate padding based on bounds size
-    final latPadding = (bounds.north - bounds.south) * MapConstants.boundsPaddingFactor;
-    final lngPadding = (bounds.east - bounds.west) * MapConstants.boundsPaddingFactor;
+    final latPadding = (bounds.north - bounds.south) * _boundsPaddingFactor;
+    final lngPadding = (bounds.east - bounds.west) * _boundsPaddingFactor;
     
     // Create padded bounds
     final paddedBounds = LatLngBounds(
@@ -2164,8 +2140,8 @@ class MapScreenState extends State<MapScreen>
     _mapController.fitCamera(
       CameraFit.bounds(
         bounds: paddedBounds,
-        maxZoom: MapConstants.maxFitZoom,
-        padding: EdgeInsets.all(MapConstants.fitPadding),
+        maxZoom: _maxFitZoom,
+        padding: EdgeInsets.all(_fitPadding),
       ),
     );
 
@@ -2644,7 +2620,7 @@ class MapScreenState extends State<MapScreen>
         }
         
         // Filter heliports and balloonports based on toggle
-        if ((airport.type == 'heliport' || airport.type == 'balloonport') && !_mapStateController.showHeliports) {
+        if ((airport.type == 'heliport' || airport.type == 'balloonport') && !_showHeliports) {
           return false;
         }
         // Show medium and large airports always, and show small airports/heliports based on toggles
@@ -2715,9 +2691,9 @@ class MapScreenState extends State<MapScreen>
                       37.7749,
                       -122.4194,
                     ), // Default to San Francisco
-              initialZoom: MapConstants.initialZoom,
-              minZoom: MapConstants.minZoom,
-              maxZoom: MapConstants.maxZoom,
+              initialZoom: _initialZoom,
+              minZoom: _minZoom,
+              maxZoom: _maxZoom,
               interactionOptions: InteractionOptions(
                 flags: _isDraggingWaypoint
                     ? InteractiveFlag
@@ -2759,7 +2735,7 @@ class MapScreenState extends State<MapScreen>
                   );
                   
                   // Load navaids with delay
-                  if (_mapStateController.showNavaids) {
+                  if (_showNavaids) {
                     scheduler.scheduleOperation(
                       id: 'load_navaids',
                       operation: _loadNavaids,
@@ -2768,7 +2744,7 @@ class MapScreenState extends State<MapScreen>
                   }
                   
                   // Reporting points with more delay
-                  if (_mapStateController.showAirspaces) {
+                  if (_showAirspaces) {
                     scheduler.scheduleOperation(
                       id: 'load_reporting_points',
                       operation: _loadReportingPoints,
@@ -2777,7 +2753,7 @@ class MapScreenState extends State<MapScreen>
                   }
                   
                   // Obstacles with delay
-                  if (_mapStateController.showObstacles) {
+                  if (_showObstacles) {
                     scheduler.scheduleOperation(
                       id: 'load_obstacles',
                       operation: _loadObstacles,
@@ -2786,7 +2762,7 @@ class MapScreenState extends State<MapScreen>
                   }
                   
                   // Hotspots with delay  
-                  if (_mapStateController.showHotspots) {
+                  if (_showHotspots) {
                     scheduler.scheduleOperation(
                       id: 'load_hotspots',
                       operation: _loadHotspots,
@@ -2795,7 +2771,7 @@ class MapScreenState extends State<MapScreen>
                   }
                   
                   // Weather data with even more delay
-                  if (_mapStateController.showMetar) {
+                  if (_showMetar) {
                     scheduler.scheduleOperation(
                       id: 'load_weather',
                       operation: _loadWeatherForVisibleAirports,
@@ -2827,62 +2803,57 @@ class MapScreenState extends State<MapScreen>
                     : null,
               ),
               // Airspaces overlay (optimized with debouncing)
-              if (_mapStateController.showAirspaces)
+              if (_showAirspaces)
                 OptimizedSpatialAirspacesOverlay(
                   spatialService: spatialAirspaceService,
-                  showAirspacesLayer: _mapStateController.showAirspaces,
+                  showAirspacesLayer: _showAirspaces,
                   onAirspaceTap: _onAirspaceSelected,
                   currentAltitude: _currentPosition?.altitude ?? 0,
                 ),
               // Reporting points overlay (optimized)
-              if (_mapStateController.showAirspaces && _reportingPoints.isNotEmpty)
+              if (_showAirspaces && _reportingPoints.isNotEmpty)
                 OptimizedReportingPointsLayer(
                   reportingPoints: _reportingPoints,
                   onReportingPointTap: _onReportingPointSelected,
                 ),
               // Obstacles overlay (optimized)
-              if (_mapStateController.showObstacles && _obstacles.isNotEmpty)
+              if (_showObstacles && _obstacles.isNotEmpty)
                 OptimizedObstaclesLayer(
                   obstacles: _obstacles,
                   onObstacleTap: _onObstacleSelected,
                 ),
               // Hotspots overlay (optimized)  
-              if (_mapStateController.showHotspots && _hotspots.isNotEmpty)
+              if (_showHotspots && _hotspots.isNotEmpty)
                 OptimizedHotspotsLayer(
                   hotspots: _hotspots,
                   onHotspotTap: _onHotspotSelected,
                 ),
               // Airport markers with tap handling (optimized)
-              Consumer<SettingsService>(
-                builder: (context, settings, child) {
-                  return OptimizedAirportMarkersLayer(
-                    airports: _airports.where((airport) {
-                      // Filter heliports and balloonports based on toggle
-                      if ((airport.type == 'heliport' || airport.type == 'balloonport') && !_mapStateController.showHeliports) {
-                        return false;
-                      }
-                      // Small airports are always shown (filtered by zoom level automatically)
-                      // Show medium and large airports always, and show small airports/heliports based on toggles
-                      return true;
-                    }).toList(),
-                    airportRunways: _airportRunways,
-                    onAirportTap: _onAirportSelected,
-                    showHeliports: _mapStateController.showHeliports,
-                    distanceUnit: settings.distanceUnit,
-                  );
-                },
+              OptimizedAirportMarkersLayer(
+                airports: _airports.where((airport) {
+                  // Filter heliports and balloonports based on toggle
+                  if ((airport.type == 'heliport' || airport.type == 'balloonport') && !_showHeliports) {
+                    return false;
+                  }
+                  // Small airports are always shown (filtered by zoom level automatically)
+                  // Show medium and large airports always, and show small airports/heliports based on toggles
+                  return true;
+                }).toList(),
+                airportRunways: _airportRunways,
+                onAirportTap: _onAirportSelected,
+                showHeliports: _showHeliports,
               ),
               // Navaid markers (optimized)
-              if (_mapStateController.showNavaids && _navaids.isNotEmpty)
+              if (_showNavaids && _navaids.isNotEmpty)
                 OptimizedNavaidMarkersLayer(
                   navaids: _navaids,
                   onNavaidTap: _onNavaidSelected,
                 ),
               // METAR overlay
-              if (_mapStateController.showMetar)
+              if (_showMetar)
                 MetarOverlay(
                   airports: _airports,
-                  showMetarLayer: _mapStateController.showMetar,
+                  showMetarLayer: _showMetar,
                   onAirportTap: _onAirportSelected,
                 ),
               // Flight plan overlays - add before current position marker
@@ -3192,35 +3163,27 @@ class MapScreenState extends State<MapScreen>
                       _buildLayerToggle(
                         icon: FontAwesomeIcons.helicopter,
                         tooltip: 'Toggle Heliports',
-                        isActive: _mapStateController.showHeliports,
+                        isActive: _showHeliports,
                         onPressed: _toggleHeliports,
                       ),
                       _buildLayerToggle(
-                        icon: _mapStateController.showMetar
-                            ? Icons.cloud
-                            : Icons.cloud_outlined,
-                        tooltip: 'Toggle METAR',
-                        isActive: _mapStateController.showMetar,
-                        onPressed: _toggleMetar,
-                      ),
-                      _buildLayerToggle(
-                        icon: _mapStateController.showAirspaces
+                        icon: _showAirspaces
                             ? Icons.layers
                             : Icons.layers_outlined,
                         tooltip: 'Toggle Airspaces',
-                        isActive: _mapStateController.showAirspaces,
+                        isActive: _showAirspaces,
                         onPressed: _toggleAirspaces,
                       ),
                       _buildLayerToggle(
                         icon: Icons.warning_amber_rounded,
                         tooltip: 'Toggle Obstacles',
-                        isActive: _mapStateController.showObstacles,
+                        isActive: _showObstacles,
                         onPressed: _toggleObstacles,
                       ),
                       _buildLayerToggle(
                         icon: Icons.location_on,
                         tooltip: 'Toggle Hotspots',
-                        isActive: _mapStateController.showHotspots,
+                        isActive: _showHotspots,
                         onPressed: _toggleHotspots,
                       ),
                       _buildLayerToggle(
@@ -3272,7 +3235,7 @@ class MapScreenState extends State<MapScreen>
           ),
 
           // Flight dashboard overlay - show when toggle is active
-          if (_mapStateController.showStats)
+          if (_showStats)
             Positioned(
               left: _flightDataPanelPosition.dx,
               bottom: _flightDataPanelPosition
@@ -3734,8 +3697,8 @@ class MapScreenState extends State<MapScreen>
                   _buildPositionTrackingButton(),
                   IconButton(
                     icon: Icon(
-                      _mapStateController.showStats ? Icons.dashboard : Icons.dashboard_outlined,
-                      color: _mapStateController.showStats ? Colors.blue : Colors.black,
+                      _showStats ? Icons.dashboard : Icons.dashboard_outlined,
+                      color: _showStats ? Colors.blue : Colors.black,
                     ),
                     onPressed: _toggleStats,
                     tooltip: 'Toggle flight dashboard',
@@ -3935,9 +3898,8 @@ class MapScreenState extends State<MapScreen>
             left: 16,
             child: MapZoomControls(
               mapController: _mapController,
-              minZoom: MapConstants.minZoom,
-              maxZoom: MapConstants.maxZoom,
-              onZoomChanged: _onZoomButtonPressed,
+              minZoom: _minZoom,
+              maxZoom: _maxZoom,
             ),
           ),
           
@@ -3982,6 +3944,17 @@ class MapScreenState extends State<MapScreen>
     ); // Closing Scaffold
   }
 
+  String _formatCountdown(int seconds) {
+    if (seconds >= 120) {
+      final minutes = seconds ~/ 60;
+      final remainingSeconds = seconds % 60;
+      return remainingSeconds > 0 ? '${minutes}m' : '${minutes}m';
+    } else if (seconds >= 60) {
+      return '1m${seconds - 60 > 0 ? '+' : ''}';
+    } else {
+      return '$seconds';
+    }
+  }
   
   // Show location permission dialog
   void _showLocationPermissionDialog() {
@@ -4064,11 +4037,54 @@ class MapScreenState extends State<MapScreen>
   }
 
   Widget _buildPositionTrackingButton() {
-    return PositionTrackingButton(
-      positionTrackingEnabled: _positionTrackingEnabled,
-      autoCenteringEnabled: _autoCenteringEnabled,
-      autoCenteringCountdown: _autoCenteringCountdown,
-      onToggle: _togglePositionTracking,
+    final bool showCountdown = _positionTrackingEnabled && 
+                              !_autoCenteringEnabled && 
+                              _autoCenteringCountdown > 0;
+    
+    return SizedBox(
+      width: showCountdown ? null : 48,
+      height: 48,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: Icon(
+              _positionTrackingEnabled ? Icons.gps_fixed : Icons.gps_not_fixed,
+              color: _positionTrackingEnabled 
+                  ? (_autoCenteringEnabled ? Colors.blue : Colors.orange)
+                  : Colors.grey,
+            ),
+            onPressed: _togglePositionTracking,
+            tooltip: _positionTrackingEnabled
+                ? (_autoCenteringEnabled 
+                    ? 'Position tracking active (tap to disable)'
+                    : showCountdown
+                        ? 'Auto-centering in $_autoCenteringCountdown seconds'
+                        : 'Position tracking paused by map movement (tap to disable)')
+                : 'Enable position tracking',
+          ),
+          if (showCountdown) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.orange,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                _formatCountdown(_autoCenteringCountdown),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ],
+      ),
     );
   }
 
@@ -4078,20 +4094,39 @@ class MapScreenState extends State<MapScreen>
     required bool isActive,
     required VoidCallback onPressed,
   }) {
-    return LayerToggleButton(
-      icon: icon,
+    return IconButton(
+      icon: icon == FontAwesomeIcons.helicopter 
+          ? FaIcon(icon, color: isActive ? Colors.blue : Colors.black, size: 20)
+          : Icon(icon, color: isActive ? Colors.blue : Colors.black),
       tooltip: tooltip,
-      isActive: isActive,
       onPressed: onPressed,
     );
   }
 
 
   Color _getSegmentColor(String segmentType) {
-    return SegmentUtils.getSegmentColor(segmentType);
+    switch (segmentType) {
+      case 'takeoff':
+        return Colors.green;
+      case 'landing':
+        return Colors.red;
+      case 'cruise':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
   }
 
   IconData _getSegmentIcon(String segmentType) {
-    return SegmentUtils.getSegmentIcon(segmentType);
+    switch (segmentType) {
+      case 'takeoff':
+        return Icons.arrow_upward;
+      case 'landing':
+        return Icons.arrow_downward;
+      case 'cruise':
+        return Icons.flight;
+      default:
+        return Icons.circle;
+    }
   }
 }
