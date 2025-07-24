@@ -542,7 +542,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                                                 child: Container(
                                                                   padding: const EdgeInsets.symmetric(
                                                                     horizontal: 8,
-                                                                    vertical: 2,
+                                                                    vertical: 8,  // Increased from 2 for better touch target
                                                                   ),
                                                                   child: Text(
                                                                     waypoint.name ?? 'WP${index + 1}',
@@ -627,7 +627,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                                             : Container(
                                                                 padding: const EdgeInsets.symmetric(
                                                                   horizontal: 8,
-                                                                  vertical: 2,
+                                                                  vertical: 8,  // Increased from 2 for better touch target
                                                                 ),
                                                                 alignment: Alignment.centerRight,
                                                                 child: Text(

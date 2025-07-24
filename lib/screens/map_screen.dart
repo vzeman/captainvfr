@@ -78,6 +78,12 @@ class MapScreenState extends State<MapScreen>
   // SharedPreferences key for flight planning panel state
   static const String _keyFlightPlanningExpanded = 'flight_planning_expanded';
   
+  // Constants for map operations
+  static const double _boundsPaddingFactor = 0.1;  // 10% padding for flight plan bounds
+  static const double _maxFitZoom = 16.0;          // Maximum zoom when fitting bounds
+  static const double _fitPadding = 50.0;          // Edge padding when fitting bounds
+  static const double _singlePointZoom = 14.0;     // Default zoom for single waypoint
+  
   // Services
   late final FlightService _flightService;
   late final AirportService _airportService;
@@ -1909,7 +1915,8 @@ class MapScreenState extends State<MapScreen>
     );
   }
 
-  // Focus map on a specific waypoint
+  /// Focuses the map on a specific waypoint by index.
+  /// Maintains current zoom level and disables auto-centering.
   void _focusOnWaypoint(int waypointIndex) {
     final flightPlan = _flightPlanService.currentFlightPlan;
     if (flightPlan == null || 
@@ -1925,6 +1932,12 @@ class MapScreenState extends State<MapScreen>
     );
 
     // Disable auto-centering when focusing on waypoint
+    _disableAutoCentering();
+  }
+
+  /// Disables auto-centering mode and cancels related timers.
+  /// Used when user manually interacts with the map.
+  void _disableAutoCentering() {
     if (_autoCenteringEnabled) {
       setState(() {
         _autoCenteringEnabled = false;
@@ -1934,50 +1947,52 @@ class MapScreenState extends State<MapScreen>
     }
   }
 
-  // Fit the entire flight plan in view
+  /// Fits the entire flight plan in view with appropriate padding.
+  /// Calculates bounds of all waypoints and adds 10% padding.
+  /// Handles edge cases like single waypoint or same-location waypoints.
   void _fitFlightPlanBounds() {
     final flightPlan = _flightPlanService.currentFlightPlan;
     if (flightPlan == null || flightPlan.waypoints.isEmpty) {
       return;
     }
 
-    // Calculate bounds of all waypoints
-    double minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+    // Use built-in method for better performance
+    final bounds = LatLngBounds.fromPoints(
+      flightPlan.waypoints.map((w) => w.latLng).toList(),
+    );
     
-    for (final waypoint in flightPlan.waypoints) {
-      minLat = math.min(minLat, waypoint.latitude);
-      maxLat = math.max(maxLat, waypoint.latitude);
-      minLng = math.min(minLng, waypoint.longitude);
-      maxLng = math.max(maxLng, waypoint.longitude);
+    // Handle edge case: all waypoints at same location
+    if (bounds.north == bounds.south && bounds.east == bounds.west) {
+      // Single point or all waypoints at same location
+      _mapController.move(
+        LatLng(bounds.north, bounds.east),
+        _singlePointZoom,
+      );
+      _disableAutoCentering();
+      return;
     }
-
-    // Create bounds with some padding
-    final paddingFactor = 0.1; // 10% padding
-    final latPadding = (maxLat - minLat) * paddingFactor;
-    final lngPadding = (maxLng - minLng) * paddingFactor;
     
-    final bounds = LatLngBounds(
-      LatLng(minLat - latPadding, minLng - lngPadding),
-      LatLng(maxLat + latPadding, maxLng + lngPadding),
+    // Calculate padding based on bounds size
+    final latPadding = (bounds.north - bounds.south) * _boundsPaddingFactor;
+    final lngPadding = (bounds.east - bounds.west) * _boundsPaddingFactor;
+    
+    // Create padded bounds
+    final paddedBounds = LatLngBounds(
+      LatLng(bounds.south - latPadding, bounds.west - lngPadding),
+      LatLng(bounds.north + latPadding, bounds.east + lngPadding),
     );
 
     // Fit bounds with animation
     _mapController.fitCamera(
       CameraFit.bounds(
-        bounds: bounds,
-        maxZoom: 16.0, // Don't zoom in too much
-        padding: const EdgeInsets.all(50.0),
+        bounds: paddedBounds,
+        maxZoom: _maxFitZoom,
+        padding: EdgeInsets.all(_fitPadding),
       ),
     );
 
     // Disable auto-centering when fitting flight plan
-    if (_autoCenteringEnabled) {
-      setState(() {
-        _autoCenteringEnabled = false;
-      });
-      _autoCenteringTimer?.cancel();
-      _countdownTimer?.cancel();
-    }
+    _disableAutoCentering();
   }
 
   // Handle navaid selection
