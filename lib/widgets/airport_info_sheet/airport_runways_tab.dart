@@ -75,7 +75,20 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
       } else {
         // If not, fetch it ourselves
         metar = await widget.weatherService.getMetar(widget.airport.icao);
-        debugPrint('Fetched new METAR data');
+        debugPrint('Fetched new METAR data: ${metar != null ? 'success' : 'null'}');
+        
+        // If still no data, try to force reload the weather service
+        if (metar == null || metar.isEmpty) {
+          debugPrint('No cached METAR found, forcing weather service reload...');
+          await widget.weatherService.initialize();
+          
+          // Force reload to get fresh data
+          await widget.weatherService.forceReload();
+          
+          // Try fetching again after force reload
+          metar = await widget.weatherService.getMetar(widget.airport.icao);
+          debugPrint('After force reload result: ${metar != null ? 'success' : 'null'}');
+        }
       }
       
       if (metar != null && metar.isNotEmpty) {

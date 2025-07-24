@@ -646,4 +646,17 @@ class FlightPlanService extends ChangeNotifier {
 
     notifyListeners();
   }
+
+  @override
+  void dispose() {
+    // Close Hive box if open
+    try {
+      if (_flightPlanBox.isOpen) {
+        _flightPlanBox.close();
+      }
+    } catch (e) {
+      // Ignore errors during disposal
+    }
+    super.dispose();
+  }
 }

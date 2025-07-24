@@ -996,4 +996,20 @@ class CacheService extends ChangeNotifier {
       rethrow;
     }
   }
+
+  @override
+  void dispose() {
+    // Close all Hive boxes if they're open
+    try {
+      if (_isInitialized) {
+        _airportsBox.close();
+        _airspacesBox.close();
+        _reportingPointsBox.close();
+        _metadataBox.close();
+      }
+    } catch (e) {
+      developer.log('❌ Error disposing CacheService: $e');
+    }
+    super.dispose();
+  }
 }
