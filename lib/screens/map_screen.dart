@@ -724,7 +724,7 @@ class MapScreenState extends State<MapScreen>
 
         // Get runway data for airports if zoom level is appropriate
         final runwayDataMap = <String, List<Runway>>{};
-        if (zoom >= 13) {
+        if (zoom >= 10) {
           for (final airport in airports) {
             // Pass OpenAIP runway data if available
             final runways = _runwayService.getRunwaysForAirport(
