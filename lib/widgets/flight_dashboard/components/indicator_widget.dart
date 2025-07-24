@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
 /// Widget for displaying a flight indicator with icon, value, unit and label
