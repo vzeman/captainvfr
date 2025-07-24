@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:latlong2/latlong.dart' show LatLng;
+import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1803,7 +1803,105 @@ class MapScreenState extends State<MapScreen>
         index < flightPlan.waypoints.length) {
       // Update waypoint position with drag state
       _flightPlanService.updateWaypointPosition(index, newPosition, isDragging: isDragging);
+      
+      // When dropping (not dragging), check if dropped on a marker
+      if (!isDragging) {
+        _checkAndUpdateWaypointForMarker(index, newPosition);
+      }
     }
+  }
+  
+  /// Check if waypoint was dropped on an airport or navaid and update its name/type accordingly
+  void _checkAndUpdateWaypointForMarker(int waypointIndex, LatLng dropPosition) {
+    // Define search radius in meters (50 meters should be enough for UI precision)
+    const double searchRadiusMeters = 50.0;
+    const double searchRadiusKm = searchRadiusMeters / 1000.0;
+    
+    // First check airports
+    final nearbyAirports = _airportService.findAirportsNearby(dropPosition, radiusKm: searchRadiusKm);
+    if (nearbyAirports.isNotEmpty) {
+      // Find the closest airport
+      Airport? closestAirport;
+      double minDistance = double.infinity;
+      
+      for (final airport in nearbyAirports) {
+        final distance = Distance().as(LengthUnit.Meter, dropPosition, airport.position);
+        if (distance < minDistance && distance <= searchRadiusMeters) {
+          minDistance = distance;
+          closestAirport = airport;
+        }
+      }
+      
+      if (closestAirport != null) {
+        // Update waypoint with airport information
+        _flightPlanService.updateWaypointName(waypointIndex, closestAirport.name);
+        _flightPlanService.updateWaypointNotes(waypointIndex, 
+          closestAirport.icaoCode?.isNotEmpty == true 
+            ? closestAirport.icaoCode! 
+            : (closestAirport.iataCode ?? closestAirport.icao));
+        // Update waypoint type to airport
+        final waypoint = _flightPlanService.currentFlightPlan!.waypoints[waypointIndex];
+        waypoint.type = WaypointType.airport;
+        _flightPlanService.notifyListeners();
+        return;
+      }
+    }
+    
+    // If no airport found, check navaids
+    final nearbyNavaids = _navaidService.findNavaidsNearby(dropPosition, radiusKm: searchRadiusKm);
+    if (nearbyNavaids.isNotEmpty) {
+      // Find the closest navaid
+      Navaid? closestNavaid;
+      double minDistance = double.infinity;
+      
+      for (final navaid in nearbyNavaids) {
+        final distance = Distance().as(LengthUnit.Meter, dropPosition, navaid.position);
+        if (distance < minDistance && distance <= searchRadiusMeters) {
+          minDistance = distance;
+          closestNavaid = navaid;
+        }
+      }
+      
+      if (closestNavaid != null) {
+        // Update waypoint with navaid information
+        _flightPlanService.updateWaypointName(waypointIndex, closestNavaid.name);
+        _flightPlanService.updateWaypointNotes(waypointIndex, closestNavaid.ident);
+        // Update waypoint type to navaid
+        final waypoint = _flightPlanService.currentFlightPlan!.waypoints[waypointIndex];
+        waypoint.type = WaypointType.navaid;
+        _flightPlanService.notifyListeners();
+        return;
+      }
+    }
+    
+    // If no navaid found, check reporting points
+    if (_reportingPoints.isNotEmpty) {
+      // Find the closest reporting point
+      ReportingPoint? closestPoint;
+      double minDistance = double.infinity;
+      
+      for (final point in _reportingPoints) {
+        final distance = Distance().as(LengthUnit.Meter, dropPosition, point.position);
+        if (distance < minDistance && distance <= searchRadiusMeters) {
+          minDistance = distance;
+          closestPoint = point;
+        }
+      }
+      
+      if (closestPoint != null) {
+        // Update waypoint with reporting point information
+        _flightPlanService.updateWaypointName(waypointIndex, closestPoint.displayName);
+        _flightPlanService.updateWaypointNotes(waypointIndex, closestPoint.type ?? 'Reporting Point');
+        // Update waypoint type to reporting point
+        final waypoint = _flightPlanService.currentFlightPlan!.waypoints[waypointIndex];
+        waypoint.type = WaypointType.reportingPoint;
+        _flightPlanService.notifyListeners();
+        return;
+      }
+    }
+    
+    // If no marker found at drop position, keep it as a user waypoint
+    // The position has already been updated by updateWaypointPosition
   }
 
   // Handle airport selection
