@@ -385,22 +385,10 @@ class UnifiedRunwayPainter extends CustomPainter {
       text: TextSpan(
         text: text,
         style: TextStyle(
-          color: color,
-          fontSize: 9,
-          fontWeight: FontWeight.bold,
+          color: Colors.black,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
           fontFamily: 'monospace',
-          shadows: [
-            Shadow(
-              color: Colors.white.withValues(alpha: 0.9),
-              offset: const Offset(0.5, 0.5),
-              blurRadius: 1.5,
-            ),
-            Shadow(
-              color: Colors.white.withValues(alpha: 0.6),
-              offset: const Offset(-0.5, -0.5),
-              blurRadius: 1.0,
-            ),
-          ],
         ),
       ),
       textDirection: TextDirection.ltr,
@@ -420,22 +408,31 @@ class UnifiedRunwayPainter extends CustomPainter {
     
     canvas.rotate(textAngle);
     
-    // Add a subtle background for better contrast
+    // Add solid white background for better contrast
     final backgroundPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.3)
+      ..color = Colors.white
       ..style = PaintingStyle.fill;
     
-    final padding = 2.0;
+    final padding = 3.0;
     final backgroundRect = Rect.fromCenter(
       center: Offset(0, 0),
       width: textPainter.width + padding * 2,
       height: textPainter.height + padding * 2,
     );
     
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(backgroundRect, const Radius.circular(2.0)),
-      backgroundPaint,
-    );
+    // Draw background with border
+    final borderRadius = const Radius.circular(3.0);
+    final rrect = RRect.fromRectAndRadius(backgroundRect, borderRadius);
+    
+    canvas.drawRRect(rrect, backgroundPaint);
+    
+    // Add border
+    final borderPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
+    
+    canvas.drawRRect(rrect, borderPaint);
     
     textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height / 2));
     canvas.restore();
