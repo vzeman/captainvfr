@@ -15,6 +15,119 @@ class FlightPlanOverlay {
     ];
   }
 
+  /// Build clickable flight path segments for waypoint insertion.
+  static List<Polyline> buildClickableFlightPath(
+    FlightPlan flightPlan,
+    Function(int segmentIndex, LatLng position) onSegmentTapped,
+    bool isEditMode,
+  ) {
+    if (flightPlan.waypoints.length < 2) {
+      return [];
+    }
+
+    // Always show the flight path, make it thicker in edit mode
+    final points = flightPlan.waypoints.map((wp) => wp.latLng).toList();
+    return [
+      Polyline(
+        points: points,
+        strokeWidth: isEditMode ? 7.0 : 5.0,
+        color: Colors.green.shade600,
+      ),
+    ];
+  }
+
+  /// Build clickable markers along flight path segments for waypoint insertion.
+  /// Creates a fixed set of markers that will be visible at appropriate zoom levels.
+  static List<Marker> buildSegmentClickMarkers(
+    FlightPlan flightPlan,
+    Function(int segmentIndex, LatLng position) onSegmentTapped,
+    bool isEditMode,
+  ) {
+    if (flightPlan.waypoints.length < 2 || !isEditMode) {
+      return [];
+    }
+
+    // For simplicity, we'll create multiple markers per segment
+    // and let them naturally space out based on zoom level
+    // At high zoom, all markers are visible and well-spaced
+    // At low zoom, markers overlap but that's okay since segments are short on screen
+    
+    List<Marker> markers = [];
+    const int markersPerLongSegment = 5;
+    
+    for (int i = 0; i < flightPlan.waypoints.length - 1; i++) {
+      final from = flightPlan.waypoints[i].latLng;
+      final to = flightPlan.waypoints[i + 1].latLng;
+      
+      // Calculate segment length to determine marker count
+      final distanceMeters = const Distance().as(LengthUnit.Meter, from, to);
+      final distanceNm = distanceMeters / 1852.0;
+      
+      // Determine marker count based on distance
+      // Short segments (< 10nm): 1 marker
+      // Medium segments (10-50nm): 2-3 markers
+      // Long segments (> 50nm): 4-5 markers
+      int markerCount = 1;
+      if (distanceNm > 50) {
+        markerCount = markersPerLongSegment;
+      } else if (distanceNm > 25) {
+        markerCount = 3;
+      } else if (distanceNm > 10) {
+        markerCount = 2;
+      }
+      
+      // Create evenly spaced markers along the segment
+      for (int j = 0; j < markerCount; j++) {
+        final t = (j + 1) / (markerCount + 1);
+        final markerPos = LatLng(
+          from.latitude + t * (to.latitude - from.latitude),
+          from.longitude + t * (to.longitude - from.longitude),
+        );
+        
+        markers.add(
+          Marker(
+            point: markerPos,
+            width: 30,
+            height: 30,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                onSegmentTapped(i + 1, markerPos);
+              },
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Center(
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.green.shade600,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.add,
+                        size: 12,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    return markers;
+  }
+
+
   /// Highlight the next segment in the plan based on current position.
   static List<Polyline> buildNextSegment(
     FlightPlan flightPlan,
@@ -39,7 +152,7 @@ class FlightPlanOverlay {
   static List<Marker> buildWaypointMarkers(
     FlightPlan flightPlan,
     Function(int index) onWaypointTapped,
-    Function(int index, LatLng newPosition) onWaypointMoved,
+    Function(int index, LatLng newPosition, {bool isDragging}) onWaypointMoved,
     int? selectedWaypointIndex,
     Function(bool isDragging)? onDraggingChanged,
     GlobalKey mapKey,
@@ -266,3 +379,4 @@ class _SegmentLabel extends StatelessWidget {
     }
   }
 }
+

@@ -1354,6 +1354,21 @@ class MapScreenState extends State<MapScreen>
     }
   }
 
+  // Handle flight path segment tap for waypoint insertion
+  void _onFlightPathSegmentTapped(int segmentIndex, LatLng position) {
+    if (!_flightPlanService.isPlanning || !_showFlightPlanning) {
+      return;
+    }
+
+    // Insert waypoint at the specified position in the flight path
+    _flightPlanService.insertWaypointAt(segmentIndex, position);
+    
+    // Select the newly inserted waypoint
+    setState(() {
+      _selectedWaypointIndex = segmentIndex;
+    });
+  }
+
   // Show list of airspaces at a given point
   // Prefetch NOTAMs for airports in flight plan
   Future<void> _prefetchFlightPlanNotams() async {
@@ -1778,13 +1793,13 @@ class MapScreenState extends State<MapScreen>
   }
 
   // Handle waypoint move via drag and drop
-  void _onWaypointMoved(int index, LatLng newPosition) {
+  void _onWaypointMoved(int index, LatLng newPosition, {bool isDragging = false}) {
     final flightPlan = _flightPlanService.currentFlightPlan;
     if (flightPlan != null &&
         index >= 0 &&
         index < flightPlan.waypoints.length) {
-      // Update waypoint position
-      _flightPlanService.updateWaypointPosition(index, newPosition);
+      // Update waypoint position with drag state
+      _flightPlanService.updateWaypointPosition(index, newPosition, isDragging: isDragging);
     }
   }
 
@@ -2615,8 +2630,10 @@ class MapScreenState extends State<MapScreen>
                     children: [
                       // Flight plan route lines
                       PolylineLayer(
-                        polylines: FlightPlanOverlay.buildFlightPath(
+                        polylines: FlightPlanOverlay.buildClickableFlightPath(
                           flightPlan,
+                          _onFlightPathSegmentTapped,
+                          flightPlanService.isPlanning,
                         ),
                       ),
                       // Highlight next segment when tracking
@@ -2630,6 +2647,14 @@ class MapScreenState extends State<MapScreen>
                             ),
                           ),
                         ),
+                      // Flight path segment click markers (for waypoint insertion)
+                      MarkerLayer(
+                        markers: FlightPlanOverlay.buildSegmentClickMarkers(
+                          flightPlan,
+                          _onFlightPathSegmentTapped,
+                          flightPlanService.isPlanning,
+                        ),
+                      ),
                       // Waypoint markers
                       MarkerLayer(
                         markers: FlightPlanOverlay.buildWaypointMarkers(
@@ -2955,10 +2980,10 @@ class MapScreenState extends State<MapScreen>
                                 enablePlanning: false,
                               );
                             }
-                            // Sync flight plan visibility with panel visibility
-                            _flightPlanService.setFlightPlanVisibility(
-                              _showFlightPlanning,
-                            );
+                            // Always show flight plan on map when it exists
+                            if (_flightPlanService.currentFlightPlan != null) {
+                              _flightPlanService.setFlightPlanVisibility(true);
+                            }
                           });
                         },
                       ),
@@ -3280,10 +3305,10 @@ class MapScreenState extends State<MapScreen>
                               enablePlanning: false,
                             );
                           }
-                          // Sync flight plan visibility with panel visibility
-                          _flightPlanService.setFlightPlanVisibility(
-                            _showFlightPlanning,
-                          );
+                          // Always show flight plan on map when it exists
+                          if (_flightPlanService.currentFlightPlan != null) {
+                            _flightPlanService.setFlightPlanVisibility(true);
+                          }
                         });
                         // Note: Planning mode is NOT automatically enabled when showing the panel
                         // Users must explicitly enable it from within the panel
@@ -3512,10 +3537,7 @@ class MapScreenState extends State<MapScreen>
                                 if (_flightPlanService.isPlanning) {
                                   _flightPlanService.togglePlanningMode();
                                 }
-                                // Hide flight plan layer on map
-                                _flightPlanService.setFlightPlanVisibility(
-                                  false,
-                                );
+                                // Keep flight plan visible on map even when panel is closed
                                 // debugPrint('Flight planning closed from panel');
                               },
                             ),
@@ -3579,8 +3601,7 @@ class MapScreenState extends State<MapScreen>
                               if (_flightPlanService.isPlanning) {
                                 _flightPlanService.togglePlanningMode();
                               }
-                              // Hide flight plan layer on map
-                              _flightPlanService.setFlightPlanVisibility(false);
+                              // Keep flight plan visible on map even when panel is closed
                               // debugPrint('Flight planning closed from panel');
                             },
                           ),

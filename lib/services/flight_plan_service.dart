@@ -203,6 +203,46 @@ class FlightPlanService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Insert a waypoint at a specific index in the flight path
+  void insertWaypointAt(int index, LatLng position, {double? altitude}) {
+    if (_currentFlightPlan == null || !_isPlanning) {
+      return;
+    }
+
+    // Clamp index to valid range
+    final clampedIndex = index.clamp(0, _currentFlightPlan!.waypoints.length);
+
+    // Calculate altitude based on neighboring waypoints if not specified
+    double waypointAltitude = altitude ?? 3000.0;
+    if (altitude == null && _currentFlightPlan!.waypoints.isNotEmpty) {
+      if (clampedIndex == 0) {
+        // Insert at beginning - use first waypoint's altitude
+        waypointAltitude = _currentFlightPlan!.waypoints.first.altitude;
+      } else if (clampedIndex >= _currentFlightPlan!.waypoints.length) {
+        // Insert at end - use last waypoint's altitude
+        waypointAltitude = _currentFlightPlan!.waypoints.last.altitude;
+      } else {
+        // Insert in middle - interpolate between adjacent waypoints
+        final prevAlt = _currentFlightPlan!.waypoints[clampedIndex - 1].altitude;
+        final nextAlt = _currentFlightPlan!.waypoints[clampedIndex].altitude;
+        waypointAltitude = (prevAlt + nextAlt) / 2;
+      }
+    }
+
+    final waypoint = Waypoint(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      latitude: position.latitude,
+      longitude: position.longitude,
+      altitude: waypointAltitude,
+      name: 'WP${_waypointCounter++}',
+      type: WaypointType.user,
+    );
+
+    _currentFlightPlan!.waypoints.insert(clampedIndex, waypoint);
+    _currentFlightPlan!.modifiedAt = DateTime.now();
+    notifyListeners();
+  }
+
   // Add waypoint from airport
   void addAirportWaypoint(Airport airport, {double altitude = 3000.0}) {
     if (_currentFlightPlan == null || !_isPlanning) {
@@ -326,13 +366,18 @@ class FlightPlanService extends ChangeNotifier {
   }
 
   // Update waypoint position (for drag and drop on map)
-  void updateWaypointPosition(int index, LatLng newPosition) {
+  void updateWaypointPosition(int index, LatLng newPosition, {bool isDragging = false}) {
     if (_currentFlightPlan != null &&
         index >= 0 &&
         index < _currentFlightPlan!.waypoints.length) {
       _currentFlightPlan!.waypoints[index].latitude = newPosition.latitude;
       _currentFlightPlan!.waypoints[index].longitude = newPosition.longitude;
-      _currentFlightPlan!.modifiedAt = DateTime.now();
+      
+      // Only update modified time when drag is complete
+      if (!isDragging) {
+        _currentFlightPlan!.modifiedAt = DateTime.now();
+      }
+      
       notifyListeners();
     }
   }
