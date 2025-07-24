@@ -18,6 +18,7 @@ class AirportRunwaysTab extends StatefulWidget {
   final List<Runway> runways;
   final VoidCallback onRetry;
   final RunwayService runwayService;
+  final WeatherService weatherService;
 
   const AirportRunwaysTab({
     super.key,
@@ -27,6 +28,7 @@ class AirportRunwaysTab extends StatefulWidget {
     required this.runways,
     required this.onRetry,
     required this.runwayService,
+    required this.weatherService,
   });
 
   @override
@@ -37,6 +39,8 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
   Map<String, double>? _windData;
   List<WindComponents>? _windComponents;
   String? _bestRunway;
+  bool _isLoadingWind = true;
+  String? _lastProcessedMetar;
 
   @override
   void initState() {
@@ -47,15 +51,32 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
   @override
   void didUpdateWidget(AirportRunwaysTab oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Refetch wind data if airport changes or if METAR data is newly available
-    if (oldWidget.airport.icao != widget.airport.icao ||
-        (oldWidget.airport.rawMetar != widget.airport.rawMetar && 
-         widget.airport.rawMetar != null)) {
+    // Always check if we need to refetch when widget updates
+    _checkAndRefetchWindData();
+  }
+
+  void _checkAndRefetchWindData() {
+    // Check if we have new METAR data that we haven't processed yet
+    final currentMetar = widget.airport.rawMetar;
+    if (currentMetar != null && 
+        currentMetar.isNotEmpty && 
+        currentMetar != _lastProcessedMetar) {
+      debugPrint('New METAR data detected, refetching wind data');
+      _fetchWindData();
+    } else if (_windData == null && !_isLoadingWind) {
+      // If we don't have wind data and aren't loading, try to fetch
+      debugPrint('No wind data present, attempting to fetch');
       _fetchWindData();
     }
   }
 
   Future<void> _fetchWindData() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoadingWind = true;
+    });
+    
     try {
       String? metar;
       
@@ -65,9 +86,21 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
         debugPrint('Using existing METAR from airport data');
       } else {
         // If not, fetch it ourselves
-        final weatherService = WeatherService();
-        metar = await weatherService.getMetar(widget.airport.icao);
-        debugPrint('Fetched new METAR data');
+        metar = await widget.weatherService.getMetar(widget.airport.icao);
+        debugPrint('Fetched new METAR data: ${metar != null ? 'success' : 'null'}');
+        
+        // If still no data, try to force reload the weather service
+        if (metar == null || metar.isEmpty) {
+          debugPrint('No cached METAR found, forcing weather service reload...');
+          await widget.weatherService.initialize();
+          
+          // Force reload to get fresh data
+          await widget.weatherService.forceReload();
+          
+          // Try fetching again after force reload
+          metar = await widget.weatherService.getMetar(widget.airport.icao);
+          debugPrint('After force reload result: ${metar != null ? 'success' : 'null'}');
+        }
       }
       
       if (metar != null && metar.isNotEmpty) {
@@ -78,26 +111,50 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
           final windData = RunwayWindCalculator.parseMetarWind(windString);
           
           if (windData != null && windData['direction'] != -1 && widget.runways.isNotEmpty) {
-            setState(() {
-              _windData = windData;
-              _windComponents = RunwayWindCalculator.calculateWindComponentsForRunways(
-                widget.runways,
-                windData['direction']!,
-                windData['gust'] ?? windData['speed']!, // Use gust speed if available
-              );
-              _bestRunway = _windComponents?.first.runwayDesignation;
-            });
+            if (mounted) {
+              setState(() {
+                _windData = windData;
+                _windComponents = RunwayWindCalculator.calculateWindComponentsForRunways(
+                  widget.runways,
+                  windData['direction']!,
+                  windData['gust'] ?? windData['speed']!, // Use gust speed if available
+                );
+                _bestRunway = _windComponents?.first.runwayDesignation;
+                _isLoadingWind = false;
+                _lastProcessedMetar = metar; // Track the processed METAR
+              });
+            }
+            return;
           }
         }
+      }
+      
+      // No wind data available
+      if (mounted) {
+        setState(() {
+          _isLoadingWind = false;
+        });
       }
     } catch (e) {
       // Silently fail - wind data is optional enhancement
       debugPrint('Failed to fetch wind data: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingWind = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Check if we need to refetch wind data on every build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _checkAndRefetchWindData();
+      }
+    });
+
     if (widget.isLoading) {
       return const LoadingWidget(message: 'Loading runway data...');
     }
@@ -130,8 +187,11 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Wind Information (if available)
-          if (_windData != null) ...[
+          // Wind Information (if available or loading)
+          if (_isLoadingWind) ...[
+            _buildWindLoadingIndicator(context),
+            const SizedBox(height: 16),
+          ] else if (_windData != null) ...[
             _buildWindInfo(context),
             const SizedBox(height: 16),
           ],
@@ -173,6 +233,33 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
   }
   
   
+  Widget _buildWindLoadingIndicator(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Card(
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Loading wind data...',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildWindInfo(BuildContext context) {
     final theme = Theme.of(context);
     final windDirection = _windData!['direction']!.toInt();

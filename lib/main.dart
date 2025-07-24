@@ -465,25 +465,38 @@ class CaptainVFRApp extends StatefulWidget {
 
 class _CaptainVFRAppState extends State<CaptainVFRApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
+  bool _hasNavigated = false;
 
   @override
   void initState() {
     super.initState();
-    // Navigate to main screen after first frame
+    // Navigate to main screen after first frame, but only once
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _navigatorKey.currentState?.pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              const SensorNotificationsWrapper(
-                child: ConnectivityBanner(child: MapScreen()),
-              ),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 500),
-        ),
-      );
+      if (!_hasNavigated && mounted) {
+        _hasNavigated = true;
+        final navigator = _navigatorKey.currentState;
+        if (navigator != null) {
+          navigator.pushReplacement(
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  const SensorNotificationsWrapper(
+                    child: ConnectivityBanner(child: MapScreen()),
+                  ),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              transitionDuration: const Duration(milliseconds: 500),
+            ),
+          );
+        }
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    // Clean up resources
+    super.dispose();
   }
 
   @override

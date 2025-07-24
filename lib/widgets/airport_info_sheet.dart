@@ -308,6 +308,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet>
                     _fetchRunways();
                   },
                   runwayService: _dataFetcher.runwayService,
+                  weatherService: widget.weatherService,
                 ),
                 AirportFrequenciesTab(
                   airport: widget.airport,

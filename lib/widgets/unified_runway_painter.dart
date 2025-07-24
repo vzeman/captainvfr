@@ -146,6 +146,18 @@ class UnifiedRunwayPainter extends CustomPainter {
         paint: paint,
       );
       
+      // Draw runway designation labels
+      if (zoom >= 8) {
+        _drawRunwayDesignationLabels(
+          canvas: canvas,
+          runway: runway,
+          start: endpoints.start,
+          end: endpoints.end,
+          angle: endpoints.angle,
+          color: runwayColor,
+        );
+      }
+      
       // Draw length label
       if (zoom >= 14 && runway.lengthFt >= 3000) {
         _drawLengthLabel(
@@ -309,6 +321,120 @@ class UnifiedRunwayPainter extends CustomPainter {
     
     canvas.rotate(textAngle);
     textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height - 2));
+    canvas.restore();
+  }
+
+  void _drawRunwayDesignationLabels({
+    required Canvas canvas,
+    required UnifiedRunway runway,
+    required Offset start,
+    required Offset end,
+    required double angle,
+    required Color color,
+  }) {
+    // Skip if runway identifiers are empty
+    if (runway.leIdent.isEmpty && runway.heIdent.isEmpty) return;
+    
+    // Calculate offset for labels (slightly outside runway ends)
+    final labelOffset = 15.0; // Distance from runway end
+    
+    // Calculate positions slightly outside runway ends
+    final leOffset = Offset(
+      math.cos(angle + math.pi) * labelOffset,
+      math.sin(angle + math.pi) * labelOffset,
+    );
+    final heOffset = Offset(
+      math.cos(angle) * labelOffset,
+      math.sin(angle) * labelOffset,
+    );
+    
+    final leLabelPos = start + leOffset;
+    final heLabelPos = end + heOffset;
+    
+    // Draw LE (Low End) label if available
+    if (runway.leIdent.isNotEmpty) {
+      _drawDesignationLabel(
+        canvas: canvas,
+        position: leLabelPos,
+        text: runway.leIdent,
+        angle: angle,
+        color: color,
+      );
+    }
+    
+    // Draw HE (High End) label if available
+    if (runway.heIdent.isNotEmpty) {
+      _drawDesignationLabel(
+        canvas: canvas,
+        position: heLabelPos,
+        text: runway.heIdent,
+        angle: angle,
+        color: color,
+      );
+    }
+  }
+
+  void _drawDesignationLabel({
+    required Canvas canvas,
+    required Offset position,
+    required String text,
+    required double angle,
+    required Color color,
+  }) {
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          fontFamily: 'monospace',
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    
+    canvas.save();
+    canvas.translate(position.dx, position.dy);
+    
+    // Rotate text by 90 degrees perpendicular to runway
+    var textAngle = angle + math.pi / 2;
+    
+    // Ensure text is readable (flip if upside down)
+    if (textAngle > math.pi / 2 || textAngle < -math.pi / 2) {
+      textAngle += math.pi;
+    }
+    
+    canvas.rotate(textAngle);
+    
+    // Add solid white background for better contrast
+    final backgroundPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    
+    final padding = 3.0;
+    final backgroundRect = Rect.fromCenter(
+      center: Offset(0, 0),
+      width: textPainter.width + padding * 2,
+      height: textPainter.height + padding * 2,
+    );
+    
+    // Draw background with border
+    final borderRadius = const Radius.circular(3.0);
+    final rrect = RRect.fromRectAndRadius(backgroundRect, borderRadius);
+    
+    canvas.drawRRect(rrect, backgroundPaint);
+    
+    // Add border
+    final borderPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
+    
+    canvas.drawRRect(rrect, borderPaint);
+    
+    textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height / 2));
     canvas.restore();
   }
 
