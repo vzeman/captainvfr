@@ -89,6 +89,24 @@ class MapScreenState extends State<MapScreen>
   static const double _searchRadiusZoomFactor = 0.5; // Halves radius per zoom level
   static const int _searchRadiusZoomBase = 9;      // Base zoom level for radius calculation
   
+  // Lookup table for search radius by zoom level (precomputed for performance)
+  static final Map<int, double> _searchRadiusLookup = {
+    5: 32000.0,   // 2000 * 0.5^(5-9) = 2000 * 16
+    6: 16000.0,   // 2000 * 0.5^(6-9) = 2000 * 8
+    7: 8000.0,    // 2000 * 0.5^(7-9) = 2000 * 4
+    8: 4000.0,    // 2000 * 0.5^(8-9) = 2000 * 2
+    9: 2000.0,    // 2000 * 0.5^(9-9) = 2000 * 1
+    10: 1000.0,   // 2000 * 0.5^(10-9) = 2000 * 0.5
+    11: 500.0,    // 2000 * 0.5^(11-9) = 2000 * 0.25
+    12: 250.0,    // 2000 * 0.5^(12-9) = 2000 * 0.125
+    13: 125.0,    // 2000 * 0.5^(13-9) = 2000 * 0.0625
+    14: 62.5,     // 2000 * 0.5^(14-9) = 2000 * 0.03125
+    15: 31.25,    // 2000 * 0.5^(15-9) = 2000 * 0.015625
+    16: 15.625,   // 2000 * 0.5^(16-9) = 2000 * 0.0078125
+    17: 7.8125,   // 2000 * 0.5^(17-9) = 2000 * 0.00390625
+    18: 3.90625,  // 2000 * 0.5^(18-9) = 2000 * 0.001953125
+  };
+  
   // Services
   late final FlightService _flightService;
   late final AirportService _airportService;
@@ -1816,15 +1834,41 @@ class MapScreenState extends State<MapScreen>
     }
   }
   
+  /// Find the closest item within search radius from a list of items with positions
+  T? _findClosestItemWithinRadius<T>({
+    required List<T> items,
+    required LatLng dropPosition,
+    required double searchRadiusMeters,
+    required LatLng Function(T) getPosition,
+  }) {
+    T? closestItem;
+    double minDistance = double.infinity;
+    
+    for (final item in items) {
+      final distance = Distance().as(LengthUnit.Meter, dropPosition, getPosition(item));
+      if (distance <= searchRadiusMeters && distance < minDistance) {
+        minDistance = distance;
+        closestItem = item;
+      }
+    }
+    
+    return closestItem;
+  }
+
   /// Check if waypoint was dropped on an airport or navaid and update its name/type accordingly
   void _checkAndUpdateWaypointForMarker(int waypointIndex, LatLng dropPosition) {
-    // Calculate search radius based on zoom level
-    // At zoom 10: ~1000m radius, at zoom 15: ~50m radius
-    final zoom = _mapController.camera.zoom;
-    final searchRadiusMeters = _baseSearchRadius * math.pow(_searchRadiusZoomFactor, zoom - _searchRadiusZoomBase);
-    
-    // Get all airports in the current view since findAirportsNearby might have unit issues
-    final bounds = _mapController.camera.visibleBounds;
+    try {
+      // Calculate search radius based on zoom level
+      // At zoom 10: ~1000m radius, at zoom 15: ~31m radius
+      final zoom = _mapController.camera.zoom;
+      final zoomInt = zoom.round();
+      
+      // Use lookup table for common zoom levels, fallback to calculation for others
+      final searchRadiusMeters = _searchRadiusLookup[zoomInt] ?? 
+          _baseSearchRadius * math.pow(_searchRadiusZoomFactor, zoom - _searchRadiusZoomBase);
+      
+      // Get all airports in the current view
+      final bounds = _mapController.camera.visibleBounds;
     final airports = _airports.where((airport) {
       final lat = airport.position.latitude;
       final lng = airport.position.longitude;
@@ -1835,29 +1879,12 @@ class MapScreenState extends State<MapScreen>
     }).toList();
     
     // Find the closest airport within search radius
-    Airport? closestAirport;
-    double minDistance = double.infinity;
-    
-    // Also find the absolute closest airport for debugging
-    Airport? nearestAirport;
-    double nearestDistance = double.infinity;
-    
-    for (final airport in airports) {
-      final distance = Distance().as(LengthUnit.Meter, dropPosition, airport.position);
-      
-      // Track the nearest airport regardless of search radius
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearestAirport = airport;
-      }
-      
-      // Check if within search radius
-      if (distance <= searchRadiusMeters && distance < minDistance) {
-        minDistance = distance;
-        closestAirport = airport;
-      }
-    }
-    
+    final closestAirport = _findClosestItemWithinRadius<Airport>(
+      items: airports,
+      dropPosition: dropPosition,
+      searchRadiusMeters: searchRadiusMeters,
+      getPosition: (airport) => airport.position,
+    );
     
     if (closestAirport != null) {
       // Update waypoint with airport information
@@ -1882,16 +1909,12 @@ class MapScreenState extends State<MapScreen>
     }).toList();
     
     // Find the closest navaid within search radius
-    Navaid? closestNavaid;
-    minDistance = double.infinity;
-    
-    for (final navaid in navaids) {
-      final distance = Distance().as(LengthUnit.Meter, dropPosition, navaid.position);
-      if (distance <= searchRadiusMeters && distance < minDistance) {
-        minDistance = distance;
-        closestNavaid = navaid;
-      }
-    }
+    final closestNavaid = _findClosestItemWithinRadius<Navaid>(
+      items: navaids,
+      dropPosition: dropPosition,
+      searchRadiusMeters: searchRadiusMeters,
+      getPosition: (navaid) => navaid.position,
+    );
     
     if (closestNavaid != null) {
       // Update waypoint with navaid information
@@ -1904,17 +1927,13 @@ class MapScreenState extends State<MapScreen>
     
     // If no navaid found, check reporting points
     if (_reportingPoints.isNotEmpty) {
-      // Find the closest reporting point
-      ReportingPoint? closestPoint;
-      double minDistance = double.infinity;
-      
-      for (final point in _reportingPoints) {
-        final distance = Distance().as(LengthUnit.Meter, dropPosition, point.position);
-        if (distance < minDistance && distance <= searchRadiusMeters) {
-          minDistance = distance;
-          closestPoint = point;
-        }
-      }
+      // Find the closest reporting point within search radius
+      final closestPoint = _findClosestItemWithinRadius<ReportingPoint>(
+        items: _reportingPoints,
+        dropPosition: dropPosition,
+        searchRadiusMeters: searchRadiusMeters,
+        getPosition: (point) => point.position,
+      );
       
       if (closestPoint != null) {
         // Update waypoint with reporting point information
@@ -1928,6 +1947,10 @@ class MapScreenState extends State<MapScreen>
     
     // If no marker found at drop position, keep it as a user waypoint
     // The position has already been updated by updateWaypointPosition
+    } catch (e) {
+      // Handle cases where map controller is not ready
+      // Position update already happened, just skip marker detection
+    }
   }
 
   // Handle airport selection
@@ -2048,6 +2071,8 @@ class MapScreenState extends State<MapScreen>
         waypointIndex >= flightPlan.waypoints.length) {
       return;
     }
+    
+    try {
 
     final waypoint = flightPlan.waypoints[waypointIndex];
     _mapController.move(
@@ -2057,6 +2082,9 @@ class MapScreenState extends State<MapScreen>
 
     // Disable auto-centering when focusing on waypoint
     _disableAutoCentering();
+    } catch (e) {
+      // Handle cases where map controller is not ready
+    }
   }
 
   /// Disables auto-centering mode and cancels related timers.
@@ -2079,6 +2107,8 @@ class MapScreenState extends State<MapScreen>
     if (flightPlan == null || flightPlan.waypoints.isEmpty) {
       return;
     }
+    
+    try {
 
     // Use built-in method for better performance
     final bounds = LatLngBounds.fromPoints(
@@ -2117,6 +2147,9 @@ class MapScreenState extends State<MapScreen>
 
     // Disable auto-centering when fitting flight plan
     _disableAutoCentering();
+    } catch (e) {
+      // Handle cases where map controller is not ready
+    }
   }
 
   // Handle navaid selection
