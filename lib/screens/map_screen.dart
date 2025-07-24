@@ -1813,8 +1813,10 @@ class MapScreenState extends State<MapScreen>
   
   /// Check if waypoint was dropped on an airport or navaid and update its name/type accordingly
   void _checkAndUpdateWaypointForMarker(int waypointIndex, LatLng dropPosition) {
-    // Define search radius in meters (200 meters for better UI detection)
-    const double searchRadiusMeters = 200.0;
+    // Calculate search radius based on zoom level
+    // At zoom 10: ~1000m radius, at zoom 15: ~50m radius
+    final zoom = _mapController.camera.zoom;
+    final searchRadiusMeters = 2000.0 * math.pow(0.5, zoom - 9);
     
     // Get all airports in the current view since findAirportsNearby might have unit issues
     final bounds = _mapController.camera.visibleBounds;
@@ -1828,17 +1830,35 @@ class MapScreenState extends State<MapScreen>
     }).toList();
     
     debugPrint('Checking ${airports.length} airports in view for drop position: $dropPosition');
+    debugPrint('Zoom level: $zoom, search radius: ${searchRadiusMeters.toStringAsFixed(1)}m');
     
     // Find the closest airport within search radius
     Airport? closestAirport;
     double minDistance = double.infinity;
     
+    // Also find the absolute closest airport for debugging
+    Airport? nearestAirport;
+    double nearestDistance = double.infinity;
+    
     for (final airport in airports) {
       final distance = Distance().as(LengthUnit.Meter, dropPosition, airport.position);
+      
+      // Track the nearest airport regardless of search radius
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestAirport = airport;
+      }
+      
+      // Check if within search radius
       if (distance <= searchRadiusMeters && distance < minDistance) {
         minDistance = distance;
         closestAirport = airport;
       }
+    }
+    
+    // Debug: show nearest airport even if outside search radius
+    if (nearestAirport != null && closestAirport == null) {
+      debugPrint('Nearest airport is ${nearestAirport.name} at ${nearestDistance.toStringAsFixed(1)}m (outside search radius)');
     }
     
     if (closestAirport != null) {
@@ -1854,8 +1874,10 @@ class MapScreenState extends State<MapScreen>
       waypoint.type = WaypointType.airport;
       _flightPlanService.notifyListeners();
       return;
+    } else if (airports.isEmpty) {
+      debugPrint('No airports loaded in current view');
     } else {
-      debugPrint('No airport found within ${searchRadiusMeters}m of drop position');
+      debugPrint('No airport found within ${searchRadiusMeters.toStringAsFixed(1)}m of drop position');
     }
     
     // If no airport found, check navaids
