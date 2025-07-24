@@ -40,6 +40,7 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
   List<WindComponents>? _windComponents;
   String? _bestRunway;
   bool _isLoadingWind = true;
+  String? _lastProcessedMetar;
 
   @override
   void initState() {
@@ -50,10 +51,21 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
   @override
   void didUpdateWidget(AirportRunwaysTab oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Refetch wind data if airport changes or if METAR data is newly available
-    if (oldWidget.airport.icao != widget.airport.icao ||
-        (oldWidget.airport.rawMetar != widget.airport.rawMetar && 
-         widget.airport.rawMetar != null)) {
+    // Always check if we need to refetch when widget updates
+    _checkAndRefetchWindData();
+  }
+
+  void _checkAndRefetchWindData() {
+    // Check if we have new METAR data that we haven't processed yet
+    final currentMetar = widget.airport.rawMetar;
+    if (currentMetar != null && 
+        currentMetar.isNotEmpty && 
+        currentMetar != _lastProcessedMetar) {
+      debugPrint('New METAR data detected, refetching wind data');
+      _fetchWindData();
+    } else if (_windData == null && !_isLoadingWind) {
+      // If we don't have wind data and aren't loading, try to fetch
+      debugPrint('No wind data present, attempting to fetch');
       _fetchWindData();
     }
   }
@@ -109,6 +121,7 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
                 );
                 _bestRunway = _windComponents?.first.runwayDesignation;
                 _isLoadingWind = false;
+                _lastProcessedMetar = metar; // Track the processed METAR
               });
             }
             return;
@@ -135,6 +148,13 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
 
   @override
   Widget build(BuildContext context) {
+    // Check if we need to refetch wind data on every build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _checkAndRefetchWindData();
+      }
+    });
+
     if (widget.isLoading) {
       return const LoadingWidget(message: 'Loading runway data...');
     }
