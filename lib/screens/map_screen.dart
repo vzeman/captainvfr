@@ -1056,16 +1056,7 @@ class MapScreenState extends State<MapScreen>
           maxLon: bounds.northEast.longitude,
         );
         
-        debugPrint('📍 Loaded ${obstacles.length} obstacles for area');
-        if (obstacles.isNotEmpty) {
-          // Show some sample obstacles for debugging
-          final tall = obstacles.where((o) => o.totalHeightFt > 200).toList();
-          debugPrint('   - Tall obstacles (>200ft): ${tall.length}');
-          if (tall.isNotEmpty) {
-            debugPrint('   - Sample tall obstacle: ${tall.first.name} at ${tall.first.position}, totalHeight: ${tall.first.totalHeightFt}ft');
-          }
-          debugPrint('   - Current zoom: ${_mapController.camera.zoom}');
-        }
+        // Loaded ${obstacles.length} obstacles for area
         
         if (mounted) {
           setState(() {

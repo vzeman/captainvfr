@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import '../models/runway.dart';
 import '../models/unified_runway.dart';
@@ -64,13 +63,13 @@ class RunwayService {
       );
       
       if (testRunways.isNotEmpty) {
-        developer.log('✅ Using tiled runway data');
+        // Using tiled runway data
         _useTiledData = true;
         _useBundledData = false;
         return;
       }
     } catch (e) {
-      developer.log('ℹ️ Tiled runway data not available: $e');
+      // Tiled runway data not available: $e
     }
     
     // Fall back to bundled data
@@ -79,7 +78,7 @@ class RunwayService {
     
     // If bundled data is available, use it
     if (_bundledService.runways.isNotEmpty) {
-      developer.log('✅ Using bundled runway data (${_bundledService.runways.length} runways)');
+      // Using bundled runway data (${_bundledService.runways.length} runways)
       _useBundledData = true;
     } else {
       // Fall back to old method
@@ -94,10 +93,10 @@ class RunwayService {
       final cachedRunways = await _cacheService.getCachedRunways();
       if (cachedRunways.isNotEmpty) {
         _runways = cachedRunways;
-        developer.log('✅ Loaded ${_runways.length} runways from cache');
+        // Loaded ${_runways.length} runways from cache
       }
     } catch (e) {
-      developer.log('❌ Error loading cached runways: $e');
+      // Error loading cached runways: $e
     }
   }
   
@@ -122,7 +121,7 @@ class RunwayService {
     }
     
     try {
-      developer.log('📍 Loading runways for area: ($minLat, $minLon) to ($maxLat, $maxLon)');
+      // Loading runways for area: ($minLat, $minLon) to ($maxLat, $maxLon)
       
       // Load runways from tiles
       final runways = await _tiledDataLoader.loadRunwaysForArea(
@@ -154,9 +153,9 @@ class RunwayService {
           uniqueAirports.add(entry.key);
         }
       }
-      developer.log('✅ Loaded ${runways.length} runways for area, ${uniqueAirports.length} airports updated');
+      // Loaded ${runways.length} runways for area, ${uniqueAirports.length} airports updated
     } catch (e) {
-      developer.log('❌ Error loading runways for area: $e');
+      // Error loading runways for area: $e
     }
   }
 
@@ -177,7 +176,7 @@ class RunwayService {
             .difference(lastFetch)
             .inHours;
         if (hoursSinceLastFetch < 24) {
-          developer.log('🔄 Runways data is recent, skipping fetch');
+          // Runways data is recent, skipping fetch
           return;
         }
       }
@@ -186,7 +185,7 @@ class RunwayService {
     _isLoading = true;
 
     try {
-      developer.log('🌐 Fetching runways data from remote source...');
+      // Fetching runways data from remote source...
 
       final response = await http
           .get(Uri.parse(_runwaysUrl), headers: {'Accept': 'text/csv'})
@@ -202,14 +201,12 @@ class RunwayService {
         await _cacheService.cacheRunways(runways);
         await _cacheService.setRunwaysLastFetch(DateTime.now());
 
-        developer.log(
-          '✅ Successfully fetched and cached ${runways.length} runways',
-        );
+        // Successfully fetched and cached ${runways.length} runways
       } else {
         throw Exception('Failed to fetch runways: HTTP ${response.statusCode}');
       }
     } catch (e) {
-      developer.log('❌ Error fetching runways: $e');
+      // Error fetching runways: $e
       // If we have cached data, continue using it
       if (_runways.isEmpty) {
         rethrow;
@@ -240,15 +237,15 @@ class RunwayService {
           }
         } catch (e) {
           // Skip malformed rows
-          developer.log('⚠️ Skipping malformed runway row: $e');
+          // Skipping malformed runway row: $e
           continue;
         }
       }
 
-      developer.log('📊 Parsed ${runways.length} runways from CSV');
+      // Parsed ${runways.length} runways from CSV
       return runways;
     } catch (e) {
-      developer.log('❌ Error parsing runways CSV: $e');
+      // Error parsing runways CSV: $e
       rethrow;
     }
   }
@@ -464,7 +461,7 @@ class RunwayService {
     _unifiedRunwaysByAirport.clear();
     _loadedAreas.clear();
     _tiledDataLoader.clearCacheForType('runways');
-    developer.log('🗑️ Runway cache cleared');
+    // Runway cache cleared
   }
 }
 
