@@ -1128,6 +1128,56 @@ class MapScreenState extends State<MapScreen>
       }
     });
   }
+  
+  // Handle zoom button changes to trigger map updates
+  void _onZoomButtonPressed() {
+    // Use frame-aware scheduler for staggered loading (same as gesture-based zoom)
+    final scheduler = FrameAwareScheduler();
+    
+    // Load airports first (highest priority)
+    scheduler.scheduleOperation(
+      id: 'load_airports',
+      operation: _loadAirports,
+      debounce: const Duration(milliseconds: 300),
+      highPriority: true,
+    );
+    
+    // Load navaids with delay
+    if (_mapStateController.showNavaids) {
+      scheduler.scheduleOperation(
+        id: 'load_navaids',
+        operation: _loadNavaids,
+        debounce: const Duration(milliseconds: 600),
+      );
+    }
+    
+    // Reporting points with more delay
+    if (_mapStateController.showAirspaces) {
+      scheduler.scheduleOperation(
+        id: 'load_reporting_points',
+        operation: _loadReportingPoints,
+        debounce: const Duration(milliseconds: 800),
+      );
+    }
+    
+    // Obstacles with delay
+    if (_mapStateController.showObstacles) {
+      scheduler.scheduleOperation(
+        id: 'load_obstacles',
+        operation: _loadObstacles,
+        debounce: const Duration(milliseconds: 900),
+      );
+    }
+    
+    // Hotspots with delay  
+    if (_mapStateController.showHotspots) {
+      scheduler.scheduleOperation(
+        id: 'load_hotspots',
+        operation: _loadHotspots,
+        debounce: const Duration(milliseconds: 950),
+      );
+    }
+  }
 
   // Toggle position tracking
   Future<void> _togglePositionTracking() async {
@@ -1309,6 +1359,17 @@ class MapScreenState extends State<MapScreen>
       // Load hotspots if needed
       _loadHotspots();
     }
+  }
+  
+  // Toggle METAR weather display
+  void _toggleMetar() {
+    setState(() {
+      _mapStateController.toggleMetar();
+      if (_mapStateController.showMetar) {
+        // Load weather data when enabled
+        _loadWeatherForVisibleAirports();
+      }
+    });
   }
 
 
@@ -2792,19 +2853,24 @@ class MapScreenState extends State<MapScreen>
                   onHotspotTap: _onHotspotSelected,
                 ),
               // Airport markers with tap handling (optimized)
-              OptimizedAirportMarkersLayer(
-                airports: _airports.where((airport) {
-                  // Filter heliports and balloonports based on toggle
-                  if ((airport.type == 'heliport' || airport.type == 'balloonport') && !_mapStateController.showHeliports) {
-                    return false;
-                  }
-                  // Small airports are always shown (filtered by zoom level automatically)
-                  // Show medium and large airports always, and show small airports/heliports based on toggles
-                  return true;
-                }).toList(),
-                airportRunways: _airportRunways,
-                onAirportTap: _onAirportSelected,
-                showHeliports: _mapStateController.showHeliports,
+              Consumer<SettingsService>(
+                builder: (context, settings, child) {
+                  return OptimizedAirportMarkersLayer(
+                    airports: _airports.where((airport) {
+                      // Filter heliports and balloonports based on toggle
+                      if ((airport.type == 'heliport' || airport.type == 'balloonport') && !_mapStateController.showHeliports) {
+                        return false;
+                      }
+                      // Small airports are always shown (filtered by zoom level automatically)
+                      // Show medium and large airports always, and show small airports/heliports based on toggles
+                      return true;
+                    }).toList(),
+                    airportRunways: _airportRunways,
+                    onAirportTap: _onAirportSelected,
+                    showHeliports: _mapStateController.showHeliports,
+                    distanceUnit: settings.distanceUnit,
+                  );
+                },
               ),
               // Navaid markers (optimized)
               if (_mapStateController.showNavaids && _navaids.isNotEmpty)
@@ -3128,6 +3194,14 @@ class MapScreenState extends State<MapScreen>
                         tooltip: 'Toggle Heliports',
                         isActive: _mapStateController.showHeliports,
                         onPressed: _toggleHeliports,
+                      ),
+                      _buildLayerToggle(
+                        icon: _mapStateController.showMetar
+                            ? Icons.cloud
+                            : Icons.cloud_outlined,
+                        tooltip: 'Toggle METAR',
+                        isActive: _mapStateController.showMetar,
+                        onPressed: _toggleMetar,
                       ),
                       _buildLayerToggle(
                         icon: _mapStateController.showAirspaces
@@ -3863,6 +3937,7 @@ class MapScreenState extends State<MapScreen>
               mapController: _mapController,
               minZoom: MapConstants.minZoom,
               maxZoom: MapConstants.maxZoom,
+              onZoomChanged: _onZoomButtonPressed,
             ),
           ),
           

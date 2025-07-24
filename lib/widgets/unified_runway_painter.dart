@@ -15,6 +15,7 @@ class UnifiedRunwayPainter extends CustomPainter {
   final double strokeWidth;
   final double? latitude;
   final double? longitude;
+  final String distanceUnit;
 
   UnifiedRunwayPainter({
     required this.runways,
@@ -23,6 +24,7 @@ class UnifiedRunwayPainter extends CustomPainter {
     this.strokeWidth = 2.0,
     this.latitude,
     this.longitude,
+    this.distanceUnit = 'nm',
   });
 
   /// Create from OurAirports runway data
@@ -33,6 +35,7 @@ class UnifiedRunwayPainter extends CustomPainter {
     double? strokeWidth,
     double? latitude,
     double? longitude,
+    String? distanceUnit,
   }) {
     final unifiedRunways = runways.map((r) => UnifiedRunway.fromOurAirports(r)).toList();
     return UnifiedRunwayPainter(
@@ -42,6 +45,7 @@ class UnifiedRunwayPainter extends CustomPainter {
       strokeWidth: strokeWidth ?? 2.0,
       latitude: latitude,
       longitude: longitude,
+      distanceUnit: distanceUnit ?? 'nm',
     );
   }
 
@@ -54,6 +58,7 @@ class UnifiedRunwayPainter extends CustomPainter {
     double? strokeWidth,
     double? latitude,
     double? longitude,
+    String? distanceUnit,
   }) {
     final unifiedRunways = runways.map((r) => UnifiedRunway.fromOpenAIPRunway(
       r,
@@ -68,6 +73,7 @@ class UnifiedRunwayPainter extends CustomPainter {
       strokeWidth: strokeWidth ?? 2.0,
       latitude: latitude,
       longitude: longitude,
+      distanceUnit: distanceUnit ?? 'nm',
     );
   }
 
@@ -146,21 +152,17 @@ class UnifiedRunwayPainter extends CustomPainter {
         paint: paint,
       );
       
-      // Draw runway designation labels
-      // Show labels at the same zoom level as runways or slightly later
-      if (zoom >= GeoConstants.minZoomForRunways + 1) {
-        _drawRunwayDesignationLabels(
-          canvas: canvas,
-          runway: runway,
-          start: endpoints.start,
-          end: endpoints.end,
-          angle: endpoints.angle,
-          color: runwayColor,
-        );
-      }
-      
+      _drawRunwayDesignationLabels(
+        canvas: canvas,
+        runway: runway,
+        start: endpoints.start,
+        end: endpoints.end,
+        angle: endpoints.angle,
+        color: runwayColor,
+      );
+
       // Draw length label
-      if (zoom >= 14 && runway.lengthFt >= 3000) {
+      if (zoom >= 14) {
         _drawLengthLabel(
           canvas: canvas,
           start: endpoints.start,
@@ -297,9 +299,9 @@ class UnifiedRunwayPainter extends CustomPainter {
       text: TextSpan(
         text: lengthText,
         style: TextStyle(
-          color: color.withValues(alpha: 0.8),
+          color: Colors.black,
           fontSize: 9,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
         ),
       ),
       textDirection: TextDirection.ltr,
@@ -321,7 +323,26 @@ class UnifiedRunwayPainter extends CustomPainter {
     }
     
     canvas.rotate(textAngle);
-    textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height - 2));
+    
+    // Add padding and background
+    final padding = 2.0;
+    final backgroundPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.5)
+      ..style = PaintingStyle.fill;
+    
+    final backgroundRect = Rect.fromLTWH(
+      -textPainter.width / 2 - padding,
+      -textPainter.height - 4 - padding,  // 2px padding from runway line + 2px extra padding
+      textPainter.width + padding * 2,
+      textPainter.height + padding * 2,
+    );
+    
+    final borderRadius = BorderRadius.circular(2.0);
+    final rrect = RRect.fromRectAndRadius(backgroundRect, borderRadius.topLeft);
+    
+    canvas.drawRRect(rrect, backgroundPaint);
+    
+    textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height - 4));
     canvas.restore();
   }
 
@@ -440,10 +461,17 @@ class UnifiedRunwayPainter extends CustomPainter {
   }
 
   String _formatLength(int lengthFt) {
-    if (lengthFt >= 3280) {
-      return '${(lengthFt / 3280.84).toStringAsFixed(1)}km';
-    } else {
-      return '${lengthFt}ft';
+    switch (distanceUnit) {
+      case 'km':
+        // Always show in kilometers for metric preference
+        return '${(lengthFt / 3280.84).toStringAsFixed(1)}km';
+      case 'mi':
+        // Show in miles for imperial preference
+        return '${(lengthFt / 5280.0).toStringAsFixed(2)}mi';
+      case 'nm':
+      default:
+        // Show in feet for nautical miles (aviation default)
+        return '${lengthFt}ft';
     }
   }
 
@@ -452,7 +480,8 @@ class UnifiedRunwayPainter extends CustomPainter {
     return oldDelegate.runways != runways ||
         oldDelegate.zoom != zoom ||
         oldDelegate.runwayColor != runwayColor ||
-        oldDelegate.strokeWidth != strokeWidth;
+        oldDelegate.strokeWidth != strokeWidth ||
+        oldDelegate.distanceUnit != distanceUnit;
   }
 }
 
@@ -466,6 +495,7 @@ class UnifiedRunwayVisualization extends StatelessWidget {
   final Color? runwayColor;
   final double? latitude;
   final double? longitude;
+  final String? distanceUnit;
 
   const UnifiedRunwayVisualization({
     super.key,
@@ -477,6 +507,7 @@ class UnifiedRunwayVisualization extends StatelessWidget {
     this.runwayColor,
     this.latitude,
     this.longitude,
+    this.distanceUnit,
   }) : assert(runways != null || openAIPRunways != null, 
               'Either runways or openAIPRunways must be provided');
 
@@ -496,6 +527,7 @@ class UnifiedRunwayVisualization extends StatelessWidget {
             strokeWidth: 1.0,
             latitude: latitude,
             longitude: longitude,
+            distanceUnit: distanceUnit,
           )
         : UnifiedRunwayPainter.fromOpenAIPRunways(
             runways: openAIPRunways!,
@@ -505,6 +537,7 @@ class UnifiedRunwayVisualization extends StatelessWidget {
             strokeWidth: 1.0,
             latitude: latitude,
             longitude: longitude,
+            distanceUnit: distanceUnit,
           ),
     );
   }

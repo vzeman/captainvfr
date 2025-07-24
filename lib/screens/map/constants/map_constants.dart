@@ -36,7 +36,7 @@ class MapConstants {
   };
   
   // Map settings
-  static const double initialZoom = 13.0;
+  static const double initialZoom = 9.0;  // 6 steps zoomed out from 13.0
   static const double minZoom = 4.0;
   static const double maxZoom = 18.0;
   

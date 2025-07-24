@@ -7,6 +7,7 @@ class MapZoomControls extends StatelessWidget {
   final double minZoom;
   final double maxZoom;
   final double zoomStep;
+  final VoidCallback? onZoomChanged;
   
   const MapZoomControls({
     super.key,
@@ -14,6 +15,7 @@ class MapZoomControls extends StatelessWidget {
     required this.minZoom,
     required this.maxZoom,
     this.zoomStep = 0.5,
+    this.onZoomChanged,
   });
 
   void _zoomIn() {
@@ -24,6 +26,8 @@ class MapZoomControls extends StatelessWidget {
         mapController.camera.center,
         currentZoom + zoomStep,
       );
+      // Trigger the same update logic as gesture-based zoom
+      onZoomChanged?.call();
     }
   }
 
@@ -35,6 +39,8 @@ class MapZoomControls extends StatelessWidget {
         mapController.camera.center,
         currentZoom - zoomStep,
       );
+      // Trigger the same update logic as gesture-based zoom
+      onZoomChanged?.call();
     }
   }
 

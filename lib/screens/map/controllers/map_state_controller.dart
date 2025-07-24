@@ -28,10 +28,10 @@ class MapStateController extends ChangeNotifier {
   
   // Layer visibility states
   bool _showNavaids = false;
-  bool _showMetar = false;
+  bool _showMetar = true;  // Default to showing weather
   bool _showStats = false;
   bool _showHeliports = false;
-  bool _showAirspaces = false;
+  bool _showAirspaces = true;  // Default to showing airspaces
   bool _showObstacles = false;
   bool _showHotspots = false;
 

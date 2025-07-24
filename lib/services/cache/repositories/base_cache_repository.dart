@@ -81,7 +81,6 @@ abstract class BaseCacheRepository<T> {
         }
       }
 
-      developer.log('📦 Retrieved ${items.length} cached $T items');
       return items;
     } catch (e) {
       developer.log('❌ Error getting cached $T items: $e');
