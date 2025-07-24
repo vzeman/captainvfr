@@ -214,7 +214,11 @@ class FlightLogScreen extends StatelessWidget {
   Future<void> _deleteFlight(BuildContext context, Flight flight) async {
     try {
       final flightService = Provider.of<FlightService>(context, listen: false);
-      await flightService.deleteFlight(flight);
+      final flights = flightService.flights;
+      final index = flights.indexWhere((f) => f.id == flight.id);
+      if (index != -1) {
+        await flightService.deleteFlight(index);
+      }
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
