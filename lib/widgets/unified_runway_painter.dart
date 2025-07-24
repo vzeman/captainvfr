@@ -146,6 +146,18 @@ class UnifiedRunwayPainter extends CustomPainter {
         paint: paint,
       );
       
+      // Draw runway designation labels
+      if (zoom >= 8) {
+        _drawRunwayDesignationLabels(
+          canvas: canvas,
+          runway: runway,
+          start: endpoints.start,
+          end: endpoints.end,
+          angle: endpoints.angle,
+          color: runwayColor,
+        );
+      }
+      
       // Draw length label
       if (zoom >= 14 && runway.lengthFt >= 3000) {
         _drawLengthLabel(
@@ -309,6 +321,90 @@ class UnifiedRunwayPainter extends CustomPainter {
     
     canvas.rotate(textAngle);
     textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height - 2));
+    canvas.restore();
+  }
+
+  void _drawRunwayDesignationLabels({
+    required Canvas canvas,
+    required UnifiedRunway runway,
+    required Offset start,
+    required Offset end,
+    required double angle,
+    required Color color,
+  }) {
+    // Calculate offset for labels
+    final labelOffset = 12.0; // Distance from runway end
+    
+    // Calculate positions slightly outside runway ends
+    final leOffset = Offset(
+      math.cos(angle + math.pi) * labelOffset,
+      math.sin(angle + math.pi) * labelOffset,
+    );
+    final heOffset = Offset(
+      math.cos(angle) * labelOffset,
+      math.sin(angle) * labelOffset,
+    );
+    
+    final leLabelPos = start + leOffset;
+    final heLabelPos = end + heOffset;
+    
+    // Draw LE (Low End) label
+    _drawDesignationLabel(
+      canvas: canvas,
+      position: leLabelPos,
+      text: runway.leIdent,
+      angle: angle,
+      color: color,
+    );
+    
+    // Draw HE (High End) label
+    _drawDesignationLabel(
+      canvas: canvas,
+      position: heLabelPos,
+      text: runway.heIdent,
+      angle: angle,
+      color: color,
+    );
+  }
+
+  void _drawDesignationLabel({
+    required Canvas canvas,
+    required Offset position,
+    required String text,
+    required double angle,
+    required Color color,
+  }) {
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: color,
+          fontSize: 8,
+          fontWeight: FontWeight.bold,
+          shadows: [
+            Shadow(
+              color: Colors.white.withValues(alpha: 0.8),
+              offset: const Offset(0.5, 0.5),
+              blurRadius: 1.0,
+            ),
+          ],
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    
+    canvas.save();
+    canvas.translate(position.dx, position.dy);
+    
+    // Ensure text is readable
+    var textAngle = angle;
+    if (textAngle > math.pi / 2 || textAngle < -math.pi / 2) {
+      textAngle += math.pi;
+    }
+    
+    canvas.rotate(textAngle);
+    textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height / 2));
     canvas.restore();
   }
 
