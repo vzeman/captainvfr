@@ -221,8 +221,13 @@ import Flutter
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // Initialize Firebase
-    FirebaseApp.configure()
+    // Initialize Firebase if configuration exists
+    if let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
+       FileManager.default.fileExists(atPath: path) {
+        FirebaseApp.configure()
+    } else {
+        print("⚠️ GoogleService-Info.plist not found - Firebase analytics disabled")
+    }
     
     GeneratedPluginRegistrant.register(with: self)
 

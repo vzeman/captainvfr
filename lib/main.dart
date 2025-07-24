@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -23,6 +24,7 @@ import 'services/openaip_service.dart';
 import 'services/settings_service.dart';
 import 'widgets/connectivity_banner.dart';
 import 'widgets/loading_screen.dart';
+import 'widgets/simple_loading_screen.dart';
 import 'widgets/sensor_notifications_wrapper.dart';
 import 'services/background_data_service.dart';
 import 'services/sensor_availability_service.dart';
@@ -43,8 +45,25 @@ import 'models/reporting_point.dart';
 import 'utils/performance_monitor.dart';
 import 'services/analytics_service.dart';
 
-void main() async {
-  // Ensure Flutter binding is initialized
+void main() {
+  // Show a simple screen immediately, no async needed
+  debugPrint('🚀 CaptainVFR starting up...');
+  runApp(const SimpleLoadingScreen());
+  
+  // Then start the initialization process
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    runZonedGuarded(() async {
+      debugPrint('🔧 Starting initialization after first frame...');
+      _initializeApp();
+    }, (error, stack) {
+      debugPrint('❌ Uncaught error during initialization: $error');
+      debugPrint('Stack trace: $stack');
+    });
+  });
+}
+
+Future<void> _initializeApp() async {
+  // Ensure Flutter binding is initialized for async operations
   WidgetsFlutterBinding.ensureInitialized();
   
   // Start performance monitoring in debug mode
@@ -53,12 +72,8 @@ void main() async {
     return true;
   }());
 
-  // Show loading screen immediately
-  runApp(
-    const MaterialApp(debugShowCheckedModeBanner: false, home: LoadingScreen()),
-  );
-
   try {
+    debugPrint('🔧 Starting app initialization...');
     // Initialize Hive and register adapters
     await Hive.initFlutter();
 
@@ -175,9 +190,18 @@ void main() async {
     // Initialize OpenAIP service
     final openAIPService = OpenAIPService();
     
-    // Initialize analytics service
+    // Initialize analytics service with timeout to prevent blocking
     final analyticsService = AnalyticsService();
-    await analyticsService.initialize();
+    try {
+      await analyticsService.initialize().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          debugPrint('⚠️ Analytics initialization timed out - continuing without analytics');
+        },
+      );
+    } catch (e) {
+      debugPrint('⚠️ Analytics initialization failed: $e - continuing without analytics');
+    }
 
     // Initialize OpenAIP service and load bundled data
     try {
@@ -332,10 +356,8 @@ void main() async {
 void _runMinimalApp() {
   // debugPrint('🚀 Starting app with minimal functionality...');
 
-  // Show loading screen first
-  runApp(
-    const MaterialApp(debugShowCheckedModeBanner: false, home: LoadingScreen()),
-  );
+  // Show simple loading screen first
+  runApp(const SimpleLoadingScreen());
 
   // Create minimal services
   final connectivityService = ConnectivityService();
