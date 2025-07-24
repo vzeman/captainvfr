@@ -1813,65 +1813,83 @@ class MapScreenState extends State<MapScreen>
   
   /// Check if waypoint was dropped on an airport or navaid and update its name/type accordingly
   void _checkAndUpdateWaypointForMarker(int waypointIndex, LatLng dropPosition) {
-    // Define search radius in meters (50 meters should be enough for UI precision)
-    const double searchRadiusMeters = 50.0;
-    const double searchRadiusKm = searchRadiusMeters / 1000.0;
+    // Define search radius in meters (200 meters for better UI detection)
+    const double searchRadiusMeters = 200.0;
     
-    // First check airports
-    final nearbyAirports = _airportService.findAirportsNearby(dropPosition, radiusKm: searchRadiusKm);
-    if (nearbyAirports.isNotEmpty) {
-      // Find the closest airport
-      Airport? closestAirport;
-      double minDistance = double.infinity;
-      
-      for (final airport in nearbyAirports) {
-        final distance = Distance().as(LengthUnit.Meter, dropPosition, airport.position);
-        if (distance < minDistance && distance <= searchRadiusMeters) {
-          minDistance = distance;
-          closestAirport = airport;
-        }
-      }
-      
-      if (closestAirport != null) {
-        // Update waypoint with airport information
-        _flightPlanService.updateWaypointName(waypointIndex, closestAirport.name);
-        _flightPlanService.updateWaypointNotes(waypointIndex, 
-          closestAirport.icaoCode?.isNotEmpty == true 
-            ? closestAirport.icaoCode! 
-            : (closestAirport.iataCode ?? closestAirport.icao));
-        // Update waypoint type to airport
-        final waypoint = _flightPlanService.currentFlightPlan!.waypoints[waypointIndex];
-        waypoint.type = WaypointType.airport;
-        _flightPlanService.notifyListeners();
-        return;
+    // Get all airports in the current view since findAirportsNearby might have unit issues
+    final bounds = _mapController.camera.visibleBounds;
+    final airports = _airports.where((airport) {
+      final lat = airport.position.latitude;
+      final lng = airport.position.longitude;
+      return lat >= bounds.south && 
+             lat <= bounds.north && 
+             lng >= bounds.west && 
+             lng <= bounds.east;
+    }).toList();
+    
+    debugPrint('Checking ${airports.length} airports in view for drop position: $dropPosition');
+    
+    // Find the closest airport within search radius
+    Airport? closestAirport;
+    double minDistance = double.infinity;
+    
+    for (final airport in airports) {
+      final distance = Distance().as(LengthUnit.Meter, dropPosition, airport.position);
+      if (distance <= searchRadiusMeters && distance < minDistance) {
+        minDistance = distance;
+        closestAirport = airport;
       }
     }
     
+    if (closestAirport != null) {
+      debugPrint('Found airport ${closestAirport.name} at ${minDistance.toStringAsFixed(1)}m from drop position');
+      // Update waypoint with airport information
+      _flightPlanService.updateWaypointName(waypointIndex, closestAirport.name);
+      _flightPlanService.updateWaypointNotes(waypointIndex, 
+        closestAirport.icaoCode?.isNotEmpty == true 
+          ? closestAirport.icaoCode! 
+          : (closestAirport.iataCode ?? closestAirport.icao));
+      // Update waypoint type to airport
+      final waypoint = _flightPlanService.currentFlightPlan!.waypoints[waypointIndex];
+      waypoint.type = WaypointType.airport;
+      _flightPlanService.notifyListeners();
+      return;
+    } else {
+      debugPrint('No airport found within ${searchRadiusMeters}m of drop position');
+    }
+    
     // If no airport found, check navaids
-    final nearbyNavaids = _navaidService.findNavaidsNearby(dropPosition, radiusKm: searchRadiusKm);
-    if (nearbyNavaids.isNotEmpty) {
-      // Find the closest navaid
-      Navaid? closestNavaid;
-      double minDistance = double.infinity;
-      
-      for (final navaid in nearbyNavaids) {
-        final distance = Distance().as(LengthUnit.Meter, dropPosition, navaid.position);
-        if (distance < minDistance && distance <= searchRadiusMeters) {
-          minDistance = distance;
-          closestNavaid = navaid;
-        }
+    final navaids = _navaids.where((navaid) {
+      final lat = navaid.position.latitude;
+      final lng = navaid.position.longitude;
+      return lat >= bounds.south && 
+             lat <= bounds.north && 
+             lng >= bounds.west && 
+             lng <= bounds.east;
+    }).toList();
+    
+    // Find the closest navaid within search radius
+    Navaid? closestNavaid;
+    minDistance = double.infinity;
+    
+    for (final navaid in navaids) {
+      final distance = Distance().as(LengthUnit.Meter, dropPosition, navaid.position);
+      if (distance <= searchRadiusMeters && distance < minDistance) {
+        minDistance = distance;
+        closestNavaid = navaid;
       }
-      
-      if (closestNavaid != null) {
-        // Update waypoint with navaid information
-        _flightPlanService.updateWaypointName(waypointIndex, closestNavaid.name);
-        _flightPlanService.updateWaypointNotes(waypointIndex, closestNavaid.ident);
-        // Update waypoint type to navaid
-        final waypoint = _flightPlanService.currentFlightPlan!.waypoints[waypointIndex];
-        waypoint.type = WaypointType.navaid;
-        _flightPlanService.notifyListeners();
-        return;
-      }
+    }
+    
+    if (closestNavaid != null) {
+      // debugPrint('Found navaid ${closestNavaid.name} at ${minDistance.toStringAsFixed(1)}m from drop position');
+      // Update waypoint with navaid information
+      _flightPlanService.updateWaypointName(waypointIndex, closestNavaid.name);
+      _flightPlanService.updateWaypointNotes(waypointIndex, closestNavaid.ident);
+      // Update waypoint type to navaid
+      final waypoint = _flightPlanService.currentFlightPlan!.waypoints[waypointIndex];
+      waypoint.type = WaypointType.navaid;
+      _flightPlanService.notifyListeners();
+      return;
     }
     
     // If no navaid found, check reporting points
