@@ -651,8 +651,8 @@ class FlightPlanService extends ChangeNotifier {
   void dispose() {
     // Close Hive box if open
     try {
-      if (_flightPlanBox.isOpen) {
-        _flightPlanBox.close();
+      if (_flightPlanBox != null && _flightPlanBox!.isOpen) {
+        _flightPlanBox!.close();
       }
     } catch (e) {
       // Ignore errors during disposal
