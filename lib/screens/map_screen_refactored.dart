@@ -1,26 +1,13 @@
 import 'dart:async';
-import 'dart:math' as math;
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:logger/logger.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-// Screens
-import 'flight_log_screen.dart';
-import 'offline_data_screen.dart';
-import 'flight_plans_screen.dart';
-import 'aircraft_settings_screen.dart';
-import 'checklist_settings_screen.dart';
-import 'licenses_screen.dart';
-import 'calculators_screen.dart';
-import 'settings_screen.dart';
+// Screens would be imported as needed
 
 // Models
 import '../models/airport.dart';

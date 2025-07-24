@@ -16,7 +16,6 @@ import '../../../services/offline_tile_provider.dart';
 import '../../../services/spatial_airspace_service.dart';
 import '../../../widgets/optimized_marker_layer.dart';
 import '../../../widgets/metar_overlay.dart';
-import '../../../widgets/flight_plan_overlay.dart';
 import '../../../widgets/optimized_spatial_airspaces_overlay.dart';
 
 class MapLayersBuilder extends StatelessWidget {
@@ -167,7 +166,7 @@ class MapLayersBuilder extends StatelessWidget {
                 PolylineLayer(
                   polylines: [
                     Polyline(
-                      points: flightPlan.waypoints.map((w) => w.position).toList(),
+                      points: flightPlan.waypoints.map((w) => LatLng(w.latitude, w.longitude)).toList(),
                       color: Colors.blue,
                       strokeWidth: 3.0,
                     ),

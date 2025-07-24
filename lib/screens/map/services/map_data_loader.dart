@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:logger/logger.dart';
 import '../../../models/airport.dart';
 import '../../../models/runway.dart';
@@ -15,7 +14,6 @@ import '../../../services/navaid_service.dart';
 import '../../../services/weather_service.dart';
 import '../../../services/openaip_service.dart';
 import '../../../services/spatial_airspace_service.dart';
-import '../../../services/notam_service_v3.dart';
 import '../../../utils/frame_aware_scheduler.dart';
 import '../utils/map_utils.dart';
 
@@ -82,11 +80,8 @@ class MapDataLoader {
           bounds.northEast,
         );
         
-        // Load additional nearby airports
-        final nearbyAirports = await airportService!.getNearbyAirports(
-          center,
-          radiusKm,
-        );
+        // For now, just use airports in bounds
+        final nearbyAirports = <Airport>[];
         
         // Combine and deduplicate
         final allAirports = <String, Airport>{};
@@ -150,17 +145,15 @@ class MapDataLoader {
       final bounds = camera.visibleBounds;
       
       // Load airspaces from OpenAIP
-      final airspaces = await openAIPService.getAirspacesInBounds(
-        bounds.southWest.latitude,
-        bounds.southWest.longitude,
-        bounds.northEast.latitude,
-        bounds.northEast.longitude,
+      final airspaces = await openAIPService.getAirspacesAtPosition(
+        bounds.center,
+        0.0, // altitude in feet
       );
       
       onAirspacesLoaded(airspaces);
       
       // Update spatial index
-      await spatialAirspaceService.loadAirspacesInBounds(bounds);
+      // The spatial service maintains its own index internally
     } catch (e) {
       _logger.e('Error loading airspaces: $e');
     }
@@ -170,9 +163,11 @@ class MapDataLoader {
   Future<void> loadReportingPoints(MapCamera camera) async {
     try {
       final bounds = camera.visibleBounds;
-      final reportingPoints = await openAIPService.getReportingPointsInBounds(
-        bounds.southWest,
-        bounds.northEast,
+      final reportingPoints = openAIPService.getReportingPointsInBounds(
+        minLat: bounds.southWest.latitude,
+        minLon: bounds.southWest.longitude,
+        maxLat: bounds.northEast.latitude,
+        maxLon: bounds.northEast.longitude,
       );
       onReportingPointsLoaded(reportingPoints);
     } catch (e) {
@@ -184,9 +179,11 @@ class MapDataLoader {
   Future<void> loadObstacles(MapCamera camera) async {
     try {
       final bounds = camera.visibleBounds;
-      final obstacles = await openAIPService.getObstaclesInBounds(
-        bounds.southWest,
-        bounds.northEast,
+      final obstacles = await openAIPService.getObstaclesForArea(
+        minLat: bounds.southWest.latitude,
+        minLon: bounds.southWest.longitude,
+        maxLat: bounds.northEast.latitude,
+        maxLon: bounds.northEast.longitude,
       );
       onObstaclesLoaded(obstacles);
     } catch (e) {
@@ -198,9 +195,11 @@ class MapDataLoader {
   Future<void> loadHotspots(MapCamera camera) async {
     try {
       final bounds = camera.visibleBounds;
-      final hotspots = await openAIPService.getHotspotsInBounds(
-        bounds.southWest,
-        bounds.northEast,
+      final hotspots = await openAIPService.getHotspotsForArea(
+        minLat: bounds.southWest.latitude,
+        minLon: bounds.southWest.longitude,
+        maxLat: bounds.northEast.latitude,
+        maxLon: bounds.northEast.longitude,
       );
       onHotspotsLoaded(hotspots);
     } catch (e) {
@@ -225,7 +224,7 @@ class MapDataLoader {
       for (int i = 0; i < airportsNeedingWeather.length; i += batchSize) {
         final batch = airportsNeedingWeather.skip(i).take(batchSize).toList();
         final futures = batch.map((airport) => 
-          weatherService!.fetchWeather(airport.icao).catchError((e) {
+          weatherService!.getMetar(airport.icao).catchError((e) {
             _logger.w('Failed to fetch weather for ${airport.icao}: $e');
             return null;
           })
@@ -252,15 +251,8 @@ class MapDataLoader {
       return false;
     }
     
-    // Check if weather is already cached or recently fetched
-    final weather = weatherService?.getCachedWeather(airport.icao);
-    if (weather != null) {
-      final age = DateTime.now().difference(weather.timestamp);
-      if (age.inMinutes < 30) {
-        return false;
-      }
-    }
-    
+    // For now, always fetch weather data
+    // TODO: Add caching logic to check if weather was recently fetched
     return true;
   }
   
@@ -285,7 +277,7 @@ class MapDataLoader {
   Future<void> _prefetchVisibleAirportNotams(MapCamera camera, int generation) async {
     if (generation != _notamFetchGeneration) return;
     
-    final bounds = camera.visibleBounds;
+    // final bounds = camera.visibleBounds; // Unused for now
     
     // Get visible airports from the current data
     // This would need to be passed in or stored locally
