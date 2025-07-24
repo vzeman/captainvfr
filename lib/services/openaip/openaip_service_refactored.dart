@@ -87,7 +87,7 @@ class OpenAIPService {
       _logger.d('OpenAIP service initialized successfully');
     } catch (e) {
       _logger.e('Failed to initialize OpenAIP service: $e');
-      throw e;
+      rethrow;
     }
   }
 
