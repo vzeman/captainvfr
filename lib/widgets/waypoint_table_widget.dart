@@ -93,6 +93,12 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
       _nameControllers[waypoint.id] = TextEditingController(
         text: waypoint.name ?? '',
       );
+    } else {
+      // Update controller text if waypoint name has changed
+      final controller = _nameControllers[waypoint.id]!;
+      if (controller.text != (waypoint.name ?? '')) {
+        controller.text = waypoint.name ?? '';
+      }
     }
     return _nameControllers[waypoint.id]!;
   }

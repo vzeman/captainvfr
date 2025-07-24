@@ -364,6 +364,17 @@ class FlightPlanService extends ChangeNotifier {
       notifyListeners();
     }
   }
+  
+  // Update waypoint type
+  void updateWaypointType(int index, WaypointType type) {
+    if (_currentFlightPlan != null &&
+        index >= 0 &&
+        index < _currentFlightPlan!.waypoints.length) {
+      _currentFlightPlan!.waypoints[index].type = type;
+      _currentFlightPlan!.modifiedAt = DateTime.now();
+      notifyListeners();
+    }
+  }
 
   // Update waypoint position (for drag and drop on map)
   void updateWaypointPosition(int index, LatLng newPosition, {bool isDragging = false}) {

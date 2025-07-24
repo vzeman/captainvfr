@@ -1870,9 +1870,7 @@ class MapScreenState extends State<MapScreen>
           ? closestAirport.icaoCode! 
           : (closestAirport.iataCode ?? closestAirport.icao));
       // Update waypoint type to airport
-      final waypoint = _flightPlanService.currentFlightPlan!.waypoints[waypointIndex];
-      waypoint.type = WaypointType.airport;
-      _flightPlanService.notifyListeners();
+      _flightPlanService.updateWaypointType(waypointIndex, WaypointType.airport);
       return;
     } else if (airports.isEmpty) {
       debugPrint('No airports loaded in current view');
@@ -1908,9 +1906,7 @@ class MapScreenState extends State<MapScreen>
       _flightPlanService.updateWaypointName(waypointIndex, closestNavaid.name);
       _flightPlanService.updateWaypointNotes(waypointIndex, closestNavaid.ident);
       // Update waypoint type to navaid
-      final waypoint = _flightPlanService.currentFlightPlan!.waypoints[waypointIndex];
-      waypoint.type = WaypointType.navaid;
-      _flightPlanService.notifyListeners();
+      _flightPlanService.updateWaypointType(waypointIndex, WaypointType.navaid);
       return;
     }
     
@@ -1933,9 +1929,7 @@ class MapScreenState extends State<MapScreen>
         _flightPlanService.updateWaypointName(waypointIndex, closestPoint.displayName);
         _flightPlanService.updateWaypointNotes(waypointIndex, closestPoint.type ?? 'Reporting Point');
         // Update waypoint type to reporting point
-        final waypoint = _flightPlanService.currentFlightPlan!.waypoints[waypointIndex];
-        waypoint.type = WaypointType.reportingPoint;
-        _flightPlanService.notifyListeners();
+        _flightPlanService.updateWaypointType(waypointIndex, WaypointType.reportingPoint);
         return;
       }
     }
