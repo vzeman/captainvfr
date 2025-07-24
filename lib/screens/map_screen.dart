@@ -1321,6 +1321,28 @@ class MapScreenState extends State<MapScreen>
     }
   }
 
+  // Zoom in the map
+  void _zoomIn() {
+    final currentZoom = _mapController.camera.zoom;
+    if (currentZoom < _maxZoom) {
+      _mapController.move(
+        _mapController.camera.center,
+        (currentZoom + 0.5).clamp(_minZoom, _maxZoom),
+      );
+    }
+  }
+
+  // Zoom out the map
+  void _zoomOut() {
+    final currentZoom = _mapController.camera.zoom;
+    if (currentZoom > _minZoom) {
+      _mapController.move(
+        _mapController.camera.center,
+        (currentZoom - 0.5).clamp(_minZoom, _maxZoom),
+      );
+    }
+  }
+
   // Handle map tap - updated to support flight planning and airspace selection
   void _onMapTapped(TapPosition tapPosition, LatLng point) async {
     // If a waypoint was just tapped, ignore this map tap
@@ -3626,6 +3648,70 @@ class MapScreenState extends State<MapScreen>
               }
               return const SizedBox.shrink();
             },
+          ),
+          // Zoom control buttons in bottom left corner
+          Positioned(
+            bottom: 16,
+            left: 16,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _zoomIn,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(8),
+                        bottomLeft: Radius.circular(8),
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        child: const Icon(
+                          Icons.add,
+                          size: 20,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 20,
+                    color: Colors.grey.withValues(alpha: 0.3),
+                  ),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _zoomOut,
+                      borderRadius: const BorderRadius.only(
+                        topRight: Radius.circular(8),
+                        bottomRight: Radius.circular(8),
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        child: const Icon(
+                          Icons.remove,
+                          size: 20,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
           
           // OpenStreetMap attribution in bottom right corner - always on top
