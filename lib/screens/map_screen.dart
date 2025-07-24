@@ -463,12 +463,28 @@ class MapScreenState extends State<MapScreen>
       }
       
       // Adjust flight data panel position
-      if (_flightDataPanelPosition.dx + 600 > screenSize.width) {
-        _flightDataPanelPosition = Offset(
-          (screenSize.width - 600).clamp(0, screenSize.width - 600),
-          _flightDataPanelPosition.dy
-        );
+      final isPhone = screenSize.width < 600;
+      final panelWidth = isPhone ? screenSize.width - 16 : 600;
+      final panelHeight = _flightDashboardExpanded ? 260 : 60;
+      final minMargin = isPhone ? 8.0 : 16.0;
+      
+      // Check horizontal bounds
+      double newX = _flightDataPanelPosition.dx;
+      if (newX + panelWidth > screenSize.width) {
+        newX = (screenSize.width - panelWidth - minMargin).clamp(minMargin, screenSize.width - panelWidth - minMargin);
       }
+      
+      // Check vertical bounds (bottom distance)
+      double bottomDistance = _flightDataPanelPosition.dy;
+      // Ensure panel stays within screen bounds
+      // Maximum bottom distance is screen height minus panel height minus top safe area
+      final maxBottomDistance = screenSize.height - panelHeight - safeAreaTop - 50; // 50px minimum from top
+      bottomDistance = bottomDistance.clamp(16.0, maxBottomDistance);
+      
+      _flightDataPanelPosition = Offset(
+        isPhone ? minMargin : newX, // On phones, keep centered
+        bottomDistance
+      );
       
       // Adjust airspace panel position
       if (_airspacePanelPosition != null) {
