@@ -21,11 +21,17 @@ class WindComponents {
   double get headwindAbs => headwind.abs();
   
   /// Get a score for runway selection (higher is better)
-  /// Prioritizes headwind over crosswind
+  /// Prioritizes headwind over crosswind with non-linear penalties
   double get score {
-    // Headwind is good (positive score), tailwind is bad (negative score)
-    // Crosswind always reduces the score
-    return headwind - (crosswind * 0.5);
+    // Penalize tailwind more heavily than we reward headwind
+    final tailwindPenalty = isHeadwind ? 0 : headwindAbs * 2;
+    
+    // Non-linear crosswind penalty (squared) - more severe as crosswind increases
+    // Normalize by 10 knots as a reference
+    final crosswindPenalty = math.pow(crosswind / 10, 2).toDouble();
+    
+    // Calculate final score
+    return headwind - (crosswindPenalty * 5) - tailwindPenalty;
   }
 }
 
@@ -37,6 +43,14 @@ class RunwayWindCalculator {
     double windDirection,
     double windSpeed,
   ) {
+    // Validate inputs
+    if (windSpeed < 0) {
+      throw ArgumentError('Wind speed cannot be negative');
+    }
+    if (windDirection < 0 || windDirection > 360) {
+      throw ArgumentError('Wind direction must be between 0 and 360 degrees');
+    }
+    
     List<WindComponents> components = [];
     
     for (final runway in runways) {
@@ -86,19 +100,16 @@ class RunwayWindCalculator {
       angle += 360;
     }
     
-    // Take absolute value for calculation
-    angle = angle.abs();
-    
-    // Convert to radians
+    // Convert to radians (keep the sign for proper calculation)
     double angleRad = angle * (math.pi / 180);
     
     // Calculate components
     double headwindComponent = windSpeed * math.cos(angleRad);
-    double crosswindComponent = windSpeed * math.sin(angleRad).abs();
+    double crosswindComponent = windSpeed * math.sin(angleRad);
     
     return WindComponents(
       headwind: headwindComponent,
-      crosswind: crosswindComponent,
+      crosswind: crosswindComponent.abs(), // Make positive for display
       isHeadwind: headwindComponent > 0,
       runwayDesignation: runwayDesignation,
       runwayHeading: runwayHeading,
@@ -124,25 +135,31 @@ class RunwayWindCalculator {
   static Map<String, double>? parseMetarWind(String windString) {
     // Handle calm winds
     if (windString == '00000KT') {
-      return {'direction': 0, 'speed': 0};
+      return {'direction': 0, 'speed': 0, 'gust': 0};
     }
     
-    // Parse wind format: 12008KT or VRB05KT
+    // Parse wind format: 12008KT or VRB05KT or 12008G18KT
     RegExp windRegex = RegExp(r'^(\d{3}|VRB)(\d{2,3})(G(\d{2,3}))?KT$');
     Match? match = windRegex.firstMatch(windString);
     
     if (match != null) {
       String direction = match.group(1)!;
       String speed = match.group(2)!;
+      String? gust = match.group(4);
       
-      // Variable wind direction - return null for direction
+      // Variable wind direction - return -1 for direction
       if (direction == 'VRB') {
-        return {'direction': -1, 'speed': double.parse(speed)};
+        return {
+          'direction': -1, 
+          'speed': double.parse(speed),
+          'gust': gust != null ? double.parse(gust) : double.parse(speed),
+        };
       }
       
       return {
         'direction': double.parse(direction),
         'speed': double.parse(speed),
+        'gust': gust != null ? double.parse(gust) : double.parse(speed),
       };
     }
     

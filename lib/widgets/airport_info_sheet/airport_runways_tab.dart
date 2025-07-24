@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/airport.dart';
@@ -69,7 +70,7 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
               _windComponents = RunwayWindCalculator.calculateWindComponentsForRunways(
                 widget.runways,
                 windData['direction']!,
-                windData['speed']!,
+                windData['gust'] ?? windData['speed']!, // Use gust speed if available
               );
               _bestRunway = _windComponents?.first.runwayDesignation;
             });
@@ -162,10 +163,13 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
     return runwayDesignations.contains(_bestRunway);
   }
   
+  
   Widget _buildWindInfo(BuildContext context) {
     final theme = Theme.of(context);
     final windDirection = _windData!['direction']!.toInt();
     final windSpeed = _windData!['speed']!.toInt();
+    final windGust = _windData!['gust']?.toInt();
+    final hasGust = windGust != null && windGust > windSpeed;
     
     return Card(
       color: theme.colorScheme.primaryContainer,
@@ -188,23 +192,74 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
                     color: theme.colorScheme.onPrimaryContainer,
                   ),
                 ),
+                const Spacer(),
+                // Wind direction arrow
+                Transform.rotate(
+                  angle: (windDirection * math.pi / 180) - math.pi, // Convert to radians and adjust for "from" direction
+                  child: Icon(
+                    Icons.arrow_downward,
+                    color: theme.colorScheme.onPrimaryContainer,
+                    size: 24,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 8),
-            Text(
-              'Wind: ${windDirection.toString().padLeft(3, '0')}° at $windSpeed knots',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onPrimaryContainer,
-              ),
+            Row(
+              children: [
+                Text(
+                  'Wind: ${windDirection.toString().padLeft(3, '0')}° at $windSpeed${hasGust ? ' G$windGust' : ''} knots',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                if (hasGust) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'GUSTING',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange[800],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
             if (_bestRunway != null) ...[
               const SizedBox(height: 4),
-              Text(
-                'Best runway for landing: $_bestRunway',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w500,
-                ),
+              Row(
+                children: [
+                  Icon(
+                    Icons.flight_land,
+                    size: 16,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Best runway for landing: $_bestRunway',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Tooltip(
+                    message: 'Selected based on maximum headwind and minimum crosswind',
+                    child: Icon(
+                      Icons.info_outline,
+                      size: 14,
+                      color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
               ),
             ],
           ],
@@ -359,6 +414,19 @@ class RunwayCard extends StatelessWidget {
     this.windComponents,
     this.isBestRunway = false,
   });
+  
+  static Color _getCrosswindColor(double crosswind) {
+    const double crosswindCautionThreshold = 10.0; // knots
+    const double crosswindDangerThreshold = 15.0; // knots
+    
+    if (crosswind >= crosswindDangerThreshold) {
+      return Colors.red;
+    } else if (crosswind >= crosswindCautionThreshold) {
+      return Colors.orange;
+    } else {
+      return Colors.blue;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -539,13 +607,13 @@ class RunwayCard extends StatelessWidget {
                               Icon(
                                 Icons.compare_arrows,
                                 size: 14,
-                                color: component.crosswind > 10 ? Colors.red : Colors.blue,
+                                color: _getCrosswindColor(component.crosswind),
                               ),
                               const SizedBox(width: 4),
                               Text(
                                 '${component.crosswind.toStringAsFixed(0)} kts crosswind',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: component.crosswind > 10 ? Colors.red : Colors.blue,
+                                  color: _getCrosswindColor(component.crosswind),
                                 ),
                               ),
                             ],
