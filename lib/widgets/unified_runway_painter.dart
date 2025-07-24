@@ -410,8 +410,10 @@ class UnifiedRunwayPainter extends CustomPainter {
     canvas.save();
     canvas.translate(position.dx, position.dy);
     
+    // Rotate text by 90 degrees perpendicular to runway
+    var textAngle = angle + math.pi / 2;
+    
     // Ensure text is readable (flip if upside down)
-    var textAngle = angle;
     if (textAngle > math.pi / 2 || textAngle < -math.pi / 2) {
       textAngle += math.pi;
     }
