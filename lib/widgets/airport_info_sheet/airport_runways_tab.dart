@@ -4,11 +4,13 @@ import '../../models/airport.dart';
 import '../../models/runway.dart';
 import '../../services/runway_service.dart';
 import '../../services/settings_service.dart';
+import '../../services/weather_service.dart';
+import '../../utils/runway_wind_calculator.dart';
 import '../common/loading_widget.dart';
 import '../common/error_widget.dart' as custom;
 import '../common/status_chip.dart';
 
-class AirportRunwaysTab extends StatelessWidget {
+class AirportRunwaysTab extends StatefulWidget {
   final Airport airport;
   final bool isLoading;
   final String? error;
@@ -27,16 +29,70 @@ class AirportRunwaysTab extends StatelessWidget {
   });
 
   @override
+  State<AirportRunwaysTab> createState() => _AirportRunwaysTabState();
+}
+
+class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
+  Map<String, double>? _windData;
+  List<WindComponents>? _windComponents;
+  String? _bestRunway;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchWindData();
+  }
+
+  @override
+  void didUpdateWidget(AirportRunwaysTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.airport.icao != widget.airport.icao) {
+      _fetchWindData();
+    }
+  }
+
+  Future<void> _fetchWindData() async {
+    try {
+      final weatherService = WeatherService();
+      final metar = await weatherService.getMetar(widget.airport.icao);
+      
+      if (metar != null && metar.isNotEmpty) {
+        // Extract wind data from METAR
+        final windMatch = RegExp(r'(\d{3}|VRB)(\d{2,3})(G\d{2,3})?KT').firstMatch(metar);
+        if (windMatch != null) {
+          final windString = windMatch.group(0)!;
+          final windData = RunwayWindCalculator.parseMetarWind(windString);
+          
+          if (windData != null && windData['direction'] != -1 && widget.runways.isNotEmpty) {
+            setState(() {
+              _windData = windData;
+              _windComponents = RunwayWindCalculator.calculateWindComponentsForRunways(
+                widget.runways,
+                windData['direction']!,
+                windData['speed']!,
+              );
+              _bestRunway = _windComponents?.first.runwayDesignation;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Silently fail - wind data is optional enhancement
+      debugPrint('Failed to fetch wind data: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (isLoading) {
+    if (widget.isLoading) {
       return const LoadingWidget(message: 'Loading runway data...');
     }
 
-    if (error != null) {
-      return custom.ErrorWidget(error: error!, onRetry: onRetry);
+    if (widget.error != null) {
+      return custom.ErrorWidget(error: widget.error!, onRetry: widget.onRetry);
     }
 
-    if (runways.isEmpty) {
+    if (widget.runways.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(32),
@@ -60,27 +116,105 @@ class AirportRunwaysTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Wind Information (if available)
+          if (_windData != null) ...[
+            _buildWindInfo(context),
+            const SizedBox(height: 16),
+          ],
+          
           // Runway Summary
           _buildRunwaySummary(context),
           const SizedBox(height: 16),
 
           // Individual Runways
           Text(
-            'Runways (${runways.length})',
+            'Runways (${widget.runways.length})',
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
 
-          ...runways.map((runway) => RunwayCard(runway: runway)),
+          ...widget.runways.map((runway) => RunwayCard(
+            runway: runway,
+            windComponents: _getWindComponentsForRunway(runway),
+            isBestRunway: _isBestRunway(runway),
+          )),
         ],
       ),
     );
   }
 
+  List<WindComponents>? _getWindComponentsForRunway(Runway runway) {
+    if (_windComponents == null) return null;
+    
+    return _windComponents!.where((component) {
+      // Match by runway designation
+      final runwayDesignations = runway.designation.split('/');
+      return runwayDesignations.contains(component.runwayDesignation);
+    }).toList();
+  }
+  
+  bool _isBestRunway(Runway runway) {
+    if (_bestRunway == null) return false;
+    
+    final runwayDesignations = runway.designation.split('/');
+    return runwayDesignations.contains(_bestRunway);
+  }
+  
+  Widget _buildWindInfo(BuildContext context) {
+    final theme = Theme.of(context);
+    final windDirection = _windData!['direction']!.toInt();
+    final windSpeed = _windData!['speed']!.toInt();
+    
+    return Card(
+      color: theme.colorScheme.primaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.air,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Current Wind Conditions',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Wind: ${windDirection.toString().padLeft(3, '0')}° at $windSpeed knots',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+            ),
+            if (_bestRunway != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Best runway for landing: $_bestRunway',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildRunwaySummary(BuildContext context) {
-    final stats = runwayService.getAirportRunwayStats(airport.icao);
+    final stats = widget.runwayService.getAirportRunwayStats(widget.airport.icao);
     final theme = Theme.of(context);
 
     return Card(
@@ -216,8 +350,15 @@ class AirportRunwaysTab extends StatelessWidget {
 
 class RunwayCard extends StatelessWidget {
   final Runway runway;
+  final List<WindComponents>? windComponents;
+  final bool isBestRunway;
 
-  const RunwayCard({super.key, required this.runway});
+  const RunwayCard({
+    super.key,
+    required this.runway,
+    this.windComponents,
+    this.isBestRunway = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -241,6 +382,7 @@ class RunwayCard extends StatelessWidget {
 
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
+          color: isBestRunway ? theme.colorScheme.primaryContainer : null,
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
@@ -255,19 +397,52 @@ class RunwayCard extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.2
-                        ), // 20% opacity
+                        color: isBestRunway 
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.primary.withValues(alpha: 0.2), // 20% opacity
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Text(
-                        runway.designation,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isBestRunway) ...[
+                            Icon(
+                              Icons.star,
+                              size: 14,
+                              color: theme.colorScheme.onPrimary,
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Text(
+                            runway.designation,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: isBestRunway 
+                                  ? theme.colorScheme.onPrimary
+                                  : theme.colorScheme.primary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const Spacer(),
+                    if (isBestRunway)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'BEST',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(width: 8),
                     if (runway.lighted)
                       Icon(
                         Icons.lightbulb,
@@ -313,6 +488,73 @@ class RunwayCard extends StatelessWidget {
                       ),
                   ],
                 ),
+
+                // Wind Components (if available)
+                if (windComponents != null && windComponents!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Wind Components',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        ...windComponents!.map((component) => Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 40,
+                                child: Text(
+                                  component.runwayDesignation,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(
+                                component.isHeadwind ? Icons.arrow_downward : Icons.arrow_upward,
+                                size: 14,
+                                color: component.isHeadwind ? Colors.green : Colors.orange,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${component.headwindAbs.toStringAsFixed(0)} kts ${component.isHeadwind ? "headwind" : "tailwind"}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: component.isHeadwind ? Colors.green : Colors.orange,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Icon(
+                                Icons.compare_arrows,
+                                size: 14,
+                                color: component.crosswind > 10 ? Colors.red : Colors.blue,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${component.crosswind.toStringAsFixed(0)} kts crosswind',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: component.crosswind > 10 ? Colors.red : Colors.blue,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )),
+                      ],
+                    ),
+                  ),
+                ],
 
                 // Status indicators
                 if (runway.closed || runway.lighted) ...[
