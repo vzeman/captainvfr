@@ -59,6 +59,7 @@ import '../utils/airspace_utils.dart';
 import '../widgets/loading_progress_bar.dart';
 import '../widgets/themed_dialog.dart';
 import '../widgets/performance_overlay_widget.dart';
+import '../widgets/map_zoom_controls.dart';
 import '../services/cache_service.dart';
 import '../services/notam_service_v3.dart';
 
@@ -1320,6 +1321,7 @@ class MapScreenState extends State<MapScreen>
       _loadHotspots();
     }
   }
+
 
   // Handle map tap - updated to support flight planning and airspace selection
   void _onMapTapped(TapPosition tapPosition, LatLng point) async {
@@ -3626,6 +3628,16 @@ class MapScreenState extends State<MapScreen>
               }
               return const SizedBox.shrink();
             },
+          ),
+          // Zoom control buttons in bottom left corner
+          Positioned(
+            bottom: 16,
+            left: 16,
+            child: MapZoomControls(
+              mapController: _mapController,
+              minZoom: _minZoom,
+              maxZoom: _maxZoom,
+            ),
           ),
           
           // OpenStreetMap attribution in bottom right corner - always on top
