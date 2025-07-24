@@ -47,15 +47,28 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
   @override
   void didUpdateWidget(AirportRunwaysTab oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.airport.icao != widget.airport.icao) {
+    // Refetch wind data if airport changes or if METAR data is newly available
+    if (oldWidget.airport.icao != widget.airport.icao ||
+        (oldWidget.airport.rawMetar != widget.airport.rawMetar && 
+         widget.airport.rawMetar != null)) {
       _fetchWindData();
     }
   }
 
   Future<void> _fetchWindData() async {
     try {
-      final weatherService = WeatherService();
-      final metar = await weatherService.getMetar(widget.airport.icao);
+      String? metar;
+      
+      // First check if the airport already has METAR data (from weather tab)
+      if (widget.airport.rawMetar != null && widget.airport.rawMetar!.isNotEmpty) {
+        metar = widget.airport.rawMetar;
+        debugPrint('Using existing METAR from airport data');
+      } else {
+        // If not, fetch it ourselves
+        final weatherService = WeatherService();
+        metar = await weatherService.getMetar(widget.airport.icao);
+        debugPrint('Fetched new METAR data');
+      }
       
       if (metar != null && metar.isNotEmpty) {
         // Extract wind data from METAR
@@ -122,10 +135,6 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
             _buildWindInfo(context),
             const SizedBox(height: 16),
           ],
-          
-          // Runway Summary
-          _buildRunwaySummary(context),
-          const SizedBox(height: 16),
 
           // Individual Runways
           Text(
@@ -268,139 +277,6 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
     );
   }
 
-  Widget _buildRunwaySummary(BuildContext context) {
-    final stats = widget.runwayService.getAirportRunwayStats(widget.airport.icao);
-    final theme = Theme.of(context);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Runway Summary',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    'Count',
-                    '${stats.count}',
-                    Icons.straighten,
-                  ),
-                ),
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    'Longest',
-                    stats.longestFormatted,
-                    Icons.trending_up,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    'Lighted',
-                    stats.hasLightedRunways ? 'Yes' : 'No',
-                    stats.hasLightedRunways
-                        ? Icons.lightbulb
-                        : Icons.lightbulb_outline,
-                  ),
-                ),
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    'Hard Surface',
-                    stats.hasHardSurface ? 'Yes' : 'No',
-                    stats.hasHardSurface
-                        ? Icons.check_circle
-                        : Icons.circle_outlined,
-                  ),
-                ),
-              ],
-            ),
-            if (stats.surfaces.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              _buildInfoRow(context, 'Surfaces', stats.surfacesFormatted),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(
-    BuildContext context,
-    String label,
-    String value,
-    IconData icon,
-  ) {
-    final theme = Theme.of(context);
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: theme.hintColor),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.hintColor,
-              ),
-            ),
-            Text(
-              value,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoRow(BuildContext context, String label, String value) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$label: ',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.hintColor,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              value,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.textTheme.bodyMedium?.color,
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class RunwayCard extends StatelessWidget {
