@@ -15,7 +15,6 @@ import '../../../services/weather_service.dart';
 import '../../../services/openaip_service.dart';
 import '../../../services/spatial_airspace_service.dart';
 import '../../../utils/frame_aware_scheduler.dart';
-import '../utils/map_utils.dart';
 
 class MapDataLoader {
   final Logger _logger = Logger(level: Level.warning);
@@ -71,8 +70,6 @@ class MapDataLoader {
     _airportLoadTimer = Timer(const Duration(milliseconds: 300), () async {
       try {
         final bounds = camera.visibleBounds;
-        final center = camera.center;
-        final radiusKm = MapUtils.calculateRadiusForZoom(camera.zoom);
         
         // Load airports in bounds
         final airports = await airportService!.getAirportsInBounds(
@@ -95,7 +92,7 @@ class MapDataLoader {
         // Load runways for airports
         final runwayMap = <String, List<Runway>>{};
         for (final airport in uniqueAirports) {
-          final runways = await runwayService!.getRunwaysForAirport(airport.icao);
+          final runways = runwayService!.getRunwaysForAirport(airport.icao);
           if (runways.isNotEmpty) {
             runwayMap[airport.icao] = runways;
           }
@@ -121,7 +118,7 @@ class MapDataLoader {
     
     try {
       final bounds = camera.visibleBounds;
-      final navaids = await navaidService!.getNavaidsInBounds(
+      final navaids = navaidService!.getNavaidsInBounds(
         bounds.southWest,
         bounds.northEast,
       );
