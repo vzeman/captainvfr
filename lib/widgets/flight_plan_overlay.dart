@@ -21,26 +21,19 @@ class FlightPlanOverlay {
     Function(int segmentIndex, LatLng position) onSegmentTapped,
     bool isEditMode,
   ) {
-    if (flightPlan.waypoints.length < 2 || !isEditMode) {
-      return buildFlightPath(flightPlan);
+    if (flightPlan.waypoints.length < 2) {
+      return [];
     }
 
-    List<Polyline> segments = [];
-    
-    for (int i = 0; i < flightPlan.waypoints.length - 1; i++) {
-      final from = flightPlan.waypoints[i].latLng;
-      final to = flightPlan.waypoints[i + 1].latLng;
-      
-      segments.add(
-        Polyline(
-          points: [from, to],
-          strokeWidth: 7.0, // Slightly thicker for easier clicking
-          color: Colors.green.shade600,
-        ),
-      );
-    }
-
-    return segments;
+    // Always show the flight path, make it thicker in edit mode
+    final points = flightPlan.waypoints.map((wp) => wp.latLng).toList();
+    return [
+      Polyline(
+        points: points,
+        strokeWidth: isEditMode ? 7.0 : 5.0,
+        color: Colors.green.shade600,
+      ),
+    ];
   }
 
   /// Build invisible clickable markers along flight path segments for waypoint insertion.
@@ -71,8 +64,8 @@ class FlightPlanOverlay {
         markers.add(
           Marker(
             point: markerPos,
-            width: 20,
-            height: 20,
+            width: 30,
+            height: 30,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
@@ -81,16 +74,21 @@ class FlightPlanOverlay {
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: Container(
-                  width: 20,
-                  height: 20,
-                  decoration: const BoxDecoration(
-                    color: Colors.transparent,
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.green.shade600,
+                      width: 2,
+                    ),
                   ),
                   child: const Center(
                     child: Icon(
-                      Icons.add_circle_outline,
+                      Icons.add,
                       size: 16,
-                      color: Colors.green,
+                      color: Colors.white,
                     ),
                   ),
                 ),

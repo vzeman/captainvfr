@@ -320,6 +320,37 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
           // Aircraft selection and cruise speed
           _buildAircraftSection(flightPlanService),
 
+          // Edit mode hint
+          if (_isEditMode)
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0x1A448AFF),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0x33448AFF)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: Colors.blue.shade400,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Click on the map to add waypoints • Click green + icons on flight path to insert waypoints',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade300,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // Waypoint table
           if (flightPlan != null && flightPlan.waypoints.isNotEmpty)
             Container(

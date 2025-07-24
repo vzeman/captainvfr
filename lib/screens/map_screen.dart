@@ -2980,10 +2980,10 @@ class MapScreenState extends State<MapScreen>
                                 enablePlanning: false,
                               );
                             }
-                            // Sync flight plan visibility with panel visibility
-                            _flightPlanService.setFlightPlanVisibility(
-                              _showFlightPlanning,
-                            );
+                            // Always show flight plan on map when it exists
+                            if (_flightPlanService.currentFlightPlan != null) {
+                              _flightPlanService.setFlightPlanVisibility(true);
+                            }
                           });
                         },
                       ),
@@ -3305,10 +3305,10 @@ class MapScreenState extends State<MapScreen>
                               enablePlanning: false,
                             );
                           }
-                          // Sync flight plan visibility with panel visibility
-                          _flightPlanService.setFlightPlanVisibility(
-                            _showFlightPlanning,
-                          );
+                          // Always show flight plan on map when it exists
+                          if (_flightPlanService.currentFlightPlan != null) {
+                            _flightPlanService.setFlightPlanVisibility(true);
+                          }
                         });
                         // Note: Planning mode is NOT automatically enabled when showing the panel
                         // Users must explicitly enable it from within the panel
@@ -3537,10 +3537,7 @@ class MapScreenState extends State<MapScreen>
                                 if (_flightPlanService.isPlanning) {
                                   _flightPlanService.togglePlanningMode();
                                 }
-                                // Hide flight plan layer on map
-                                _flightPlanService.setFlightPlanVisibility(
-                                  false,
-                                );
+                                // Keep flight plan visible on map even when panel is closed
                                 // debugPrint('Flight planning closed from panel');
                               },
                             ),
@@ -3604,8 +3601,7 @@ class MapScreenState extends State<MapScreen>
                               if (_flightPlanService.isPlanning) {
                                 _flightPlanService.togglePlanningMode();
                               }
-                              // Hide flight plan layer on map
-                              _flightPlanService.setFlightPlanVisibility(false);
+                              // Keep flight plan visible on map even when panel is closed
                               // debugPrint('Flight planning closed from panel');
                             },
                           ),
