@@ -649,8 +649,12 @@ class MapScreenState extends State<MapScreen>
       final panelHeight = _flightPlanningExpanded ? 600.0 : 60.0;
       
       // Apply to new screen size and ensure panel stays visible
-      final newX = (relativeX * newScreenSize.width).clamp(0.0, newScreenSize.width - panelWidth);
-      final newY = (relativeY * newScreenSize.height).clamp(0.0, newScreenSize.height - panelHeight);
+      // Ensure the clamp bounds are valid (min <= max)
+      final maxX = math.max(0.0, newScreenSize.width - panelWidth);
+      final maxY = math.max(0.0, newScreenSize.height - panelHeight);
+      
+      final newX = (relativeX * newScreenSize.width).clamp(0.0, maxX);
+      final newY = (relativeY * newScreenSize.height).clamp(0.0, maxY);
       
       final newPosition = Offset(newX, newY);
       
