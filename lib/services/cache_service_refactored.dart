@@ -324,7 +324,9 @@ class CacheServiceRefactored extends ChangeNotifier {
     }
   }
 
+  @override
   void dispose() {
     _cacheManager.dispose();
+    super.dispose();
   }
 }

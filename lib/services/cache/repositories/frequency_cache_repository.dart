@@ -21,7 +21,7 @@ class FrequencyCacheRepository extends BaseCacheRepository<Frequency> {
   }
 
   @override
-  String getKey(Frequency frequency) => frequency.id;
+  String getKey(Frequency frequency) => frequency.id.toString();
 
   /// Cache frequencies with their data
   Future<void> cacheFrequencies(List<Frequency> frequencies) async {

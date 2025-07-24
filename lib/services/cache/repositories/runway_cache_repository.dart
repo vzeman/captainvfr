@@ -12,16 +12,16 @@ class RunwayCacheRepository extends BaseCacheRepository<Runway> {
 
   @override
   Map<String, dynamic> toMap(Runway runway) {
-    return runway.toJson();
+    return runway.toMap();
   }
 
   @override
   Runway fromMap(Map<dynamic, dynamic> map) {
-    return Runway.fromJson(Map<String, dynamic>.from(map));
+    return Runway.fromMap(Map<String, dynamic>.from(map));
   }
 
   @override
-  String getKey(Runway runway) => runway.id;
+  String getKey(Runway runway) => runway.id.toString();
 
   /// Cache runways with their data
   Future<void> cacheRunways(List<Runway> runways) async {

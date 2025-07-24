@@ -1,5 +1,4 @@
 import 'dart:developer' as developer;
-import 'package:hive_flutter/hive_flutter.dart';
 import '../../../models/airspace.dart';
 import '../models/cache_constants.dart';
 import 'base_cache_repository.dart';
@@ -66,10 +65,6 @@ class AirspaceCacheRepository extends BaseCacheRepository<Airspace> {
           developer.log(
             '✅ Airspace append complete: $added added, $updated updated, total in cache: ${box.length}',
           );
-        },
-        tags: {
-          'count': airspaces.length.toString(),
-          'box_length_before': box.length.toString(),
         },
       );
     } catch (e) {
