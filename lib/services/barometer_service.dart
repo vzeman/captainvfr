@@ -69,9 +69,13 @@ class BarometerService {
   Future<void> initialize() async {
     try {
       _isBarometerAvailable = await _checkBarometerAvailability();
-      _logger.i('Barometer available: $_isBarometerAvailable');
+      if (_isBarometerAvailable) {
+        _logger.i('Barometer sensor is available');
+      } else {
+        _logger.d('Barometer sensor is not available on this device');
+      }
     } catch (e) {
-      _logger.e('Failed to initialize barometer service: $e');
+      _logger.w('Failed to initialize barometer service: $e');
       _isBarometerAvailable = false;
     }
   }
@@ -80,17 +84,21 @@ class BarometerService {
   Future<bool> _checkBarometerAvailability() async {
     // Barometer is not available on web
     if (kIsWeb) {
-      _logger.i('Barometer not available on web platform');
+      _logger.d('Barometer not available on web platform');
       return false;
     }
     
     try {
       return await _methodChannel.invokeMethod('isBarometerAvailable') ?? false;
     } on PlatformException catch (e) {
-      _logger.e('Error checking barometer availability: $e');
+      if (e.code == 'UNAVAILABLE') {
+        _logger.d('Barometer sensor not available: ${e.message}');
+      } else {
+        _logger.w('Error checking barometer availability: ${e.code} - ${e.message}');
+      }
       return false;
     } on MissingPluginException catch (e) {
-      _logger.e('Barometer plugin not implemented on this platform: $e');
+      _logger.d('Barometer plugin not implemented on this platform: $e');
       return false;
     }
   }
@@ -110,7 +118,17 @@ class BarometerService {
       if (_isBarometerAvailable) {
         // Start native barometer sensor (not on web)
         if (!kIsWeb) {
-          await _methodChannel.invokeMethod('startPressureUpdates');
+          try {
+            await _methodChannel.invokeMethod('startPressureUpdates');
+          } on PlatformException catch (e) {
+            if (e.code == 'UNAVAILABLE') {
+              _logger.d('Barometer not available when starting updates: ${e.message}');
+              _isBarometerAvailable = false;
+              _startSimulatedPressureUpdates();
+              return;
+            }
+            rethrow;
+          }
         }
 
         // Listen for pressure updates via event channel
@@ -122,28 +140,33 @@ class BarometerService {
           );
         } on PlatformException catch (e) {
           if (e.code == 'UNAVAILABLE') {
-            _logger.w('Barometer sensor not available on this device');
+            _logger.d('Barometer sensor not available on this device: ${e.message}');
             _isBarometerAvailable = false;
             _isListening = false;
             // Fallback to simulated data
             _startSimulatedPressureUpdates();
             return;
           }
-          rethrow;
+          // For other platform exceptions, log and fallback
+          _logger.w('Platform exception in barometer: ${e.code} - ${e.message}');
+          _isBarometerAvailable = false;
+          _isListening = false;
+          _startSimulatedPressureUpdates();
+          return;
         }
       } else {
         // Fallback to simulated pressure data for testing
-        _logger.w('Barometer not available, using simulated data');
+        _logger.d('Barometer not available, using simulated data');
         _startSimulatedPressureUpdates();
       }
     } on MissingPluginException catch (e) {
-      _logger.e('Barometer plugin not implemented: $e');
+      _logger.d('Barometer plugin not implemented: $e');
       _isBarometerAvailable = false;
       _isListening = false;
       // Fallback to simulation if native plugin is missing
       _startSimulatedPressureUpdates();
     } catch (e) {
-      _logger.e('Error starting barometer: $e');
+      _logger.w('Error starting barometer: $e');
       _isListening = false;
       // Fallback to simulation if native fails
       _startSimulatedPressureUpdates();
@@ -218,7 +241,19 @@ class BarometerService {
   void _handleSensorError(dynamic error) {
     // Check if it's a PlatformException for unavailable sensor
     if (error is PlatformException && error.code == 'UNAVAILABLE') {
-      _logger.w('Barometer sensor not available on this device: ${error.message}');
+      _logger.d('Barometer sensor not available on this device: ${error.message}');
+      _isBarometerAvailable = false;
+      _isListening = false;
+      // Cancel the current subscription
+      _sensorSubscription?.cancel();
+      // Fallback to simulated data
+      _startSimulatedPressureUpdates();
+      return;
+    }
+    
+    // For other errors, log as warning instead of error if it's a known issue
+    if (error is PlatformException) {
+      _logger.w('Barometer platform error: ${error.code} - ${error.message}');
       _isBarometerAvailable = false;
       _isListening = false;
       // Cancel the current subscription
@@ -234,7 +269,10 @@ class BarometerService {
 
   /// Start simulated pressure updates for testing/fallback
   void _startSimulatedPressureUpdates() {
-    _logger.i('Starting simulated barometer data');
+    // Cancel any existing subscription to prevent duplicates
+    _sensorSubscription?.cancel();
+    
+    _logger.d('Using simulated barometer data (device has no barometer sensor)');
 
     double basePressure = 1013.25;
     int counter = 0;
