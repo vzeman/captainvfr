@@ -3653,64 +3653,89 @@ class MapScreenState extends State<MapScreen>
           Positioned(
             bottom: 16,
             left: 16,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _zoomIn,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(8),
-                        bottomLeft: Radius.circular(8),
+            child: StreamBuilder(
+              stream: _mapController.mapEventStream,
+              builder: (context, snapshot) {
+                final currentZoom = _mapController.camera.zoom;
+                final canZoomIn = currentZoom < _maxZoom;
+                final canZoomOut = currentZoom > _minZoom;
+                
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.95),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
                       ),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        child: const Icon(
-                          Icons.add,
-                          size: 20,
-                          color: Colors.black87,
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Material(
+                        color: Colors.transparent,
+                        child: Tooltip(
+                          message: canZoomIn ? 'Zoom in' : 'Maximum zoom reached',
+                          child: Semantics(
+                            label: 'Zoom in',
+                            button: true,
+                            enabled: canZoomIn,
+                            child: InkWell(
+                              onTap: canZoomIn ? _zoomIn : null,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(8),
+                                bottomLeft: Radius.circular(8),
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                child: Icon(
+                                  Icons.add,
+                                  size: 20,
+                                  color: canZoomIn ? Colors.black87 : Colors.grey,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  Container(
-                    width: 1,
-                    height: 20,
-                    color: Colors.grey.withValues(alpha: 0.3),
-                  ),
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _zoomOut,
-                      borderRadius: const BorderRadius.only(
-                        topRight: Radius.circular(8),
-                        bottomRight: Radius.circular(8),
+                      Container(
+                        width: 1,
+                        height: 20,
+                        color: Colors.grey.withValues(alpha: 0.3),
                       ),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        child: const Icon(
-                          Icons.remove,
-                          size: 20,
-                          color: Colors.black87,
+                      Material(
+                        color: Colors.transparent,
+                        child: Tooltip(
+                          message: canZoomOut ? 'Zoom out' : 'Minimum zoom reached',
+                          child: Semantics(
+                            label: 'Zoom out',
+                            button: true,
+                            enabled: canZoomOut,
+                            child: InkWell(
+                              onTap: canZoomOut ? _zoomOut : null,
+                              borderRadius: const BorderRadius.only(
+                                topRight: Radius.circular(8),
+                                bottomRight: Radius.circular(8),
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                child: Icon(
+                                  Icons.remove,
+                                  size: 20,
+                                  color: canZoomOut ? Colors.black87 : Colors.grey,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
           ),
           
