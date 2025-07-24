@@ -59,6 +59,7 @@ import '../utils/airspace_utils.dart';
 import '../widgets/loading_progress_bar.dart';
 import '../widgets/themed_dialog.dart';
 import '../widgets/performance_overlay_widget.dart';
+import '../widgets/map_zoom_controls.dart';
 import '../services/cache_service.dart';
 import '../services/notam_service_v3.dart';
 
@@ -1321,27 +1322,6 @@ class MapScreenState extends State<MapScreen>
     }
   }
 
-  // Zoom in the map
-  void _zoomIn() {
-    final currentZoom = _mapController.camera.zoom;
-    if (currentZoom < _maxZoom) {
-      _mapController.move(
-        _mapController.camera.center,
-        (currentZoom + 0.5).clamp(_minZoom, _maxZoom),
-      );
-    }
-  }
-
-  // Zoom out the map
-  void _zoomOut() {
-    final currentZoom = _mapController.camera.zoom;
-    if (currentZoom > _minZoom) {
-      _mapController.move(
-        _mapController.camera.center,
-        (currentZoom - 0.5).clamp(_minZoom, _maxZoom),
-      );
-    }
-  }
 
   // Handle map tap - updated to support flight planning and airspace selection
   void _onMapTapped(TapPosition tapPosition, LatLng point) async {
@@ -3653,89 +3633,10 @@ class MapScreenState extends State<MapScreen>
           Positioned(
             bottom: 16,
             left: 16,
-            child: StreamBuilder(
-              stream: _mapController.mapEventStream,
-              builder: (context, snapshot) {
-                final currentZoom = _mapController.camera.zoom;
-                final canZoomIn = currentZoom < _maxZoom;
-                final canZoomOut = currentZoom > _minZoom;
-                
-                return Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.95),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Material(
-                        color: Colors.transparent,
-                        child: Tooltip(
-                          message: canZoomIn ? 'Zoom in' : 'Maximum zoom reached',
-                          child: Semantics(
-                            label: 'Zoom in',
-                            button: true,
-                            enabled: canZoomIn,
-                            child: InkWell(
-                              onTap: canZoomIn ? _zoomIn : null,
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(8),
-                                bottomLeft: Radius.circular(8),
-                              ),
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                child: Icon(
-                                  Icons.add,
-                                  size: 20,
-                                  color: canZoomIn ? Colors.black87 : Colors.grey,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Container(
-                        width: 1,
-                        height: 20,
-                        color: Colors.grey.withValues(alpha: 0.3),
-                      ),
-                      Material(
-                        color: Colors.transparent,
-                        child: Tooltip(
-                          message: canZoomOut ? 'Zoom out' : 'Minimum zoom reached',
-                          child: Semantics(
-                            label: 'Zoom out',
-                            button: true,
-                            enabled: canZoomOut,
-                            child: InkWell(
-                              onTap: canZoomOut ? _zoomOut : null,
-                              borderRadius: const BorderRadius.only(
-                                topRight: Radius.circular(8),
-                                bottomRight: Radius.circular(8),
-                              ),
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                child: Icon(
-                                  Icons.remove,
-                                  size: 20,
-                                  color: canZoomOut ? Colors.black87 : Colors.grey,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+            child: MapZoomControls(
+              mapController: _mapController,
+              minZoom: _minZoom,
+              maxZoom: _maxZoom,
             ),
           ),
           
