@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/settings_service.dart';
 import '../../utils/form_theme_helper.dart';
-import 'dart:math' as math;
+import '../../utils/runway_wind_calculator.dart';
 
 class CrosswindCalculator extends StatefulWidget {
   const CrosswindCalculator({super.key});
@@ -37,41 +37,29 @@ class _CrosswindCalculatorState extends State<CrosswindCalculator> {
       return;
     }
 
-    // Calculate the angle between runway and wind direction
-    double angle = windDirection - runwayHeading;
+    try {
+      // Use RunwayWindCalculator for consistent calculations
+      final windComponent = RunwayWindCalculator.calculateWindComponents(
+        runwayHeading,
+        windDirection,
+        windSpeed,
+        'RWY', // Dummy designation for calculator
+      );
 
-    // Normalize angle to -180 to 180 range
-    while (angle > 180) {
-      angle -= 360;
+      setState(() {
+        _headwindComponent = windComponent.headwindAbs;
+        _crosswindComponent = windComponent.crosswind;
+        _windType = windComponent.isHeadwind ? 'Headwind' : 'Tailwind';
+      });
+    } catch (e) {
+      // Handle validation errors
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
-    while (angle < -180) {
-      angle += 360;
-    }
-
-    // Convert to radians
-    double angleRad = angle * (math.pi / 180);
-
-    // Calculate components
-    double headwind = windSpeed * math.cos(angleRad);
-    double crosswind = windSpeed * math.sin(angleRad);
-
-    // Determine wind type
-    String windType;
-    if (headwind > 0) {
-      windType = 'Headwind';
-    } else {
-      windType = 'Tailwind';
-      headwind = -headwind; // Make positive for display
-    }
-
-    // Make crosswind absolute value for display
-    crosswind = crosswind.abs();
-
-    setState(() {
-      _headwindComponent = headwind;
-      _crosswindComponent = crosswind;
-      _windType = windType;
-    });
   }
 
   Widget _buildResultCard() {
