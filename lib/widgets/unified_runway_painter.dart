@@ -4,6 +4,7 @@ import '../models/runway.dart';
 import '../models/openaip_runway.dart';
 import '../models/unified_runway.dart';
 import '../utils/magnetic_declination_simple.dart';
+import '../utils/magnetic_declination_cache.dart';
 import '../utils/geo_constants.dart';
 
 /// Unified runway painter that can handle multiple data sources
@@ -105,8 +106,8 @@ class UnifiedRunwayPainter extends CustomPainter {
       final magneticHeading = runway.leHeadingDegT;
       if (magneticHeading == null) continue;
       
-      // Convert magnetic to true heading
-      final declination = MagneticDeclinationSimple.calculate(airportLat, airportLon);
+      // Convert magnetic to true heading (using cache for performance)
+      final declination = MagneticDeclinationCache.getCached(airportLat, airportLon);
       final heading = MagneticDeclinationSimple.magneticToTrue(magneticHeading, declination);
 
       // Calculate runway endpoints

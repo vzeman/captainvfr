@@ -2,6 +2,7 @@ import 'package:latlong2/latlong.dart';
 import 'dart:math' as math;
 import 'runway.dart';
 import 'openaip_runway.dart';
+import '../utils/runway_utils.dart';
 
 /// Unified runway model that combines data from multiple sources
 class UnifiedRunway {
@@ -95,7 +96,7 @@ class UnifiedRunway {
     
     for (final op in operations) {
       final des = op['des'] as String? ?? '';
-      final desNum = int.tryParse(des.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+      final desNum = RunwayUtils.extractRunwayNumber(des) ?? 0;
       
       if (desNum <= 18 && leOp == null) {
         leOp = op as Map<String, dynamic>;
@@ -162,12 +163,9 @@ class UnifiedRunway {
     final leIdent = parts.isNotEmpty ? parts[0] : '';
     final heIdent = parts.length > 1 ? parts[1] : '';
     
-    // Calculate headings from identifiers
-    final leNumber = int.tryParse(leIdent.replaceAll(RegExp(r'[^0-9]'), ''));
-    final heNumber = int.tryParse(heIdent.replaceAll(RegExp(r'[^0-9]'), ''));
-    
-    final leHeading = leNumber != null ? leNumber * 10.0 : null;
-    final heHeading = heNumber != null ? heNumber * 10.0 : null;
+    // Calculate headings from identifiers (optimized)
+    final leHeading = RunwayUtils.getHeadingFromDesignator(leIdent);
+    final heHeading = RunwayUtils.getHeadingFromDesignator(heIdent);
     
     return UnifiedRunway(
       airportIdent: airportIdent,
@@ -312,12 +310,8 @@ class UnifiedRunway {
     final des = op['des'] as String? ?? '';
     final hdg = op['hdg'] as num?;
     
-    // Calculate opposite designator
-    final desNum = int.tryParse(des.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-    final suffix = des.replaceAll(RegExp(r'[0-9]'), '');
-    
-    final oppositeNum = desNum <= 18 ? desNum + 18 : desNum - 18;
-    final oppositeDes = oppositeNum.toString().padLeft(2, '0') + suffix;
+    // Calculate opposite designator (optimized)
+    final oppositeDes = RunwayUtils.getOppositeDesignator(des);
     
     // Calculate opposite heading
     final oppositeHdg = hdg != null ? (hdg + 180) % 360 : null;
