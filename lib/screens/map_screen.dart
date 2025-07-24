@@ -434,6 +434,59 @@ class MapScreenState extends State<MapScreen>
   }
 
   @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    // Handle screen size changes (orientation changes)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _handleOrientationChange();
+      }
+    });
+  }
+
+  void _handleOrientationChange() {
+    final screenSize = MediaQuery.of(context).size;
+    final safeAreaTop = MediaQuery.of(context).padding.top;
+    
+    setState(() {
+      // Adjust toggle panel position to stay within bounds
+      final togglePanelWidth = 50.0;
+      final maxRightPosition = screenSize.width - togglePanelWidth - 16;
+      if (_togglePanelRightPosition > maxRightPosition) {
+        _togglePanelRightPosition = maxRightPosition;
+      }
+      
+      // Ensure toggle panel stays within vertical bounds
+      final maxTopPosition = (screenSize.height - safeAreaTop - 300) / screenSize.height;
+      if (_togglePanelTopPosition > maxTopPosition) {
+        _togglePanelTopPosition = maxTopPosition;
+      }
+      
+      // Adjust flight data panel position
+      if (_flightDataPanelPosition.dx + 600 > screenSize.width) {
+        _flightDataPanelPosition = Offset(
+          (screenSize.width - 600).clamp(0, screenSize.width - 600),
+          _flightDataPanelPosition.dy
+        );
+      }
+      
+      // Adjust airspace panel position
+      if (_airspacePanelPosition != null) {
+        final panelWidth = screenSize.width < 600 ? screenSize.width - 16 : 600;
+        if (_airspacePanelPosition!.dx + panelWidth > screenSize.width) {
+          _airspacePanelPosition = Offset(
+            (screenSize.width - panelWidth).clamp(0, screenSize.width - panelWidth),
+            _airspacePanelPosition!.dy
+          );
+        }
+      }
+      
+      // Adjust flight planning panel position
+      _adjustFlightPlanningPanelPosition(screenSize);
+    });
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     
@@ -2699,10 +2752,13 @@ class MapScreenState extends State<MapScreen>
   Widget _buildContent(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      body: Stack(
-        children: [
-          // Map layer
-          FlutterMap(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              // Map layer
+              FlutterMap(
             key: _mapKey,
             mapController: _mapController,
             options: MapOptions(
@@ -3176,7 +3232,7 @@ class MapScreenState extends State<MapScreen>
                     children: [
                       // Drag handle indicator
                       Container(
-                        width: double.infinity,
+                        width: 50, // Fixed width instead of double.infinity
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: Center(
                           child: Container(
@@ -3977,7 +4033,9 @@ class MapScreenState extends State<MapScreen>
               ),
             ),
           ),
-        ],
+            ],
+          );
+        },
       ),
     ); // Closing Scaffold
   }
