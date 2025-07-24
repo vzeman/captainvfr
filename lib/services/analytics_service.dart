@@ -27,12 +27,19 @@ class AnalyticsService {
       }
 
       // Initialize Firebase only if not already initialized
-      if (Firebase.apps.isEmpty) {
-        await Firebase.initializeApp();
+      try {
+        if (Firebase.apps.isEmpty) {
+          await Firebase.initializeApp();
+        }
+        
+        _analytics = FirebaseAnalytics.instance;
+        _isInitialized = true;
+      } catch (e) {
+        _logger.w('Firebase initialization failed: $e. Analytics will be disabled.');
+        _isInitialized = true;
+        _trackingEnabled = false;
+        return;
       }
-      
-      _analytics = FirebaseAnalytics.instance;
-      _isInitialized = true;
       
       // Check tracking permission on iOS
       if (Platform.isIOS) {

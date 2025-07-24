@@ -434,6 +434,75 @@ class MapScreenState extends State<MapScreen>
   }
 
   @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    // Handle screen size changes (orientation changes)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _handleOrientationChange();
+      }
+    });
+  }
+
+  void _handleOrientationChange() {
+    final screenSize = MediaQuery.of(context).size;
+    final safeAreaTop = MediaQuery.of(context).padding.top;
+    
+    setState(() {
+      // Adjust toggle panel position to stay within bounds
+      final togglePanelWidth = 50.0;
+      final maxRightPosition = screenSize.width - togglePanelWidth - 16;
+      if (_togglePanelRightPosition > maxRightPosition) {
+        _togglePanelRightPosition = maxRightPosition;
+      }
+      
+      // Ensure toggle panel stays within vertical bounds
+      final maxTopPosition = (screenSize.height - safeAreaTop - 300) / screenSize.height;
+      if (_togglePanelTopPosition > maxTopPosition) {
+        _togglePanelTopPosition = maxTopPosition;
+      }
+      
+      // Adjust flight data panel position
+      final isPhone = screenSize.width < 600;
+      final panelWidth = isPhone ? screenSize.width - 16 : 600;
+      final panelHeight = _flightDashboardExpanded ? 260 : 60;
+      final minMargin = isPhone ? 8.0 : 16.0;
+      
+      // Check horizontal bounds
+      double newX = _flightDataPanelPosition.dx;
+      if (newX + panelWidth > screenSize.width) {
+        newX = (screenSize.width - panelWidth - minMargin).clamp(minMargin, screenSize.width - panelWidth - minMargin);
+      }
+      
+      // Check vertical bounds (bottom distance)
+      double bottomDistance = _flightDataPanelPosition.dy;
+      // Ensure panel stays within screen bounds
+      // Maximum bottom distance is screen height minus panel height minus top safe area
+      final maxBottomDistance = screenSize.height - panelHeight - safeAreaTop - 50; // 50px minimum from top
+      bottomDistance = bottomDistance.clamp(16.0, maxBottomDistance);
+      
+      _flightDataPanelPosition = Offset(
+        isPhone ? minMargin : newX, // On phones, keep centered
+        bottomDistance
+      );
+      
+      // Adjust airspace panel position
+      if (_airspacePanelPosition != null) {
+        final panelWidth = screenSize.width < 600 ? screenSize.width - 16 : 600;
+        if (_airspacePanelPosition!.dx + panelWidth > screenSize.width) {
+          _airspacePanelPosition = Offset(
+            (screenSize.width - panelWidth).clamp(0, screenSize.width - panelWidth),
+            _airspacePanelPosition!.dy
+          );
+        }
+      }
+      
+      // Adjust flight planning panel position
+      _adjustFlightPlanningPanelPosition(screenSize);
+    });
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     
@@ -596,8 +665,12 @@ class MapScreenState extends State<MapScreen>
       final panelHeight = _flightPlanningExpanded ? 600.0 : 60.0;
       
       // Apply to new screen size and ensure panel stays visible
-      final newX = (relativeX * newScreenSize.width).clamp(0.0, newScreenSize.width - panelWidth);
-      final newY = (relativeY * newScreenSize.height).clamp(0.0, newScreenSize.height - panelHeight);
+      // Ensure the clamp bounds are valid (min <= max)
+      final maxX = math.max(0.0, newScreenSize.width - panelWidth);
+      final maxY = math.max(0.0, newScreenSize.height - panelHeight);
+      
+      final newX = (relativeX * newScreenSize.width).clamp(0.0, maxX);
+      final newY = (relativeY * newScreenSize.height).clamp(0.0, maxY);
       
       final newPosition = Offset(newX, newY);
       
@@ -2699,10 +2772,13 @@ class MapScreenState extends State<MapScreen>
   Widget _buildContent(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      body: Stack(
-        children: [
-          // Map layer
-          FlutterMap(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              // Map layer
+              FlutterMap(
             key: _mapKey,
             mapController: _mapController,
             options: MapOptions(
@@ -3176,7 +3252,7 @@ class MapScreenState extends State<MapScreen>
                     children: [
                       // Drag handle indicator
                       Container(
-                        width: double.infinity,
+                        width: 50, // Fixed width instead of double.infinity
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: Center(
                           child: Container(
@@ -3977,7 +4053,9 @@ class MapScreenState extends State<MapScreen>
               ),
             ),
           ),
-        ],
+            ],
+          );
+        },
       ),
     ); // Closing Scaffold
   }
