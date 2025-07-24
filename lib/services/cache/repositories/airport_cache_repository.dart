@@ -30,14 +30,14 @@ class AirportCacheRepository extends BaseCacheRepository<Airport> {
   @override
   Airport fromMap(Map<dynamic, dynamic> map) {
     return Airport(
-      icao: map['icao'] as String,
+      icao: map['icao'] as String? ?? '',
       iata: map['iata'] as String?,
-      name: map['name'] as String,
-      city: map['city'] as String,
-      country: map['country'] as String,
+      name: map['name'] as String? ?? 'Unknown',
+      city: map['city'] as String? ?? '',
+      country: map['country'] as String? ?? '',
       position: LatLng(
-        map['latitude'] as double,
-        map['longitude'] as double,
+        (map['latitude'] as num?)?.toDouble() ?? 0.0,
+        (map['longitude'] as num?)?.toDouble() ?? 0.0,
       ),
       elevation: (map['elevation'] as num?)?.toInt() ?? 0,
       type: map['type'] as String? ?? 'small_airport',

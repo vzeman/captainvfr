@@ -147,7 +147,8 @@ class UnifiedRunwayPainter extends CustomPainter {
       );
       
       // Draw runway designation labels
-      if (zoom >= 8) {
+      // Show labels at the same zoom level as runways or slightly later
+      if (zoom >= GeoConstants.minZoomForRunways + 1) {
         _drawRunwayDesignationLabels(
           canvas: canvas,
           runway: runway,
