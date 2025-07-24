@@ -71,6 +71,7 @@ import 'map/components/layer_toggle_button.dart';
 import 'map/components/map_controls_panel.dart';
 import 'map/components/map_dialogs.dart';
 import 'map/components/map_layers.dart';
+import 'map/components/navigation_menu.dart';
 import 'map/services/map_data_loader.dart';
 import 'map/utils/map_utils.dart';
 
