@@ -332,8 +332,11 @@ class UnifiedRunwayPainter extends CustomPainter {
     required double angle,
     required Color color,
   }) {
-    // Calculate offset for labels
-    final labelOffset = 12.0; // Distance from runway end
+    // Skip if runway identifiers are empty
+    if (runway.leIdent.isEmpty && runway.heIdent.isEmpty) return;
+    
+    // Calculate offset for labels (slightly outside runway ends)
+    final labelOffset = 15.0; // Distance from runway end
     
     // Calculate positions slightly outside runway ends
     final leOffset = Offset(
@@ -348,23 +351,27 @@ class UnifiedRunwayPainter extends CustomPainter {
     final leLabelPos = start + leOffset;
     final heLabelPos = end + heOffset;
     
-    // Draw LE (Low End) label
-    _drawDesignationLabel(
-      canvas: canvas,
-      position: leLabelPos,
-      text: runway.leIdent,
-      angle: angle,
-      color: color,
-    );
+    // Draw LE (Low End) label if available
+    if (runway.leIdent.isNotEmpty) {
+      _drawDesignationLabel(
+        canvas: canvas,
+        position: leLabelPos,
+        text: runway.leIdent,
+        angle: angle,
+        color: color,
+      );
+    }
     
-    // Draw HE (High End) label
-    _drawDesignationLabel(
-      canvas: canvas,
-      position: heLabelPos,
-      text: runway.heIdent,
-      angle: angle,
-      color: color,
-    );
+    // Draw HE (High End) label if available
+    if (runway.heIdent.isNotEmpty) {
+      _drawDesignationLabel(
+        canvas: canvas,
+        position: heLabelPos,
+        text: runway.heIdent,
+        angle: angle,
+        color: color,
+      );
+    }
   }
 
   void _drawDesignationLabel({
@@ -379,12 +386,18 @@ class UnifiedRunwayPainter extends CustomPainter {
         text: text,
         style: TextStyle(
           color: color,
-          fontSize: 8,
+          fontSize: 9,
           fontWeight: FontWeight.bold,
+          fontFamily: 'monospace',
           shadows: [
             Shadow(
-              color: Colors.white.withValues(alpha: 0.8),
+              color: Colors.white.withValues(alpha: 0.9),
               offset: const Offset(0.5, 0.5),
+              blurRadius: 1.5,
+            ),
+            Shadow(
+              color: Colors.white.withValues(alpha: 0.6),
+              offset: const Offset(-0.5, -0.5),
               blurRadius: 1.0,
             ),
           ],
@@ -397,13 +410,31 @@ class UnifiedRunwayPainter extends CustomPainter {
     canvas.save();
     canvas.translate(position.dx, position.dy);
     
-    // Ensure text is readable
+    // Ensure text is readable (flip if upside down)
     var textAngle = angle;
     if (textAngle > math.pi / 2 || textAngle < -math.pi / 2) {
       textAngle += math.pi;
     }
     
     canvas.rotate(textAngle);
+    
+    // Add a subtle background for better contrast
+    final backgroundPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.3)
+      ..style = PaintingStyle.fill;
+    
+    final padding = 2.0;
+    final backgroundRect = Rect.fromCenter(
+      center: Offset(0, 0),
+      width: textPainter.width + padding * 2,
+      height: textPainter.height + padding * 2,
+    );
+    
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(backgroundRect, const Radius.circular(2.0)),
+      backgroundPaint,
+    );
+    
     textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height / 2));
     canvas.restore();
   }
