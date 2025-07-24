@@ -619,9 +619,40 @@ class TiledDataLoader {
     try {
       // CSV headers: ['airport_ident', 'length_ft', 'width_ft', 'surface', 'lighted', 'closed',
       //               'le_ident', 'le_latitude_deg', 'le_longitude_deg', 'le_elevation_ft', 'he_ident']
+      // Note: Our simplified runway data only includes coordinates for the LE (low end) of the runway.
+      // HE (high end) coordinates are not available in the data source.
+      
+      final leIdent = row[6].toString();
+      final heIdent = row[10].toString();
+      
+      // Calculate headings from runway identifiers
+      // Runway numbers are magnetic headings divided by 10 (e.g., runway 04 = 040 degrees)
+      double? leHeading;
+      double? heHeading;
+      
+      // Extract numeric part from identifier (handle L/R/C suffixes)
+      final leMatch = RegExp(r'^(\d+)').firstMatch(leIdent);
+      final heMatch = RegExp(r'^(\d+)').firstMatch(heIdent);
+      
+      if (leMatch != null) {
+        final leNumber = int.tryParse(leMatch.group(1)!);
+        if (leNumber != null) {
+          leHeading = leNumber * 10.0;
+        }
+      }
+      
+      if (heMatch != null) {
+        final heNumber = int.tryParse(heMatch.group(1)!);
+        if (heNumber != null) {
+          heHeading = heNumber * 10.0;
+        }
+      }
+      
+      // Generate a unique ID based on airport and runway designation
+      final id = '${row[0]}_${leIdent}_$heIdent'.hashCode;
       
       return Runway(
-        id: 0, // OurAirports data doesn't have IDs in our simplified format
+        id: id,
         airportRef: '', // Not in our simplified format
         airportIdent: row[0].toString(),
         lengthFt: int.parse(row[1].toString()),
@@ -629,11 +660,18 @@ class TiledDataLoader {
         surface: row[3].toString(),
         lighted: row[4].toString() == '1',
         closed: row[5].toString() == '1',
-        leIdent: row[6].toString(),
+        leIdent: leIdent,
         leLatitude: row[7] != null && row[7].toString().isNotEmpty ? double.tryParse(row[7].toString()) : null,
         leLongitude: row[8] != null && row[8].toString().isNotEmpty ? double.tryParse(row[8].toString()) : null,
         leElevationFt: row[9] != null && row[9].toString().isNotEmpty ? int.tryParse(row[9].toString()) : null,
-        heIdent: row[10].toString(),
+        leHeadingDegT: leHeading,
+        leDisplacedThresholdFt: null, // Not available in our data
+        heIdent: heIdent,
+        heLatitude: null, // Not available in our simplified runway data
+        heLongitude: null, // Not available in our simplified runway data
+        heElevationFt: null, // Not available in our simplified runway data
+        heHeadingDegT: heHeading,
+        heDisplacedThresholdFt: null, // Not available in our data
       );
     } catch (e) {
       _logger.e('Error parsing runway row: $e');

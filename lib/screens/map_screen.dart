@@ -726,7 +726,13 @@ class MapScreenState extends State<MapScreen>
         final runwayDataMap = <String, List<Runway>>{};
         if (zoom >= 13) {
           for (final airport in airports) {
-            final runways = _runwayService.getRunwaysForAirport(airport.icao);
+            // Pass OpenAIP runway data if available
+            final runways = _runwayService.getRunwaysForAirport(
+              airport.icao,
+              openAIPRunways: airport.openAIPRunways.isNotEmpty ? airport.openAIPRunways : null,
+              airportLat: airport.position.latitude,
+              airportLon: airport.position.longitude,
+            );
             if (runways.isNotEmpty) {
               runwayDataMap[airport.icao] = runways;
             }
@@ -2313,6 +2319,9 @@ class MapScreenState extends State<MapScreen>
     try {
       await _airportService.initialize();
       await _navaidService.initialize();
+      
+      // Initialize runway service
+      await _runwayService.initialize();
 
       // Initialize offline map service only on supported platforms
       if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {

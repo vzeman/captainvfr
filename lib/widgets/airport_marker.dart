@@ -4,7 +4,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'dart:math' as math;
 import '../models/airport.dart';
 import '../models/runway.dart';
+import '../models/openaip_runway.dart';
 import 'runway_painter.dart';
+import '../utils/magnetic_declination_simple.dart';
 
 class AirportMarker extends StatelessWidget {
   final Airport airport;
@@ -42,8 +44,35 @@ class AirportMarker extends StatelessWidget {
     // Weather indicator dot size
     final weatherDotSize = visualSize * 0.3;
 
-    // Get runway visualization size based on zoom
-    final runwayVisualizationSize = mapZoom >= 13 ? visualSize * 3.5 : 0.0;
+    // Calculate runway visualization size based on actual runway dimensions
+    double runwayVisualizationSize = 0.0;
+    if (mapZoom >= 5) {
+      // Calculate meters per pixel at this zoom and latitude
+      const double earthCircumference = 40075016.686;
+      final double metersPerPixel = earthCircumference * math.cos(airport.position.latitude * math.pi / 180) / math.pow(2, mapZoom + 8);
+      
+      // Find the longest runway
+      double maxLengthM = 0;
+      if (runways != null && runways!.isNotEmpty) {
+        for (final runway in runways!) {
+          final lengthM = runway.lengthFt * 0.3048; // Convert feet to meters
+          if (lengthM > maxLengthM) maxLengthM = lengthM;
+        }
+      } else if (airport.openAIPRunways.isNotEmpty) {
+        // For OpenAIP runways
+        for (final runway in airport.openAIPRunways) {
+          final lengthM = runway.lengthM?.toDouble();
+          if (lengthM != null && lengthM > maxLengthM) maxLengthM = lengthM;
+        }
+      }
+      
+      // Set size based on longest runway, with minimum size
+      if (maxLengthM > 0) {
+        runwayVisualizationSize = math.max(visualSize * 2, (maxLengthM / metersPerPixel) * 1.2);
+      } else {
+        runwayVisualizationSize = visualSize * 3.5; // Default size
+      }
+    }
 
     return GestureDetector(
       onTap: () {
@@ -55,7 +84,7 @@ class AirportMarker extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             // Runway visualization (behind the marker)
-            if (mapZoom >= 13)
+            if (mapZoom >= 5)
               if (runways != null && runways!.isNotEmpty)
                 Positioned(
                   child: RunwayVisualization(
@@ -63,6 +92,8 @@ class AirportMarker extends StatelessWidget {
                     zoom: mapZoom,
                     size: runwayVisualizationSize,
                     runwayColor: isSelected ? Colors.amber : Colors.black87,
+                    latitude: airport.position.latitude,
+                    longitude: airport.position.longitude,
                   ),
                 )
               else if (airport.openAIPRunways.isNotEmpty)
@@ -153,7 +184,7 @@ class AirportMarker extends StatelessWidget {
 
   // Build runway visualization from OpenAIP runway data
   Widget _buildRunwayVisualizationFromOpenAIP(
-    List<dynamic> openAIPRunways,
+    List<OpenAIPRunway> openAIPRunways,
     double size,
     bool isSelected,
   ) {
@@ -163,8 +194,10 @@ class AirportMarker extends StatelessWidget {
       painter: SimpleRunwayPainter(
         runways: openAIPRunways,
         runwayColor: isSelected ? Colors.amber : Colors.black87,
-        strokeWidth: mapZoom >= 15 ? 3.0 : 2.0,
+        strokeWidth: 1.0, // Base width, will be scaled based on actual runway width
         zoom: mapZoom,
+        latitude: airport.position.latitude,
+        longitude: airport.position.longitude,
       ),
     );
   }
@@ -238,13 +271,27 @@ class AirportMarkersLayer extends StatelessWidget {
       // Get runway data for this airport
       final runways = airportRunways?[airport.icao];
 
-      // Increase marker bounds for runway visualization at higher zoom levels
-      final hasRunways = (runways != null && runways.isNotEmpty) ||
-                        (airport.runways != null && airport.runways!.isNotEmpty) || 
-                        airport.openAIPRunways.isNotEmpty;
-      final markerBounds = mapZoom >= 13 && hasRunways
-          ? airportMarkerSize * 3.5  // Match the runway visualization size multiplier
-          : airportMarkerSize;
+      // Calculate actual runway bounds
+      double markerBounds = airportMarkerSize;
+      if (mapZoom >= 5) {
+        // Calculate meters per pixel at this zoom and latitude
+        const double earthCircumference = 40075016.686;
+        final double metersPerPixel = earthCircumference * math.cos(airport.position.latitude * math.pi / 180) / math.pow(2, mapZoom + 8);
+        
+        // Find the longest runway
+        double maxLengthM = 0;
+        final airportRunwayData = airportRunways?[airport.icao];
+        if (airportRunwayData != null && airportRunwayData.isNotEmpty) {
+          for (final runway in airportRunwayData) {
+            final lengthM = runway.lengthFt * 0.3048;
+            if (lengthM > maxLengthM) maxLengthM = lengthM;
+          }
+        }
+        
+        if (maxLengthM > 0) {
+          markerBounds = math.max(airportMarkerSize, (maxLengthM / metersPerPixel) * 1.2);
+        }
+      }
 
       return Marker(
         width: markerBounds,
@@ -269,16 +316,20 @@ class AirportMarkersLayer extends StatelessWidget {
 
 // Simple runway painter for OpenAIP runway data
 class SimpleRunwayPainter extends CustomPainter {
-  final List<dynamic> runways;
+  final List<OpenAIPRunway> runways;
   final Color runwayColor;
   final double strokeWidth;
   final double zoom;
+  final double? latitude;
+  final double? longitude;
 
   SimpleRunwayPainter({
     required this.runways,
     required this.runwayColor,
     required this.strokeWidth,
     this.zoom = 13,
+    this.latitude,
+    this.longitude,
   });
 
   @override
@@ -293,24 +344,21 @@ class SimpleRunwayPainter extends CustomPainter {
 
     final center = Offset(size.width / 2, size.height / 2);
     
-    // Base scale for runway length visualization
-    // At zoom 13, 1000m runway = 40% of marker size
-    // Adjust scale based on zoom level
-    final zoomScale = math.pow(2, (zoom - 13) / 2);
-    final metersPerPixel = (2500 / size.width) / zoomScale; // 2500m reference length
+    // Calculate accurate scale using Web Mercator projection formula
+    final lat = latitude ?? 45.0; // Default to 45° if no data
+    
+    // Standard Web Mercator formula: meters per pixel at given latitude and zoom
+    const double earthCircumference = 40075016.686; // meters at equator
+    final double metersPerPixel = earthCircumference * math.cos(lat * math.pi / 180) / math.pow(2, zoom + 8);
     
     // Track drawn runways to avoid duplicates
     final drawnRunways = <String>{};
 
     for (final runway in runways) {
       // Extract runway data
-      String designator = '';
-      int? lengthM;
-      
-      if (runway is Map) {
-        designator = runway['des']?.toString() ?? '';
-        lengthM = runway['len'] as int?;
-      }
+      final designator = runway.designator;
+      final lengthM = runway.lengthM;
+      final widthM = runway.widthM;
       
       // Extract numeric part from designator
       final match = RegExp(r'^(\d{1,2})').firstMatch(designator);
@@ -319,7 +367,14 @@ class SimpleRunwayPainter extends CustomPainter {
       final runwayNumber = int.tryParse(match.group(1)!);
       if (runwayNumber == null) continue;
       
-      final heading = runwayNumber * 10; // Convert to degrees
+      final magneticHeading = runwayNumber * 10; // Convert to degrees
+      
+      // Convert magnetic heading to true heading using magnetic declination
+      final lat = latitude ?? 45.0;
+      final lon = longitude ?? 0.0;
+      final declination = MagneticDeclinationSimple.calculate(lat, lon);
+      // Apply declination: True = Magnetic + Declination
+      final heading = MagneticDeclinationSimple.magneticToTrue(magneticHeading.toDouble(), declination);
       
       // Create unique key including length to allow different length runways at same heading
       final runwayKey = '$heading-${lengthM ?? 'unknown'}';
@@ -333,8 +388,8 @@ class SimpleRunwayPainter extends CustomPainter {
       final actualLengthM = lengthM ?? 1000;
       final runwayLengthPx = actualLengthM / metersPerPixel;
       
-      // Cap maximum visual length to prevent overflow
-      final visualLength = math.min(runwayLengthPx, size.width * 0.8);
+      // No capping - we want exact representation
+      final visualLength = runwayLengthPx;
 
       // Convert heading to radians
       final radians = heading * (math.pi / 180);
@@ -349,12 +404,20 @@ class SimpleRunwayPainter extends CustomPainter {
       final start = Offset(center.dx - dx, center.dy - dy);
       final end = Offset(center.dx + dx, center.dy + dy);
 
-      // Vary stroke width based on runway length (longer = thicker)
+      // Calculate runway width in pixels
+      double runwayStrokeWidth = strokeWidth;
+      if (widthM != null && widthM > 0) {
+        // Convert runway width to pixels using same scale
+        final widthPx = widthM / metersPerPixel;
+        // Ensure minimum visibility
+        runwayStrokeWidth = math.max(1.0, widthPx);
+      }
+      
       final runwayPaint = Paint()
         ..color = runwayColor
-        ..strokeWidth = strokeWidth + (actualLengthM > 2000 ? 1.0 : 0.0)
+        ..strokeWidth = runwayStrokeWidth
         ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round;
+        ..strokeCap = StrokeCap.butt; // Use butt cap for exact length
 
       // Draw runway line
       canvas.drawLine(start, end, runwayPaint);

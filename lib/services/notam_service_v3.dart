@@ -167,9 +167,6 @@ class NotamServiceV3 {
       );
     }
 
-    // Small airfields like LZDV typically don't have NOTAMs
-    // Return empty list for most airports
-
     // Sort by importance and date
     notams.sort((a, b) {
       final importanceCompare = b.importance.index.compareTo(

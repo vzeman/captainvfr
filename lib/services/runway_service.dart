@@ -2,9 +2,12 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import '../models/runway.dart';
+import '../models/unified_runway.dart';
+import '../models/openaip_runway.dart';
 import 'cache_service.dart';
 import 'bundled_runway_service.dart';
 import 'tiled_data_loader.dart';
+// import 'openaip_service.dart'; // Reserved for future use
 
 class RunwayService {
   static const String _baseUrl =
@@ -21,7 +24,9 @@ class RunwayService {
   
   // Cache for tiled data
   final Map<String, List<Runway>> _runwaysByAirport = {};
+  final Map<String, List<UnifiedRunway>> _unifiedRunwaysByAirport = {};
   final Set<String> _loadedAreas = {};
+  // OpenAIPService? _openAIPService; // Reserved for future use
 
   // Singleton pattern
   static final RunwayService _instance = RunwayService._internal();
@@ -40,6 +45,13 @@ class RunwayService {
   /// Initialize the service and load cached data
   Future<void> initialize() async {
     await _cacheService.initialize();
+    
+    // Reserved for future OpenAIP service integration
+    // try {
+    //   _openAIPService = OpenAIPService();
+    // } catch (e) {
+    //   developer.log('OpenAIP service not available: $e');
+    // }
     
     // Check if tiled data is available
     try {
@@ -267,7 +279,13 @@ class RunwayService {
   }
 
   /// Get runways for a specific airport
-  List<Runway> getRunwaysForAirport(String airportIdent) {
+  List<Runway> getRunwaysForAirport(String airportIdent, {List<OpenAIPRunway>? openAIPRunways, double? airportLat, double? airportLon}) {
+    // Try unified data first
+    final unified = getUnifiedRunwaysForAirport(airportIdent, openAIPRunways: openAIPRunways, airportLat: airportLat, airportLon: airportLon);
+    if (unified.isNotEmpty) {
+      return unified.map((r) => r.toRunway()).toList();
+    }
+    
     if (_useTiledData) {
       // Return from tiled data cache
       return _runwaysByAirport[airportIdent.toUpperCase()] ?? 
@@ -285,6 +303,72 @@ class RunwayService {
               runway.airportIdent.toUpperCase() == airportIdent.toUpperCase(),
         )
         .toList();
+  }
+  
+  /// Get unified runways combining multiple sources
+  List<UnifiedRunway> getUnifiedRunwaysForAirport(String airportIdent, {List<OpenAIPRunway>? openAIPRunways, double? airportLat, double? airportLon}) {
+    final upperIdent = airportIdent.toUpperCase();
+    
+    // Check cache first (only if no OpenAIP data provided)
+    if (openAIPRunways == null && _unifiedRunwaysByAirport.containsKey(upperIdent)) {
+      return _unifiedRunwaysByAirport[upperIdent]!;
+    }
+    
+    final unifiedRunways = <UnifiedRunway>[];
+    final processedDesignations = <String>{};
+    
+    // 1. Get OurAirports runways
+    final ourAirportsRunways = <Runway>[];
+    if (_useTiledData) {
+      ourAirportsRunways.addAll(
+        _runwaysByAirport[upperIdent] ?? _runwaysByAirport[airportIdent] ?? []
+      );
+    } else if (_useBundledData) {
+      ourAirportsRunways.addAll(_bundledService.getRunwaysForAirport(airportIdent));
+    }
+    
+    // Convert to unified format
+    for (final runway in ourAirportsRunways) {
+      if (!runway.closed) {
+        final unified = UnifiedRunway.fromOurAirports(runway);
+        unifiedRunways.add(unified);
+        processedDesignations.add(unified.designation);
+      }
+    }
+    
+    // 2. Add OpenAIP runways if provided
+    if (openAIPRunways != null && openAIPRunways.isNotEmpty) {
+      for (final openAIPRunway in openAIPRunways) {
+        final unified = UnifiedRunway.fromOpenAIPRunway(
+          openAIPRunway,
+          airportIdent,
+          airportLat: airportLat,
+          airportLon: airportLon,
+        );
+        
+        // Check if we already have this runway from OurAirports
+        final existingIndex = unifiedRunways.indexWhere(
+          (r) => r.matches(unified)
+        );
+        
+        if (existingIndex >= 0) {
+          // Merge data, preferring OurAirports data with OpenAIP filling gaps
+          unifiedRunways[existingIndex] = UnifiedRunway.merge(
+            unifiedRunways[existingIndex],
+            unified,
+          );
+        } else if (!processedDesignations.contains(unified.designation)) {
+          // Add new runway from OpenAIP
+          unifiedRunways.add(unified);
+          processedDesignations.add(unified.designation);
+        }
+      }
+    }
+    
+    // Cache the results
+    _unifiedRunwaysByAirport[upperIdent] = unifiedRunways;
+    
+    return unifiedRunways;
   }
 
   /// Get runways for multiple airports
@@ -377,6 +461,7 @@ class RunwayService {
     await _cacheService.clearRunwaysCache();
     _runways.clear();
     _runwaysByAirport.clear();
+    _unifiedRunwaysByAirport.clear();
     _loadedAreas.clear();
     _tiledDataLoader.clearCacheForType('runways');
     developer.log('🗑️ Runway cache cleared');
