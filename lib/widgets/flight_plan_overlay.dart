@@ -129,7 +129,7 @@ class FlightPlanOverlay {
   static List<Marker> buildWaypointMarkers(
     FlightPlan flightPlan,
     Function(int index) onWaypointTapped,
-    Function(int index, LatLng newPosition) onWaypointMoved,
+    Function(int index, LatLng newPosition, {bool isDragging}) onWaypointMoved,
     int? selectedWaypointIndex,
     Function(bool isDragging)? onDraggingChanged,
     GlobalKey mapKey,

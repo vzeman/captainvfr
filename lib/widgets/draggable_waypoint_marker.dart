@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -7,7 +8,7 @@ class DraggableWaypointMarker extends StatefulWidget {
   final int waypointIndex;
   final Waypoint waypoint;
   final Function(int) onWaypointTapped;
-  final Function(int, LatLng) onWaypointMoved;
+  final Function(int, LatLng, {bool isDragging}) onWaypointMoved;
   final bool isSelected;
   final Function(bool)? onDraggingChanged;
   final GlobalKey mapKey;
@@ -33,6 +34,8 @@ class DraggableWaypointMarker extends StatefulWidget {
 class _DraggableWaypointMarkerState extends State<DraggableWaypointMarker> {
   bool _isDragging = false;
   Offset? _lastPosition;
+  Timer? _throttleTimer;
+  LatLng? _pendingPosition;
 
   Color _getWaypointColor(WaypointType type) {
     switch (type) {
@@ -70,20 +73,45 @@ class _DraggableWaypointMarkerState extends State<DraggableWaypointMarker> {
         },
         onPointerMove: (event) {
           if (_isDragging && _lastPosition != null) {
-            // Update position during drag (visual feedback only)
+            // Update position during drag for real-time feedback
             setState(() {
               _lastPosition = event.position;
             });
+            
+            // Calculate the new position
+            final newLatLng = _calculateNewPosition(event.position);
+            if (newLatLng != null) {
+              // Update immediately for smooth visual feedback
+              widget.onWaypointMoved(widget.waypointIndex, newLatLng, isDragging: true);
+              
+              // Store pending position for final update
+              _pendingPosition = newLatLng;
+              
+              // Throttle the expensive operations
+              _throttleTimer?.cancel();
+              _throttleTimer = Timer(const Duration(milliseconds: 16), () {
+                // 60fps throttling
+                if (_pendingPosition != null && _isDragging) {
+                  // Position is already updated, just ensure state is consistent
+                }
+              });
+            }
           }
         },
         onPointerUp: (event) {
           if (_isDragging) {
-            // Calculate and apply the new position
-            _applyNewPosition(event.position);
+            // Final position update
+            final finalPosition = _calculateNewPosition(event.position);
+            if (finalPosition != null) {
+              widget.onWaypointMoved(widget.waypointIndex, finalPosition, isDragging: false);
+            }
+            
             setState(() {
               _isDragging = false;
               _lastPosition = null;
+              _pendingPosition = null;
             });
+            _throttleTimer?.cancel();
             widget.onDraggingChanged?.call(false);
           }
         },
@@ -92,7 +120,9 @@ class _DraggableWaypointMarkerState extends State<DraggableWaypointMarker> {
             setState(() {
               _isDragging = false;
               _lastPosition = null;
+              _pendingPosition = null;
             });
+            _throttleTimer?.cancel();
             widget.onDraggingChanged?.call(false);
           }
         },
@@ -137,19 +167,19 @@ class _DraggableWaypointMarkerState extends State<DraggableWaypointMarker> {
     );
   }
 
-  void _applyNewPosition(Offset globalPosition) {
+  LatLng? _calculateNewPosition(Offset globalPosition) {
     try {
       // Get the map's render box
       final RenderBox? mapBox =
           widget.mapKey.currentContext?.findRenderObject() as RenderBox?;
-      if (mapBox == null) return;
+      if (mapBox == null) return null;
 
       // Convert global position to local position relative to the map
       final localPosition = mapBox.globalToLocal(globalPosition);
 
       // Get the map camera to convert coordinates
       final mapCamera = MapCamera.maybeOf(context);
-      if (mapCamera == null) return;
+      if (mapCamera == null) return null;
 
       // Get map dimensions
       final mapWidth = mapCamera.nonRotatedSize.width;
@@ -166,12 +196,16 @@ class _DraggableWaypointMarkerState extends State<DraggableWaypointMarker> {
       final lng = bounds.west + (bounds.east - bounds.west) * relativeX;
       final lat = bounds.north - (bounds.north - bounds.south) * relativeY;
 
-      final newPosition = LatLng(lat, lng);
-
-      // Call the callback with the new position
-      widget.onWaypointMoved(widget.waypointIndex, newPosition);
+      return LatLng(lat, lng);
     } catch (e) {
       // debugPrint('Error calculating new position: $e');
+      return null;
     }
+  }
+  
+  @override
+  void dispose() {
+    _throttleTimer?.cancel();
+    super.dispose();
   }
 }

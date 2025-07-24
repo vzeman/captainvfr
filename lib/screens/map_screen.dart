@@ -1793,13 +1793,13 @@ class MapScreenState extends State<MapScreen>
   }
 
   // Handle waypoint move via drag and drop
-  void _onWaypointMoved(int index, LatLng newPosition) {
+  void _onWaypointMoved(int index, LatLng newPosition, {bool isDragging = false}) {
     final flightPlan = _flightPlanService.currentFlightPlan;
     if (flightPlan != null &&
         index >= 0 &&
         index < flightPlan.waypoints.length) {
-      // Update waypoint position
-      _flightPlanService.updateWaypointPosition(index, newPosition);
+      // Update waypoint position with drag state
+      _flightPlanService.updateWaypointPosition(index, newPosition, isDragging: isDragging);
     }
   }
 

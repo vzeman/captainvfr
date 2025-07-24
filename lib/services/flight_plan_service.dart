@@ -366,13 +366,18 @@ class FlightPlanService extends ChangeNotifier {
   }
 
   // Update waypoint position (for drag and drop on map)
-  void updateWaypointPosition(int index, LatLng newPosition) {
+  void updateWaypointPosition(int index, LatLng newPosition, {bool isDragging = false}) {
     if (_currentFlightPlan != null &&
         index >= 0 &&
         index < _currentFlightPlan!.waypoints.length) {
       _currentFlightPlan!.waypoints[index].latitude = newPosition.latitude;
       _currentFlightPlan!.waypoints[index].longitude = newPosition.longitude;
-      _currentFlightPlan!.modifiedAt = DateTime.now();
+      
+      // Only update modified time when drag is complete
+      if (!isDragging) {
+        _currentFlightPlan!.modifiedAt = DateTime.now();
+      }
+      
       notifyListeners();
     }
   }
