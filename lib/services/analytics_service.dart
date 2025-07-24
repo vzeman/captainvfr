@@ -18,6 +18,14 @@ class AnalyticsService {
     if (_isInitialized) return;
 
     try {
+      // Skip Firebase initialization on unsupported platforms (macOS, Windows, Linux)
+      if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+        _logger.i('Analytics disabled on ${Platform.operatingSystem} - Firebase not configured');
+        _isInitialized = true;
+        _trackingEnabled = false;
+        return;
+      }
+
       // Initialize Firebase only if not already initialized
       if (Firebase.apps.isEmpty) {
         await Firebase.initializeApp();
@@ -37,7 +45,10 @@ class AnalyticsService {
       
       _logger.i('Analytics service initialized. Tracking enabled: $_trackingEnabled');
     } catch (e) {
-      _logger.e('Failed to initialize analytics: $e');
+      _logger.w('Failed to initialize analytics: $e');
+      // Mark as initialized even if failed to prevent repeated attempts
+      _isInitialized = true;
+      _trackingEnabled = false;
     }
   }
 
