@@ -122,8 +122,8 @@ class MapScreenState extends State<MapScreen>
   final bool _showMetar = true; // METAR overlay always shown when data available
   bool _showHeliports = false; // Toggle for heliport display (default hidden)
   bool _showAirspaces = true; // Toggle for airspaces display
-  bool _showObstacles = true; // Toggle for obstacles display
-  bool _showHotspots = true; // Toggle for hotspots display
+  bool _showObstacles = false; // Toggle for obstacles display
+  bool _showHotspots = false; // Toggle for hotspots display
   bool _servicesInitialized = false;
   bool _isInitializing = false; // Guard against concurrent initialization
   bool _showFlightPlanning = false; // Toggle for integrated flight planning
