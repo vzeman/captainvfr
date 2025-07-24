@@ -68,12 +68,6 @@ import 'map/constants/map_constants.dart';
 import 'map/controllers/map_state_controller.dart';
 import 'map/components/position_tracking_button.dart';
 import 'map/components/layer_toggle_button.dart';
-import 'map/components/map_controls_panel.dart';
-import 'map/components/map_dialogs.dart';
-import 'map/components/map_layers.dart';
-import 'map/components/navigation_menu.dart';
-import 'map/services/map_data_loader.dart';
-import 'map/utils/map_utils.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -89,7 +83,6 @@ class MapScreenState extends State<MapScreen>
   
   // Controllers
   late MapStateController _mapStateController;
-  late MapDataLoader _mapDataLoader;
   
   // Services
   late final FlightService _flightService;
@@ -292,48 +285,6 @@ class MapScreenState extends State<MapScreen>
         // Initialize services with caching
         _initializeServices();
         
-        // Initialize MapDataLoader
-        _mapDataLoader = MapDataLoader(
-          airportService: _airportService,
-          runwayService: _runwayService,
-          navaidService: _navaidService,
-          weatherService: _weatherService,
-          openAIPService: openAIPService,
-          spatialAirspaceService: spatialAirspaceService,
-          onAirportsLoaded: (airports) {
-            setState(() {
-              _airports = airports;
-            });
-          },
-          onRunwaysLoaded: (runways) {
-            setState(() {
-              _airportRunways = runways;
-            });
-          },
-          onNavaidsLoaded: (navaids) {
-            setState(() {
-              _navaids = navaids;
-            });
-          },
-          onAirspacesLoaded: (airspaces) {
-            // Airspaces are handled by spatial service
-          },
-          onReportingPointsLoaded: (reportingPoints) {
-            setState(() {
-              _reportingPoints = reportingPoints;
-            });
-          },
-          onObstaclesLoaded: (obstacles) {
-            setState(() {
-              _obstacles = obstacles;
-            });
-          },
-          onHotspotsLoaded: (hotspots) {
-            setState(() {
-              _hotspots = hotspots;
-            });
-          },
-        );
         
         // Start performance monitoring (only in debug mode)
         if (kDebugMode) {
@@ -3956,17 +3907,6 @@ class MapScreenState extends State<MapScreen>
     ); // Closing Scaffold
   }
 
-  String _formatCountdown(int seconds) {
-    if (seconds >= 120) {
-      final minutes = seconds ~/ 60;
-      final remainingSeconds = seconds % 60;
-      return remainingSeconds > 0 ? '${minutes}m' : '${minutes}m';
-    } else if (seconds >= 60) {
-      return '1m${seconds - 60 > 0 ? '+' : ''}';
-    } else {
-      return '$seconds';
-    }
-  }
   
   // Show location permission dialog
   void _showLocationPermissionDialog() {

@@ -8,7 +8,6 @@ import '../models/flight_point.dart';
 import '../models/aircraft.dart';
 import '../models/flight_segment.dart';
 import 'barometer_service.dart';
-import 'altitude_service.dart';
 import 'watch_connectivity_service.dart';
 import 'flight/helpers/analytics_wrapper.dart';
 import 'flight/models/flight_state.dart';
@@ -29,7 +28,6 @@ class FlightService with ChangeNotifier {
   
   // Services
   final BarometerService? _barometerService;
-  final AltitudeService _altitudeService = AltitudeService();
   final WatchConnectivityService _watchService = WatchConnectivityService();
   
   // Subscriptions
@@ -159,8 +157,8 @@ class FlightService with ChangeNotifier {
     
     // Start barometer
     if (_barometerService != null) {
-      await _barometerService!.initialize();
-      _barometerSubscription = _barometerService!.onBarometerUpdate.listen((reading) {
+      await _barometerService.initialize();
+      _barometerSubscription = _barometerService.onBarometerUpdate.listen((reading) {
         _flightState.setCurrentBaroAltitude(reading.altitude);
         _flightState.setCurrentPressure(reading.pressure);
         _throttledNotifyListeners();
@@ -222,7 +220,7 @@ class FlightService with ChangeNotifier {
         heading: point.heading,
         timestamp: point.timestamp,
         accuracy: point.accuracy,
-        pressure: _barometerService!.lastPressure ?? 0.0,
+        pressure: _barometerService.lastPressure ?? 0.0,
       );
     }
     

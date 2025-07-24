@@ -7,7 +7,6 @@ import '../../../models/airspace.dart';
 import '../../../models/obstacle.dart';
 import '../../../models/hotspot.dart';
 import '../../../models/reporting_point.dart';
-import '../../../models/flight_plan.dart';
 import '../../../services/flight_plan_service.dart';
 import '../../../services/spatial_airspace_service.dart';
 

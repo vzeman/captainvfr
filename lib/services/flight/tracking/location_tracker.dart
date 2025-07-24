@@ -54,7 +54,7 @@ class LocationTracker {
           altitude: position.altitude,
           speed: position.speed,
           heading: position.heading,
-          timestamp: position.timestamp ?? DateTime.now(),
+          timestamp: DateTime.now(),
           accuracy: position.accuracy,
           pressure: 0.0, // Will be filled by barometer service
         );
