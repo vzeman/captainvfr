@@ -1354,6 +1354,21 @@ class MapScreenState extends State<MapScreen>
     }
   }
 
+  // Handle flight path segment tap for waypoint insertion
+  void _onFlightPathSegmentTapped(int segmentIndex, LatLng position) {
+    if (!_flightPlanService.isPlanning || !_showFlightPlanning) {
+      return;
+    }
+
+    // Insert waypoint at the specified position in the flight path
+    _flightPlanService.insertWaypointAt(segmentIndex, position);
+    
+    // Select the newly inserted waypoint
+    setState(() {
+      _selectedWaypointIndex = segmentIndex;
+    });
+  }
+
   // Show list of airspaces at a given point
   // Prefetch NOTAMs for airports in flight plan
   Future<void> _prefetchFlightPlanNotams() async {
@@ -2615,8 +2630,10 @@ class MapScreenState extends State<MapScreen>
                     children: [
                       // Flight plan route lines
                       PolylineLayer(
-                        polylines: FlightPlanOverlay.buildFlightPath(
+                        polylines: FlightPlanOverlay.buildClickableFlightPath(
                           flightPlan,
+                          _onFlightPathSegmentTapped,
+                          flightPlanService.isPlanning,
                         ),
                       ),
                       // Highlight next segment when tracking
@@ -2630,6 +2647,14 @@ class MapScreenState extends State<MapScreen>
                             ),
                           ),
                         ),
+                      // Flight path segment click markers (for waypoint insertion)
+                      MarkerLayer(
+                        markers: FlightPlanOverlay.buildSegmentClickMarkers(
+                          flightPlan,
+                          _onFlightPathSegmentTapped,
+                          flightPlanService.isPlanning,
+                        ),
+                      ),
                       // Waypoint markers
                       MarkerLayer(
                         markers: FlightPlanOverlay.buildWaypointMarkers(

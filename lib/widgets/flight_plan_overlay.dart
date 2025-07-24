@@ -15,6 +15,96 @@ class FlightPlanOverlay {
     ];
   }
 
+  /// Build clickable flight path segments for waypoint insertion.
+  static List<Polyline> buildClickableFlightPath(
+    FlightPlan flightPlan,
+    Function(int segmentIndex, LatLng position) onSegmentTapped,
+    bool isEditMode,
+  ) {
+    if (flightPlan.waypoints.length < 2 || !isEditMode) {
+      return buildFlightPath(flightPlan);
+    }
+
+    List<Polyline> segments = [];
+    
+    for (int i = 0; i < flightPlan.waypoints.length - 1; i++) {
+      final from = flightPlan.waypoints[i].latLng;
+      final to = flightPlan.waypoints[i + 1].latLng;
+      
+      segments.add(
+        Polyline(
+          points: [from, to],
+          strokeWidth: 7.0, // Slightly thicker for easier clicking
+          color: Colors.green.shade600,
+        ),
+      );
+    }
+
+    return segments;
+  }
+
+  /// Build invisible clickable markers along flight path segments for waypoint insertion.
+  static List<Marker> buildSegmentClickMarkers(
+    FlightPlan flightPlan,
+    Function(int segmentIndex, LatLng position) onSegmentTapped,
+    bool isEditMode,
+  ) {
+    if (flightPlan.waypoints.length < 2 || !isEditMode) {
+      return [];
+    }
+
+    List<Marker> markers = [];
+    
+    for (int i = 0; i < flightPlan.waypoints.length - 1; i++) {
+      final from = flightPlan.waypoints[i].latLng;
+      final to = flightPlan.waypoints[i + 1].latLng;
+      
+      // Create multiple invisible markers along each segment
+      const int markerCount = 5;
+      for (int j = 1; j < markerCount; j++) {
+        final t = j / markerCount;
+        final markerPos = LatLng(
+          from.latitude + t * (to.latitude - from.latitude),
+          from.longitude + t * (to.longitude - from.longitude),
+        );
+        
+        markers.add(
+          Marker(
+            point: markerPos,
+            width: 20,
+            height: 20,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                onSegmentTapped(i + 1, markerPos);
+              },
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Container(
+                  width: 20,
+                  height: 20,
+                  decoration: const BoxDecoration(
+                    color: Colors.transparent,
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.add_circle_outline,
+                      size: 16,
+                      color: Colors.green,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    return markers;
+  }
+
+
   /// Highlight the next segment in the plan based on current position.
   static List<Polyline> buildNextSegment(
     FlightPlan flightPlan,
