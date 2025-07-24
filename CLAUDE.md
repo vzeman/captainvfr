@@ -4,9 +4,9 @@
 - ALWAYS keep the code clean without your test files or helper files you create during development to try something, remove them after you finish the task
 - DON'T create random readme files, which I didnt request, use plan.md file to describe your task and how you implemented it
 - After each bigger change document changes also to website in hugo/content/en/ so we keep the documentation up to date with features of the app
-- use github cli to interact with issues, pullrequests, branches, commits, etc. to keep the workflow smooth and fast
+- use github cli to interact with issues, pull requests (PR), branches, commits, etc. to keep the workflow smooth and fast
 - before starting development of specific issue, describe you plan in the issue as comment, so I can review it and give you feedback about the implementation plan
-- for each issue create new branch with the name of the issue, so it is clear what you are working on and once ready, create pull request
+- for each issue create new branch from main branch with the name of the issue, so it is clear what you are working on and once ready, create pull request
 - add comments to issue when you start working on it, so I know you are working on it, also add comments when you discovered something important what needs to be changed in the code because of issue, add to issue also description what you plan to do to implement the issue
 
 # Guide for Claude - Website development (Hugo CMS)
