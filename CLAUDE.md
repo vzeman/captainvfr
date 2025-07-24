@@ -8,7 +8,7 @@
 - before starting development of specific issue, describe you plan in the issue as comment, so I can review it and give you feedback about the implementation plan
 - for each issue create new branch from main branch with the name of the issue, so it is clear what you are working on and once ready, create pull request
 - add comments to issue when you start working on it, so I know you are working on it, add comments to issue when you discovered something important what needs to be changed in the code because of issue, add to issue also description what you plan to do to implement the issue with concept of changes
-- after you finish implementation and create pull request, make deep review of the pull request: analyze all changes, check if there are no duplicated codes, forgotten comments, performance improvements, maybe there are useless codes, which are not needed anymore and were done just for testing purpouses, etc.
+- after you finish implementation and create pull request (reference issue in PR so it is closed automatically when merged), make deep review of the pull request: analyze all changes, check if there are no duplicated codes, forgotten comments, performance improvements, maybe there are useless codes, which are not needed anymore and were done just for testing purpouses, etc.
 
 
 # Guide for Claude - Website development (Hugo CMS)

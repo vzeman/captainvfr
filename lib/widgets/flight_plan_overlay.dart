@@ -36,7 +36,8 @@ class FlightPlanOverlay {
     ];
   }
 
-  /// Build invisible clickable markers along flight path segments for waypoint insertion.
+  /// Build clickable markers along flight path segments for waypoint insertion.
+  /// Creates a fixed set of markers that will be visible at appropriate zoom levels.
   static List<Marker> buildSegmentClickMarkers(
     FlightPlan flightPlan,
     Function(int segmentIndex, LatLng position) onSegmentTapped,
@@ -46,16 +47,38 @@ class FlightPlanOverlay {
       return [];
     }
 
+    // For simplicity, we'll create multiple markers per segment
+    // and let them naturally space out based on zoom level
+    // At high zoom, all markers are visible and well-spaced
+    // At low zoom, markers overlap but that's okay since segments are short on screen
+    
     List<Marker> markers = [];
+    const int markersPerLongSegment = 5;
     
     for (int i = 0; i < flightPlan.waypoints.length - 1; i++) {
       final from = flightPlan.waypoints[i].latLng;
       final to = flightPlan.waypoints[i + 1].latLng;
       
-      // Create multiple invisible markers along each segment
-      const int markerCount = 5;
-      for (int j = 1; j < markerCount; j++) {
-        final t = j / markerCount;
+      // Calculate segment length to determine marker count
+      final distanceMeters = const Distance().as(LengthUnit.Meter, from, to);
+      final distanceNm = distanceMeters / 1852.0;
+      
+      // Determine marker count based on distance
+      // Short segments (< 10nm): 1 marker
+      // Medium segments (10-50nm): 2-3 markers
+      // Long segments (> 50nm): 4-5 markers
+      int markerCount = 1;
+      if (distanceNm > 50) {
+        markerCount = markersPerLongSegment;
+      } else if (distanceNm > 25) {
+        markerCount = 3;
+      } else if (distanceNm > 10) {
+        markerCount = 2;
+      }
+      
+      // Create evenly spaced markers along the segment
+      for (int j = 0; j < markerCount; j++) {
+        final t = (j + 1) / (markerCount + 1);
         final markerPos = LatLng(
           from.latitude + t * (to.latitude - from.latitude),
           from.longitude + t * (to.longitude - from.longitude),
@@ -356,3 +379,4 @@ class _SegmentLabel extends StatelessWidget {
     }
   }
 }
+
