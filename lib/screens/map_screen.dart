@@ -1921,7 +1921,7 @@ class MapScreenState extends State<MapScreen>
     final waypoint = flightPlan.waypoints[waypointIndex];
     _mapController.move(
       waypoint.latLng,
-      14.0, // Good zoom level to see waypoint detail
+      _mapController.camera.zoom, // Keep current zoom level
     );
 
     // Disable auto-centering when focusing on waypoint

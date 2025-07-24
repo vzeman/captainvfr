@@ -482,116 +482,162 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                                               // First row: Name and Altitude
                                               Row(
                                                 children: [
-                                                  // Name (Editable)
+                                                  // Name (Editable only in planning mode)
                                                   Expanded(
-                                                    child: TextField(
-                                                      controller:
-                                                          _getNameController(
-                                                            waypoint,
-                                                          ),
-                                                      focusNode:
-                                                          _getNameFocusNode(
-                                                            waypoint.id,
-                                                          ),
-                                                      decoration: InputDecoration(
-                                                        hintText:
-                                                            'WP${index + 1}',
-                                                        hintStyle:
-                                                            const TextStyle(
-                                                              color: Colors
-                                                                  .white30,
-                                                            ),
-                                                        border:
-                                                            InputBorder.none,
-                                                        isDense: true,
-                                                        contentPadding:
-                                                            const EdgeInsets.symmetric(
-                                                              horizontal: 8,
-                                                              vertical: 2,
-                                                            ),
-                                                      ),
-                                                      style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 12,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                      ),
-                                                      onSubmitted: (value) =>
-                                                          _updateWaypointName(
-                                                            index,
-                                                            value,
-                                                          ),
-                                                      onEditingComplete: () {
-                                                        _updateWaypointName(
-                                                          index,
-                                                          _getNameController(
-                                                            waypoint,
-                                                          ).text,
-                                                        );
+                                                    child: Consumer<FlightPlanService>(
+                                                      builder: (context, flightPlanService, child) {
+                                                        final isPlanning = flightPlanService.isPlanning;
+                                                        return isPlanning
+                                                            ? TextField(
+                                                                controller:
+                                                                    _getNameController(
+                                                                      waypoint,
+                                                                    ),
+                                                                focusNode:
+                                                                    _getNameFocusNode(
+                                                                      waypoint.id,
+                                                                    ),
+                                                                decoration: InputDecoration(
+                                                                  hintText:
+                                                                      'WP${index + 1}',
+                                                                  hintStyle:
+                                                                      const TextStyle(
+                                                                        color: Colors
+                                                                            .white30,
+                                                                      ),
+                                                                  border:
+                                                                      InputBorder.none,
+                                                                  isDense: true,
+                                                                  contentPadding:
+                                                                      const EdgeInsets.symmetric(
+                                                                        horizontal: 8,
+                                                                        vertical: 2,
+                                                                      ),
+                                                                ),
+                                                                style: const TextStyle(
+                                                                  color: Colors.white,
+                                                                  fontSize: 12,
+                                                                  fontWeight:
+                                                                      FontWeight.w500,
+                                                                ),
+                                                                onSubmitted: (value) =>
+                                                                    _updateWaypointName(
+                                                                      index,
+                                                                      value,
+                                                                    ),
+                                                                onEditingComplete: () {
+                                                                  _updateWaypointName(
+                                                                    index,
+                                                                    _getNameController(
+                                                                      waypoint,
+                                                                    ).text,
+                                                                  );
+                                                                },
+                                                              )
+                                                            : InkWell(
+                                                                onTap: () {
+                                                                  // Just focus the waypoint on map
+                                                                  widget.onWaypointSelected?.call(index);
+                                                                },
+                                                                child: Container(
+                                                                  padding: const EdgeInsets.symmetric(
+                                                                    horizontal: 8,
+                                                                    vertical: 2,
+                                                                  ),
+                                                                  child: Text(
+                                                                    waypoint.name ?? 'WP${index + 1}',
+                                                                    style: const TextStyle(
+                                                                      color: Colors.white,
+                                                                      fontSize: 12,
+                                                                      fontWeight: FontWeight.w500,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              );
                                                       },
                                                     ),
                                                   ),
                                                   const SizedBox(width: 8),
-                                                  // Altitude (Editable)
+                                                  // Altitude (Editable only in planning mode)
                                                   SizedBox(
                                                     width: 80,
-                                                    child: TextField(
-                                                      controller:
-                                                          _getAltitudeController(
-                                                            waypoint,
-                                                            isMetric,
+                                                    child: Consumer<FlightPlanService>(
+                                                      builder: (context, flightPlanService, child) {
+                                                        final isPlanning = flightPlanService.isPlanning;
+                                                        return isPlanning
+                                                            ? TextField(
+                                                                controller:
+                                                                    _getAltitudeController(
+                                                                      waypoint,
+                                                                      isMetric,
+                                                                    ),
+                                                                focusNode:
+                                                                    _getAltitudeFocusNode(
+                                                                      waypoint.id,
+                                                                    ),
+                                                                keyboardType:
+                                                                    TextInputType.number,
+                                                                inputFormatters: [
+                                                                  FilteringTextInputFormatter
+                                                                      .digitsOnly,
+                                                                ],
+                                                                decoration: InputDecoration(
+                                                                  suffixText:
+                                                                      _getAltitudeUnit(
+                                                                        isMetric,
+                                                                      ),
+                                                                  suffixStyle:
+                                                                      const TextStyle(
+                                                                        color: Colors
+                                                                            .white70,
+                                                                        fontSize: 12,
+                                                                      ),
+                                                                  border:
+                                                                      InputBorder.none,
+                                                                  isDense: true,
+                                                                  contentPadding:
+                                                                      const EdgeInsets.symmetric(
+                                                                        horizontal: 8,
+                                                                        vertical: 2,
+                                                                      ),
+                                                                ),
+                                                                style: const TextStyle(
+                                                                  color: Colors.white,
+                                                                  fontSize: 12,
+                                                                ),
+                                                                textAlign:
+                                                                    TextAlign.right,
+                                                                onSubmitted: (value) =>
+                                                                    _updateWaypointAltitude(
+                                                                      index,
+                                                                      value,
+                                                                      isMetric,
                                                           ),
-                                                      focusNode:
-                                                          _getAltitudeFocusNode(
-                                                            waypoint.id,
-                                                          ),
-                                                      keyboardType:
-                                                          TextInputType.number,
-                                                      inputFormatters: [
-                                                        FilteringTextInputFormatter
-                                                            .digitsOnly,
-                                                      ],
-                                                      decoration: InputDecoration(
-                                                        suffixText:
-                                                            _getAltitudeUnit(
-                                                              isMetric,
-                                                            ),
-                                                        suffixStyle:
-                                                            const TextStyle(
-                                                              color: Colors
-                                                                  .white70,
-                                                              fontSize: 12,
-                                                            ),
-                                                        border:
-                                                            InputBorder.none,
-                                                        isDense: true,
-                                                        contentPadding:
-                                                            const EdgeInsets.symmetric(
-                                                              horizontal: 8,
-                                                              vertical: 2,
-                                                            ),
-                                                      ),
-                                                      style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 12,
-                                                      ),
-                                                      textAlign:
-                                                          TextAlign.right,
-                                                      onSubmitted: (value) =>
-                                                          _updateWaypointAltitude(
-                                                            index,
-                                                            value,
-                                                            isMetric,
-                                                          ),
-                                                      onEditingComplete: () {
-                                                        _updateWaypointAltitude(
-                                                          index,
-                                                          _getAltitudeController(
-                                                            waypoint,
-                                                            isMetric,
-                                                          ).text,
-                                                          isMetric,
-                                                        );
+                                                                onEditingComplete: () {
+                                                                  _updateWaypointAltitude(
+                                                                    index,
+                                                                    _getAltitudeController(
+                                                                      waypoint,
+                                                                      isMetric,
+                                                                    ).text,
+                                                                    isMetric,
+                                                                  );
+                                                                },
+                                                              )
+                                                            : Container(
+                                                                padding: const EdgeInsets.symmetric(
+                                                                  horizontal: 8,
+                                                                  vertical: 2,
+                                                                ),
+                                                                alignment: Alignment.centerRight,
+                                                                child: Text(
+                                                                  '${_getAltitudeController(waypoint, isMetric).text} ${_getAltitudeUnit(isMetric)}',
+                                                                  style: const TextStyle(
+                                                                    color: Colors.white,
+                                                                    fontSize: 12,
+                                                                  ),
+                                                                ),
+                                                              );
                                                       },
                                                     ),
                                                   ),
