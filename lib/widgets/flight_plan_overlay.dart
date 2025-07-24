@@ -73,22 +73,24 @@ class FlightPlanOverlay {
               },
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
-                child: Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.green.shade600,
-                      width: 2,
+                child: Center(
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.green.shade600,
+                        width: 1.5,
+                      ),
                     ),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.add,
-                      size: 16,
-                      color: Colors.white,
+                    child: const Center(
+                      child: Icon(
+                        Icons.add,
+                        size: 12,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
