@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:math' show pi;
+import 'dart:math' as math;
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:flutter/material.dart';
@@ -254,14 +254,11 @@ class MapScreenState extends State<MapScreen>
           listen: false,
         );
         
-        // Set up callback to focus map on first waypoint when flight plan is loaded
+        // Set up callback to fit entire flight plan when loaded
         _flightPlanService.onFlightPlanLoaded = (flightPlan) {
           if (flightPlan.waypoints.isNotEmpty) {
-            final firstWaypoint = flightPlan.waypoints.first;
-            _mapController.move(
-              LatLng(firstWaypoint.latitude, firstWaypoint.longitude),
-              12.0, // Good zoom level to see waypoint and surrounding area
-            );
+            // Fit the entire flight plan in view
+            _fitFlightPlanBounds();
             
             // Load data for the new area
             _loadAirports();
@@ -1912,6 +1909,77 @@ class MapScreenState extends State<MapScreen>
     );
   }
 
+  // Focus map on a specific waypoint
+  void _focusOnWaypoint(int waypointIndex) {
+    final flightPlan = _flightPlanService.currentFlightPlan;
+    if (flightPlan == null || 
+        waypointIndex < 0 || 
+        waypointIndex >= flightPlan.waypoints.length) {
+      return;
+    }
+
+    final waypoint = flightPlan.waypoints[waypointIndex];
+    _mapController.move(
+      waypoint.latLng,
+      14.0, // Good zoom level to see waypoint detail
+    );
+
+    // Disable auto-centering when focusing on waypoint
+    if (_autoCenteringEnabled) {
+      setState(() {
+        _autoCenteringEnabled = false;
+      });
+      _autoCenteringTimer?.cancel();
+      _countdownTimer?.cancel();
+    }
+  }
+
+  // Fit the entire flight plan in view
+  void _fitFlightPlanBounds() {
+    final flightPlan = _flightPlanService.currentFlightPlan;
+    if (flightPlan == null || flightPlan.waypoints.isEmpty) {
+      return;
+    }
+
+    // Calculate bounds of all waypoints
+    double minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+    
+    for (final waypoint in flightPlan.waypoints) {
+      minLat = math.min(minLat, waypoint.latitude);
+      maxLat = math.max(maxLat, waypoint.latitude);
+      minLng = math.min(minLng, waypoint.longitude);
+      maxLng = math.max(maxLng, waypoint.longitude);
+    }
+
+    // Create bounds with some padding
+    final paddingFactor = 0.1; // 10% padding
+    final latPadding = (maxLat - minLat) * paddingFactor;
+    final lngPadding = (maxLng - minLng) * paddingFactor;
+    
+    final bounds = LatLngBounds(
+      LatLng(minLat - latPadding, minLng - lngPadding),
+      LatLng(maxLat + latPadding, maxLng + lngPadding),
+    );
+
+    // Fit bounds with animation
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: bounds,
+        maxZoom: 16.0, // Don't zoom in too much
+        padding: const EdgeInsets.all(50.0),
+      ),
+    );
+
+    // Disable auto-centering when fitting flight plan
+    if (_autoCenteringEnabled) {
+      setState(() {
+        _autoCenteringEnabled = false;
+      });
+      _autoCenteringTimer?.cancel();
+      _countdownTimer?.cancel();
+    }
+  }
+
   // Handle navaid selection
   Future<void> _onNavaidSelected(Navaid navaid) async {
     // debugPrint('_onNavaidSelected called for ${navaid.ident} - ${navaid.name}');
@@ -2769,7 +2837,7 @@ class MapScreenState extends State<MapScreen>
                     // When rotateMapWithHeading is ON: map rotates, so aircraft marker stays pointing north (no rotation)
                     // When rotateMapWithHeading is OFF: map stays north, so aircraft marker rotates to show heading
                     final shouldRotateMarker = !settings.rotateMapWithHeading;
-                    final markerRotation = shouldRotateMarker ? (_currentPosition?.heading ?? 0) * pi / 180 : 0.0;
+                    final markerRotation = shouldRotateMarker ? (_currentPosition?.heading ?? 0) * math.pi / 180 : 0.0;
                     
                     return MarkerLayer(
                       markers: [
@@ -3529,6 +3597,7 @@ class MapScreenState extends State<MapScreen>
                                 : 600,
                             child: FlightPlanningPanel(
                               isExpanded: _flightPlanningExpanded,
+                              onWaypointFocus: _focusOnWaypoint,
                               onClose: () {
                                 setState(() {
                                   _showFlightPlanning = false;
@@ -3586,6 +3655,7 @@ class MapScreenState extends State<MapScreen>
                               : 600,
                           child: FlightPlanningPanel(
                             isExpanded: _flightPlanningExpanded,
+                            onWaypointFocus: _focusOnWaypoint,
                             onExpandedChanged: (expanded) {
                               setState(() {
                                 _flightPlanningExpanded = expanded;
