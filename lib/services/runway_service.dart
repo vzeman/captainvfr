@@ -1,10 +1,12 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import '../models/runway.dart';
+import '../models/unified_runway.dart';
+import '../models/openaip_runway.dart';
 import 'cache_service.dart';
 import 'bundled_runway_service.dart';
 import 'tiled_data_loader.dart';
+// import 'openaip_service.dart'; // Reserved for future use
 
 class RunwayService {
   static const String _baseUrl =
@@ -21,7 +23,9 @@ class RunwayService {
   
   // Cache for tiled data
   final Map<String, List<Runway>> _runwaysByAirport = {};
+  final Map<String, List<UnifiedRunway>> _unifiedRunwaysByAirport = {};
   final Set<String> _loadedAreas = {};
+  // OpenAIPService? _openAIPService; // Reserved for future use
 
   // Singleton pattern
   static final RunwayService _instance = RunwayService._internal();
@@ -41,6 +45,13 @@ class RunwayService {
   Future<void> initialize() async {
     await _cacheService.initialize();
     
+    // Reserved for future OpenAIP service integration
+    // try {
+    //   _openAIPService = OpenAIPService();
+    // } catch (e) {
+    //   developer.log('OpenAIP service not available: $e');
+    // }
+    
     // Check if tiled data is available
     try {
       // Try to load a test tile to see if tiled data exists
@@ -52,13 +63,13 @@ class RunwayService {
       );
       
       if (testRunways.isNotEmpty) {
-        developer.log('✅ Using tiled runway data');
+        // Using tiled runway data
         _useTiledData = true;
         _useBundledData = false;
         return;
       }
     } catch (e) {
-      developer.log('ℹ️ Tiled runway data not available: $e');
+      // Tiled runway data not available: $e
     }
     
     // Fall back to bundled data
@@ -67,7 +78,7 @@ class RunwayService {
     
     // If bundled data is available, use it
     if (_bundledService.runways.isNotEmpty) {
-      developer.log('✅ Using bundled runway data (${_bundledService.runways.length} runways)');
+      // Using bundled runway data (${_bundledService.runways.length} runways)
       _useBundledData = true;
     } else {
       // Fall back to old method
@@ -82,10 +93,10 @@ class RunwayService {
       final cachedRunways = await _cacheService.getCachedRunways();
       if (cachedRunways.isNotEmpty) {
         _runways = cachedRunways;
-        developer.log('✅ Loaded ${_runways.length} runways from cache');
+        // Loaded ${_runways.length} runways from cache
       }
     } catch (e) {
-      developer.log('❌ Error loading cached runways: $e');
+      // Error loading cached runways: $e
     }
   }
   
@@ -110,7 +121,7 @@ class RunwayService {
     }
     
     try {
-      developer.log('📍 Loading runways for area: ($minLat, $minLon) to ($maxLat, $maxLon)');
+      // Loading runways for area: ($minLat, $minLon) to ($maxLat, $maxLon)
       
       // Load runways from tiles
       final runways = await _tiledDataLoader.loadRunwaysForArea(
@@ -120,16 +131,31 @@ class RunwayService {
         maxLon: maxLon,
       );
       
-      // Group by airport
+      // Group by airport and prevent duplicates
       for (final runway in runways) {
-        _runwaysByAirport.putIfAbsent(runway.airportIdent, () => []).add(runway);
+        final airportRunways = _runwaysByAirport.putIfAbsent(runway.airportIdent, () => []);
+        
+        // Check if this runway already exists (by ID to avoid duplicates)
+        final alreadyExists = airportRunways.any((r) => r.id == runway.id);
+        
+        // Only add if it's not already in the list
+        if (!alreadyExists) {
+          airportRunways.add(runway);
+        }
       }
       
       _loadedAreas.add(areaKey);
       
-      developer.log('✅ Loaded ${runways.length} runways for area');
+      // Log unique airports with runway counts
+      final uniqueAirports = <String>{};
+      for (final entry in _runwaysByAirport.entries) {
+        if (runways.any((r) => r.airportIdent == entry.key)) {
+          uniqueAirports.add(entry.key);
+        }
+      }
+      // Loaded ${runways.length} runways for area, ${uniqueAirports.length} airports updated
     } catch (e) {
-      developer.log('❌ Error loading runways for area: $e');
+      // Error loading runways for area: $e
     }
   }
 
@@ -150,7 +176,7 @@ class RunwayService {
             .difference(lastFetch)
             .inHours;
         if (hoursSinceLastFetch < 24) {
-          developer.log('🔄 Runways data is recent, skipping fetch');
+          // Runways data is recent, skipping fetch
           return;
         }
       }
@@ -159,7 +185,7 @@ class RunwayService {
     _isLoading = true;
 
     try {
-      developer.log('🌐 Fetching runways data from remote source...');
+      // Fetching runways data from remote source...
 
       final response = await http
           .get(Uri.parse(_runwaysUrl), headers: {'Accept': 'text/csv'})
@@ -175,14 +201,12 @@ class RunwayService {
         await _cacheService.cacheRunways(runways);
         await _cacheService.setRunwaysLastFetch(DateTime.now());
 
-        developer.log(
-          '✅ Successfully fetched and cached ${runways.length} runways',
-        );
+        // Successfully fetched and cached ${runways.length} runways
       } else {
         throw Exception('Failed to fetch runways: HTTP ${response.statusCode}');
       }
     } catch (e) {
-      developer.log('❌ Error fetching runways: $e');
+      // Error fetching runways: $e
       // If we have cached data, continue using it
       if (_runways.isEmpty) {
         rethrow;
@@ -213,15 +237,15 @@ class RunwayService {
           }
         } catch (e) {
           // Skip malformed rows
-          developer.log('⚠️ Skipping malformed runway row: $e');
+          // Skipping malformed runway row: $e
           continue;
         }
       }
 
-      developer.log('📊 Parsed ${runways.length} runways from CSV');
+      // Parsed ${runways.length} runways from CSV
       return runways;
     } catch (e) {
-      developer.log('❌ Error parsing runways CSV: $e');
+      // Error parsing runways CSV: $e
       rethrow;
     }
   }
@@ -252,7 +276,13 @@ class RunwayService {
   }
 
   /// Get runways for a specific airport
-  List<Runway> getRunwaysForAirport(String airportIdent) {
+  List<Runway> getRunwaysForAirport(String airportIdent, {List<OpenAIPRunway>? openAIPRunways, double? airportLat, double? airportLon}) {
+    // Try unified data first
+    final unified = getUnifiedRunwaysForAirport(airportIdent, openAIPRunways: openAIPRunways, airportLat: airportLat, airportLon: airportLon);
+    if (unified.isNotEmpty) {
+      return unified.map((r) => r.toRunway()).toList();
+    }
+    
     if (_useTiledData) {
       // Return from tiled data cache
       return _runwaysByAirport[airportIdent.toUpperCase()] ?? 
@@ -270,6 +300,72 @@ class RunwayService {
               runway.airportIdent.toUpperCase() == airportIdent.toUpperCase(),
         )
         .toList();
+  }
+  
+  /// Get unified runways combining multiple sources
+  List<UnifiedRunway> getUnifiedRunwaysForAirport(String airportIdent, {List<OpenAIPRunway>? openAIPRunways, double? airportLat, double? airportLon}) {
+    final upperIdent = airportIdent.toUpperCase();
+    
+    // Check cache first (only if no OpenAIP data provided)
+    if (openAIPRunways == null && _unifiedRunwaysByAirport.containsKey(upperIdent)) {
+      return _unifiedRunwaysByAirport[upperIdent]!;
+    }
+    
+    final unifiedRunways = <UnifiedRunway>[];
+    final processedDesignations = <String>{};
+    
+    // 1. Get OurAirports runways
+    final ourAirportsRunways = <Runway>[];
+    if (_useTiledData) {
+      ourAirportsRunways.addAll(
+        _runwaysByAirport[upperIdent] ?? _runwaysByAirport[airportIdent] ?? []
+      );
+    } else if (_useBundledData) {
+      ourAirportsRunways.addAll(_bundledService.getRunwaysForAirport(airportIdent));
+    }
+    
+    // Convert to unified format
+    for (final runway in ourAirportsRunways) {
+      if (!runway.closed) {
+        final unified = UnifiedRunway.fromOurAirports(runway);
+        unifiedRunways.add(unified);
+        processedDesignations.add(unified.designation);
+      }
+    }
+    
+    // 2. Add OpenAIP runways if provided
+    if (openAIPRunways != null && openAIPRunways.isNotEmpty) {
+      for (final openAIPRunway in openAIPRunways) {
+        final unified = UnifiedRunway.fromOpenAIPRunway(
+          openAIPRunway,
+          airportIdent,
+          airportLat: airportLat,
+          airportLon: airportLon,
+        );
+        
+        // Check if we already have this runway from OurAirports
+        final existingIndex = unifiedRunways.indexWhere(
+          (r) => r.matches(unified)
+        );
+        
+        if (existingIndex >= 0) {
+          // Merge data, preferring OurAirports data with OpenAIP filling gaps
+          unifiedRunways[existingIndex] = UnifiedRunway.merge(
+            unifiedRunways[existingIndex],
+            unified,
+          );
+        } else if (!processedDesignations.contains(unified.designation)) {
+          // Add new runway from OpenAIP
+          unifiedRunways.add(unified);
+          processedDesignations.add(unified.designation);
+        }
+      }
+    }
+    
+    // Cache the results
+    _unifiedRunwaysByAirport[upperIdent] = unifiedRunways;
+    
+    return unifiedRunways;
   }
 
   /// Get runways for multiple airports
@@ -362,9 +458,10 @@ class RunwayService {
     await _cacheService.clearRunwaysCache();
     _runways.clear();
     _runwaysByAirport.clear();
+    _unifiedRunwaysByAirport.clear();
     _loadedAreas.clear();
     _tiledDataLoader.clearCacheForType('runways');
-    developer.log('🗑️ Runway cache cleared');
+    // Runway cache cleared
   }
 }
 

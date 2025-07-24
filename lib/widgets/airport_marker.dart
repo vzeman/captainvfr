@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'dart:math' as math;
 import '../models/airport.dart';
+import '../models/runway.dart';
+import 'unified_runway_painter.dart';
+import '../utils/geo_constants.dart';
 
 class AirportMarker extends StatelessWidget {
   final Airport airport;
+  final List<Runway>? runways;
   final VoidCallback? onTap;
   final double size;
   final bool showLabel;
@@ -14,6 +19,7 @@ class AirportMarker extends StatelessWidget {
   const AirportMarker({
     super.key,
     required this.airport,
+    this.runways,
     this.onTap,
     this.size = 24.0,
     this.showLabel = true,
@@ -28,7 +34,6 @@ class AirportMarker extends StatelessWidget {
     final borderColor = isSelected ? Colors.amber : color;
     final borderWidth = isSelected ? 3.0 : 2.0;
 
-    // Removed debug prints for performance
 
     // The visual size of the marker based on zoom
     // Use the size parameter which is already adjusted for zoom
@@ -38,6 +43,35 @@ class AirportMarker extends StatelessWidget {
     // Weather indicator dot size
     final weatherDotSize = visualSize * 0.3;
 
+    // Calculate runway visualization size based on actual runway dimensions
+    double runwayVisualizationSize = 0.0;
+    if (mapZoom >= GeoConstants.minZoomForRunways) {
+      // Calculate meters per pixel at this zoom and latitude
+      final double metersPerPixel = GeoConstants.metersPerPixel(airport.position.latitude, mapZoom);
+      
+      // Find the longest runway
+      double maxLengthM = 0;
+      if (runways != null && runways!.isNotEmpty) {
+        for (final runway in runways!) {
+          final lengthM = runway.lengthFt * GeoConstants.metersPerFoot; // Convert feet to meters
+          if (lengthM > maxLengthM) maxLengthM = lengthM;
+        }
+      } else if (airport.openAIPRunways.isNotEmpty) {
+        // For OpenAIP runways
+        for (final runway in airport.openAIPRunways) {
+          final lengthM = runway.lengthM?.toDouble();
+          if (lengthM != null && lengthM > maxLengthM) maxLengthM = lengthM;
+        }
+      }
+      
+      // Set size based on longest runway, with minimum size
+      if (maxLengthM > 0) {
+        runwayVisualizationSize = math.max(visualSize * 2, (maxLengthM / metersPerPixel) * 1.2);
+      } else {
+        runwayVisualizationSize = visualSize * 3.5; // Default size
+      }
+    }
+
     return GestureDetector(
       onTap: () {
         onTap?.call();
@@ -45,7 +79,35 @@ class AirportMarker extends StatelessWidget {
       child: Center(
         child: Stack(
           alignment: Alignment.center,
+          clipBehavior: Clip.none,
           children: [
+            // Runway visualization (behind the marker)
+            if (mapZoom >= GeoConstants.minZoomForRunways)
+              if (runways != null && runways!.isNotEmpty)
+                Positioned(
+                  child: UnifiedRunwayVisualization(
+                    runways: runways!,
+                    airportIdent: airport.icao,
+                    zoom: mapZoom,
+                    size: runwayVisualizationSize,
+                    runwayColor: isSelected ? Colors.amber : Colors.black87,
+                    latitude: airport.position.latitude,
+                    longitude: airport.position.longitude,
+                  ),
+                )
+              else if (airport.openAIPRunways.isNotEmpty)
+                Positioned(
+                  child: UnifiedRunwayVisualization(
+                    openAIPRunways: airport.openAIPRunways,
+                    airportIdent: airport.icao,
+                    zoom: mapZoom,
+                    size: runwayVisualizationSize,
+                    runwayColor: isSelected ? Colors.amber : Colors.black87,
+                    latitude: airport.position.latitude,
+                    longitude: airport.position.longitude,
+                  ),
+                ),
+            
             // Main marker
             OverflowBox(
               // Allow the marker to visually overflow its bounds
@@ -162,6 +224,7 @@ class AirportMarker extends StatelessWidget {
 // Airport marker layer for the map
 class AirportMarkersLayer extends StatelessWidget {
   final List<Airport> airports;
+  final Map<String, List<Runway>>? airportRunways;
   final ValueChanged<Airport>? onAirportTap;
   final bool showLabels;
   final double markerSize;
@@ -170,6 +233,7 @@ class AirportMarkersLayer extends StatelessWidget {
   const AirportMarkersLayer({
     super.key,
     required this.airports,
+    this.airportRunways,
     this.onAirportTap,
     this.showLabels = true,
     this.markerSize = 24.0,
@@ -187,12 +251,37 @@ class AirportMarkersLayer extends StatelessWidget {
           ? baseMarkerSize * 0.75
           : baseMarkerSize;
 
+      // Get runway data for this airport
+      final runways = airportRunways?[airport.icao];
+
+      // Calculate actual runway bounds
+      double markerBounds = airportMarkerSize;
+      if (mapZoom >= GeoConstants.minZoomForRunways) {
+        // Calculate meters per pixel at this zoom and latitude
+        final double metersPerPixel = GeoConstants.metersPerPixel(airport.position.latitude, mapZoom);
+        
+        // Find the longest runway
+        double maxLengthM = 0;
+        final airportRunwayData = airportRunways?[airport.icao];
+        if (airportRunwayData != null && airportRunwayData.isNotEmpty) {
+          for (final runway in airportRunwayData) {
+            final lengthM = runway.lengthFt * GeoConstants.metersPerFoot;
+            if (lengthM > maxLengthM) maxLengthM = lengthM;
+          }
+        }
+        
+        if (maxLengthM > 0) {
+          markerBounds = math.max(airportMarkerSize, (maxLengthM / metersPerPixel) * 1.2);
+        }
+      }
+
       return Marker(
-        width: airportMarkerSize,
-        height: airportMarkerSize,
+        width: markerBounds,
+        height: markerBounds,
         point: airport.position,
         child: AirportMarker(
           airport: airport,
+          runways: runways,
           onTap: onAirportTap != null ? () => onAirportTap!(airport) : null,
           size: airportMarkerSize,
           showLabel: showLabels,

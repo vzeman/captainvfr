@@ -20,12 +20,14 @@ import 'licenses_screen.dart';
 import 'calculators_screen.dart';
 import 'settings_screen.dart';
 import '../models/airport.dart';
+import '../models/runway.dart';
 import '../models/navaid.dart';
 import '../models/obstacle.dart';
 import '../models/hotspot.dart';
 import '../models/flight_segment.dart' as flight_seg;
 import '../models/flight_plan.dart';
 import '../services/airport_service.dart';
+import '../services/runway_service.dart';
 import '../services/navaid_service.dart';
 import '../services/flight_service.dart';
 import '../services/location_service.dart';
@@ -78,6 +80,7 @@ class MapScreenState extends State<MapScreen>
   // Services
   late final FlightService _flightService;
   late final AirportService _airportService;
+  late final RunwayService _runwayService;
   late final NavaidService _navaidService;
   late final LocationService _locationService;
   late final WeatherService _weatherService;
@@ -168,6 +171,7 @@ class MapScreenState extends State<MapScreen>
   List<LatLng> _flightPathPoints = [];
   List<flight_seg.FlightSegment> _flightSegments = [];
   List<Airport> _airports = [];
+  Map<String, List<Runway>> _airportRunways = {};
   List<Navaid> _navaids = [];
   List<ReportingPoint> _reportingPoints = [];
   List<Obstacle> _obstacles = [];
@@ -239,6 +243,9 @@ class MapScreenState extends State<MapScreen>
         _flightService = Provider.of<FlightService>(context, listen: false);
         _locationService = Provider.of<LocationService>(context, listen: false);
         _airportService = Provider.of<AirportService>(context, listen: false);
+        _runwayService = RunwayService();
+        // Initialize runway service
+        _runwayService.initialize();
         _navaidService = Provider.of<NavaidService>(context, listen: false);
         _weatherService = Provider.of<WeatherService>(context, listen: false);
         _flightPlanService = Provider.of<FlightPlanService>(
@@ -701,15 +708,41 @@ class MapScreenState extends State<MapScreen>
         final bounds = _mapController.camera.visibleBounds;
         final zoom = _mapController.camera.zoom;
 
+        // First, load runway data for the visible area
+        await _runwayService.loadRunwaysForArea(
+          minLat: bounds.southWest.latitude,
+          maxLat: bounds.northEast.latitude,
+          minLon: bounds.southWest.longitude,
+          maxLon: bounds.northEast.longitude,
+        );
+
         // Get airports within the current map bounds
         final airports = await _airportService.getAirportsInBounds(
           bounds.southWest,
           bounds.northEast,
         );
 
+        // Get runway data for airports if zoom level is appropriate
+        final runwayDataMap = <String, List<Runway>>{};
+        if (zoom >= 10) {
+          for (final airport in airports) {
+            // Pass OpenAIP runway data if available
+            final runways = _runwayService.getRunwaysForAirport(
+              airport.icao,
+              openAIPRunways: airport.openAIPRunways.isNotEmpty ? airport.openAIPRunways : null,
+              airportLat: airport.position.latitude,
+              airportLon: airport.position.longitude,
+            );
+            if (runways.isNotEmpty) {
+              runwayDataMap[airport.icao] = runways;
+            }
+          }
+        }
+
         if (mounted) {
           setState(() {
             _airports = airports;
+            _airportRunways = runwayDataMap;
           });
 
           // Refresh weather data for visible airports if METAR overlay is enabled
@@ -1023,16 +1056,7 @@ class MapScreenState extends State<MapScreen>
           maxLon: bounds.northEast.longitude,
         );
         
-        debugPrint('📍 Loaded ${obstacles.length} obstacles for area');
-        if (obstacles.isNotEmpty) {
-          // Show some sample obstacles for debugging
-          final tall = obstacles.where((o) => o.totalHeightFt > 200).toList();
-          debugPrint('   - Tall obstacles (>200ft): ${tall.length}');
-          if (tall.isNotEmpty) {
-            debugPrint('   - Sample tall obstacle: ${tall.first.name} at ${tall.first.position}, totalHeight: ${tall.first.totalHeightFt}ft');
-          }
-          debugPrint('   - Current zoom: ${_mapController.camera.zoom}');
-        }
+        // Loaded ${obstacles.length} obstacles for area
         
         if (mounted) {
           setState(() {
@@ -2286,6 +2310,9 @@ class MapScreenState extends State<MapScreen>
     try {
       await _airportService.initialize();
       await _navaidService.initialize();
+      
+      // Initialize runway service
+      await _runwayService.initialize();
 
       // Initialize offline map service only on supported platforms
       if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
@@ -2555,6 +2582,7 @@ class MapScreenState extends State<MapScreen>
                   // Show medium and large airports always, and show small airports/heliports based on toggles
                   return true;
                 }).toList(),
+                airportRunways: _airportRunways,
                 onAirportTap: _onAirportSelected,
                 showHeliports: _showHeliports,
               ),

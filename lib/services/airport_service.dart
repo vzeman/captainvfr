@@ -311,21 +311,8 @@ class AirportService {
 
           _airports = parsedAirports;
 
-          developer.log(
-            '✨ Successfully created ${_airports.length} Airport objects',
-          );
-
           // Cache the airports
           await _cacheService.cacheAirports(_airports);
-
-          if (_airports.isNotEmpty) {
-            developer.log(
-              '🏢 First airport: ${_airports.first.icao} - ${_airports.first.name} (${_airports.first.position})',
-            );
-            developer.log(
-              '🏢 Last airport: ${_airports.last.icao} - ${_airports.last.name} (${_airports.last.position})',
-            );
-          }
         }
       } else {
         throw Exception('Failed to load airports: ${response.statusCode}');
