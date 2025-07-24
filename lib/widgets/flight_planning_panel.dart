@@ -11,12 +11,14 @@ class FlightPlanningPanel extends StatefulWidget {
   final bool? isExpanded;
   final Function(bool)? onExpandedChanged;
   final VoidCallback? onClose;
+  final Function(int)? onWaypointFocus;
 
   const FlightPlanningPanel({
     super.key,
     this.isExpanded,
     this.onExpandedChanged,
     this.onClose,
+    this.onWaypointFocus,
   });
 
   @override
@@ -378,6 +380,8 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
                       setState(() {
                         _selectedWaypointIndex = index;
                       });
+                      // Focus map on selected waypoint
+                      widget.onWaypointFocus?.call(index);
                     },
                   );
                 },
