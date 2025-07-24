@@ -365,7 +365,7 @@ class FlightPlanService extends ChangeNotifier {
     }
   }
   
-  // Update waypoint type
+  /// Update waypoint type (airport, navaid, user, etc.)
   void updateWaypointType(int index, WaypointType type) {
     if (_currentFlightPlan != null &&
         index >= 0 &&
