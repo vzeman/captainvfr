@@ -67,5 +67,7 @@
 	<false/>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>This app would like to track your activity to help us understand how you use the app and improve your experience by focusing on the most important features.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This app needs access to the local network for debugging and connectivity checks.</string>
 </dict>
 </plist>

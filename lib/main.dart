@@ -129,7 +129,10 @@ void main() async {
     connectivityService.startPeriodicChecks();
 
     // Log network diagnostics for Android 12+ debugging
-    await PlatformServices.logNetworkState();
+    // Don't await this - let it run asynchronously to avoid blocking startup
+    PlatformServices.logNetworkState().catchError((e) {
+      debugPrint('Failed to log network state: $e');
+    });
 
     // Initialize vibration measurement service (using accelerometer)
     final vibrationMeasurementService = VibrationMeasurementService();
