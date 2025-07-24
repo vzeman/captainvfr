@@ -18,6 +18,7 @@ class AirportRunwaysTab extends StatefulWidget {
   final List<Runway> runways;
   final VoidCallback onRetry;
   final RunwayService runwayService;
+  final WeatherService weatherService;
 
   const AirportRunwaysTab({
     super.key,
@@ -27,6 +28,7 @@ class AirportRunwaysTab extends StatefulWidget {
     required this.runways,
     required this.onRetry,
     required this.runwayService,
+    required this.weatherService,
   });
 
   @override
@@ -37,6 +39,7 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
   Map<String, double>? _windData;
   List<WindComponents>? _windComponents;
   String? _bestRunway;
+  bool _isLoadingWind = true;
 
   @override
   void initState() {
@@ -56,6 +59,12 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
   }
 
   Future<void> _fetchWindData() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoadingWind = true;
+    });
+    
     try {
       String? metar;
       
@@ -65,8 +74,7 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
         debugPrint('Using existing METAR from airport data');
       } else {
         // If not, fetch it ourselves
-        final weatherService = WeatherService();
-        metar = await weatherService.getMetar(widget.airport.icao);
+        metar = await widget.weatherService.getMetar(widget.airport.icao);
         debugPrint('Fetched new METAR data');
       }
       
@@ -78,21 +86,37 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
           final windData = RunwayWindCalculator.parseMetarWind(windString);
           
           if (windData != null && windData['direction'] != -1 && widget.runways.isNotEmpty) {
-            setState(() {
-              _windData = windData;
-              _windComponents = RunwayWindCalculator.calculateWindComponentsForRunways(
-                widget.runways,
-                windData['direction']!,
-                windData['gust'] ?? windData['speed']!, // Use gust speed if available
-              );
-              _bestRunway = _windComponents?.first.runwayDesignation;
-            });
+            if (mounted) {
+              setState(() {
+                _windData = windData;
+                _windComponents = RunwayWindCalculator.calculateWindComponentsForRunways(
+                  widget.runways,
+                  windData['direction']!,
+                  windData['gust'] ?? windData['speed']!, // Use gust speed if available
+                );
+                _bestRunway = _windComponents?.first.runwayDesignation;
+                _isLoadingWind = false;
+              });
+            }
+            return;
           }
         }
+      }
+      
+      // No wind data available
+      if (mounted) {
+        setState(() {
+          _isLoadingWind = false;
+        });
       }
     } catch (e) {
       // Silently fail - wind data is optional enhancement
       debugPrint('Failed to fetch wind data: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingWind = false;
+        });
+      }
     }
   }
 
@@ -130,8 +154,11 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Wind Information (if available)
-          if (_windData != null) ...[
+          // Wind Information (if available or loading)
+          if (_isLoadingWind) ...[
+            _buildWindLoadingIndicator(context),
+            const SizedBox(height: 16),
+          ] else if (_windData != null) ...[
             _buildWindInfo(context),
             const SizedBox(height: 16),
           ],
@@ -173,6 +200,33 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
   }
   
   
+  Widget _buildWindLoadingIndicator(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Card(
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Loading wind data...',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildWindInfo(BuildContext context) {
     final theme = Theme.of(context);
     final windDirection = _windData!['direction']!.toInt();
