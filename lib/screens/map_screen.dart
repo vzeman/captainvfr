@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:latlong2/latlong.dart' show LatLng;
+import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -83,6 +83,29 @@ class MapScreenState extends State<MapScreen>
   static const double _maxFitZoom = 16.0;          // Maximum zoom when fitting bounds
   static const double _fitPadding = 50.0;          // Edge padding when fitting bounds
   static const double _singlePointZoom = 14.0;     // Default zoom for single waypoint
+  
+  // Constants for waypoint drop detection
+  static const double _baseSearchRadius = 2000.0;  // Base search radius at zoom 9 (meters)
+  static const double _searchRadiusZoomFactor = 0.5; // Halves radius per zoom level
+  static const int _searchRadiusZoomBase = 9;      // Base zoom level for radius calculation
+  
+  // Lookup table for search radius by zoom level (precomputed for performance)
+  static final Map<int, double> _searchRadiusLookup = {
+    5: 32000.0,   // 2000 * 0.5^(5-9) = 2000 * 16
+    6: 16000.0,   // 2000 * 0.5^(6-9) = 2000 * 8
+    7: 8000.0,    // 2000 * 0.5^(7-9) = 2000 * 4
+    8: 4000.0,    // 2000 * 0.5^(8-9) = 2000 * 2
+    9: 2000.0,    // 2000 * 0.5^(9-9) = 2000 * 1
+    10: 1000.0,   // 2000 * 0.5^(10-9) = 2000 * 0.5
+    11: 500.0,    // 2000 * 0.5^(11-9) = 2000 * 0.25
+    12: 250.0,    // 2000 * 0.5^(12-9) = 2000 * 0.125
+    13: 125.0,    // 2000 * 0.5^(13-9) = 2000 * 0.0625
+    14: 62.5,     // 2000 * 0.5^(14-9) = 2000 * 0.03125
+    15: 31.25,    // 2000 * 0.5^(15-9) = 2000 * 0.015625
+    16: 15.625,   // 2000 * 0.5^(16-9) = 2000 * 0.0078125
+    17: 7.8125,   // 2000 * 0.5^(17-9) = 2000 * 0.00390625
+    18: 3.90625,  // 2000 * 0.5^(18-9) = 2000 * 0.001953125
+  };
   
   // Services
   late final FlightService _flightService;
@@ -1803,6 +1826,130 @@ class MapScreenState extends State<MapScreen>
         index < flightPlan.waypoints.length) {
       // Update waypoint position with drag state
       _flightPlanService.updateWaypointPosition(index, newPosition, isDragging: isDragging);
+      
+      // When dropping (not dragging), check if dropped on a marker
+      if (!isDragging) {
+        _checkAndUpdateWaypointForMarker(index, newPosition);
+      }
+    }
+  }
+  
+  /// Find the closest item within search radius from a list of items with positions
+  T? _findClosestItemWithinRadius<T>({
+    required List<T> items,
+    required LatLng dropPosition,
+    required double searchRadiusMeters,
+    required LatLng Function(T) getPosition,
+  }) {
+    T? closestItem;
+    double minDistance = double.infinity;
+    
+    for (final item in items) {
+      final distance = Distance().as(LengthUnit.Meter, dropPosition, getPosition(item));
+      if (distance <= searchRadiusMeters && distance < minDistance) {
+        minDistance = distance;
+        closestItem = item;
+      }
+    }
+    
+    return closestItem;
+  }
+
+  /// Check if waypoint was dropped on an airport or navaid and update its name/type accordingly
+  void _checkAndUpdateWaypointForMarker(int waypointIndex, LatLng dropPosition) {
+    try {
+      // Calculate search radius based on zoom level
+      // At zoom 10: ~1000m radius, at zoom 15: ~31m radius
+      final zoom = _mapController.camera.zoom;
+      final zoomInt = zoom.round();
+      
+      // Use lookup table for common zoom levels, fallback to calculation for others
+      final searchRadiusMeters = _searchRadiusLookup[zoomInt] ?? 
+          _baseSearchRadius * math.pow(_searchRadiusZoomFactor, zoom - _searchRadiusZoomBase);
+      
+      // Get all airports in the current view
+      final bounds = _mapController.camera.visibleBounds;
+    final airports = _airports.where((airport) {
+      final lat = airport.position.latitude;
+      final lng = airport.position.longitude;
+      return lat >= bounds.south && 
+             lat <= bounds.north && 
+             lng >= bounds.west && 
+             lng <= bounds.east;
+    }).toList();
+    
+    // Find the closest airport within search radius
+    final closestAirport = _findClosestItemWithinRadius<Airport>(
+      items: airports,
+      dropPosition: dropPosition,
+      searchRadiusMeters: searchRadiusMeters,
+      getPosition: (airport) => airport.position,
+    );
+    
+    if (closestAirport != null) {
+      // Update waypoint with airport information
+      _flightPlanService.updateWaypointName(waypointIndex, closestAirport.name);
+      _flightPlanService.updateWaypointNotes(waypointIndex, 
+        closestAirport.icaoCode?.isNotEmpty == true 
+          ? closestAirport.icaoCode! 
+          : (closestAirport.iataCode ?? closestAirport.icao));
+      // Update waypoint type to airport
+      _flightPlanService.updateWaypointType(waypointIndex, WaypointType.airport);
+      return;
+    }
+    
+    // If no airport found, check navaids
+    final navaids = _navaids.where((navaid) {
+      final lat = navaid.position.latitude;
+      final lng = navaid.position.longitude;
+      return lat >= bounds.south && 
+             lat <= bounds.north && 
+             lng >= bounds.west && 
+             lng <= bounds.east;
+    }).toList();
+    
+    // Find the closest navaid within search radius
+    final closestNavaid = _findClosestItemWithinRadius<Navaid>(
+      items: navaids,
+      dropPosition: dropPosition,
+      searchRadiusMeters: searchRadiusMeters,
+      getPosition: (navaid) => navaid.position,
+    );
+    
+    if (closestNavaid != null) {
+      // Update waypoint with navaid information
+      _flightPlanService.updateWaypointName(waypointIndex, closestNavaid.name);
+      _flightPlanService.updateWaypointNotes(waypointIndex, closestNavaid.ident);
+      // Update waypoint type to navaid
+      _flightPlanService.updateWaypointType(waypointIndex, WaypointType.navaid);
+      return;
+    }
+    
+    // If no navaid found, check reporting points
+    if (_reportingPoints.isNotEmpty) {
+      // Find the closest reporting point within search radius
+      final closestPoint = _findClosestItemWithinRadius<ReportingPoint>(
+        items: _reportingPoints,
+        dropPosition: dropPosition,
+        searchRadiusMeters: searchRadiusMeters,
+        getPosition: (point) => point.position,
+      );
+      
+      if (closestPoint != null) {
+        // Update waypoint with reporting point information
+        _flightPlanService.updateWaypointName(waypointIndex, closestPoint.displayName);
+        _flightPlanService.updateWaypointNotes(waypointIndex, closestPoint.type ?? 'Reporting Point');
+        // Update waypoint type to reporting point
+        _flightPlanService.updateWaypointType(waypointIndex, WaypointType.reportingPoint);
+        return;
+      }
+    }
+    
+    // If no marker found at drop position, keep it as a user waypoint
+    // The position has already been updated by updateWaypointPosition
+    } catch (e) {
+      // Handle cases where map controller is not ready
+      // Position update already happened, just skip marker detection
     }
   }
 
@@ -1924,6 +2071,8 @@ class MapScreenState extends State<MapScreen>
         waypointIndex >= flightPlan.waypoints.length) {
       return;
     }
+    
+    try {
 
     final waypoint = flightPlan.waypoints[waypointIndex];
     _mapController.move(
@@ -1933,6 +2082,9 @@ class MapScreenState extends State<MapScreen>
 
     // Disable auto-centering when focusing on waypoint
     _disableAutoCentering();
+    } catch (e) {
+      // Handle cases where map controller is not ready
+    }
   }
 
   /// Disables auto-centering mode and cancels related timers.
@@ -1955,6 +2107,8 @@ class MapScreenState extends State<MapScreen>
     if (flightPlan == null || flightPlan.waypoints.isEmpty) {
       return;
     }
+    
+    try {
 
     // Use built-in method for better performance
     final bounds = LatLngBounds.fromPoints(
@@ -1993,6 +2147,9 @@ class MapScreenState extends State<MapScreen>
 
     // Disable auto-centering when fitting flight plan
     _disableAutoCentering();
+    } catch (e) {
+      // Handle cases where map controller is not ready
+    }
   }
 
   // Handle navaid selection
