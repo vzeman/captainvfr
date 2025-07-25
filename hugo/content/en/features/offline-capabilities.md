@@ -7,7 +7,7 @@ keywords = ["offline maps", "offline navigation", "download maps", "offline flig
 
 # Offline Capabilities
 
-Fly with confidence anywhere, even without internet connectivity. CaptainVFR's robust offline features ensure you're never without critical flight information.
+Fly with confidence anywhere, even without internet connectivity. CaptainVFR's robust offline features ensure you're never without critical flight information. All essential aviation data, including airspaces and reporting points from OpenAIP, is pre-downloaded and included with the app - no API keys or additional setup required.
 
 ## Offline Maps
 
@@ -65,6 +65,8 @@ Fly with confidence anywhere, even without internet connectivity. CaptainVFR's r
 - **Chart Updates**: Latest revisions
 - **Frequency Data**: Communication info
 - **Airport Information**: Complete details
+- **Airspace Data**: Pre-downloaded OpenAIP airspaces
+- **Reporting Points**: All VFR reporting points included
 
 ### Smart Pre-Caching
 - **Departure Area**: Automatic download

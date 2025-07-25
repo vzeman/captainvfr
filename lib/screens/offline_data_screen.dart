@@ -6,16 +6,12 @@ import '../services/cache_service.dart';
 import '../services/airport_service.dart';
 import '../services/navaid_service.dart';
 import '../services/weather_service.dart';
-import '../services/openaip_service.dart';
 import '../utils/form_theme_helper.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'offline_data/controllers/offline_data_state_controller.dart';
 import 'offline_data/components/cache_card.dart';
 import 'offline_data/components/weather_cache_card.dart';
 import 'offline_data/components/map_tiles_cache_card.dart';
-import 'offline_data/sections/openaip_configuration_section.dart';
 import 'offline_data/sections/download_map_tiles_section.dart';
-import 'offline_data/dialogs/progress_dialog.dart';
 import 'offline_data/dialogs/clear_cache_dialog.dart';
 import 'offline_data/helpers/date_formatter.dart';
 import 'offline_data/helpers/cache_statistics_helper.dart';
@@ -34,116 +30,23 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
   final AirportService _airportService = AirportService();
   final NavaidService _navaidService = NavaidService();
   final WeatherService _weatherService = WeatherService();
-  final OpenAIPService _openAIPService = OpenAIPService();
   
   final ScrollController _scrollController = ScrollController();
-  final TextEditingController _apiKeyController = TextEditingController();
   final OfflineDataStateController _stateController = OfflineDataStateController();
 
   @override
   void initState() {
     super.initState();
     _loadAllCacheStats();
-    _loadApiKey();
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
-    _apiKeyController.dispose();
     _stateController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadApiKey() async {
-    try {
-      final settingsBox = await Hive.openBox('settings');
-      final apiKey = settingsBox.get('openaip_api_key', defaultValue: '');
-      _stateController.setOpenAIPApiKey(apiKey);
-      _apiKeyController.text = apiKey;
-      if (apiKey.isNotEmpty) {
-        _openAIPService.setApiKey(apiKey);
-      }
-    } catch (e) {
-      // Handle error
-    }
-  }
-
-  Future<void> _saveApiKey(String apiKey) async {
-    try {
-      final settingsBox = await Hive.openBox('settings');
-      await settingsBox.put('openaip_api_key', apiKey);
-      _stateController.setOpenAIPApiKey(apiKey);
-      _openAIPService.setApiKey(apiKey);
-
-      // If this is the first time setting an API key, load reporting points and airspaces
-      if (apiKey.isNotEmpty) {
-        final cachedPoints = await _openAIPService.getCachedReportingPoints();
-        final cachedAirspaces = await _openAIPService.getCachedAirspaces();
-
-        if (cachedPoints.isEmpty || cachedAirspaces.isEmpty) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Row(
-                  children: [
-                    SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: Text('Loading airspaces and reporting points...'),
-                    ),
-                  ],
-                ),
-                duration: Duration(seconds: 60),
-              ),
-            );
-          }
-
-          try {
-            final futures = <Future>[];
-            if (cachedPoints.isEmpty) {
-              futures.add(_openAIPService.fetchAllReportingPoints());
-            }
-            if (cachedAirspaces.isEmpty) {
-              futures.add(_openAIPService.fetchAllAirspaces());
-            }
-
-            await Future.wait(futures);
-
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Airspaces and reporting points loaded successfully'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            await _loadAllCacheStats();
-          } catch (e) {
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Error loading data: $e'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error saving API key: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   Future<void> _loadAllCacheStats({bool preserveScroll = false}) async {
     double? scrollPosition;
@@ -214,10 +117,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
         _weatherService.forceReload(),
       ];
 
-      if (_stateController.openAIPApiKey.isNotEmpty) {
-        futures.add(_openAIPService.refreshAirspacesCache());
-        futures.add(_openAIPService.refreshReportingPointsCache());
-      }
+      // OpenAIP data is now pre-downloaded offline
 
       await Future.wait(futures);
       await _loadAllCacheStats();
@@ -246,103 +146,6 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
     }
   }
 
-  Future<void> _refreshAirspaces() async {
-    _stateController.setRefreshing(true);
-
-    try {
-      if (mounted) {
-        ProgressDialog.show(
-          context: context,
-          title: 'Loading Airspaces',
-          message: 'Fetching airspaces in tiles...',
-          subtitle: 'This process fetches data in 20 tiles to avoid timeouts.\nIt may take a few minutes.',
-        );
-      }
-
-      await _openAIPService.refreshAirspacesCache();
-
-      if (mounted) {
-        ProgressDialog.hide(context);
-      }
-
-      await _loadAllCacheStats();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Airspaces refreshed successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ProgressDialog.hide(context);
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error refreshing airspaces: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        _stateController.setRefreshing(false);
-      }
-    }
-  }
-
-  Future<void> _refreshReportingPoints() async {
-    _stateController.setRefreshing(true);
-
-    try {
-      if (mounted) {
-        ProgressDialog.show(
-          context: context,
-          title: 'Loading Reporting Points',
-          message: 'Fetching reporting points in tiles...',
-          subtitle: 'This process fetches data in 20 tiles to avoid timeouts.\nIt may take a few minutes.',
-        );
-      }
-
-      await _openAIPService.refreshReportingPointsCache(forceRefresh: true);
-
-      if (mounted) {
-        ProgressDialog.hide(context);
-      }
-
-      await _loadAllCacheStats();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Reporting points refreshed successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ProgressDialog.hide(context);
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error refreshing reporting points: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        _stateController.setRefreshing(false);
-      }
-    }
-  }
 
   Future<void> _refreshWeatherData() async {
     _stateController.setRefreshing(true);
@@ -667,7 +470,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                     ),
                     onClear: () => _clearSpecificCache('Airspaces'),
                     subtitle: 'Controlled airspaces and restricted areas',
-                    onRefresh: _stateController.openAIPApiKey.isNotEmpty ? _refreshAirspaces : null,
+                    onRefresh: null, // OpenAIP data is now pre-downloaded offline
                     isRefreshing: _stateController.isRefreshing,
                   ),
 
@@ -683,7 +486,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                     ),
                     onClear: () => _clearSpecificCache('Reporting Points'),
                     subtitle: 'VFR reporting points for navigation',
-                    onRefresh: _stateController.openAIPApiKey.isNotEmpty ? _refreshReportingPoints : null,
+                    onRefresh: null, // OpenAIP data is now pre-downloaded offline
                     isRefreshing: _stateController.isRefreshing,
                   ),
 
@@ -699,16 +502,6 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                     onClear: () => _clearSpecificCache('Weather'),
                     onRefresh: _refreshWeatherData,
                     isRefreshing: _stateController.isRefreshing,
-                  ),
-
-                  const SizedBox(height: 24),
-                  
-                  // OpenAIP Configuration
-                  OpenAIPConfigurationSection(
-                    apiKeyController: _apiKeyController,
-                    openAIPApiKey: _stateController.openAIPApiKey,
-                    onSaveApiKey: _saveApiKey,
-                    openAIPService: _openAIPService,
                   ),
 
                   const SizedBox(height: 24),
