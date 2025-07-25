@@ -44,6 +44,12 @@ class OpenAIPService {
         developer.log(
           '📍 Loaded ${cachedPoints.length} reporting points from cache',
         );
+        _reportingPointsInMemory = cachedPoints;
+        _reportingPointsLoaded = true;
+      } else {
+        developer.log(
+          '⚠️ No reporting points found in cache. Data will be loaded from tiles on demand.',
+        );
       }
       
       // Load airspaces from cache
@@ -52,9 +58,23 @@ class OpenAIPService {
         developer.log(
           '🌍 Loaded ${cachedAirspaces.length} airspaces from cache',
         );
+      } else {
+        developer.log(
+          '⚠️ No airspaces found in cache. Data will be loaded from tiles on demand.',
+        );
+      }
+      
+      // If both cache and tiles are empty, log a warning
+      if (cachedPoints.isEmpty && cachedAirspaces.isEmpty) {
+        developer.log(
+          '⚠️ No offline data found in cache. Make sure aviation data tiles are included in assets.',
+        );
       }
     } catch (e) {
       developer.log('❌ Error loading cached data: $e');
+      developer.log(
+        '⚠️ Will attempt to load data from tiles when needed.',
+      );
     }
   }
 
@@ -76,12 +96,28 @@ class OpenAIPService {
       );
       
       if (tiledAirspaces.isNotEmpty) {
+        developer.log(
+          '📦 Loaded ${tiledAirspaces.length} airspaces from tiles for area: '
+          '[$minLat,$minLon to $maxLat,$maxLon]',
+        );
         return tiledAirspaces;
       }
       
       // Fall back to cached data
+      developer.log(
+        '⚠️ No tiled data found for area, checking cache...',
+      );
       final cachedAirspaces = await getCachedAirspaces();
-      return cachedAirspaces.where((airspace) {
+      
+      if (cachedAirspaces.isEmpty) {
+        developer.log(
+          '⚠️ No airspaces found in cache or tiles for area: '
+          '[$minLat,$minLon to $maxLat,$maxLon]',
+        );
+        return [];
+      }
+      
+      final airspacesInArea = cachedAirspaces.where((airspace) {
         // Filter cached airspaces to only those in the requested area
         return airspace.geometry.any(
           (point) =>
@@ -91,8 +127,15 @@ class OpenAIPService {
               point.longitude <= maxLon,
         );
       }).toList();
+      
+      developer.log(
+        '📍 Found ${airspacesInArea.length} airspaces in cache for area',
+      );
+      
+      return airspacesInArea;
     } catch (e) {
       developer.log('❌ Error loading airspaces for area: $e');
+      developer.log('Stack trace: ${StackTrace.current}');
       return [];
     }
   }
