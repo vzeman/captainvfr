@@ -12,7 +12,6 @@ class OfflineDataStateController extends ChangeNotifier {
   int _downloadedTiles = 0;
   int _minZoom = 8;
   int _maxZoom = 14;
-  String _openAIPApiKey = '';
 
   // Cache statistics
   Map<String, dynamic>? _mapCacheStats;
@@ -29,7 +28,6 @@ class OfflineDataStateController extends ChangeNotifier {
   int get downloadedTiles => _downloadedTiles;
   int get minZoom => _minZoom;
   int get maxZoom => _maxZoom;
-  String get openAIPApiKey => _openAIPApiKey;
   Map<String, dynamic>? get mapCacheStats => _mapCacheStats;
   Map<String, dynamic> get cacheStats => _cacheStats;
 
@@ -88,10 +86,6 @@ class OfflineDataStateController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setOpenAIPApiKey(String apiKey) {
-    _openAIPApiKey = apiKey;
-    notifyListeners();
-  }
 
   void setMapCacheStats(Map<String, dynamic>? stats) {
     _mapCacheStats = stats;

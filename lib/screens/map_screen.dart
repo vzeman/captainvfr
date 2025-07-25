@@ -989,10 +989,6 @@ class MapScreenState extends State<MapScreen>
   }
 
   Future<void> _loadAirspacesDebounced() async {
-    // Check if we have API key (either user or default)
-    if (!openAIPService.hasApiKey) {
-      return;
-    }
 
     try {
       // First, load from cache for immediate display
