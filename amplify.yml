@@ -7,6 +7,13 @@ frontend:
   phases:
     preBuild:
       commands:
+        # Install Git LFS
+        - yum install -y git-lfs
+        
+        # Initialize Git LFS and pull large files
+        - git lfs install
+        - git lfs pull
+        
         # Hugo Extended is now provided by AWS Amplify via Live Package Updates
         - hugo version
         
