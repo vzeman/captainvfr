@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/flight.dart';
+import '../services/logbook_service.dart';
+import '../screens/logbook/logbook_screen.dart';
 import '../widgets/altitude_vertical_speed_chart.dart';
 import '../widgets/speed_chart.dart';
 import '../widgets/vibration_chart.dart';
@@ -48,6 +51,43 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
             ],
           ),
           actions: [
+            IconButton(
+              icon: const Icon(Icons.menu_book),
+              tooltip: 'Create logbook entry',
+              onPressed: () async {
+                final logBookService = context.read<LogBookService>();
+                
+                try {
+                  await logBookService.createEntryFromFlight(widget.flight);
+                  
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Logbook entry created successfully'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                    
+                    // Navigate to logbook screen (Logs tab)
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LogBookScreen(initialTab: 1),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error creating logbook entry: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.copy),
               onPressed: () async {

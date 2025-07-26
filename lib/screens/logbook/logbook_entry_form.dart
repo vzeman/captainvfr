@@ -2,12 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../models/logbook_entry.dart';
 import '../../models/model.dart' show AircraftCategory;
 import '../../models/flight_plan.dart' show FlightRules;
+import '../../models/pilot.dart';
 import '../../services/logbook_service.dart';
 import '../../services/pilot_service.dart';
 import '../../services/aircraft_settings_service.dart';
+import '../../services/flight_service.dart';
+import '../../services/media_service.dart';
+import '../../screens/flight_detail_screen.dart';
+import 'logbook_screen.dart';
 
 class LogBookEntryForm extends StatefulWidget {
   final LogBookEntry? entry;
@@ -58,6 +66,12 @@ class _LogBookEntryFormState extends State<LogBookEntryForm> {
   bool _checkRide = false;
   bool _faa6158 = false;
   bool _nvgProficiency = false;
+  
+  // Pictures and documents
+  List<String> _imagePaths = [];
+  List<String> _documentPaths = [];
+  String? _linkedFlightLogId;
+  final MediaService _mediaService = MediaService();
 
   @override
   void initState() {
@@ -97,7 +111,7 @@ class _LogBookEntryFormState extends State<LogBookEntryForm> {
     // Initialize selection values
     _selectedPicId = entry?.pilotInCommandId ?? context.read<PilotService>().currentPilot?.id;
     _selectedSicId = entry?.secondInCommandId;
-    _engineType = entry?.engineType;
+    _engineType = entry?.engineType ?? EngineType.singleEngine;
     _flightCondition = entry?.flightCondition;
     _flightRules = entry?.flightRules ?? FlightRules.vfr;
     _simulated = entry?.simulated ?? false;
@@ -106,6 +120,11 @@ class _LogBookEntryFormState extends State<LogBookEntryForm> {
     _checkRide = entry?.checkRide ?? false;
     _faa6158 = entry?.faa6158 ?? false;
     _nvgProficiency = entry?.nvgProficiency ?? false;
+    
+    // Initialize pictures and documents
+    _imagePaths = List<String>.from(entry?.imagePaths ?? []);
+    _documentPaths = List<String>.from(entry?.documentPaths ?? []);
+    _linkedFlightLogId = entry?.flightLogId;
   }
 
   @override
@@ -187,6 +206,9 @@ class _LogBookEntryFormState extends State<LogBookEntryForm> {
         nightLandings: int.tryParse(_nightLandingsController.text) ?? 0,
         note: _noteController.text.trim().isEmpty 
             ? null : _noteController.text.trim(),
+        flightLogId: _linkedFlightLogId,
+        imagePaths: _imagePaths,
+        documentPaths: _documentPaths,
         trackingDuration: trackingDuration,
         movingDuration: movingDuration,
         createdAt: widget.entry?.createdAt,
@@ -349,7 +371,7 @@ class _LogBookEntryFormState extends State<LogBookEntryForm> {
               DropdownButtonFormField<EngineType>(
                 value: _engineType,
                 decoration: const InputDecoration(
-                  labelText: 'Engine Type',
+                  labelText: 'Engine Type *',
                   prefixIcon: Icon(Icons.settings),
                 ),
                 items: const [
@@ -363,6 +385,12 @@ class _LogBookEntryFormState extends State<LogBookEntryForm> {
                   ),
                 ],
                 onChanged: (value) => setState(() => _engineType = value),
+                validator: (value) {
+                  if (value == null) {
+                    return 'Please select engine type';
+                  }
+                  return null;
+                },
               ),
 
               const SizedBox(height: 24),
@@ -371,17 +399,38 @@ class _LogBookEntryFormState extends State<LogBookEntryForm> {
               _buildSectionHeader('Pilot Experience'),
               DropdownButtonFormField<String>(
                 value: _selectedPicId,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Pilot in Command',
-                  prefixIcon: Icon(Icons.person),
+                  prefixIcon: const Icon(Icons.person),
+                  suffixIcon: pilots.isEmpty ? const Icon(Icons.warning, color: Colors.orange, size: 20) : null,
                 ),
-                items: pilots.map((pilot) => DropdownMenuItem(
-                  value: pilot.id,
-                  child: Text(pilot.name),
-                )).toList(),
-                onChanged: (value) => setState(() => _selectedPicId = value),
+                hint: pilots.isEmpty ? const Text('Add a pilot first') : null,
+                items: [
+                  const DropdownMenuItem(
+                    value: 'new_pilot',
+                    child: Row(
+                      children: [
+                        Icon(Icons.add, size: 20),
+                        SizedBox(width: 8),
+                        Text('Add New Pilot'),
+                      ],
+                    ),
+                  ),
+                  ...pilots.map((pilot) => DropdownMenuItem(
+                    value: pilot.id,
+                    child: Text(pilot.name),
+                  )),
+                ],
+                onChanged: (value) async {
+                  if (value == 'new_pilot') {
+                    // Navigate to pilots tab or show dialog
+                    await _showAddPilotDialog();
+                  } else {
+                    setState(() => _selectedPicId = value);
+                  }
+                },
                 validator: (value) {
-                  if (value == null) {
+                  if (value == null || value == 'new_pilot') {
                     return 'Please select pilot in command';
                   }
                   return null;
@@ -399,6 +448,16 @@ class _LogBookEntryFormState extends State<LogBookEntryForm> {
                     value: null,
                     child: Text('Solo Flight'),
                   ),
+                  const DropdownMenuItem(
+                    value: 'new_pilot',
+                    child: Row(
+                      children: [
+                        Icon(Icons.add, size: 20),
+                        SizedBox(width: 8),
+                        Text('Add New Pilot'),
+                      ],
+                    ),
+                  ),
                   ...pilots
                       .where((p) => p.id != _selectedPicId)
                       .map((pilot) => DropdownMenuItem(
@@ -406,7 +465,13 @@ class _LogBookEntryFormState extends State<LogBookEntryForm> {
                     child: Text(pilot.name),
                   )),
                 ],
-                onChanged: (value) => setState(() => _selectedSicId = value),
+                onChanged: (value) async {
+                  if (value == 'new_pilot') {
+                    await _showAddPilotDialog();
+                  } else {
+                    setState(() => _selectedSicId = value);
+                  }
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -597,6 +662,162 @@ class _LogBookEntryFormState extends State<LogBookEntryForm> {
                 maxLines: 4,
               ),
 
+              const SizedBox(height: 24),
+
+              // Section: Flight Log Link
+              if (_linkedFlightLogId != null) ...[
+                _buildSectionHeader('Linked Flight Log'),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.link),
+                    title: const Text('View Original Flight Log'),
+                    subtitle: Text('Flight ID: $_linkedFlightLogId'),
+                    trailing: const Icon(Icons.arrow_forward_ios),
+                    onTap: () async {
+                      final flightService = context.read<FlightService>();
+                      final flight = flightService.flights.firstWhere(
+                        (f) => f.id == _linkedFlightLogId,
+                        orElse: () => throw Exception('Flight not found'),
+                      );
+                      
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => FlightDetailScreen(flight: flight),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+
+              // Section: Pictures and Documents
+              _buildSectionHeader('Pictures and Documents'),
+              
+              // Pictures section
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Pictures (${_imagePaths.length})',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          TextButton.icon(
+                            onPressed: _addPicture,
+                            icon: const Icon(Icons.add_photo_alternate),
+                            label: const Text('Add Picture'),
+                          ),
+                        ],
+                      ),
+                      if (_imagePaths.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          height: 100,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _imagePaths.length,
+                            itemBuilder: (context, index) {
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.file(
+                                        File(_imagePaths[index]),
+                                        height: 100,
+                                        width: 100,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return Container(
+                                            height: 100,
+                                            width: 100,
+                                            color: Colors.grey[300],
+                                            child: const Icon(Icons.broken_image),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 4,
+                                      right: 4,
+                                      child: GestureDetector(
+                                        onTap: () => _removePicture(index),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black54,
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: const Icon(
+                                            Icons.close,
+                                            size: 16,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Documents section
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Documents (${_documentPaths.length})',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          TextButton.icon(
+                            onPressed: _addDocument,
+                            icon: const Icon(Icons.attach_file),
+                            label: const Text('Add Document'),
+                          ),
+                        ],
+                      ),
+                      if (_documentPaths.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        ...List.generate(_documentPaths.length, (index) {
+                          final fileName = _documentPaths[index].split('/').last;
+                          return ListTile(
+                            leading: const Icon(Icons.description),
+                            title: Text(fileName),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete),
+                              onPressed: () => _removeDocument(index),
+                            ),
+                          );
+                        }),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 32),
             ],
           ),
@@ -720,5 +941,164 @@ class _LogBookEntryFormState extends State<LogBookEntryForm> {
         ),
       ],
     );
+  }
+
+  // Picture and document handling methods
+  Future<void> _addPicture() async {
+    try {
+      final imagePath = await _mediaService.pickAndSaveImage(
+        source: ImageSource.gallery,
+        prefix: 'logbook_${widget.entry?.id ?? 'new'}',
+      );
+      
+      if (imagePath != null) {
+        setState(() {
+          _imagePaths.add(imagePath);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to add picture: $e')),
+        );
+      }
+    }
+  }
+
+  void _removePicture(int index) {
+    setState(() {
+      _imagePaths.removeAt(index);
+    });
+  }
+
+  Future<void> _addDocument() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'txt', 'jpg', 'png'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final file = File(result.files.single.path!);
+        final fileName = 'logbook_doc_${DateTime.now().millisecondsSinceEpoch}_${result.files.single.name}';
+        final savedPath = await _mediaService.saveDocument(file, fileName);
+        
+        setState(() {
+          _documentPaths.add(savedPath);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to add document: $e')),
+        );
+      }
+    }
+  }
+
+  void _removeDocument(int index) {
+    setState(() {
+      _documentPaths.removeAt(index);
+    });
+  }
+
+  Future<void> _showAddPilotDialog() async {
+    final nameController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add New Pilot'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Pilot Name',
+                  hintText: 'Enter pilot name',
+                  prefixIcon: Icon(Icons.person),
+                ),
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter pilot name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'You can add licenses and endorsements later in the Pilots tab',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(context, true);
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true && nameController.text.trim().isNotEmpty && mounted) {
+      // Create new pilot
+      final pilotService = context.read<PilotService>();
+      final newPilot = Pilot(
+        name: nameController.text.trim(),
+        isCurrentUser: pilotService.pilots.isEmpty, // First pilot is current user
+        endorsementIds: [],
+        licenseIds: [],
+      );
+      
+      await pilotService.addPilot(newPilot);
+      
+      // Select the newly created pilot and refresh state
+      if (mounted) {
+        setState(() {
+          _selectedPicId = newPilot.id;
+          // If the new pilot was selected as SIC and is now PIC, clear SIC
+          if (_selectedSicId == newPilot.id) {
+            _selectedSicId = null;
+          }
+        });
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Added pilot: ${newPilot.name}'),
+            action: SnackBarAction(
+              label: 'Manage',
+              onPressed: () {
+                // Navigate to LogBook Pilots tab
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const LogBookScreen(initialTab: 2),
+                  ),
+                  (route) => route.isFirst,
+                );
+              },
+            ),
+          ),
+        );
+      }
+    }
   }
 }

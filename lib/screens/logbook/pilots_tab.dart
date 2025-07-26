@@ -61,13 +61,21 @@ class PilotsTab extends StatelessWidget {
   }
 }
 
-class _PilotTile extends StatelessWidget {
+class _PilotTile extends StatefulWidget {
   final Pilot pilot;
 
   const _PilotTile({required this.pilot});
 
   @override
+  State<_PilotTile> createState() => _PilotTileState();
+}
+
+class _PilotTileState extends State<_PilotTile> {
+  bool _isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final pilot = widget.pilot;
     final pilotService = context.watch<PilotService>();
     final endorsements = pilotService.getEndorsementsForPilot(pilot.id);
     final licenses = pilotService.getLicensesForPilot(pilot.id);
@@ -76,6 +84,11 @@ class _PilotTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: ExpansionTile(
+        onExpansionChanged: (expanded) {
+          setState(() {
+            _isExpanded = expanded;
+          });
+        },
         leading: CircleAvatar(
           backgroundColor: isCurrentPilot
               ? Theme.of(context).colorScheme.primary
@@ -131,6 +144,16 @@ class _PilotTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Text('${endorsements.length} endorsements'),
+                const Spacer(),
+                AnimatedRotation(
+                  turns: _isExpanded ? 0.5 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    Icons.expand_more,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ],

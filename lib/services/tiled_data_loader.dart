@@ -485,14 +485,39 @@ class TiledDataLoader {
         }
       }
       
+      // Parse altitude values - handle CSV data that might have 0 or empty values
+      double? topAltitude = null;
+      double? bottomAltitude = null;
+      
+      // Top altitude (upper limit)
+      if (row[4] != null && row[4].toString().isNotEmpty && row[4].toString() != 'null') {
+        final parsed = double.tryParse(row[4].toString());
+        // Only use if not 0 (0 usually means data issue)
+        if (parsed != null && parsed != 0) {
+          topAltitude = parsed;
+        }
+      }
+      
+      // Bottom altitude (lower limit) 
+      if (row[5] != null && row[5].toString().isNotEmpty && row[5].toString() != 'null') {
+        final parsed = double.tryParse(row[5].toString());
+        // 0 for bottom altitude is valid (ground level)
+        if (parsed != null) {
+          bottomAltitude = parsed;
+        }
+      }
+      
       return Airspace(
         id: row[0].toString(),
         name: row[1].toString(),
         type: row[2].toString(),
         country: row[3].toString(),
-        upperLimitFt: row[4] != null ? double.tryParse(row[4].toString()) : null,
-        lowerLimitFt: row[5] != null ? double.tryParse(row[5].toString()) : null,
+        upperLimitFt: topAltitude,
+        lowerLimitFt: bottomAltitude,
         geometry: points,
+        // Default references to MSL for CSV data
+        upperLimitReference: topAltitude != null ? 'MSL' : null,
+        lowerLimitReference: bottomAltitude != null ? 'MSL' : null,
       );
     } catch (e) {
       _logger.e('Error parsing airspace row: $e');

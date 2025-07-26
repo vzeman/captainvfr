@@ -17,6 +17,8 @@ import 'flight/calculations/flight_calculator.dart';
 import 'flight/tracking/location_tracker.dart';
 import 'flight/tracking/segment_tracker.dart';
 import 'flight/storage/flight_history_manager.dart';
+import 'logbook_service.dart';
+import 'settings_service.dart';
 
 class FlightService with ChangeNotifier {
   // Core components
@@ -28,6 +30,7 @@ class FlightService with ChangeNotifier {
   
   // Services
   final BarometerService? _barometerService;
+  final LogBookService? _logBookService;
   final WatchConnectivityService _watchService = WatchConnectivityService();
   
   // Subscriptions
@@ -47,8 +50,12 @@ class FlightService with ChangeNotifier {
   }
   
   // Constructor
-  FlightService({this.onFlightPathUpdated, BarometerService? barometerService})
-      : _barometerService = barometerService ?? BarometerService() {
+  FlightService({
+    this.onFlightPathUpdated,
+    BarometerService? barometerService,
+    LogBookService? logBookService,
+  }) : _barometerService = barometerService ?? BarometerService(),
+       _logBookService = logBookService {
     _initializeComponents();
     _initializeStorage();
     _initializeWatchConnectivity();
@@ -266,6 +273,19 @@ class FlightService with ChangeNotifier {
     );
     
     await _historyManager.saveFlight(flight);
+    
+    // Create logbook entry from flight if option is enabled
+    try {
+      final settingsService = SettingsService();
+      if (settingsService.autoCreateLogbookEntry) {
+        // This will be injected from the app's provider context
+        if (_logBookService != null) {
+          await _logBookService.createEntryFromFlight(flight);
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to create logbook entry: $e');
+    }
   }
   
   // Flight history management

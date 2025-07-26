@@ -84,6 +84,25 @@ class LogBookService extends ChangeNotifier {
     if (_entriesBox != null && _entriesBox!.isOpen) {
       _entries = _entriesBox!.values.toList()
         ..sort((a, b) => b.dateTimeStarted.compareTo(a.dateTimeStarted));
+      
+      // Migrate entries without engine type
+      bool needsMigration = false;
+      for (final entry in _entries) {
+        if (entry.engineType == null) {
+          needsMigration = true;
+          // Update the entry with default engine type
+          final updatedEntry = entry.copyWith(
+            engineType: EngineType.singleEngine,
+          );
+          _entriesBox!.put(entry.id, updatedEntry);
+        }
+      }
+      
+      if (needsMigration) {
+        // Reload entries after migration
+        _entries = _entriesBox!.values.toList()
+          ..sort((a, b) => b.dateTimeStarted.compareTo(a.dateTimeStarted));
+      }
     }
   }
 
@@ -132,9 +151,9 @@ class LogBookService extends ChangeNotifier {
     // Get current pilot
     final currentPilot = _pilotService.currentPilot;
     
-    // Get aircraft info - for now we'll leave this empty
+    // Get aircraft info - default to single engine
     // In a future update, we might want to add aircraft tracking to Flight model
-    EngineType? engineType;
+    EngineType engineType = EngineType.singleEngine;
 
     // Determine flight conditions based on time
     final startHour = flight.startTime.hour;

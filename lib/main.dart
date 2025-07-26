@@ -51,25 +51,26 @@ import 'services/pilot_service.dart';
 import 'services/logbook_service.dart';
 
 void main() {
-  // Show a simple screen immediately, no async needed
-  debugPrint('🚀 CaptainVFR starting up...');
-  runApp(const SimpleLoadingScreen());
-  
-  // Then start the initialization process
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    runZonedGuarded(() async {
+  runZonedGuarded(() async {
+    // Ensure Flutter binding is initialized first
+    WidgetsFlutterBinding.ensureInitialized();
+    
+    // Show a simple screen immediately
+    debugPrint('🚀 CaptainVFR starting up...');
+    runApp(const SimpleLoadingScreen());
+    
+    // Then start the initialization process after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       debugPrint('🔧 Starting initialization after first frame...');
       _initializeApp();
-    }, (error, stack) {
-      debugPrint('❌ Uncaught error during initialization: $error');
-      debugPrint('Stack trace: $stack');
     });
+  }, (error, stack) {
+    debugPrint('❌ Uncaught error: $error');
+    debugPrint('Stack trace: $stack');
   });
 }
 
 Future<void> _initializeApp() async {
-  // Ensure Flutter binding is initialized for async operations
-  WidgetsFlutterBinding.ensureInitialized();
   
   // Start performance monitoring in debug mode
   assert(() {
@@ -188,8 +189,6 @@ Future<void> _initializeApp() async {
       debugPrint('Flight plan service initialization failed: $e');
     }
 
-    final flightService = FlightService(barometerService: barometerService);
-
     // Initialize aircraft settings service with comprehensive error handling
     final aircraftSettingsService = AircraftSettingsService();
 
@@ -206,6 +205,12 @@ Future<void> _initializeApp() async {
     final logBookService = LogBookService(
       pilotService: pilotService,
       aircraftService: aircraftSettingsService,
+    );
+
+    // Initialize flight service with logbook service
+    final flightService = FlightService(
+      barometerService: barometerService,
+      logBookService: logBookService,
     );
 
     // Initialize OpenAIP service
@@ -409,7 +414,10 @@ void _runMinimalApp() {
   );
   final settingsService = SettingsService();
   final cacheService = CacheService();
-  final flightService = FlightService(barometerService: barometerService);
+  final flightService = FlightService(
+    barometerService: barometerService,
+    logBookService: logBookService,
+  );
   final backgroundDataService = BackgroundDataService();
   final sensorAvailabilityService = SensorAvailabilityService();
 

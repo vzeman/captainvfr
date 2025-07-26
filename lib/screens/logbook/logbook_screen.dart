@@ -4,7 +4,9 @@ import 'logbook_entries_tab.dart';
 import 'pilots_tab.dart';
 
 class LogBookScreen extends StatefulWidget {
-  const LogBookScreen({super.key});
+  final int initialTab;
+  
+  const LogBookScreen({super.key, this.initialTab = 0});
 
   @override
   State<LogBookScreen> createState() => _LogBookScreenState();
@@ -17,7 +19,11 @@ class _LogBookScreenState extends State<LogBookScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(
+      length: 3, 
+      vsync: this,
+      initialIndex: widget.initialTab,
+    );
   }
 
   @override
