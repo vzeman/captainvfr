@@ -7,9 +7,6 @@ frontend:
   phases:
     preBuild:
       commands:
-        # Install Git LFS
-        - yum install -y git-lfs
-        
         # Initialize Git LFS and pull large files
         - git lfs install
         - git lfs pull
