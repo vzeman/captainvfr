@@ -1,6 +1,8 @@
 # Captain VFR
 
 Mobile application for VFR pilots to plan their flights, check the weather, and get notified about TFRs.
+Website: https://captainvfr.com
+Web App: https://captainvfr.com/app/
 
 ## Features
 - Flight planning
