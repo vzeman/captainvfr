@@ -7,6 +7,7 @@ import '../../checklist_settings_screen.dart';
 import '../../licenses_screen.dart';
 import '../../calculators_screen.dart';
 import '../../settings_screen.dart';
+import '../../logbook/logbook_screen.dart';
 
 class NavigationMenu extends StatelessWidget {
   final VoidCallback onPauseTimers;
@@ -30,6 +31,14 @@ class NavigationMenu extends StatelessWidget {
           child: ListTile(
             leading: Icon(Icons.book),
             title: Text('Flight Log'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'logbook',
+          child: ListTile(
+            leading: Icon(Icons.menu_book),
+            title: Text('LogBook'),
             contentPadding: EdgeInsets.zero,
           ),
         ),
@@ -102,6 +111,9 @@ class NavigationMenu extends StatelessWidget {
     switch (value) {
       case 'flight_log':
         screen = const FlightLogScreen();
+        break;
+      case 'logbook':
+        screen = const LogBookScreen();
         break;
       case 'offline_maps':
         screen = const OfflineDataScreen();
