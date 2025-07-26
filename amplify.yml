@@ -7,9 +7,13 @@ frontend:
   phases:
     preBuild:
       commands:
-        # Initialize Git LFS and pull large files
-        - git lfs install
-        - git lfs pull
+        # Download and install Git LFS binary directly
+        - wget https://github.com/git-lfs/git-lfs/releases/download/v3.4.0/git-lfs-linux-amd64-v3.4.0.tar.gz
+        - tar -xzf git-lfs-linux-amd64-v3.4.0.tar.gz
+        - ./git-lfs-3.4.0/git-lfs install --local
+        
+        # Pull large files
+        - ./git-lfs-3.4.0/git-lfs pull
         
         # Hugo Extended is now provided by AWS Amplify via Live Package Updates
         - hugo version
