@@ -7,9 +7,7 @@ frontend:
   phases:
     preBuild:
       commands:
-        # Install Git LFS
-        - yum install -y git-lfs
-        
+        # Git LFS is pre-installed in AWS Amplify environment
         # Initialize Git LFS and pull large files
         - git lfs install
         - git lfs pull
