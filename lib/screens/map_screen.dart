@@ -574,12 +574,17 @@ class MapScreenState extends State<MapScreen>
       if (mounted) {
         setState(() {
           _currentPosition = position;
+          // Automatically enable position tracking when location permission is granted
+          _positionTrackingEnabled = true;
+          _autoCenteringEnabled = true;
         });
 
         // Location loaded successfully, handle the rest
         _onLocationLoaded();
         // Start listening for location updates
         _startLocationStream();
+        // Start position tracking since we have permission
+        await _startPositionTracking();
       }
     } catch (e) {
       // Don't show error popup, just use default location silently
@@ -4087,6 +4092,7 @@ class MapScreenState extends State<MapScreen>
                       permission == LocationPermission.always) {
                     setState(() {
                       _positionTrackingEnabled = true;
+                      _autoCenteringEnabled = true;
                     });
                     await _startPositionTracking();
                   }
