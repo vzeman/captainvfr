@@ -140,6 +140,13 @@ typewriterWordAlternatives="Tracking,Briefing"
     "image": "/images/screenshots/web/flight-tracking.jpg",
     "imageAlt": "Flight tracking interface",
     "imagePosition": "top"
+  },
+  {
+    "title": "Digital Pilot Logbook",
+    "description": "Maintain your pilot logbook digitally with automatic flight imports, comprehensive entry management, and export options.",
+    "image": "/images/screenshots/web/logbook.jpg",
+    "imageAlt": "Digital pilot logbook interface",
+    "imagePosition": "top"
   }
 ]
 {{< /bentogrid-three-column >}}
@@ -199,7 +206,32 @@ typewriterWordAlternatives="Tracking,Briefing"
         "title": "Post-flight Analysis",
         "content": {
           "title": "Track and Improve",
-          "description": "Review your flights with detailed track logs, analyze performance, and share with instructors.",
+          "description": [
+            {
+              "type": "text",
+              "content": "Review your flights and maintain your pilot logbook with comprehensive analysis tools."
+            },
+            {
+              "type": "list",
+              "items": [
+                {
+                  "text": "Automatic logbook entry creation from flight logs"
+                },
+                {
+                  "text": "Detailed flight track visualization"
+                },
+                {
+                  "text": "Performance metrics and statistics"
+                },
+                {
+                  "text": "Export to PDF, CSV, and digital formats"
+                },
+                {
+                  "text": "Share flights with instructors"
+                }
+              ]
+            }
+          ],
           "imageUrl": "/images/screenshots/macos/flight-tracking.jpg",
           "imageAlt": "Post-flight analysis showing flight track and performance metrics"
         }
