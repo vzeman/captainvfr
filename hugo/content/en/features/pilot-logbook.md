@@ -100,12 +100,6 @@ CaptainVFR includes a comprehensive digital pilot logbook that helps you maintai
   - Standard aviation data formats
   - API integration options
 
-### Backup Options
-- **Cloud Sync**: Automatic backup to cloud storage
-- **Local Backup**: Device storage with encryption
-- **Export Archive**: Complete data package
-- **Version History**: Track changes to entries
-
 ## Analytics and Insights
 
 ### Hours Summary
@@ -114,57 +108,5 @@ CaptainVFR includes a comprehensive digital pilot logbook that helps you maintai
   - Last 30/60/90 days
   - Year-to-date totals
   - Custom date ranges
-- **Category Breakdowns**:
-  - By aircraft type
-  - By flight conditions
-  - By pilot function
-  - By airport
-
-### Currency Tracking
-- **Regulatory Requirements**:
-  - Day/Night currency
-  - Instrument currency
-  - Flight review dates
-  - Medical certificate expiry
-- **Personal Minimums**:
-  - Set custom currency requirements
-  - Track proficiency metrics
-  - Reminder notifications
-
-### Visual Analytics
-- **Flight Maps**: See all your flights on one map
-- **Progress Charts**: Track hour accumulation
-- **Activity Calendar**: Visual flight frequency
-- **Achievement Milestones**: First solo, checkrides, ratings
-
-## Professional Features
-
-### Instructor Tools
-- **Student Endorsements**: Track given endorsements
-- **Training Progress**: Monitor student advancement
-- **Dual Given Hours**: Separate CFI time tracking
-- **Comments System**: Detailed training notes
-
-### Commercial Operations
-- **Duty Time Tracking**: Part 135/121 compliance
-- **Multi-Pilot Logging**: Crew coordination
-- **Company Aircraft**: Fleet management
-- **Expense Tracking**: Flight-related costs
-
-## Security and Privacy
-
-### Data Protection
-- **Encrypted Storage**: Secure local data
-- **Access Control**: PIN/biometric protection
-- **Private Mode**: Hide sensitive flights
-- **Audit Trail**: Track all changes
-
-### Compliance Features
-- **Signature Capability**: Digital signatures for entries
-- **Timestamp Verification**: Tamper-proof entry dates
-- **Inspector Mode**: Read-only view for checks
-- **Regulatory Formats**: Country-specific requirements
-
----
 
 The CaptainVFR digital logbook provides pilots with a modern, efficient way to maintain their flight records while ensuring compliance with aviation regulations and making it easy to track progress toward ratings and certificates.
