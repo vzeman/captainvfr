@@ -185,21 +185,12 @@ class OpenAIPService {
         maxLon: position.longitude + buffer,
       );
       
-      developer.log('🔍 Checking airspaces at position: ${position.latitude}, ${position.longitude}, altitude: $altitudeFt ft');
-      developer.log('📦 Found ${tiledAirspaces.length} airspaces in tile area');
-      
       // Filter airspaces that contain the position and altitude
       var airspacesAtPosition = tiledAirspaces.where((airspace) {
         final containsPoint = airspace.containsPoint(position);
         final atAltitude = airspace.isAtAltitude(altitudeFt, reference: altitudeReference);
         final isActive = airspace.isActiveAt(DateTime.now());
-        
-        if (!containsPoint || !atAltitude || !isActive) {
-          developer.log('❌ ${airspace.name}: containsPoint=$containsPoint, atAltitude=$atAltitude, isActive=$isActive');
-        } else {
-          developer.log('✅ ${airspace.name}: MATCHES ALL CONDITIONS');
-        }
-        
+
         return containsPoint && atAltitude && isActive;
       }).toList();
       
@@ -239,10 +230,7 @@ class OpenAIPService {
       );
       
       if (tiledAirspaces.isNotEmpty) {
-        developer.log(
-          '✅ Loaded ${tiledAirspaces.length} airspaces from tiles',
-        );
-        
+
         // Cache for offline use
         await _cacheService.cacheAirspaces(tiledAirspaces);
         
@@ -292,10 +280,7 @@ class OpenAIPService {
       );
       
       if (tiledPoints.isNotEmpty) {
-        developer.log(
-          '✅ Loaded ${tiledPoints.length} reporting points from tiles',
-        );
-        
+
         // Update in-memory cache
         _reportingPointsInMemory = tiledPoints;
         _reportingPointsLoaded = true;
@@ -336,14 +321,12 @@ class OpenAIPService {
     try {
       if (append) {
         await _cacheService.appendReportingPoints(reportingPoints);
-        developer.log('✅ Appended ${reportingPoints.length} reporting points');
-        
+
         // Update in-memory cache by appending new points
         _reportingPointsInMemory.addAll(reportingPoints);
       } else {
         await _cacheService.cacheReportingPoints(reportingPoints);
-        developer.log('✅ Cached ${reportingPoints.length} reporting points');
-        
+
         // Update in-memory cache completely
         _reportingPointsInMemory = reportingPoints;
         _reportingPointsLoaded = true;
@@ -429,10 +412,7 @@ class OpenAIPService {
       );
       
       if (tiledObstacles.isNotEmpty) {
-        developer.log(
-          '✅ Loaded ${tiledObstacles.length} obstacles from tiles',
-        );
-        
+
         // Notify that new data is available
         onDataLoaded?.call();
       }
@@ -480,10 +460,6 @@ class OpenAIPService {
       );
       
       if (tiledHotspots.isNotEmpty) {
-        developer.log(
-          '✅ Loaded ${tiledHotspots.length} hotspots from tiles',
-        );
-        
         // Notify that new data is available
         onDataLoaded?.call();
       }
