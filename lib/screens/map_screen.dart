@@ -193,7 +193,7 @@ class MapScreenState extends State<MapScreen>
   Timer? _countdownTimer;
   
   // Position tracking control
-  bool _positionTrackingEnabled = false;
+  bool _positionTrackingEnabled = true;  // Default to enabled
   Timer? _positionUpdateTimer;
   // Position update interval is now in MapConstants
 
@@ -302,6 +302,13 @@ class MapScreenState extends State<MapScreen>
         // Start loading data in background if location is already available
         if (_currentPosition != null && !_isLocationLoaded) {
           _onLocationLoaded();
+        }
+
+        // Start position tracking if enabled (default is true)
+        if (_positionTrackingEnabled && _positionUpdateTimer == null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _startPositionTracking();
+          });
         }
 
         _servicesInitialized = true;
