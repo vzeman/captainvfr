@@ -36,6 +36,7 @@ echo ""
 
 # Run the OpenAIP data preparation script
 echo "🔄 Starting OpenAIP data preparation..."
+echo "ℹ️  Using updated script with altitude data fix..."
 dart scripts/prepare_all_data.dart --api-key "$API_KEY"
 
 echo ""

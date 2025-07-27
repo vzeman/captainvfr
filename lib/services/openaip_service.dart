@@ -175,9 +175,40 @@ class OpenAIPService {
     try {
       // Ensure the service is initialized
       await initialize();
-
+      
+      // First try to get from tiled data for a small area around the position
+      final buffer = 0.1; // 0.1 degree buffer around position
+      final tiledAirspaces = await _tiledDataLoader.loadAirspacesForArea(
+        minLat: position.latitude - buffer,
+        maxLat: position.latitude + buffer,
+        minLon: position.longitude - buffer,
+        maxLon: position.longitude + buffer,
+      );
+      
+      developer.log('🔍 Checking airspaces at position: ${position.latitude}, ${position.longitude}, altitude: $altitudeFt ft');
+      developer.log('📦 Found ${tiledAirspaces.length} airspaces in tile area');
+      
+      // Filter airspaces that contain the position and altitude
+      var airspacesAtPosition = tiledAirspaces.where((airspace) {
+        final containsPoint = airspace.containsPoint(position);
+        final atAltitude = airspace.isAtAltitude(altitudeFt, reference: altitudeReference);
+        final isActive = airspace.isActiveAt(DateTime.now());
+        
+        if (!containsPoint || !atAltitude || !isActive) {
+          developer.log('❌ ${airspace.name}: containsPoint=$containsPoint, atAltitude=$atAltitude, isActive=$isActive');
+        } else {
+          developer.log('✅ ${airspace.name}: MATCHES ALL CONDITIONS');
+        }
+        
+        return containsPoint && atAltitude && isActive;
+      }).toList();
+      
+      if (airspacesAtPosition.isNotEmpty) {
+        return airspacesAtPosition;
+      }
+      
+      // Fall back to cached airspaces if no tiled data
       final cachedAirspaces = await getCachedAirspaces();
-
       return cachedAirspaces.where((airspace) {
         return airspace.containsPoint(position) &&
             airspace.isAtAltitude(altitudeFt, reference: altitudeReference) &&

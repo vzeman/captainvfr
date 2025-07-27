@@ -64,6 +64,12 @@ class Flight extends HiveObject {
   @HiveField(15)
   FlightRules? flightRules;
 
+  @HiveField(16)
+  String? departureAirportCode;
+
+  @HiveField(17)
+  String? arrivalAirportCode;
+
   Flight({
     required this.id,
     required this.startTime,
@@ -81,6 +87,8 @@ class Flight extends HiveObject {
     List<MovingSegment>? movingSegments,
     List<FlightSegment>? flightSegments,
     this.flightRules,
+    this.departureAirportCode,
+    this.arrivalAirportCode,
   }) : movingSegments = movingSegments ?? [],
        flightSegments = flightSegments ?? [];
 
@@ -164,6 +172,8 @@ class Flight extends HiveObject {
     List<MovingSegment>? movingSegments,
     List<FlightSegment>? flightSegments,
     FlightRules? flightRules,
+    String? departureAirportCode,
+    String? arrivalAirportCode,
   }) {
     return Flight(
       id: id ?? this.id,
@@ -182,6 +192,8 @@ class Flight extends HiveObject {
       movingSegments: movingSegments ?? List.from(this.movingSegments),
       flightSegments: flightSegments ?? List.from(this.flightSegments),
       flightRules: flightRules ?? this.flightRules,
+      departureAirportCode: departureAirportCode ?? this.departureAirportCode,
+      arrivalAirportCode: arrivalAirportCode ?? this.arrivalAirportCode,
     );
   }
 }

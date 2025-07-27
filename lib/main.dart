@@ -207,10 +207,11 @@ Future<void> _initializeApp() async {
       aircraftService: aircraftSettingsService,
     );
 
-    // Initialize flight service with logbook service
+    // Initialize flight service with logbook service and airport service
     final flightService = FlightService(
       barometerService: barometerService,
       logBookService: logBookService,
+      airportService: airportService,
     );
 
     // Initialize OpenAIP service
@@ -417,6 +418,7 @@ void _runMinimalApp() {
   final flightService = FlightService(
     barometerService: barometerService,
     logBookService: logBookService,
+    airportService: airportService,
   );
   final backgroundDataService = BackgroundDataService();
   final sensorAvailabilityService = SensorAvailabilityService();

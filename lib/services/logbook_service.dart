@@ -142,11 +142,13 @@ class LogBookService extends ChangeNotifier {
 
   // Create entry from flight
   Future<LogBookEntry> createEntryFromFlight(Flight flight) async {
-    // Determine departure and arrival airports
-    // For now, we'll leave these empty as FlightSegment doesn't track airport names
-    // In a future update, we might want to reverse geocode the coordinates
+    // Use airport data from flight if available
     String? departureAirport;
     String? arrivalAirport;
+    
+    // Use only airport codes from flight data
+    departureAirport = flight.departureAirportCode;
+    arrivalAirport = flight.arrivalAirportCode;
 
     // Get current pilot
     final currentPilot = _pilotService.currentPilot;

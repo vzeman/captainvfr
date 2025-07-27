@@ -468,6 +468,8 @@ class TiledDataLoader {
       // CSV headers: ['id', 'name', 'type', 'country', 'top_altitude_ft', 
       //               'bottom_altitude_ft', 'geometry_type', 'geometry']
       
+      final name = row[1]?.toString() ?? '';
+      
       // Parse geometry from encoded string
       final geometryStr = row[7].toString();
       final points = <LatLng>[];
@@ -485,32 +487,117 @@ class TiledDataLoader {
         }
       }
       
-      // Parse altitude values - handle CSV data that might have 0 or empty values
+      // Parse altitude values from CSV - might be JSON format or simple numbers
       double? topAltitude = null;
       double? bottomAltitude = null;
       
       // Top altitude (upper limit)
       if (row[4] != null && row[4].toString().isNotEmpty && row[4].toString() != 'null') {
-        final parsed = double.tryParse(row[4].toString());
-        // Only use if not 0 (0 usually means data issue)
-        if (parsed != null && parsed != 0) {
-          topAltitude = parsed;
+        final altStr = row[4].toString();
+        if (altStr.startsWith('{') && altStr.contains('value')) {
+          // Parse JSON format: {value: 10000, unit: 1, referenceDatum: 0}
+          final valueMatch = RegExp(r'value:\s*(\d+(?:\.\d+)?)').firstMatch(altStr);
+          final unitMatch = RegExp(r'unit:\s*(\d+)').firstMatch(altStr);
+          
+          if (valueMatch != null) {
+            var value = double.parse(valueMatch.group(1)!);
+            final unit = unitMatch != null ? int.tryParse(unitMatch.group(1)!) : 1;
+            
+            // Convert based on unit
+            switch (unit) {
+              case 6: // Flight levels (hundreds of feet)
+                topAltitude = value * 100;
+                break;
+              case 2: // Meters
+                topAltitude = value * 3.28084;
+                break;
+              default: // Already in feet
+                topAltitude = value;
+            }
+          }
+        } else {
+          // Simple numeric value
+          topAltitude = double.tryParse(altStr);
         }
       }
       
       // Bottom altitude (lower limit) 
       if (row[5] != null && row[5].toString().isNotEmpty && row[5].toString() != 'null') {
-        final parsed = double.tryParse(row[5].toString());
-        // 0 for bottom altitude is valid (ground level)
-        if (parsed != null) {
-          bottomAltitude = parsed;
+        final altStr = row[5].toString();
+        if (altStr.startsWith('{') && altStr.contains('value')) {
+          // Parse JSON format
+          final valueMatch = RegExp(r'value:\s*(\d+(?:\.\d+)?)').firstMatch(altStr);
+          final unitMatch = RegExp(r'unit:\s*(\d+)').firstMatch(altStr);
+          
+          if (valueMatch != null) {
+            var value = double.parse(valueMatch.group(1)!);
+            final unit = unitMatch != null ? int.tryParse(unitMatch.group(1)!) : 1;
+            
+            // Convert based on unit
+            switch (unit) {
+              case 6: // Flight levels (hundreds of feet)
+                bottomAltitude = value * 100;
+                break;
+              case 2: // Meters
+                bottomAltitude = value * 3.28084;
+                break;
+              default: // Already in feet
+                bottomAltitude = value;
+            }
+          }
+        } else {
+          // Simple numeric value
+          bottomAltitude = double.tryParse(altStr);
+        }
+      }
+      
+      // Debug parsed altitudes for Rome airspaces
+      if (name.contains('ROMA') || name.contains('CTR')) {
+        _logger.d('  Parsed altitudes: top=$topAltitude ft, bottom=$bottomAltitude ft');
+      }
+      
+      // Get the airspace type (convert numeric if needed)
+      var finalAirspaceType = row[2]?.toString() ?? '';
+      if (finalAirspaceType.isNotEmpty && RegExp(r'^\d+$').hasMatch(finalAirspaceType)) {
+        switch (finalAirspaceType) {
+          case '0': finalAirspaceType = 'OTHER'; break;
+          case '1': finalAirspaceType = 'RESTRICTED'; break;
+          case '2': finalAirspaceType = 'DANGER'; break;
+          case '3': finalAirspaceType = 'PROHIBITED'; break;
+          case '4': finalAirspaceType = 'CTR'; break;
+          case '5': finalAirspaceType = 'TMZ'; break;
+          case '6': finalAirspaceType = 'RMZ'; break;
+          case '7': finalAirspaceType = 'TMA'; break;
+          case '8': finalAirspaceType = 'TRA'; break;
+          case '9': finalAirspaceType = 'TSA'; break;
+          case '10': finalAirspaceType = 'FIR'; break;
+          case '11': finalAirspaceType = 'UIR'; break;
+          case '12': finalAirspaceType = 'ADIZ'; break;
+          case '13': finalAirspaceType = 'ATZ'; break;
+          case '14': finalAirspaceType = 'MATZ'; break;
+          case '15': finalAirspaceType = 'AIRWAY'; break;
+          case '16': finalAirspaceType = 'MTR'; break;
+          case '17': finalAirspaceType = 'ALERT'; break;
+          case '18': finalAirspaceType = 'WARNING'; break;
+          case '19': finalAirspaceType = 'PROTECTED'; break;
+          case '20': finalAirspaceType = 'HTZ'; break;
+          case '21': finalAirspaceType = 'GLIDING'; break;
+          case '22': finalAirspaceType = 'TRP'; break;
+          case '23': finalAirspaceType = 'TIZ'; break;
+          case '24': finalAirspaceType = 'TIA'; break;
+          case '25': finalAirspaceType = 'MTA'; break;
+          case '26': finalAirspaceType = 'CTA'; break;
+          case '27': finalAirspaceType = 'ACC'; break;
+          case '28': finalAirspaceType = 'SPORT'; break;
+          case '29': finalAirspaceType = 'LOW_ALTITUDE'; break;
+          default: finalAirspaceType = 'OTHER'; break;
         }
       }
       
       return Airspace(
         id: row[0].toString(),
         name: row[1].toString(),
-        type: row[2].toString(),
+        type: finalAirspaceType,
         country: row[3].toString(),
         upperLimitFt: topAltitude,
         lowerLimitFt: bottomAltitude,

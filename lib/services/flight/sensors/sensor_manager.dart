@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -53,60 +55,79 @@ class SensorManager {
   
   /// Start all sensor subscriptions
   void startSensors() {
+    // Check if platform supports sensors
+    final bool supportsSensors = !kIsWeb && 
+        (Platform.isIOS || Platform.isAndroid);
+    
     // Accelerometer with reduced sampling rate
-    try {
-      _accelerometerSubscription = accelerometerEventStream(
-        samplingPeriod: FlightConstants.sensorSamplingPeriod,
-      ).listen(
-        (AccelerometerEvent event) {
-          // Convert from m/s² to g's
-          _currentXAccel = event.x / FlightConstants.gravity;
-          _currentYAccel = event.y / FlightConstants.gravity;
-          _currentZAccel = event.z / FlightConstants.gravity;
-          // Don't call callback here - too frequent
-        },
-        onError: (error) {
-          debugPrint('Accelerometer error: $error');
-        },
-      );
-    } catch (e) {
-      debugPrint('Failed to initialize accelerometer: $e');
+    if (supportsSensors) {
+      try {
+        _accelerometerSubscription = accelerometerEventStream(
+          samplingPeriod: FlightConstants.sensorSamplingPeriod,
+        ).listen(
+          (AccelerometerEvent event) {
+            // Convert from m/s² to g's
+            _currentXAccel = event.x / FlightConstants.gravity;
+            _currentYAccel = event.y / FlightConstants.gravity;
+            _currentZAccel = event.z / FlightConstants.gravity;
+            // Don't call callback here - too frequent
+          },
+          onError: (error) {
+            debugPrint('Accelerometer error: $error');
+          },
+        );
+      } catch (e) {
+        debugPrint('Failed to initialize accelerometer: $e');
+      }
+    } else {
+      debugPrint('Accelerometer not supported on this platform');
     }
     
     // Gyroscope with reduced sampling rate
-    try {
-      _gyroscopeSubscription = gyroscopeEventStream(
-        samplingPeriod: FlightConstants.sensorSamplingPeriod,
-      ).listen(
-        (GyroscopeEvent event) {
-          _currentXGyro = event.x;
-          _currentYGyro = event.y;
-          _currentZGyro = event.z;
-          // Don't call callback here - too frequent
-        },
-        onError: (error) {
-          debugPrint('Gyroscope error: $error');
-        },
-      );
-    } catch (e) {
-      debugPrint('Failed to initialize gyroscope: $e');
+    if (supportsSensors) {
+      try {
+        _gyroscopeSubscription = gyroscopeEventStream(
+          samplingPeriod: FlightConstants.sensorSamplingPeriod,
+        ).listen(
+          (GyroscopeEvent event) {
+            _currentXGyro = event.x;
+            _currentYGyro = event.y;
+            _currentZGyro = event.z;
+            // Don't call callback here - too frequent
+          },
+          onError: (error) {
+            debugPrint('Gyroscope error: $error');
+          },
+        );
+      } catch (e) {
+        debugPrint('Failed to initialize gyroscope: $e');
+      }
+    } else {
+      debugPrint('Gyroscope not supported on this platform');
     }
     
     // Compass - throttle updates
-    _compassSubscription = FlutterCompass.events?.listen((CompassEvent event) {
-      if (event.heading != null) {
-        _currentHeading = event.heading;
-        // Throttle compass updates to max 2 per second
-        final now = DateTime.now();
-        if (_lastCompassUpdate == null ||
-            now.difference(_lastCompassUpdate!).inMilliseconds > 
-            FlightConstants.compassThrottleInterval.inMilliseconds) {
-          _lastCompassUpdate = now;
-          onHeadingChanged(_currentHeading);
-          onSensorDataUpdated();
+    // Note: Compass may not be available on all platforms (e.g., macOS)
+    try {
+      _compassSubscription = FlutterCompass.events?.listen((CompassEvent event) {
+        if (event.heading != null) {
+          _currentHeading = event.heading;
+          // Throttle compass updates to max 2 per second
+          final now = DateTime.now();
+          if (_lastCompassUpdate == null ||
+              now.difference(_lastCompassUpdate!).inMilliseconds > 
+              FlightConstants.compassThrottleInterval.inMilliseconds) {
+            _lastCompassUpdate = now;
+            onHeadingChanged(_currentHeading);
+            onSensorDataUpdated();
+          }
         }
-      }
-    });
+      }, onError: (error) {
+        debugPrint('Compass error: $error');
+      });
+    } catch (e) {
+      debugPrint('Failed to initialize compass: $e');
+    }
   }
   
   /// Stop all sensor subscriptions

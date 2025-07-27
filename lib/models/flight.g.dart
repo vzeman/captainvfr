@@ -33,13 +33,15 @@ class FlightAdapter extends TypeAdapter<Flight> {
       movingSegments: (fields[13] as List?)?.cast<MovingSegment>(),
       flightSegments: (fields[14] as List?)?.cast<FlightSegment>(),
       flightRules: fields[15] as FlightRules?,
+      departureAirportCode: fields[16] as String?,
+      arrivalAirportCode: fields[17] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Flight obj) {
     writer
-      ..writeByte(16)
+      ..writeByte(18)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -71,7 +73,11 @@ class FlightAdapter extends TypeAdapter<Flight> {
       ..writeByte(14)
       ..write(obj.flightSegments)
       ..writeByte(15)
-      ..write(obj.flightRules);
+      ..write(obj.flightRules)
+      ..writeByte(16)
+      ..write(obj.departureAirportCode)
+      ..writeByte(17)
+      ..write(obj.arrivalAirportCode);
   }
 
   @override

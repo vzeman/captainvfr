@@ -34,5 +34,7 @@
 	<string>This app needs access to location when in the background to track your flight path and provide navigation assistance.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>This app needs access to location when in the background to track your flight path and provide navigation assistance.</string>
+	<key>NSLocationUsageDescription</key>
+	<string>This app needs access to location to show your position on the map and track your flight path.</string>
 </dict>
 </plist>
