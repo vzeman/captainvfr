@@ -1,4 +1,4 @@
-## Workflow Guidelines
+# Workflow Guidelines
 - ALWAYS check if code has no ERRORS, WARNINGS or RECOMMENDATIONS during building to keep the code clean and without issues 
 - ALWAYS REFACTOR classes and methods to keep the code clean and readable without duplicated code, split too long classes (more than 800 lines) into smaller classes 
 - ALWAYS keep the code clean without your test files or helper files you create during development to try something, remove them after you finish the task
@@ -6,10 +6,15 @@
 - After each bigger change document changes also to website in hugo/content/en/ so we keep the documentation up to date with features of the app
 - use github cli to interact with issues, pull requests (PR), branches, commits, etc. to keep the workflow smooth and fast
 - before starting development of specific issue, describe you plan in the issue as comment, so I can review it and give you feedback about the implementation plan
-- for each issue create new branch from main branch with the name of the issue, so it is clear what you are working on and once ready, create pull request
+- for each issue create new branch from main branch (pull latest files) with the name of the issue, so it is clear what you are working on and once ready, create pull request
 - add comments to issue when you start working on it, so I know you are working on it, add comments to issue when you discovered something important what needs to be changed in the code because of issue, add to issue also description what you plan to do to implement the issue with concept of changes
 - after you finish implementation and create pull request (reference issue in PR so it is closed automatically when merged), make deep review of the pull request: analyze all changes, check if there are no duplicated codes, forgotten comments, performance improvements, maybe there are useless codes, which are not needed anymore and were done just for testing purpouses, etc.
 
+# Application design
+- background of form and dialogs should be black
+- there should be high contrast between color of text and background
+- use dark theme for all dialogs and forms
+- example of nice color scheme is current airspaces panel, which is black background with white text and orange or light blue highlights
 
 # Guide for Claude - Website development (Hugo CMS)
 
