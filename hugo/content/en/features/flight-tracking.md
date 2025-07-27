@@ -58,6 +58,11 @@ CaptainVFR automatically records your flights, creating detailed logs for analys
 
 ## Logbook Integration
 
+### Direct Logbook Import
+- **One-Click Conversion**: Transform flight logs into official logbook entries
+- **Smart Data Transfer**: Automatically fills departure/arrival airports, times, and duration
+- **Integrated Workflow**: Seamless transition from tracking to logging
+
 ### Export Options
 - **Digital Logbook Format**: Compatible with popular e-logbooks
 - **CSV Export**: For spreadsheet applications
@@ -65,10 +70,12 @@ CaptainVFR automatically records your flights, creating detailed logs for analys
 - **GPX Tracks**: Share with other applications
 
 ### Pilot Logbook Features
-- **Hour Accumulation**: Track total flight hours
-- **Currency Tracking**: Monitor recent flight experience
+- **Comprehensive Digital Logbook**: Full-featured pilot logbook built into CaptainVFR
+- **Hour Accumulation**: Track total flight hours across all categories
+- **Currency Tracking**: Monitor recent flight experience and endorsements
 - **Night Flight Detection**: Automatic night hour calculation
 - **Cross-Country Time**: Based on distance calculations
+- **See More**: Check out our dedicated [Digital Pilot Logbook](/features/pilot-logbook/) feature
 
 ## Advanced Tracking Features
 
