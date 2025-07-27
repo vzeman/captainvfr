@@ -42,29 +42,35 @@ import 'models/moving_segment.dart';
 import 'models/flight_plan.dart';
 import 'models/airspace.dart';
 import 'models/reporting_point.dart';
+import 'models/endorsement.dart';
+import 'models/pilot.dart';
+import 'models/logbook_entry.dart';
 import 'utils/performance_monitor.dart';
 import 'services/analytics_service.dart';
+import 'services/pilot_service.dart';
+import 'services/logbook_service.dart';
 
 void main() {
-  // Show a simple screen immediately, no async needed
-  debugPrint('🚀 CaptainVFR starting up...');
-  runApp(const SimpleLoadingScreen());
-  
-  // Then start the initialization process
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    runZonedGuarded(() async {
+  runZonedGuarded(() async {
+    // Ensure Flutter binding is initialized first
+    WidgetsFlutterBinding.ensureInitialized();
+    
+    // Show a simple screen immediately
+    debugPrint('🚀 CaptainVFR starting up...');
+    runApp(const SimpleLoadingScreen());
+    
+    // Then start the initialization process after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       debugPrint('🔧 Starting initialization after first frame...');
       _initializeApp();
-    }, (error, stack) {
-      debugPrint('❌ Uncaught error during initialization: $error');
-      debugPrint('Stack trace: $stack');
     });
+  }, (error, stack) {
+    debugPrint('❌ Uncaught error: $error');
+    debugPrint('Stack trace: $stack');
   });
 }
 
 Future<void> _initializeApp() async {
-  // Ensure Flutter binding is initialized for async operations
-  WidgetsFlutterBinding.ensureInitialized();
   
   // Start performance monitoring in debug mode
   assert(() {
@@ -134,6 +140,13 @@ Future<void> _initializeApp() async {
     // Register reporting point adapter
     Hive.registerAdapter(ReportingPointAdapter());
 
+    // Register logbook-related adapters
+    Hive.registerAdapter(EndorsementAdapter());
+    Hive.registerAdapter(PilotAdapter());
+    Hive.registerAdapter(EngineTypeAdapter());
+    Hive.registerAdapter(FlightConditionAdapter());
+    Hive.registerAdapter(LogBookEntryAdapter());
+
     // Initialize cache service first
     final cacheService = CacheService();
     await cacheService.initialize();
@@ -176,8 +189,6 @@ Future<void> _initializeApp() async {
       debugPrint('Flight plan service initialization failed: $e');
     }
 
-    final flightService = FlightService(barometerService: barometerService);
-
     // Initialize aircraft settings service with comprehensive error handling
     final aircraftSettingsService = AircraftSettingsService();
 
@@ -186,6 +197,22 @@ Future<void> _initializeApp() async {
 
     // Initialize license service
     final licenseService = LicenseService();
+
+    // Initialize pilot service
+    final pilotService = PilotService(licenseService: licenseService);
+
+    // Initialize logbook service
+    final logBookService = LogBookService(
+      pilotService: pilotService,
+      aircraftService: aircraftSettingsService,
+    );
+
+    // Initialize flight service with logbook service and airport service
+    final flightService = FlightService(
+      barometerService: barometerService,
+      logBookService: logBookService,
+      airportService: airportService,
+    );
 
     // Initialize OpenAIP service
     final openAIPService = OpenAIPService();
@@ -265,6 +292,13 @@ Future<void> _initializeApp() async {
 
     // Initialize license service
     await licenseService.initialize();
+    
+    // Initialize pilot service
+    await pilotService.initialize();
+    
+    // Initialize logbook service
+    await logBookService.initialize();
+    
     runApp(
       MultiProvider(
         providers: [
@@ -284,6 +318,8 @@ Future<void> _initializeApp() async {
             value: checklistService,
           ),
           ChangeNotifierProvider<LicenseService>.value(value: licenseService),
+          ChangeNotifierProvider<PilotService>.value(value: pilotService),
+          ChangeNotifierProvider<LogBookService>.value(value: logBookService),
           ChangeNotifierProvider<SettingsService>.value(value: settingsService),
           Provider<AirportService>.value(value: airportService),
           ChangeNotifierProvider<CacheService>.value(value: cacheService),
@@ -372,9 +408,18 @@ void _runMinimalApp() {
   final aircraftSettingsService = AircraftSettingsService();
   final checklistService = ChecklistService();
   final licenseService = LicenseService();
+  final pilotService = PilotService(licenseService: licenseService);
+  final logBookService = LogBookService(
+    pilotService: pilotService,
+    aircraftService: aircraftSettingsService,
+  );
   final settingsService = SettingsService();
   final cacheService = CacheService();
-  final flightService = FlightService(barometerService: barometerService);
+  final flightService = FlightService(
+    barometerService: barometerService,
+    logBookService: logBookService,
+    airportService: airportService,
+  );
   final backgroundDataService = BackgroundDataService();
   final sensorAvailabilityService = SensorAvailabilityService();
 
@@ -400,6 +445,8 @@ void _runMinimalApp() {
         ),
         ChangeNotifierProvider<ChecklistService>.value(value: checklistService),
         ChangeNotifierProvider<LicenseService>.value(value: licenseService),
+        ChangeNotifierProvider<PilotService>.value(value: pilotService),
+        ChangeNotifierProvider<LogBookService>.value(value: logBookService),
         ChangeNotifierProvider<SettingsService>.value(value: settingsService),
         Provider<AirportService>.value(value: airportService),
         ChangeNotifierProvider<CacheService>.value(value: cacheService),

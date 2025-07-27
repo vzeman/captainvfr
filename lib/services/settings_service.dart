@@ -18,6 +18,7 @@ class SettingsService extends ChangeNotifier {
   static const String _keyFuelUnit = 'fuel_unit';
   static const String _keyWindUnit = 'wind_unit';
   static const String _keyDevelopmentMode = 'development_mode';
+  static const String _keyAutoCreateLogbookEntry = 'auto_create_logbook_entry';
 
   late SharedPreferences _prefs;
   bool _isInitialized = false;
@@ -39,6 +40,7 @@ class SettingsService extends ChangeNotifier {
   String _fuelUnit = 'gal'; // 'gal' or 'L'
   String _windUnit = 'kt'; // 'kt', 'mph', 'km/h'
   bool _developmentMode = false;
+  bool _autoCreateLogbookEntry = true;
 
   // Getters
   bool get rotateMapWithHeading => _rotateMapWithHeading;
@@ -58,6 +60,7 @@ class SettingsService extends ChangeNotifier {
   String get windUnit => _windUnit;
   bool get developmentMode => _developmentMode;
   bool get isInitialized => _isInitialized;
+  bool get autoCreateLogbookEntry => _autoCreateLogbookEntry;
 
   SettingsService() {
     _init();
@@ -87,6 +90,7 @@ class SettingsService extends ChangeNotifier {
     _fuelUnit = _prefs.getString(_keyFuelUnit) ?? 'gal';
     _windUnit = _prefs.getString(_keyWindUnit) ?? 'kt';
     _developmentMode = _prefs.getBool(_keyDevelopmentMode) ?? false;
+    _autoCreateLogbookEntry = _prefs.getBool(_keyAutoCreateLogbookEntry) ?? true;
   }
 
   // Setters
@@ -208,6 +212,14 @@ class SettingsService extends ChangeNotifier {
     }
   }
 
+  Future<void> setAutoCreateLogbookEntry(bool value) async {
+    if (value != _autoCreateLogbookEntry) {
+      _autoCreateLogbookEntry = value;
+      await _prefs.setBool(_keyAutoCreateLogbookEntry, value);
+      notifyListeners();
+    }
+  }
+
   // Reset to defaults
   Future<void> resetToDefaults() async {
     await setRotateMapWithHeading(false);
@@ -225,6 +237,7 @@ class SettingsService extends ChangeNotifier {
     await setWeightUnit('lbs');
     await setFuelUnit('gal');
     await setWindUnit('kt');
+    await setAutoCreateLogbookEntry(true);
   }
 
   // Unit conversion helpers - granular system

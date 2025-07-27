@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/license.dart';
+import '../models/pilot.dart';
 import '../services/license_service.dart';
+import '../services/pilot_service.dart';
 import '../widgets/license_photos_widget.dart';
 
 class LicenseDetailScreen extends StatefulWidget {
@@ -21,6 +23,7 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
   late DateTime _issueDate;
   late DateTime _expirationDate;
   bool _isSaving = false;
+  String? _selectedPilotId;
 
   @override
   void initState() {
@@ -36,6 +39,37 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
     _expirationDate =
         widget.license?.expirationDate ??
         DateTime.now().add(const Duration(days: 365));
+    
+    // Find the pilot who has this license
+    if (widget.license != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final pilotService = context.read<PilotService>();
+        for (final pilot in pilotService.pilots) {
+          if (pilot.licenseIds.contains(widget.license!.id)) {
+            setState(() {
+              _selectedPilotId = pilot.id;
+            });
+            break;
+          }
+        }
+        // If no pilot has this license, default to current pilot
+        if (_selectedPilotId == null && pilotService.currentPilot != null) {
+          setState(() {
+            _selectedPilotId = pilotService.currentPilot!.id;
+          });
+        }
+      });
+    } else {
+      // For new licenses, default to current pilot
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final pilotService = context.read<PilotService>();
+        if (pilotService.currentPilot != null) {
+          setState(() {
+            _selectedPilotId = pilotService.currentPilot!.id;
+          });
+        }
+      });
+    }
   }
 
   @override
@@ -95,6 +129,70 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
                 hintText: 'e.g., UK.FCL.PPL.12345',
                 prefixIcon: Icon(Icons.confirmation_number),
               ),
+            ),
+            const SizedBox(height: 16),
+            Consumer<PilotService>(
+              builder: (context, pilotService, child) {
+                final pilots = pilotService.pilots;
+                
+                if (pilots.isEmpty) {
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        'No pilots available. Please add a pilot first.',
+                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      ),
+                    ),
+                  );
+                }
+                
+                return DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'Assign to Pilot',
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                  value: _selectedPilotId,
+                  items: pilots.map((pilot) {
+                    return DropdownMenuItem(
+                      value: pilot.id,
+                      child: Row(
+                        children: [
+                          Text(pilot.name),
+                          if (pilot.id == pilotService.currentPilot?.id) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'Current',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onPrimary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedPilotId = value;
+                    });
+                  },
+                  validator: (value) {
+                    if (value == null) {
+                      return 'Please select a pilot';
+                    }
+                    return null;
+                  },
+                );
+              },
             ),
             const SizedBox(height: 24),
             _buildDateField(
@@ -252,7 +350,10 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
 
     try {
       final licenseService = context.read<LicenseService>();
+      final pilotService = context.read<PilotService>();
 
+      String licenseId;
+      
       if (widget.license != null) {
         // Update existing license
         final updatedLicense = widget.license!.copyWith(
@@ -265,6 +366,7 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
           expirationDate: _expirationDate,
         );
         await licenseService.updateLicense(widget.license!.id, updatedLicense);
+        licenseId = widget.license!.id;
       } else {
         // Create new license
         final newLicense = License(
@@ -276,7 +378,21 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
           issueDate: _issueDate,
           expirationDate: _expirationDate,
         );
-        await licenseService.addLicense(newLicense);
+        final savedLicense = await licenseService.addLicense(newLicense);
+        licenseId = savedLicense.id;
+      }
+      
+      // Update pilot assignment
+      if (_selectedPilotId != null) {
+        // First, remove license from all pilots
+        for (final pilot in pilotService.pilots) {
+          if (pilot.licenseIds.contains(licenseId)) {
+            await pilotService.removeLicenseFromPilot(licenseId, pilot.id);
+          }
+        }
+        
+        // Then add to selected pilot
+        await pilotService.addLicenseToPilot(licenseId, _selectedPilotId!);
       }
 
       if (mounted) {

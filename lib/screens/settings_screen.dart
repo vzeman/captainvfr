@@ -43,6 +43,13 @@ class SettingsScreen extends StatelessWidget {
                     onChanged: (value) =>
                         settings.setHighPrecisionTracking(value),
                   ),
+                  _buildSwitchTile(
+                    title: 'Auto-create Logbook Entry',
+                    subtitle: 'Automatically create logbook entry after flight',
+                    value: settings.autoCreateLogbookEntry,
+                    onChanged: (value) =>
+                        settings.setAutoCreateLogbookEntry(value),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -388,6 +395,11 @@ class SettingsDialog {
                     'High precision GPS',
                     settings.highPrecisionTracking,
                     (value) => settings.setHighPrecisionTracking(value),
+                  ),
+                  _buildCompactSwitch(
+                    'Auto-create logbook',
+                    settings.autoCreateLogbookEntry,
+                    (value) => settings.setAutoCreateLogbookEntry(value),
                   ),
                 ],
               ),

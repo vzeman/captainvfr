@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../services/flight_service.dart';
@@ -8,7 +9,7 @@ import '../models/flight_icons.dart';
 import 'small_indicator_widget.dart';
 
 /// Secondary indicators showing time, distance, vertical speed, G-force and flight plan info
-class SecondaryIndicators extends StatelessWidget {
+class SecondaryIndicators extends StatefulWidget {
   final FlightService flightService;
   final BarometerService barometerService;
 
@@ -17,6 +18,32 @@ class SecondaryIndicators extends StatelessWidget {
     required this.flightService,
     required this.barometerService,
   });
+
+  @override
+  State<SecondaryIndicators> createState() => _SecondaryIndicatorsState();
+}
+
+class _SecondaryIndicatorsState extends State<SecondaryIndicators> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Update every second when tracking to show elapsed time
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (widget.flightService.isTracking && mounted) {
+        setState(() {
+          // Just trigger a rebuild to update the time display
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,14 +57,14 @@ class SecondaryIndicators extends StatelessWidget {
     return Consumer<SettingsService>(
       builder: (context, settings, child) {
         final isMetric = settings.units == 'metric';
-        final distanceMeters = flightService.totalDistance;
+        final distanceMeters = widget.flightService.totalDistance;
         final displayDistance = isMetric
             ? distanceMeters / 1000 // Convert to km
             : distanceMeters * 0.000621371; // Convert to miles
         final distanceUnit = isMetric ? 'km' : 'mi';
 
         // Convert vertical speed based on units
-        final verticalSpeedFpm = flightService.verticalSpeed;
+        final verticalSpeedFpm = widget.flightService.verticalSpeed;
         final displayVerticalSpeed = isMetric
             ? verticalSpeedFpm * 0.00508 // Convert fpm to m/s
             : verticalSpeedFpm;
@@ -52,7 +79,7 @@ class SecondaryIndicators extends StatelessWidget {
             Expanded(
               child: SmallIndicatorWidget(
                 label: 'TIME',
-                value: flightService.formattedFlightTime,
+                value: widget.flightService.formattedFlightTime,
                 icon: FlightIcons.time,
               ),
             ),
@@ -73,7 +100,7 @@ class SecondaryIndicators extends StatelessWidget {
             Expanded(
               child: SmallIndicatorWidget(
                 label: 'G',
-                value: '${flightService.currentGForce.toStringAsFixed(2)}g',
+                value: '${widget.flightService.currentGForce.toStringAsFixed(2)}g',
                 icon: Icons.speed,
               ),
             ),
@@ -81,7 +108,7 @@ class SecondaryIndicators extends StatelessWidget {
               Expanded(
                 child: SmallIndicatorWidget(
                   label: 'NEXT',
-                  value: _buildNextWaypointInfo(flightService, context),
+                  value: _buildNextWaypointInfo(widget.flightService, context),
                   icon: Icons.flag,
                 ),
               ),
@@ -89,7 +116,7 @@ class SecondaryIndicators extends StatelessWidget {
               Expanded(
                 child: SmallIndicatorWidget(
                   label: 'ETA',
-                  value: _buildTotalFlightETA(flightService, context),
+                  value: _buildTotalFlightETA(widget.flightService, context),
                   icon: Icons.flight_land,
                 ),
               ),

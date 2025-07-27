@@ -423,6 +423,41 @@ Future<void> _saveAsCompressedCsv(
   print('   ✅ Saved ${csvRows.length} items');
 }
 
+// Helper function to parse altitude from OpenAIP format
+double? _parseAltitude(dynamic limit) {
+  if (limit == null) return null;
+  
+  // If it's already a number, return it
+  if (limit is num) return limit.toDouble();
+  
+  // If it's a map with value, unit, and referenceDatum
+  if (limit is Map) {
+    final value = limit['value'];
+    if (value == null) return null;
+    
+    double altitudeFt = (value as num).toDouble();
+    final unit = limit['unit'];
+    
+    // Convert to feet based on unit code
+    if (unit is num) {
+      switch (unit) {
+        case 0: // Feet
+        case 1: // Feet (alternate)
+          return altitudeFt;
+        case 2: // Meters
+          return altitudeFt * 3.28084; // Convert meters to feet
+        case 6: // Flight levels (hundreds of feet)
+          return altitudeFt * 100;
+        default:
+          return altitudeFt; // Assume feet if unknown
+      }
+    }
+    return altitudeFt;
+  }
+  
+  return null;
+}
+
 // Get CSV headers for each data type
 List<String> _getCsvHeaders(String dataType) {
   switch (dataType) {
@@ -478,7 +513,7 @@ List<dynamic>? _convertToCsvRow(Map<String, dynamic> item, String dataType) {
           props['name'] ?? '',
           coords.length > 1 ? coords[1] : 0,
           coords.length > 0 ? coords[0] : 0,
-          props['elevation'] ?? 0,
+          json.encode(props['elevation'] ?? 0), // Keep elevation structure
           props['iso_country'] ?? '',
           props['municipality'] ?? '',
           props['scheduled_service'] ?? 0,
@@ -512,13 +547,21 @@ List<dynamic>? _convertToCsvRow(Map<String, dynamic> item, String dataType) {
         final geom = item['geometry'];
         final props = item['properties'] ?? item;
         final geometryStr = _encodeGeometry(geom);
+        
+        // FIXED: Properly parse altitude data from OpenAIP format
+        final upperLimit = props['upperLimit'];
+        final lowerLimit = props['lowerLimit'];
+        
+        final upperAltitude = _parseAltitude(upperLimit);
+        final lowerAltitude = _parseAltitude(lowerLimit);
+        
         return [
           props['_id'] ?? '',
           props['name'] ?? '',
           props['type'] ?? '',
           props['country'] ?? '',
-          props['top_altitude_value'] ?? 0,
-          props['bottom_altitude_value'] ?? 0,
+          upperAltitude ?? 0,  // Top altitude in feet
+          lowerAltitude ?? 0,  // Bottom altitude in feet
           geom?['type'] ?? '',
           geometryStr,
         ];
@@ -553,8 +596,8 @@ List<dynamic>? _convertToCsvRow(Map<String, dynamic> item, String dataType) {
           props['type'] ?? '',
           coords.length > 1 ? coords[1] : 0,
           coords.length > 0 ? coords[0] : 0,
-          props['elevation'] ?? 0,
-          props['height'] ?? 0,
+          json.encode(props['elevation'] ?? 0), // Keep elevation structure
+          json.encode(props['height'] ?? 0), // Keep height structure
           props['lighted'] ?? 0,
           props['marking'] ?? '',
           props['country'] ?? '',
@@ -570,7 +613,7 @@ List<dynamic>? _convertToCsvRow(Map<String, dynamic> item, String dataType) {
           props['type'] ?? '',
           coords.length > 1 ? coords[1] : 0,
           coords.length > 0 ? coords[0] : 0,
-          props['elevation'] ?? 0,
+          json.encode(props['elevation'] ?? 0), // Keep elevation structure
           props['reliability'] ?? '',
           props['occurrence'] ?? '',
           props['conditions'] ?? '',

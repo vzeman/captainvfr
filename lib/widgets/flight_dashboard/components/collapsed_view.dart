@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../services/flight_service.dart';
 import '../../../services/settings_service.dart';
+import '../../../screens/flight_detail_screen.dart';
 import '../models/flight_icons.dart';
+import 'stop_tracking_dialog.dart';
 
 /// Collapsed view of the flight dashboard showing essential flight data
 class CollapsedView extends StatelessWidget {
@@ -148,21 +150,35 @@ class CollapsedView extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Tracking button
+                // Tracking button - Made larger for better visibility
                 SizedBox(
-                  width: buttonSize,
-                  height: buttonSize,
+                  width: buttonSize * 1.5,
+                  height: buttonSize * 1.5,
                   child: IconButton(
                     icon: Icon(
                       flightService.isTracking ? Icons.stop : Icons.play_arrow,
                       color: flightService.isTracking
                           ? Colors.red
                           : Colors.green,
-                      size: iconSize + 4,
+                      size: (iconSize + 4) * 1.5,
                     ),
-                    onPressed: () {
+                    onPressed: () async {
                       if (flightService.isTracking) {
-                        flightService.stopTracking();
+                        // Show confirmation dialog
+                        final shouldStop = await StopTrackingDialog.show(context);
+                        if (shouldStop == true) {
+                          final savedFlight = await flightService.stopTracking();
+                          
+                          // Navigate to flight detail if a flight was saved
+                          if (savedFlight != null && context.mounted) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FlightDetailScreen(flight: savedFlight),
+                              ),
+                            );
+                          }
+                        }
                       } else {
                         flightService.startTracking();
                       }

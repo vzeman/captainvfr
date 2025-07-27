@@ -315,6 +315,61 @@ class MediaService {
     }
   }
 
+  // Pick and save image with custom prefix
+  Future<String?> pickAndSaveImage({
+    required ImageSource source,
+    required String prefix,
+  }) async {
+    PermissionStatus status;
+    
+    if (source == ImageSource.camera) {
+      status = await _requestCameraPermission();
+      if (!await _handlePermissionDenied(status, 'use camera')) {
+        return null;
+      }
+    } else {
+      status = await _requestPhotoPermission();
+      if (!await _handlePermissionDenied(status, 'access photos')) {
+        return null;
+      }
+    }
+
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        final photosDir = await _getPhotosDirectory();
+        final fileName = '${prefix}_${_uuid.v4()}${path.extension(image.path)}';
+        final filePath = path.join(photosDir.path, fileName);
+
+        await image.saveTo(filePath);
+        return filePath;
+      }
+      return null;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Save document to storage
+  Future<String> saveDocument(File file, String fileName) async {
+    try {
+      final docsDir = await _getDocumentsDirectory();
+      final filePath = path.join(docsDir.path, fileName);
+      
+      // Copy the file to our documents directory
+      await file.copy(filePath);
+      return filePath;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   // License photo methods
   Future<String?> pickLicenseImageFromGallery() async {
     final status = await _requestPhotoPermission();

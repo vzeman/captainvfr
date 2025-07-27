@@ -85,11 +85,12 @@ class LicenseService extends ChangeNotifier {
   }
 
   // Add a new license
-  Future<void> addLicense(License license) async {
+  Future<License> addLicense(License license) async {
     _licenses.add(license);
     _licenses.sort((a, b) => a.expirationDate.compareTo(b.expirationDate));
     await _saveLicenses();
     notifyListeners();
+    return license;
   }
 
   // Update an existing license

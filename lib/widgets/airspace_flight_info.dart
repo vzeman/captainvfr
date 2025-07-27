@@ -77,6 +77,7 @@ class _AirspaceFlightInfoState extends State<AirspaceFlightInfo> {
             widget.currentPosition,
             widget.currentAltitude,
           );
+      
 
       // Find next airspace in flight path
       final nextAirspace = await _findNextAirspace();

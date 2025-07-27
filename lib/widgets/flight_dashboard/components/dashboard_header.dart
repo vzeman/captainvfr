@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../services/flight_service.dart';
+import '../../../screens/flight_detail_screen.dart';
 import 'aircraft_selector.dart';
+import 'stop_tracking_dialog.dart';
 
 /// Header component for the flight dashboard with collapse button, title, and controls
 class DashboardHeader extends StatelessWidget {
@@ -65,9 +67,23 @@ class DashboardHeader extends StatelessWidget {
                   color: flightService.isTracking ? Colors.red : Colors.green,
                   size: 24,
                 ),
-                onPressed: () {
+                onPressed: () async {
                   if (flightService.isTracking) {
-                    flightService.stopTracking();
+                    // Show confirmation dialog
+                    final shouldStop = await StopTrackingDialog.show(context);
+                    if (shouldStop == true) {
+                      final savedFlight = await flightService.stopTracking();
+                      
+                      // Navigate to flight detail if a flight was saved
+                      if (savedFlight != null && context.mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FlightDetailScreen(flight: savedFlight),
+                          ),
+                        );
+                      }
+                    }
                   } else {
                     flightService.startTracking();
                   }

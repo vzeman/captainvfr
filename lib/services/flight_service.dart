@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:latlong2/latlong.dart';
 import '../models/flight.dart';
 import '../models/flight_point.dart';
 import '../models/aircraft.dart';
@@ -17,6 +18,9 @@ import 'flight/calculations/flight_calculator.dart';
 import 'flight/tracking/location_tracker.dart';
 import 'flight/tracking/segment_tracker.dart';
 import 'flight/storage/flight_history_manager.dart';
+import 'logbook_service.dart';
+import 'settings_service.dart';
+import 'airport_service.dart';
 
 class FlightService with ChangeNotifier {
   // Core components
@@ -28,6 +32,8 @@ class FlightService with ChangeNotifier {
   
   // Services
   final BarometerService? _barometerService;
+  final LogBookService? _logBookService;
+  final AirportService? _airportService;
   final WatchConnectivityService _watchService = WatchConnectivityService();
   
   // Subscriptions
@@ -47,8 +53,14 @@ class FlightService with ChangeNotifier {
   }
   
   // Constructor
-  FlightService({this.onFlightPathUpdated, BarometerService? barometerService})
-      : _barometerService = barometerService ?? BarometerService() {
+  FlightService({
+    this.onFlightPathUpdated,
+    BarometerService? barometerService,
+    LogBookService? logBookService,
+    AirportService? airportService,
+  }) : _barometerService = barometerService ?? BarometerService(),
+       _logBookService = logBookService,
+       _airportService = airportService {
     _initializeComponents();
     _initializeStorage();
     _initializeWatchConnectivity();
@@ -175,8 +187,8 @@ class FlightService with ChangeNotifier {
     AnalyticsWrapper.track('flight_tracking_started');
   }
   
-  Future<void> stopTracking() async {
-    if (!_flightState.isTracking) return;
+  Future<Flight?> stopTracking() async {
+    if (!_flightState.isTracking) return null;
     
     // Disable wakelock
     WakelockPlus.disable();
@@ -197,14 +209,17 @@ class FlightService with ChangeNotifier {
     _flightState.setTracking(false);
     
     // Save flight if there's data
+    Flight? savedFlight;
     if (_flightState.flightPath.length > 1) {
-      await _saveCurrentFlight();
+      savedFlight = await _saveCurrentFlight();
     }
     
     notifyListeners();
     
     // Track analytics
     AnalyticsWrapper.track('flight_tracking_stopped');
+    
+    return savedFlight;
   }
   
   void _handleLocationUpdate(FlightPoint point) {
@@ -244,8 +259,40 @@ class FlightService with ChangeNotifier {
     onFlightPathUpdated?.call();
   }
   
-  Future<void> _saveCurrentFlight() async {
-    if (_flightState.flightPath.isEmpty) return;
+  Future<Flight?> _saveCurrentFlight() async {
+    if (_flightState.flightPath.isEmpty) return null;
+    
+    // Detect departure and arrival airports
+    String? departureAirportCode;
+    String? arrivalAirportCode;
+    
+    if (_airportService != null && _flightState.flightPath.isNotEmpty) {
+      // Find departure airport (from first position)
+      final firstPoint = _flightState.flightPath.first;
+      final departurePosition = LatLng(firstPoint.latitude, firstPoint.longitude);
+      final departureAirport = _airportService.findNearestAirport(departurePosition);
+      
+      if (departureAirport != null) {
+        // Check if within reasonable distance (5km) of the airport
+        final distance = departurePosition.distanceTo(departureAirport.position);
+        if (distance <= 5.0) {
+          departureAirportCode = departureAirport.icao;
+        }
+      }
+      
+      // Find arrival airport (from last position)
+      final lastPoint = _flightState.flightPath.last;
+      final arrivalPosition = LatLng(lastPoint.latitude, lastPoint.longitude);
+      final arrivalAirport = _airportService.findNearestAirport(arrivalPosition);
+      
+      if (arrivalAirport != null) {
+        // Check if within reasonable distance (5km) of the airport
+        final distance = arrivalPosition.distanceTo(arrivalAirport.position);
+        if (distance <= 5.0) {
+          arrivalAirportCode = arrivalAirport.icao;
+        }
+      }
+    }
     
     final flight = Flight(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -263,9 +310,26 @@ class FlightService with ChangeNotifier {
       movingStoppedZulu: _flightState.movingStoppedZulu,
       movingSegments: _flightState.movingSegments,
       flightSegments: _flightState.flightSegments,
+      departureAirportCode: departureAirportCode,
+      arrivalAirportCode: arrivalAirportCode,
     );
     
     await _historyManager.saveFlight(flight);
+    
+    // Create logbook entry from flight if option is enabled
+    try {
+      final settingsService = SettingsService();
+      if (settingsService.autoCreateLogbookEntry) {
+        // This will be injected from the app's provider context
+        if (_logBookService != null) {
+          await _logBookService.createEntryFromFlight(flight);
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to create logbook entry: $e');
+    }
+    
+    return flight;
   }
   
   // Flight history management

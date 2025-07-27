@@ -16,9 +16,9 @@ import 'offline_data_screen.dart';
 import 'flight_plans_screen.dart';
 import 'aircraft_settings_screen.dart';
 import 'checklist_settings_screen.dart';
-import 'licenses_screen.dart';
 import 'calculators_screen.dart';
 import 'settings_screen.dart';
+import 'logbook/logbook_screen.dart';
 import '../models/airport.dart';
 import '../models/runway.dart';
 import '../models/navaid.dart';
@@ -3628,6 +3628,14 @@ class MapScreenState extends State<MapScreen>
                             builder: (context) => const FlightLogScreen(),
                           ),
                         ).then((_) => _resumeAllTimers());
+                      } else if (value == 'logbook') {
+                        _pauseAllTimers();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LogBookScreen(),
+                          ),
+                        ).then((_) => _resumeAllTimers());
                       } else if (value == 'offline_maps') {
                         _pauseAllTimers();
                         Navigator.push(
@@ -3680,14 +3688,6 @@ class MapScreenState extends State<MapScreen>
                                 const AircraftSettingsScreen(),
                           ),
                         ).then((_) => _resumeAllTimers());
-                      } else if (value == 'licenses') {
-                        _pauseAllTimers();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const LicensesScreen(),
-                          ),
-                        ).then((_) => _resumeAllTimers());
                       } else if (value == 'calculators') {
                         _pauseAllTimers();
                         Navigator.push(
@@ -3725,6 +3725,16 @@ class MapScreenState extends State<MapScreen>
                         ),
                       ),
                       const PopupMenuItem(
+                        value: 'logbook',
+                        child: Row(
+                          children: [
+                            Icon(Icons.menu_book, size: 20),
+                            SizedBox(width: 8),
+                            Text('LogBook'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
                         value: 'checklists',
                         child: Row(
                           children: [
@@ -3741,16 +3751,6 @@ class MapScreenState extends State<MapScreen>
                             Icon(Icons.flight, size: 20),
                             SizedBox(width: 8),
                             Text('Aircrafts'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'licenses',
-                        child: Row(
-                          children: [
-                            Icon(Icons.card_membership, size: 20),
-                            SizedBox(width: 8),
-                            Text('Licenses'),
                           ],
                         ),
                       ),
