@@ -9,7 +9,6 @@ import '../widgets/vibration_chart.dart';
 import '../widgets/flight_detail/flight_detail_map.dart';
 import '../widgets/flight_detail/flight_info_tab.dart';
 import '../widgets/flight_detail/flight_segments_tab.dart';
-import '../widgets/flight_detail/flight_detail_utils.dart';
 
 class FlightDetailScreen extends StatefulWidget {
   final Flight flight;
@@ -51,56 +50,55 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
             ],
           ),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.menu_book),
-              tooltip: 'Create logbook entry',
-              onPressed: () async {
-                final logBookService = context.read<LogBookService>();
-                
-                try {
-                  await logBookService.createEntryFromFlight(widget.flight);
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: TextButton.icon(
+                icon: const Icon(Icons.menu_book, color: Colors.white),
+                label: const Text(
+                  'Add to Logbook',
+                  style: TextStyle(color: Colors.white),
+                ),
+                style: TextButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () async {
+                  final logBookService = context.read<LogBookService>();
                   
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Logbook entry created successfully'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
+                  try {
+                    await logBookService.createEntryFromFlight(widget.flight);
                     
-                    // Navigate to logbook screen (Logs tab)
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const LogBookScreen(initialTab: 1),
-                      ),
-                    );
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Logbook entry created successfully'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                      
+                      // Navigate to logbook screen (Logs tab)
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LogBookScreen(initialTab: 1),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error creating logbook entry: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
                   }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error creating logbook entry: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.copy),
-              onPressed: () async {
-                await FlightDetailUtils.shareFlightData(widget.flight);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Flight data copied to clipboard'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                }
-              },
+                },
+              ),
             ),
           ],
         ),
