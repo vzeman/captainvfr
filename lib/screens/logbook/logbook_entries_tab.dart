@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../services/logbook_service.dart';
 import '../../models/logbook_entry.dart';
-import 'logbook_entry_form.dart';
+import 'logbook_entry_dialog.dart';
 
 class LogBookEntriesTab extends StatelessWidget {
   const LogBookEntriesTab({super.key});
@@ -46,12 +46,7 @@ class LogBookEntriesTab extends StatelessWidget {
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const LogBookEntryForm(),
-            ),
-          );
+          LogBookEntryDialog.show(context);
         },
         child: const Icon(Icons.add),
       ),
@@ -73,12 +68,7 @@ class _LogBookEntryTile extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: ListTile(
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => LogBookEntryForm(entry: entry),
-            ),
-          );
+          LogBookEntryDialog.show(context, entry: entry);
         },
         title: Row(
           children: [
