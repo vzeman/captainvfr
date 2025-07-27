@@ -1305,8 +1305,8 @@ class MapScreenState extends State<MapScreen>
         
         // Check if it's a permission error
         if (e.toString().contains('denied') || e.toString().contains('permission')) {
-          // Show dialog to request permission
-          _showLocationPermissionDialog();
+          // Permission denied - OS already showed the permission dialog
+          // Just fail silently as the user denied permission
         } else {
           // Other location errors
           ScaffoldMessenger.of(context).showSnackBar(
@@ -4068,55 +4068,6 @@ class MapScreenState extends State<MapScreen>
     ); // Closing Scaffold
   }
 
-  
-  // Show location permission dialog
-  void _showLocationPermissionDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Location Permission Required'),
-          content: const Text(
-            'CaptainVFR needs access to your location to show your position on the map and enable navigation features.\n\n'
-            'Please grant location permission to use these features.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                
-                // Request permission directly
-                try {
-                  final permission = await _locationService.requestPermission();
-                  // If permission granted, try to start tracking again
-                  if (permission == LocationPermission.whileInUse || 
-                      permission == LocationPermission.always) {
-                    setState(() {
-                      _positionTrackingEnabled = true;
-                      _autoCenteringEnabled = true;
-                    });
-                    await _startPositionTracking();
-                  }
-                } catch (e) {
-                  // If permission is permanently denied, show settings prompt
-                  if (e.toString().contains('permanently denied')) {
-                    _showOpenSettingsDialog();
-                  }
-                }
-              },
-              child: const Text('Grant Permission'),
-            ),
-          ],
-        );
-      },
-    );
-  }
   
   // Show dialog to open app settings
   void _showOpenSettingsDialog() {
