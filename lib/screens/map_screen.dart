@@ -1298,11 +1298,10 @@ class MapScreenState extends State<MapScreen>
         _loadAirports();
       }
     } catch (e) {
+      // Keep _positionTrackingEnabled as true even on error
+      // so it will automatically start working when permission is granted
+      
       if (mounted) {
-        setState(() {
-          _positionTrackingEnabled = false;
-        });
-        
         // Check if it's a permission error
         if (e.toString().contains('denied') || e.toString().contains('permission')) {
           // Permission denied - OS already showed the permission dialog
