@@ -4101,36 +4101,6 @@ class MapScreenState extends State<MapScreen>
 
   
   // Show dialog to open app settings
-  void _showOpenSettingsDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Permission Denied'),
-          content: const Text(
-            'Location permission has been permanently denied. '
-            'Please open app settings and grant location permission manually.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                // Open app settings
-                await Geolocator.openAppSettings();
-              },
-              child: const Text('Open Settings'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   Widget _buildPositionTrackingButton() {
     return PositionTrackingButton(
