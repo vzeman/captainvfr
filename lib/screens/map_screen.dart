@@ -48,6 +48,7 @@ import '../widgets/floating_waypoint_panel.dart';
 import '../widgets/optimized_spatial_airspaces_overlay.dart';
 import '../widgets/airspace_flight_info.dart';
 import '../utils/frame_aware_scheduler.dart';
+import '../widgets/sensor_notification_widget.dart';
 import '../utils/performance_monitor.dart';
 import '../services/openaip_service.dart';
 import '../services/analytics_service.dart';
@@ -124,6 +125,7 @@ class MapScreenState extends State<MapScreen>
 
   // State variables
   bool _isLocationLoaded = false; // Track if location has been loaded
+  bool _locationNotificationShown = false; // Track if we've shown the location notification
   bool _servicesInitialized = false;
   bool _isInitializing = false; // Guard against concurrent initialization
   bool _showFlightPlanning = false; // Toggle for integrated flight planning
@@ -223,6 +225,7 @@ class MapScreenState extends State<MapScreen>
 
     // Start location loading in background without blocking UI
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showLocationLoadingNotification();
       _initLocationInBackground();
       
       // Log screen view
@@ -636,6 +639,35 @@ class MapScreenState extends State<MapScreen>
     );
   }
 
+  // Show location loading notification
+  void _showLocationLoadingNotification() {
+    if (_locationNotificationShown) return;
+    _locationNotificationShown = true;
+    
+    // Show location loading notification at the bottom
+    if (mounted) {
+      setState(() {
+        // Flag to show the notification
+      });
+    }
+    
+    // Auto-dismiss after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        _dismissLocationNotification();
+      }
+    });
+  }
+  
+  // Dismiss location loading notification
+  void _dismissLocationNotification() {
+    if (mounted) {
+      setState(() {
+        _locationNotificationShown = false;
+      });
+    }
+  }
+
   // Load flight planning panel expanded state from SharedPreferences
   Future<void> _loadFlightPlanningPanelState() async {
     try {
@@ -702,6 +734,9 @@ class MapScreenState extends State<MapScreen>
   void _onLocationLoaded() {
     if (_isLocationLoaded) return; // Prevent duplicate calls
     _isLocationLoaded = true;
+    
+    // Dismiss location loading notification
+    _dismissLocationNotification();
 
     // Wait for the next frame to ensure FlutterMap is rendered before using MapController
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -3828,32 +3863,7 @@ class MapScreenState extends State<MapScreen>
             ),
             ),
           ),
-          // Location loading indicator (small, non-blocking)
-          if (!_isLocationLoaded)
-            const Positioned(
-              top: 60,
-              right: 16,
-              child: Card(
-                child: Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        'Getting location...',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          // Location loading indicator is now handled by the notification system
 
 
           // License warning widget - only show when not tracking
@@ -3988,6 +3998,28 @@ class MapScreenState extends State<MapScreen>
               );
             },
           ),
+
+          // Location loading notification
+          if (_locationNotificationShown)
+            Positioned(
+              bottom: 16,
+              left: 16,
+              right: 16,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: SensorNotification(
+                    sensorName: 'Getting location...',
+                    message: 'Acquiring GPS position',
+                    icon: Icons.location_searching,
+                    backgroundColor: const Color(0xFFE3F2FD), // Light blue
+                    iconColor: const Color(0xFF1976D2), // Blue
+                    autoDismissAfter: const Duration(seconds: 3),
+                    onDismiss: _dismissLocationNotification,
+                  ),
+                ),
+              ),
+            ),
           // Loading progress bar at the bottom center
           const Positioned(
             bottom: 60, // Above map controls
