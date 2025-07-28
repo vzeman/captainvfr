@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/settings_service.dart';
-import '../../utils/form_theme_helper.dart';
+import '../../constants/app_colors.dart';
 import '../../utils/runway_wind_calculator.dart';
+import '../../utils/form_theme_helper.dart';
 
 class CrosswindCalculator extends StatefulWidget {
   const CrosswindCalculator({super.key});
@@ -75,8 +76,8 @@ class _CrosswindCalculatorState extends State<CrosswindCalculator> {
           children: [
             Text(
               'Wind Components',
-              style: FormThemeHelper.sectionTitleStyle.copyWith(
-                color: FormThemeHelper.primaryTextColor,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryTextColor).copyWith(
+                color: AppColors.primaryTextColor,
               ),
             ),
             const SizedBox(height: 16),
@@ -99,7 +100,7 @@ class _CrosswindCalculatorState extends State<CrosswindCalculator> {
                       _windType ?? '',
                       style: const TextStyle(
                         fontSize: 14,
-                        color: FormThemeHelper.primaryTextColor,
+                        color: AppColors.primaryTextColor,
                       ),
                     ),
                     Text(
@@ -107,7 +108,7 @@ class _CrosswindCalculatorState extends State<CrosswindCalculator> {
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: FormThemeHelper.primaryAccent,
+                        color: AppColors.primaryAccent,
                       ),
                     ),
                   ],
@@ -126,7 +127,7 @@ class _CrosswindCalculatorState extends State<CrosswindCalculator> {
                       'Crosswind',
                       style: TextStyle(
                         fontSize: 14,
-                        color: FormThemeHelper.primaryTextColor,
+                        color: AppColors.primaryTextColor,
                       ),
                     ),
                     Text(
@@ -134,7 +135,7 @@ class _CrosswindCalculatorState extends State<CrosswindCalculator> {
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: FormThemeHelper.primaryAccent,
+                        color: AppColors.primaryAccent,
                       ),
                     ),
                   ],
@@ -171,15 +172,15 @@ class _CrosswindCalculatorState extends State<CrosswindCalculator> {
     final speedUnit = isImperial ? 'kts' : 'km/h';
 
     return Scaffold(
-      backgroundColor: FormThemeHelper.backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
-        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        backgroundColor: AppColors.dialogBackgroundColor,
         title: const Text(
           'Crosswind Calculator',
-          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          style: TextStyle(color: AppColors.primaryTextColor),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: FormThemeHelper.primaryTextColor),
+          icon: const Icon(Icons.arrow_back, color: AppColors.primaryTextColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -233,11 +234,11 @@ class _CrosswindCalculatorState extends State<CrosswindCalculator> {
               FormThemeHelper.buildSection(
                 title: 'Quick Reference',
                 children: [
-                  Text('• 15° off runway: ~25% crosswind', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
-                  Text('• 30° off runway: ~50% crosswind', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
-                  Text('• 45° off runway: ~70% crosswind', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
-                  Text('• 60° off runway: ~85% crosswind', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
-                  Text('• 90° off runway: 100% crosswind', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                  Text('• 15° off runway: ~25% crosswind', style: TextStyle(color: AppColors.primaryTextColor)),
+                  Text('• 30° off runway: ~50% crosswind', style: TextStyle(color: AppColors.primaryTextColor)),
+                  Text('• 45° off runway: ~70% crosswind', style: TextStyle(color: AppColors.primaryTextColor)),
+                  Text('• 60° off runway: ~85% crosswind', style: TextStyle(color: AppColors.primaryTextColor)),
+                  Text('• 90° off runway: 100% crosswind', style: TextStyle(color: AppColors.primaryTextColor)),
                 ],
               ),
             ],

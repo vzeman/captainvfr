@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/checklist.dart';
 import '../services/aircraft_settings_service.dart';
+import '../constants/app_colors.dart';
 import '../utils/form_theme_helper.dart';
 
 /// Dialog to run through a checklist.
@@ -81,7 +82,7 @@ class _ChecklistRunDialogState extends State<ChecklistRunDialog> {
                 Text(
                   subtitle,
                   style: TextStyle(
-                    color: FormThemeHelper.secondaryTextColor,
+                    color: AppColors.secondaryTextColor,
                     fontSize: 14,
                   ),
                 ),
@@ -89,19 +90,19 @@ class _ChecklistRunDialogState extends State<ChecklistRunDialog> {
                   const SizedBox(height: 8),
                   Text(
                     widget.checklist.description!,
-                    style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                    style: TextStyle(color: AppColors.secondaryTextColor),
                   ),
                 ],
                 const SizedBox(height: 16),
                 LinearProgressIndicator(
                   value: total > 0 ? done / total : 0,
-                  backgroundColor: FormThemeHelper.borderColor.withValues(alpha: 0.3),
-                  valueColor: AlwaysStoppedAnimation<Color>(FormThemeHelper.primaryAccent),
+                  backgroundColor: AppColors.primaryAccent.withValues(alpha: 0.3),
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryAccent),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   '$done of $total items done',
-                  style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                  style: TextStyle(color: AppColors.secondaryTextColor),
                 ),
               ],
             ),
@@ -119,13 +120,13 @@ class _ChecklistRunDialogState extends State<ChecklistRunDialog> {
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       decoration: BoxDecoration(
                         color: completed 
-                            ? FormThemeHelper.primaryAccent.withValues(alpha: 0.1)
-                            : FormThemeHelper.sectionBackgroundColor,
+                            ? AppColors.primaryAccent.withValues(alpha: 0.1)
+                            : AppColors.sectionBackgroundColor,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: completed 
-                              ? FormThemeHelper.primaryAccent 
-                              : FormThemeHelper.sectionBorderColor,
+                              ? AppColors.primaryAccent 
+                              : AppColors.sectionBorderColor,
                         ),
                       ),
                       child: ListTile(
@@ -133,12 +134,12 @@ class _ChecklistRunDialogState extends State<ChecklistRunDialog> {
                           completed
                               ? Icons.check_box
                               : Icons.check_box_outline_blank,
-                          color: completed ? FormThemeHelper.primaryAccent : FormThemeHelper.secondaryTextColor,
+                          color: completed ? AppColors.primaryAccent : AppColors.secondaryTextColor,
                         ),
                         title: Text(
                           item.name,
                           style: TextStyle(
-                            color: FormThemeHelper.primaryTextColor,
+                            color: AppColors.primaryTextColor,
                             decoration: completed ? TextDecoration.lineThrough : null,
                           ),
                         ),
@@ -148,13 +149,13 @@ class _ChecklistRunDialogState extends State<ChecklistRunDialog> {
                             if (item.description != null) 
                               Text(
                                 item.description!,
-                                style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                                style: TextStyle(color: AppColors.secondaryTextColor),
                               ),
                             if (item.targetValue != null)
                               Text(
                                 'Target: ${item.targetValue!}',
                                 style: TextStyle(
-                                  color: FormThemeHelper.primaryAccent,
+                                  color: AppColors.primaryAccent,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),

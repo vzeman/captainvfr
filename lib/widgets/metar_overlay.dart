@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:math' as math;
 import '../models/airport.dart';
+import '../constants/app_theme.dart';
 
 class MetarOverlay extends StatelessWidget {
   final List<Airport> airports;
@@ -118,7 +119,7 @@ class MetarOverlay extends StatelessWidget {
               ),
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: AppTheme.smallRadius,
               ),
               child: Text(
                 '${windData.speed}${windData.gust != null ? 'G${windData.gust}' : ''}kt',

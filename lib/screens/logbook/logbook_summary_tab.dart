@@ -3,9 +3,23 @@ import 'package:provider/provider.dart';
 import '../../services/logbook_service.dart';
 import '../../services/pilot_service.dart';
 import '../../widgets/common/info_row.dart';
+import '../../constants/app_colors.dart';
+import '../../constants/app_theme.dart';
 
 class LogBookSummaryTab extends StatelessWidget {
   const LogBookSummaryTab({super.key});
+
+  Widget _buildCard({required Widget child}) {
+    return Card(
+      color: AppColors.sectionBackgroundColor,
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppTheme.defaultRadius,
+        side: BorderSide(color: AppColors.sectionBorderColor),
+      ),
+      child: child,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +37,7 @@ class LogBookSummaryTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (currentPilot != null) ...[
-            Card(
+            _buildCard(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -31,12 +45,19 @@ class LogBookSummaryTab extends StatelessWidget {
                   children: [
                     Text(
                       'Current Pilot',
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.secondaryTextColor,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       currentPilot.name,
-                      style: Theme.of(context).textTheme.headlineSmall,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryTextColor,
+                      ),
                     ),
                   ],
                 ),
@@ -46,7 +67,7 @@ class LogBookSummaryTab extends StatelessWidget {
           ],
 
           // Flight Hours Summary
-          Card(
+          _buildCard(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -54,14 +75,18 @@ class LogBookSummaryTab extends StatelessWidget {
                 children: [
                   Text(
                     'Flight Hours',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryTextColor,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   InfoRow(
                     label: 'Total Hours',
                     value: logBookService.formatDuration(statistics.totalDuration),
                   ),
-                  const Divider(),
+                  Divider(color: AppColors.sectionBorderColor),
                   InfoRow(
                     label: 'Single Engine',
                     value: logBookService.formatDuration(statistics.singleEngineDuration),
@@ -70,7 +95,7 @@ class LogBookSummaryTab extends StatelessWidget {
                     label: 'Multi Engine',
                     value: logBookService.formatDuration(statistics.multiEngineDuration),
                   ),
-                  const Divider(),
+                  Divider(color: AppColors.sectionBorderColor),
                   InfoRow(
                     label: 'As PIC',
                     value: logBookService.formatDuration(statistics.picDuration),
@@ -91,7 +116,7 @@ class LogBookSummaryTab extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Flight Conditions
-          Card(
+          _buildCard(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -99,7 +124,11 @@ class LogBookSummaryTab extends StatelessWidget {
                 children: [
                   Text(
                     'Flight Conditions',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryTextColor,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   InfoRow(
@@ -110,7 +139,7 @@ class LogBookSummaryTab extends StatelessWidget {
                     label: 'IFR',
                     value: logBookService.formatDuration(statistics.ifrDuration),
                   ),
-                  const Divider(),
+                  Divider(color: AppColors.sectionBorderColor),
                   InfoRow(
                     label: 'Day',
                     value: logBookService.formatDuration(statistics.dayDuration),
@@ -119,7 +148,7 @@ class LogBookSummaryTab extends StatelessWidget {
                     label: 'Night',
                     value: logBookService.formatDuration(statistics.nightDuration),
                   ),
-                  const Divider(),
+                  Divider(color: AppColors.sectionBorderColor),
                   InfoRow(
                     label: 'Simulator VFR',
                     value: logBookService.formatDuration(statistics.simulatorVfrDuration),
@@ -136,7 +165,7 @@ class LogBookSummaryTab extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Takeoffs and Landings
-          Card(
+          _buildCard(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -144,7 +173,11 @@ class LogBookSummaryTab extends StatelessWidget {
                 children: [
                   Text(
                     'Takeoffs & Landings',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryTextColor,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -155,7 +188,11 @@ class LogBookSummaryTab extends StatelessWidget {
                           children: [
                             Text(
                               'Takeoffs',
-                              style: Theme.of(context).textTheme.titleMedium,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primaryTextColor,
+                              ),
                             ),
                             const SizedBox(height: 8),
                             InfoRow(
@@ -180,7 +217,11 @@ class LogBookSummaryTab extends StatelessWidget {
                           children: [
                             Text(
                               'Landings',
-                              style: Theme.of(context).textTheme.titleMedium,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primaryTextColor,
+                              ),
                             ),
                             const SizedBox(height: 8),
                             InfoRow(
@@ -209,7 +250,7 @@ class LogBookSummaryTab extends StatelessWidget {
 
           // By Aircraft
           if (statistics.durationByAircraft.isNotEmpty) ...[
-            Card(
+            _buildCard(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -217,7 +258,11 @@ class LogBookSummaryTab extends StatelessWidget {
                   children: [
                     Text(
                       'By Aircraft Type',
-                      style: Theme.of(context).textTheme.titleLarge,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryTextColor,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     ...statistics.durationByAircraft.entries.map((entry) {
@@ -230,7 +275,11 @@ class LogBookSummaryTab extends StatelessWidget {
                           children: [
                             Text(
                               entry.key,
-                              style: Theme.of(context).textTheme.titleMedium,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primaryTextColor,
+                              ),
                             ),
                             const SizedBox(height: 4),
                             InfoRow(
@@ -241,7 +290,7 @@ class LogBookSummaryTab extends StatelessWidget {
                               label: 'Takeoffs/Landings',
                               value: '$takeoffs / $landings',
                             ),
-                            const Divider(),
+                            Divider(color: AppColors.sectionBorderColor),
                           ],
                         ),
                       );

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/settings_service.dart';
+import '../../constants/app_colors.dart';
+import '../../constants/app_theme.dart';
 import '../../utils/form_theme_helper.dart';
 
 class FuelBurnCalculator extends StatefulWidget {
@@ -91,15 +93,15 @@ class _FuelBurnCalculatorState extends State<FuelBurnCalculator> {
     final flowUnit = isImperial ? 'gal/hr' : 'L/hr';
 
     return Scaffold(
-      backgroundColor: FormThemeHelper.backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
-        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        backgroundColor: AppColors.dialogBackgroundColor,
         title: const Text(
           'Fuel Burn Calculator',
-          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          style: TextStyle(color: AppColors.primaryTextColor),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: FormThemeHelper.primaryTextColor),
+          icon: const Icon(Icons.arrow_back, color: AppColors.primaryTextColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -177,12 +179,12 @@ class _FuelBurnCalculatorState extends State<FuelBurnCalculator> {
                 decoration: BoxDecoration(
                   color: _isSafe == false
                       ? Colors.red.withValues(alpha: 0.1)
-                      : FormThemeHelper.sectionBackgroundColor,
-                  borderRadius: BorderRadius.circular(12),
+                      : AppColors.sectionBackgroundColor,
+                  borderRadius: AppTheme.extraLargeRadius,
                   border: Border.all(
                     color: _isSafe == false
                         ? Colors.red
-                        : FormThemeHelper.sectionBorderColor,
+                        : AppColors.sectionBorderColor,
                   ),
                 ),
                 child: Padding(
@@ -191,8 +193,8 @@ class _FuelBurnCalculatorState extends State<FuelBurnCalculator> {
                     children: [
                       Text(
                         'Fuel Requirements',
-                        style: FormThemeHelper.sectionTitleStyle.copyWith(
-                          color: FormThemeHelper.primaryTextColor,
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryTextColor).copyWith(
+                          color: AppColors.primaryTextColor,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -250,7 +252,7 @@ class _FuelBurnCalculatorState extends State<FuelBurnCalculator> {
                             fontSize: 16,
                             color: _remainingFuel! < 0
                                 ? Colors.red
-                                : FormThemeHelper.primaryTextColor,
+                                : AppColors.primaryTextColor,
                           ),
                         ),
                         if (_isSafe == false) ...[

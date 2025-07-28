@@ -5,7 +5,8 @@ import '../services/aircraft_settings_service.dart';
 import '../models/checklist.dart';
 import '../widgets/checklist_form_dialog.dart';
 import '../widgets/checklist_run_dialog.dart';
-import '../utils/form_theme_helper.dart';
+import '../constants/app_colors.dart';
+import '../constants/app_theme.dart';
 
 /// Screen to view and manage checklists.
 class ChecklistSettingsScreen extends StatefulWidget {
@@ -38,10 +39,10 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
       appBar: AppBar(
         title: const Text(
           'Checklists',
-          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          style: TextStyle(color: AppColors.primaryTextColor),
         ),
-        backgroundColor: FormThemeHelper.dialogBackgroundColor,
-        foregroundColor: FormThemeHelper.primaryTextColor,
+        backgroundColor: AppColors.dialogBackgroundColor,
+        foregroundColor: AppColors.primaryTextColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -50,7 +51,7 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
           ),
         ],
       ),
-      backgroundColor: FormThemeHelper.backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -80,7 +81,7 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
                     return Center(
                       child: Text(
                         'No matching checklists',
-                        style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                        style: TextStyle(color: AppColors.secondaryTextColor),
                       ),
                     );
                   }
@@ -97,21 +98,21 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         decoration: BoxDecoration(
-                          color: FormThemeHelper.sectionBackgroundColor,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: FormThemeHelper.sectionBorderColor),
+                          color: AppColors.sectionBackgroundColor,
+                          borderRadius: AppTheme.extraLargeRadius,
+                          border: Border.all(color: AppColors.sectionBorderColor),
                         ),
                         child: ListTile(
                           title: Text(
                             c.name,
                             style: TextStyle(
-                              color: FormThemeHelper.primaryTextColor,
+                              color: AppColors.primaryTextColor,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           subtitle: Text(
                             '${mfr.name} • ${mdl.name}',
-                            style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                            style: TextStyle(color: AppColors.secondaryTextColor),
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -119,7 +120,7 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
                               IconButton(
                                 icon: Icon(
                                   Icons.play_arrow,
-                                  color: FormThemeHelper.primaryAccent,
+                                  color: AppColors.primaryAccent,
                                 ),
                                 tooltip: 'Start',
                                 onPressed: () => showDialog(
@@ -133,7 +134,7 @@ class _ChecklistSettingsScreenState extends State<ChecklistSettingsScreen> {
                               IconButton(
                                 icon: Icon(
                                   Icons.edit,
-                                  color: FormThemeHelper.secondaryTextColor,
+                                  color: AppColors.secondaryTextColor,
                                 ),
                                 tooltip: 'Edit',
                                 onPressed: () => _openForm(checklist: c),
@@ -215,9 +216,22 @@ class _SearchFieldState extends State<_SearchField> {
   Widget build(BuildContext context) {
     return TextFormField(
       controller: widget.controller,
-      style: FormThemeHelper.inputTextStyle,
-      decoration: FormThemeHelper.getInputDecoration('Search')
-          .copyWith(prefixIcon: Icon(Icons.search, color: FormThemeHelper.secondaryTextColor)),
+      style: TextStyle(color: AppColors.primaryTextColor),
+      decoration: InputDecoration(
+        labelText: 'Search',
+        labelStyle: TextStyle(color: AppColors.secondaryTextColor),
+        prefixIcon: Icon(Icons.search, color: AppColors.secondaryTextColor),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: AppColors.primaryAccent.withValues(alpha: 0.3)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: AppColors.primaryAccent),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        fillColor: AppColors.fillColorFaint,
+        filled: true,
+      ),
       onChanged: widget.onChanged,
     );
   }

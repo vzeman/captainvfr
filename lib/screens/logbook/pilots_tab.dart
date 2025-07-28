@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/pilot_service.dart';
+import '../../services/license_service.dart';
 import '../../models/pilot.dart';
 import '../../models/endorsement.dart';
 import '../../models/license.dart';
+import '../../widgets/themed_dialog.dart';
 import 'pilot_form.dart';
 import '../licenses_screen.dart';
+import '../license_detail_screen.dart';
+import '../../constants/app_colors.dart';
+import '../../constants/app_theme.dart';
 
 class PilotsTab extends StatelessWidget {
   const PilotsTab({super.key});
@@ -16,6 +21,7 @@ class PilotsTab extends StatelessWidget {
     final pilots = pilotService.pilots;
 
     return Scaffold(
+      backgroundColor: AppColors.backgroundColor,
       body: pilots.isEmpty
           ? Center(
               child: Column(
@@ -24,17 +30,24 @@ class PilotsTab extends StatelessWidget {
                   Icon(
                     Icons.person_add,
                     size: 64,
-                    color: Theme.of(context).disabledColor,
+                    color: AppColors.secondaryTextColor,
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'No pilots added yet',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryTextColor,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Add yourself as the first pilot',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.secondaryTextColor,
+                    ),
                   ),
                 ],
               ),
@@ -47,6 +60,8 @@ class PilotsTab extends StatelessWidget {
               },
             ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.primaryAccent,
+        foregroundColor: Colors.white,
         onPressed: () {
           Navigator.push(
             context,
@@ -82,8 +97,18 @@ class _PilotTileState extends State<_PilotTile> {
     final isCurrentPilot = pilotService.currentPilot?.id == pilot.id;
 
     return Card(
+      color: AppColors.sectionBackgroundColor,
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppTheme.defaultRadius,
+        side: BorderSide(color: AppColors.sectionBorderColor),
+      ),
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: ExpansionTile(
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+        ),
+        child: ExpansionTile(
         onExpansionChanged: (expanded) {
           setState(() {
             _isExpanded = expanded;
@@ -91,13 +116,13 @@ class _PilotTileState extends State<_PilotTile> {
         },
         leading: CircleAvatar(
           backgroundColor: isCurrentPilot
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.surfaceContainerHighest,
+              ? AppColors.primaryAccent
+              : AppColors.sectionBorderColor,
           child: Icon(
             Icons.person,
             color: isCurrentPilot
-                ? Theme.of(context).colorScheme.onPrimary
-                : Theme.of(context).colorScheme.onSurfaceVariant,
+                ? Colors.white
+                : AppColors.secondaryTextColor,
           ),
         ),
         title: Row(
@@ -105,17 +130,21 @@ class _PilotTileState extends State<_PilotTile> {
             Expanded(
               child: Text(
                 pilot.name,
-                style: Theme.of(context).textTheme.titleMedium,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primaryTextColor,
+                ),
               ),
             ),
             if (isCurrentPilot)
               Chip(
                 label: const Text('Current'),
-                labelStyle: TextStyle(
-                  color: Theme.of(context).colorScheme.onPrimary,
+                labelStyle: const TextStyle(
+                  color: Colors.white,
                   fontSize: 12,
                 ),
-                backgroundColor: Theme.of(context).colorScheme.primary,
+                backgroundColor: AppColors.primaryAccent,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
@@ -125,25 +154,50 @@ class _PilotTileState extends State<_PilotTile> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (pilot.certificateNumber != null)
-              Text('Certificate: ${pilot.certificateNumber}'),
-            if (pilot.age != null) Text('Age: ${pilot.age} years'),
+              Text(
+                'Certificate: ${pilot.certificateNumber}',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.secondaryTextColor,
+                ),
+              ),
+            if (pilot.age != null) 
+              Text(
+                'Age: ${pilot.age} years',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.secondaryTextColor,
+                ),
+              ),
             Row(
               children: [
                 Icon(
                   Icons.card_membership,
                   size: 16,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  color: AppColors.secondaryTextColor,
                 ),
                 const SizedBox(width: 4),
-                Text('${licenses.length} licenses'),
+                Text(
+                  '${licenses.length} licenses',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.secondaryTextColor,
+                  ),
+                ),
                 const SizedBox(width: 16),
                 Icon(
                   Icons.verified,
                   size: 16,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  color: AppColors.secondaryTextColor,
                 ),
                 const SizedBox(width: 4),
-                Text('${endorsements.length} endorsements'),
+                Text(
+                  '${endorsements.length} endorsements',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.secondaryTextColor,
+                  ),
+                ),
                 const Spacer(),
                 AnimatedRotation(
                   turns: _isExpanded ? 0.5 : 0.0,
@@ -151,7 +205,7 @@ class _PilotTileState extends State<_PilotTile> {
                   child: Icon(
                     Icons.expand_more,
                     size: 20,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    color: AppColors.secondaryTextColor,
                   ),
                 ),
               ],
@@ -159,6 +213,11 @@ class _PilotTileState extends State<_PilotTile> {
           ],
         ),
         trailing: PopupMenuButton<String>(
+          color: AppColors.dialogBackgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppTheme.defaultRadius,
+            side: BorderSide(color: AppColors.sectionBorderColor),
+          ),
           onSelected: (value) async {
             switch (value) {
               case 'edit':
@@ -173,24 +232,13 @@ class _PilotTileState extends State<_PilotTile> {
                 await pilotService.setCurrentPilot(pilot.id);
                 break;
               case 'delete':
-                final confirmed = await showDialog<bool>(
+                final confirmed = await ThemedDialog.showConfirmation(
                   context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Delete Pilot'),
-                    content: Text(
-                      'Are you sure you want to delete ${pilot.name}? This will also delete all associated licenses and endorsements.',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('Delete'),
-                      ),
-                    ],
-                  ),
+                  title: 'Delete Pilot',
+                  message: 'Are you sure you want to delete ${pilot.name}? This will also delete all associated licenses and endorsements.',
+                  confirmText: 'Delete',
+                  cancelText: 'Cancel',
+                  destructive: true,
                 );
 
                 if (confirmed == true && context.mounted) {
@@ -208,111 +256,146 @@ class _PilotTileState extends State<_PilotTile> {
             }
           },
           itemBuilder: (context) => [
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'edit',
               child: ListTile(
-                leading: Icon(Icons.edit),
-                title: Text('Edit'),
+                leading: Icon(Icons.edit, color: AppColors.primaryTextColor),
+                title: Text('Edit', style: TextStyle(color: AppColors.primaryTextColor)),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
             if (!isCurrentPilot)
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'set_current',
                 child: ListTile(
-                  leading: Icon(Icons.star),
-                  title: Text('Set as Current'),
+                  leading: Icon(Icons.star, color: AppColors.primaryTextColor),
+                  title: Text('Set as Current', style: TextStyle(color: AppColors.primaryTextColor)),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
             const PopupMenuDivider(),
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'delete',
               child: ListTile(
-                leading: Icon(Icons.delete),
-                title: Text('Delete'),
+                leading: Icon(Icons.delete, color: Colors.red),
+                title: Text('Delete', style: TextStyle(color: Colors.red)),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
           ],
         ),
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Licenses Section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Licenses',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    TextButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const LicensesScreen(),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.add),
-                      label: const Text('Manage'),
-                    ),
+          Container(
+            color: AppColors.sectionBackgroundColor,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Licenses Section
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Licenses',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryTextColor,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const LicensesScreen(),
+                            ),
+                          );
+                        },
+                        icon: Icon(Icons.add, color: AppColors.primaryAccent),
+                        label: Text(
+                          'Manage',
+                          style: TextStyle(color: AppColors.primaryAccent),
+                        ),
+                      ),
                   ],
                 ),
-                if (licenses.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.0),
-                    child: Text('No licenses added'),
-                  )
+                  if (licenses.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Text(
+                        'No licenses added',
+                        style: TextStyle(
+                          color: AppColors.secondaryTextColor,
+                          fontSize: 14,
+                        ),
+                      ),
+                    )
                 else
                   ...licenses.map((license) => _LicenseTile(license: license)),
 
-                const Divider(height: 32),
+                  Divider(
+                    height: 32,
+                    color: AppColors.sectionBorderColor,
+                  ),
 
-                // Endorsements Section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Endorsements',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    TextButton.icon(
-                      onPressed: () {
-                        _showAddEndorsementDialog(context, pilot.id);
-                      },
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add'),
-                    ),
+                  // Endorsements Section
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Endorsements',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryTextColor,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          _showAddEndorsementDialog(context, pilot.id);
+                        },
+                        icon: Icon(Icons.add, color: AppColors.primaryAccent),
+                        label: Text(
+                          'Add',
+                          style: TextStyle(color: AppColors.primaryAccent),
+                        ),
+                      ),
                   ],
                 ),
-                if (endorsements.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.0),
-                    child: Text('No endorsements added'),
-                  )
+                  if (endorsements.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Text(
+                        'No endorsements added',
+                        style: TextStyle(
+                          color: AppColors.secondaryTextColor,
+                          fontSize: 14,
+                        ),
+                      ),
+                    )
                 else
                   ...endorsements.map((endorsement) => _EndorsementTile(
                         endorsement: endorsement,
                         pilotId: pilot.id,
                       )),
-              ],
+                ],
+              ),
             ),
           ),
         ],
+      ),
       ),
     );
   }
 
   void _showAddEndorsementDialog(BuildContext context, String pilotId) {
-    showDialog(
+    ThemedDialog.show(
       context: context,
-      builder: (context) => _EndorsementDialog(pilotId: pilotId),
+      title: 'Add Endorsement',
+      content: _EndorsementDialogContent(pilotId: pilotId),
+      maxWidth: 500,
     );
   }
 }
@@ -326,13 +409,67 @@ class _LicenseTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      title: Text(license.name),
-      subtitle: Text(license.expirationStatus),
-      trailing: license.isExpired
-          ? Icon(Icons.error, color: Theme.of(context).colorScheme.error)
-          : license.willExpireWithinDays(30)
-              ? const Icon(Icons.warning, color: Colors.orange)
-              : const Icon(Icons.check_circle, color: Colors.green),
+      title: Text(
+        license.name,
+        style: TextStyle(color: AppColors.primaryTextColor),
+      ),
+      subtitle: Text(
+        license.expirationStatus,
+        style: TextStyle(color: AppColors.secondaryTextColor),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (license.isExpired)
+            Icon(Icons.error, color: Theme.of(context).colorScheme.error)
+          else if (license.willExpireWithinDays(30))
+            const Icon(Icons.warning, color: Colors.orange)
+          else
+            const Icon(Icons.check_circle, color: Colors.green),
+          PopupMenuButton<String>(
+            color: AppColors.dialogBackgroundColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: AppTheme.defaultRadius,
+              side: BorderSide(color: AppColors.sectionBorderColor),
+            ),
+            onSelected: (value) async {
+              if (value == 'edit') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => LicenseDetailScreen(license: license),
+                  ),
+                );
+              } else if (value == 'delete') {
+                final confirmed = await ThemedDialog.showConfirmation(
+                  context: context,
+                  title: 'Delete License',
+                  message: 'Are you sure you want to delete "${license.name}"?',
+                  confirmText: 'Delete',
+                  cancelText: 'Cancel',
+                  destructive: true,
+                );
+
+                if (confirmed == true && context.mounted) {
+                  await context
+                      .read<LicenseService>()
+                      .deleteLicense(license.id);
+                }
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'edit',
+                child: Text('Edit', style: TextStyle(color: AppColors.primaryTextColor)),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Text('Delete', style: TextStyle(color: Colors.red)),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -350,8 +487,14 @@ class _EndorsementTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      title: Text(endorsement.title),
-      subtitle: Text(endorsement.expirationStatus),
+      title: Text(
+        endorsement.title,
+        style: TextStyle(color: AppColors.primaryTextColor),
+      ),
+      subtitle: Text(
+        endorsement.expirationStatus,
+        style: TextStyle(color: AppColors.secondaryTextColor),
+      ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -362,26 +505,22 @@ class _EndorsementTile extends StatelessWidget {
           else
             const Icon(Icons.check_circle, color: Colors.green),
           PopupMenuButton<String>(
+            color: AppColors.dialogBackgroundColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: AppTheme.defaultRadius,
+              side: BorderSide(color: AppColors.sectionBorderColor),
+            ),
             onSelected: (value) async {
-              if (value == 'delete') {
-                final confirmed = await showDialog<bool>(
+              if (value == 'edit') {
+                _showEditEndorsementDialog(context, endorsement, pilotId);
+              } else if (value == 'delete') {
+                final confirmed = await ThemedDialog.showConfirmation(
                   context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Delete Endorsement'),
-                    content: Text(
-                      'Are you sure you want to delete "${endorsement.title}"?',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('Delete'),
-                      ),
-                    ],
-                  ),
+                  title: 'Delete Endorsement',
+                  message: 'Are you sure you want to delete "${endorsement.title}"?',
+                  confirmText: 'Delete',
+                  cancelText: 'Cancel',
+                  destructive: true,
                 );
 
                 if (confirmed == true && context.mounted) {
@@ -392,9 +531,13 @@ class _EndorsementTile extends StatelessWidget {
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(
+              PopupMenuItem(
+                value: 'edit',
+                child: Text('Edit', style: TextStyle(color: AppColors.primaryTextColor)),
+              ),
+              PopupMenuItem(
                 value: 'delete',
-                child: Text('Delete'),
+                child: Text('Delete', style: TextStyle(color: Colors.red)),
               ),
             ],
           ),
@@ -402,23 +545,52 @@ class _EndorsementTile extends StatelessWidget {
       ),
     );
   }
+
+  static void _showEditEndorsementDialog(BuildContext context, Endorsement endorsement, String pilotId) {
+    ThemedDialog.show(
+      context: context,
+      title: 'Edit Endorsement',
+      content: _EndorsementDialogContent(
+        pilotId: pilotId,
+        endorsement: endorsement,
+      ),
+      maxWidth: 500,
+    );
+  }
 }
 
-class _EndorsementDialog extends StatefulWidget {
+class _EndorsementDialogContent extends StatefulWidget {
   final String pilotId;
+  final Endorsement? endorsement;
 
-  const _EndorsementDialog({required this.pilotId});
+  const _EndorsementDialogContent({
+    required this.pilotId,
+    this.endorsement,
+  });
 
   @override
-  State<_EndorsementDialog> createState() => _EndorsementDialogState();
+  State<_EndorsementDialogContent> createState() => _EndorsementDialogContentState();
 }
 
-class _EndorsementDialogState extends State<_EndorsementDialog> {
+class _EndorsementDialogContentState extends State<_EndorsementDialogContent> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  DateTime _validFrom = DateTime.now();
+  late DateTime _validFrom;
   DateTime? _validTo;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.endorsement != null) {
+      _titleController.text = widget.endorsement!.title;
+      _descriptionController.text = widget.endorsement!.description;
+      _validFrom = widget.endorsement!.validFrom;
+      _validTo = widget.endorsement!.validTo;
+    } else {
+      _validFrom = DateTime.now();
+    }
+  }
 
   @override
   void dispose() {
@@ -429,49 +601,87 @@ class _EndorsementDialogState extends State<_EndorsementDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Add Endorsement'),
-      content: Form(
+    return Theme(
+      data: ThemeData.dark().copyWith(
+        inputDecorationTheme: const InputDecorationTheme(
+          filled: true,
+          fillColor: Color(0x1A448AFF),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(AppTheme.borderRadiusDefault)),
+            borderSide: BorderSide(color: Color(0x7F448AFF)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(AppTheme.borderRadiusDefault)),
+            borderSide: BorderSide(color: Color(0x7F448AFF)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(AppTheme.borderRadiusDefault)),
+            borderSide: BorderSide(color: Color(0xFF448AFF), width: 2.0),
+          ),
+          labelStyle: TextStyle(color: Colors.white70, fontSize: 12),
+          hintStyle: TextStyle(color: Colors.white30, fontSize: 12),
+          isDense: true,
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        ),
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(fontSize: 13, color: Colors.white),
+          bodyMedium: TextStyle(fontSize: 12, color: Colors.white),
+          bodySmall: TextStyle(fontSize: 11, color: Colors.white70),
+        ),
+      ),
+      child: Form(
         key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Title',
-                  hintText: 'e.g., Complex Aircraft',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a title';
-                  }
-                  return null;
-                },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _titleController,
+              decoration: const InputDecoration(
+                labelText: 'Title',
+                hintText: 'e.g., Complex Aircraft',
+                prefixIcon: Icon(Icons.card_membership, size: 18),
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  hintText: 'Additional details',
-                ),
-                maxLines: 3,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a description';
-                  }
-                  return null;
-                },
+              style: const TextStyle(fontSize: 12),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter a title';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                hintText: 'Additional details',
+                alignLabelWithHint: true,
+                prefixIcon: Icon(Icons.description, size: 18),
               ),
-              const SizedBox(height: 16),
-              ListTile(
-                title: const Text('Valid From'),
+              maxLines: 2,
+              style: const TextStyle(fontSize: 12),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter a description';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0x1A448AFF),
+                borderRadius: AppTheme.defaultRadius,
+                border: Border.all(color: const Color(0x7F448AFF)),
+              ),
+              child: ListTile(
+                dense: true,
+                title: const Text('Valid From', style: TextStyle(fontSize: 12)),
                 subtitle: Text(
                   '${_validFrom.day}/${_validFrom.month}/${_validFrom.year}',
+                  style: const TextStyle(fontSize: 11),
                 ),
-                trailing: const Icon(Icons.calendar_today),
+                trailing: const Icon(Icons.calendar_today, size: 18),
                 onTap: () async {
                   final date = await showDatePicker(
                     context: context,
@@ -486,8 +696,17 @@ class _EndorsementDialogState extends State<_EndorsementDialog> {
                   }
                 },
               ),
-              SwitchListTile(
-                title: const Text('Has Expiration'),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0x1A448AFF),
+                borderRadius: AppTheme.defaultRadius,
+                border: Border.all(color: const Color(0x7F448AFF)),
+              ),
+              child: SwitchListTile(
+                dense: true,
+                title: const Text('Has Expiration', style: TextStyle(fontSize: 12)),
                 value: _validTo != null,
                 onChanged: (value) {
                   setState(() {
@@ -499,13 +718,23 @@ class _EndorsementDialogState extends State<_EndorsementDialog> {
                   });
                 },
               ),
-              if (_validTo != null)
-                ListTile(
-                  title: const Text('Valid To'),
+            ),
+            if (_validTo != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0x1A448AFF),
+                  borderRadius: AppTheme.defaultRadius,
+                  border: Border.all(color: const Color(0x7F448AFF)),
+                ),
+                child: ListTile(
+                  dense: true,
+                  title: const Text('Valid To', style: TextStyle(fontSize: 12)),
                   subtitle: Text(
                     '${_validTo!.day}/${_validTo!.month}/${_validTo!.year}',
+                    style: const TextStyle(fontSize: 11),
                   ),
-                  trailing: const Icon(Icons.calendar_today),
+                  trailing: const Icon(Icons.calendar_today, size: 18),
                   onTap: () async {
                     final date = await showDatePicker(
                       context: context,
@@ -520,37 +749,54 @@ class _EndorsementDialogState extends State<_EndorsementDialog> {
                     }
                   },
                 ),
+              ),
             ],
-          ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate()) {
+                      final pilotService = context.read<PilotService>();
+                      
+                      if (widget.endorsement != null) {
+                        // Update existing endorsement
+                        final updatedEndorsement = widget.endorsement!.copyWith(
+                          title: _titleController.text,
+                          description: _descriptionController.text,
+                          validFrom: _validFrom,
+                          validTo: _validTo,
+                        );
+                        await pilotService.updateEndorsement(updatedEndorsement);
+                      } else {
+                        // Add new endorsement
+                        final endorsement = Endorsement(
+                          title: _titleController.text,
+                          description: _descriptionController.text,
+                          validFrom: _validFrom,
+                          validTo: _validTo,
+                        );
+                        await pilotService.addEndorsement(endorsement, widget.pilotId);
+                      }
+
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                      }
+                    }
+                  },
+                  child: Text(widget.endorsement != null ? 'Update' : 'Add'),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: () async {
-            if (_formKey.currentState!.validate()) {
-              final endorsement = Endorsement(
-                title: _titleController.text,
-                description: _descriptionController.text,
-                validFrom: _validFrom,
-                validTo: _validTo,
-              );
-
-              await context
-                  .read<PilotService>()
-                  .addEndorsement(endorsement, widget.pilotId);
-
-              if (context.mounted) {
-                Navigator.pop(context);
-              }
-            }
-          },
-          child: const Text('Add'),
-        ),
-      ],
     );
   }
 }

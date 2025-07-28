@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/connectivity_service.dart';
+import '../constants/app_theme.dart';
 
 class ConnectivityBanner extends StatefulWidget {
   final Widget child;
@@ -95,7 +96,7 @@ class _ConnectivityBannerState extends State<ConnectivityBanner> {
                                           _isBannerDismissed = true;
                                         });
                                       },
-                                      borderRadius: BorderRadius.circular(20),
+                                      borderRadius: AppTheme.circularRadius,
                                       child: Container(
                                         padding: const EdgeInsets.all(8),
                                         child: Icon(

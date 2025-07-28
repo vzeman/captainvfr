@@ -16,6 +16,7 @@ import '../../services/flight_service.dart';
 import '../../services/media_service.dart';
 import '../../screens/flight_detail_screen.dart';
 import 'logbook_screen.dart';
+import '../../constants/app_theme.dart';
 
 class LogBookEntryForm extends StatefulWidget {
   final LogBookEntry? entry;
@@ -729,7 +730,7 @@ class _LogBookEntryFormState extends State<LogBookEntryForm> {
                                 child: Stack(
                                   children: [
                                     ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
+                                      borderRadius: AppTheme.defaultRadius,
                                       child: Image.file(
                                         File(_imagePaths[index]),
                                         height: 100,
@@ -754,7 +755,7 @@ class _LogBookEntryFormState extends State<LogBookEntryForm> {
                                           padding: const EdgeInsets.all(4),
                                           decoration: BoxDecoration(
                                             color: Colors.black54,
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius: AppTheme.defaultRadius,
                                           ),
                                           child: const Icon(
                                             Icons.close,

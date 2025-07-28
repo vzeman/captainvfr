@@ -6,6 +6,7 @@ import '../services/flight_plan_service.dart';
 import '../services/aircraft_settings_service.dart';
 import '../services/settings_service.dart';
 import 'waypoint_table_widget.dart';
+import '../constants/app_theme.dart';
 
 class FlightPlanningPanel extends StatefulWidget {
   final bool? isExpanded;
@@ -140,7 +141,7 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
         child: Container(
           decoration: BoxDecoration(
             color: const Color(0xE6000000), // Black with 0.9 opacity (less transparent)
-            borderRadius: BorderRadius.circular(12.0),
+            borderRadius: AppTheme.largeRadius,
             border: Border.all(
               color: const Color(0x7F448AFF),
               width: 1.0,
@@ -177,7 +178,7 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
     return Container(
       decoration: BoxDecoration(
         color: _isEditMode ? const Color(0x33448AFF) : Colors.transparent,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(12.0)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.borderRadiusLarge)),
       ),
       padding: EdgeInsets.symmetric(
         horizontal: 12.0,
@@ -329,7 +330,7 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0x1A448AFF),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: AppTheme.mediumRadius,
                 border: Border.all(color: const Color(0x33448AFF)),
               ),
               child: Row(
@@ -436,19 +437,19 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
                       filled: true,
                       fillColor: const Color(0x1A448AFF),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: AppTheme.mediumRadius,
                         borderSide: const BorderSide(color: Color(0x33448AFF)),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: AppTheme.mediumRadius,
                         borderSide: const BorderSide(color: Color(0x33448AFF)),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: AppTheme.mediumRadius,
                         borderSide: const BorderSide(color: Color(0xFF448AFF)),
                       ),
                       disabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: AppTheme.mediumRadius,
                         borderSide: const BorderSide(color: Color(0x1A666666)),
                       ),
                     ),
@@ -578,25 +579,25 @@ class _FlightPlanningPanelState extends State<FlightPlanningPanel> {
                           filled: true,
                           fillColor: const Color(0x1A448AFF),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: AppTheme.mediumRadius,
                             borderSide: const BorderSide(
                               color: Color(0x33448AFF),
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: AppTheme.mediumRadius,
                             borderSide: const BorderSide(
                               color: Color(0x33448AFF),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: AppTheme.mediumRadius,
                             borderSide: const BorderSide(
                               color: Color(0xFF448AFF),
                             ),
                           ),
                           disabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: AppTheme.mediumRadius,
                             borderSide: const BorderSide(
                               color: Color(0x1A666666),
                             ),

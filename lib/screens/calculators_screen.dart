@@ -9,7 +9,7 @@ import 'calculators/wind_correction_calculator.dart';
 import 'calculators/climb_performance_calculator.dart';
 import 'calculators/cruise_performance_calculator.dart';
 import 'calculators/descent_performance_calculator.dart';
-import '../utils/form_theme_helper.dart';
+import '../constants/app_colors.dart';
 
 class CalculatorsScreen extends StatelessWidget {
   const CalculatorsScreen({super.key});
@@ -19,14 +19,14 @@ class CalculatorsScreen extends StatelessWidget {
     final calculators = _getCalculators(context);
     
     return Scaffold(
-      backgroundColor: FormThemeHelper.backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
-        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        backgroundColor: AppColors.dialogBackgroundColor,
         title: const Text(
           'Pilot Calculators',
-          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          style: TextStyle(color: AppColors.primaryTextColor),
         ),
-        foregroundColor: FormThemeHelper.primaryTextColor,
+        foregroundColor: AppColors.primaryTextColor,
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {

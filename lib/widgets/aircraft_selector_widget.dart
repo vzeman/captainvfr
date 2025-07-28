@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/aircraft.dart';
 import '../services/aircraft_settings_service.dart';
-import '../utils/form_theme_helper.dart';
+import '../constants/app_colors.dart';
+import '../constants/app_theme.dart';
 
 class AircraftSelectorWidget extends StatefulWidget {
   final Function(Aircraft?) onAircraftSelected;
@@ -35,24 +36,24 @@ class _AircraftSelectorWidgetState extends State<AircraftSelectorWidget> {
     if (aircrafts.isEmpty) {
       return Container(
         decoration: BoxDecoration(
-          color: FormThemeHelper.sectionBackgroundColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: FormThemeHelper.sectionBorderColor),
+          color: AppColors.sectionBackgroundColor,
+          borderRadius: AppTheme.extraLargeRadius,
+          border: Border.all(color: AppColors.sectionBorderColor),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              Icon(Icons.flight, size: 48, color: FormThemeHelper.primaryAccent),
+              Icon(Icons.flight, size: 48, color: AppColors.primaryAccent),
               const SizedBox(height: 8),
               Text(
                 'No aircraft configured',
-                style: TextStyle(fontSize: 16, color: FormThemeHelper.primaryTextColor),
+                style: TextStyle(fontSize: 16, color: AppColors.primaryTextColor),
               ),
               const SizedBox(height: 8),
               Text(
                 'Add aircraft in the settings',
-                style: TextStyle(fontSize: 14, color: FormThemeHelper.secondaryTextColor),
+                style: TextStyle(fontSize: 14, color: AppColors.secondaryTextColor),
               ),
             ],
           ),
@@ -63,9 +64,24 @@ class _AircraftSelectorWidgetState extends State<AircraftSelectorWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        FormThemeHelper.buildDropdownField<String>(
+        DropdownButtonFormField<String>(
           value: _selectedAircraft?.id,
-          labelText: 'Select Aircraft',
+          decoration: InputDecoration(
+            labelText: 'Select Aircraft',
+            labelStyle: TextStyle(color: AppColors.secondaryTextColor),
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: AppColors.primaryAccent.withValues(alpha: 0.3)),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: AppColors.primaryAccent),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            fillColor: AppColors.fillColorFaint,
+            filled: true,
+          ),
+          style: TextStyle(color: AppColors.primaryTextColor),
+          dropdownColor: AppColors.dialogBackgroundColor,
           items: aircrafts.map((aircraft) {
             return DropdownMenuItem(
               value: aircraft.id,
@@ -90,9 +106,9 @@ class _AircraftSelectorWidgetState extends State<AircraftSelectorWidget> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: FormThemeHelper.fillColor,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: FormThemeHelper.borderColor),
+              color: AppColors.fillColorFaint,
+              borderRadius: AppTheme.defaultRadius,
+              border: Border.all(color: AppColors.primaryAccent),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -101,24 +117,24 @@ class _AircraftSelectorWidgetState extends State<AircraftSelectorWidget> {
                   '${_selectedAircraft!.manufacturer ?? ""} ${_selectedAircraft!.model ?? ""}',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: FormThemeHelper.primaryTextColor,
+                    color: AppColors.primaryTextColor,
                   ),
                 ),
                 const SizedBox(height: 4),
                 if (_selectedAircraft!.cruiseSpeed > 0)
                   Text(
                     'Cruise Speed: ${_selectedAircraft!.cruiseSpeed} kts',
-                    style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                    style: TextStyle(color: AppColors.secondaryTextColor),
                   ),
                 if (_selectedAircraft!.fuelConsumption > 0)
                   Text(
                     'Fuel Burn: ${_selectedAircraft!.fuelConsumption.toStringAsFixed(1)} gal/hr',
-                    style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                    style: TextStyle(color: AppColors.secondaryTextColor),
                   ),
                 if (_selectedAircraft!.maxTakeoffWeight > 0)
                   Text(
                     'MTOW: ${_selectedAircraft!.maxTakeoffWeight} lbs',
-                    style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                    style: TextStyle(color: AppColors.secondaryTextColor),
                   ),
               ],
             ),

@@ -6,7 +6,7 @@ import '../services/cache_service.dart';
 import '../services/airport_service.dart';
 import '../services/navaid_service.dart';
 import '../services/weather_service.dart';
-import '../utils/form_theme_helper.dart';
+import '../constants/app_colors.dart';
 import 'offline_data/controllers/offline_data_state_controller.dart';
 import 'offline_data/components/cache_card.dart';
 import 'offline_data/components/weather_cache_card.dart';
@@ -18,7 +18,12 @@ import 'offline_data/helpers/cache_statistics_helper.dart';
 
 /// Screen for managing all offline data and caches
 class OfflineDataScreen extends StatefulWidget {
-  const OfflineDataScreen({super.key});
+  final LatLngBounds? currentMapBounds;
+  
+  const OfflineDataScreen({
+    super.key,
+    this.currentMapBounds,
+  });
 
   @override
   State<OfflineDataScreen> createState() => _OfflineDataScreenState();
@@ -282,9 +287,22 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
   }
 
   Future<void> _downloadCurrentArea() async {
+    if (widget.currentMapBounds == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please open this screen from the map to download the current area'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+    
     await _downloadArea(
-      northEast: const LatLng(50.0, 15.0), // Example coordinates
-      southWest: const LatLng(48.0, 12.0),
+      northEast: widget.currentMapBounds!.northEast,
+      southWest: widget.currentMapBounds!.southWest,
     );
   }
 
@@ -294,6 +312,10 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
   }) async {
     _stateController.setDownloading(true);
     _stateController.resetDownloadState();
+
+    // Log download area for debugging
+    debugPrint('Starting download for area: NE: ${northEast.latitude}, ${northEast.longitude}, SW: ${southWest.latitude}, ${southWest.longitude}');
+    debugPrint('Zoom levels: ${_stateController.minZoom} to ${_stateController.maxZoom}');
 
     try {
       await _offlineMapService.downloadAreaTiles(
@@ -350,10 +372,10 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
       appBar: AppBar(
         title: const Text(
           'Offline Data',
-          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          style: TextStyle(color: AppColors.primaryTextColor),
         ),
-        backgroundColor: FormThemeHelper.dialogBackgroundColor,
-        foregroundColor: FormThemeHelper.primaryTextColor,
+        backgroundColor: AppColors.dialogBackgroundColor,
+        foregroundColor: AppColors.primaryTextColor,
         actions: [
           ListenableBuilder(
             listenable: _stateController,
@@ -372,7 +394,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
           ),
         ],
       ),
-      backgroundColor: FormThemeHelper.backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       body: ListenableBuilder(
         listenable: _stateController,
         builder: (context, child) {
@@ -395,7 +417,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: FormThemeHelper.primaryTextColor,
+                      color: AppColors.primaryTextColor,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -512,7 +534,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: FormThemeHelper.primaryTextColor,
+                      color: AppColors.primaryTextColor,
                     ),
                   ),
                   const SizedBox(height: 16),

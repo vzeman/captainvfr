@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../services/aircraft_settings_service.dart';
 import '../models/model.dart';
 import '../models/manufacturer.dart';
+import '../constants/app_colors.dart';
 import '../utils/form_theme_helper.dart';
 
 class ModelFormDialog extends StatefulWidget {
@@ -118,7 +119,7 @@ class _ModelFormDialogState extends State<ModelFormDialog> {
                       items: service.manufacturers.map((manufacturer) {
                         return DropdownMenuItem(
                           value: manufacturer.id,
-                          child: Text(manufacturer.name, style: FormThemeHelper.inputTextStyle),
+                          child: Text(manufacturer.name, style: TextStyle(color: AppColors.primaryTextColor)),
                         );
                       }).toList(),
                       onChanged: (value) {
@@ -142,7 +143,7 @@ class _ModelFormDialogState extends State<ModelFormDialog> {
                   items: AircraftCategory.values.map((category) {
                     return DropdownMenuItem(
                       value: category,
-                      child: Text(_getCategoryDisplayName(category), style: FormThemeHelper.inputTextStyle),
+                      child: Text(_getCategoryDisplayName(category), style: TextStyle(color: AppColors.primaryTextColor)),
                     );
                   }).toList(),
                   onChanged: (value) {

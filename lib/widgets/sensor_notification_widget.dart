@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../constants/app_theme.dart';
 
 /// A dismissible notification widget for displaying sensor availability warnings
 class SensorNotification extends StatefulWidget {
@@ -51,7 +52,7 @@ class _SensorNotificationState extends State<SensorNotification> {
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
       child: Material(
         elevation: 2,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppTheme.defaultRadius,
         color: bgColor,
         child: Padding(
           padding: const EdgeInsets.all(12.0),

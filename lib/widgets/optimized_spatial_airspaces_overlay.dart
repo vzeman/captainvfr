@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import '../models/airspace.dart';
 import '../services/spatial_airspace_service.dart';
 import '../utils/airspace_utils.dart';
+import '../constants/app_theme.dart';
 
 /// Optimized airspace overlay with proper debouncing and performance improvements
 class OptimizedSpatialAirspacesOverlay extends StatefulWidget {
@@ -124,7 +125,7 @@ class _OptimizedSpatialAirspacesOverlayState
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.7),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: AppTheme.circularRadius,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,

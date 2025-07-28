@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../constants/app_colors.dart';
 import '../../../utils/form_theme_helper.dart';
 import '../controllers/offline_data_state_controller.dart';
 
@@ -22,7 +23,7 @@ class DownloadMapTilesSection extends StatelessWidget {
       children: [
         Text(
           'Download map tiles for offline use',
-          style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+          style: TextStyle(color: AppColors.secondaryTextColor),
         ),
         const SizedBox(height: 16),
         Row(
@@ -33,7 +34,7 @@ class DownloadMapTilesSection extends StatelessWidget {
                 children: [
                   Text(
                     'Min Zoom: ${controller.minZoom}',
-                    style: TextStyle(color: FormThemeHelper.primaryTextColor),
+                    style: TextStyle(color: AppColors.primaryTextColor),
                   ),
                   Slider(
                     value: controller.minZoom.toDouble(),
@@ -41,7 +42,7 @@ class DownloadMapTilesSection extends StatelessWidget {
                     max: 18,
                     divisions: 17,
                     label: controller.minZoom.toString(),
-                    activeColor: FormThemeHelper.primaryAccent,
+                    activeColor: AppColors.primaryAccent,
                     onChanged: (value) {
                       controller.setMinZoom(value.toInt());
                     },
@@ -56,7 +57,7 @@ class DownloadMapTilesSection extends StatelessWidget {
                 children: [
                   Text(
                     'Max Zoom: ${controller.maxZoom}',
-                    style: TextStyle(color: FormThemeHelper.primaryTextColor),
+                    style: TextStyle(color: AppColors.primaryTextColor),
                   ),
                   Slider(
                     value: controller.maxZoom.toDouble(),
@@ -64,7 +65,7 @@ class DownloadMapTilesSection extends StatelessWidget {
                     max: 18,
                     divisions: 17,
                     label: controller.maxZoom.toString(),
-                    activeColor: FormThemeHelper.primaryAccent,
+                    activeColor: AppColors.primaryAccent,
                     onChanged: (value) {
                       controller.setMaxZoom(value.toInt());
                     },
@@ -78,8 +79,8 @@ class DownloadMapTilesSection extends StatelessWidget {
         if (controller.isDownloading) ...[
           LinearProgressIndicator(
             value: controller.downloadProgress,
-            backgroundColor: FormThemeHelper.borderColor.withValues(alpha: 0.3),
-            valueColor: AlwaysStoppedAnimation<Color>(FormThemeHelper.primaryAccent),
+            backgroundColor: AppColors.primaryAccent.withValues(alpha: 0.3),
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryAccent),
           ),
           const SizedBox(height: 8),
           Row(
@@ -87,13 +88,13 @@ class DownloadMapTilesSection extends StatelessWidget {
             children: [
               Text(
                 'Progress: ${controller.currentTiles} / ${controller.totalTiles} tiles',
-                style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                style: TextStyle(color: AppColors.secondaryTextColor),
               ),
               Text(
                 '${(controller.downloadProgress * 100).toStringAsFixed(1)}%',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: FormThemeHelper.primaryAccent,
+                  color: AppColors.primaryAccent,
                 ),
               ),
             ],
@@ -106,14 +107,14 @@ class DownloadMapTilesSection extends StatelessWidget {
                 'Downloaded: ${controller.downloadedTiles}',
                 style: TextStyle(
                   fontSize: 12,
-                  color: FormThemeHelper.secondaryTextColor,
+                  color: AppColors.secondaryTextColor,
                 ),
               ),
               Text(
                 'Skipped: ${controller.skippedTiles}',
                 style: TextStyle(
                   fontSize: 12,
-                  color: FormThemeHelper.secondaryTextColor,
+                  color: AppColors.secondaryTextColor,
                 ),
               ),
             ],

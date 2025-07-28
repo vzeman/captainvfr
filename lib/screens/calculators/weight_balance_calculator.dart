@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/settings_service.dart';
+import '../../constants/app_colors.dart';
+import '../../constants/app_theme.dart';
 import '../../utils/form_theme_helper.dart';
 
 class WeightBalanceCalculator extends StatefulWidget {
@@ -196,14 +198,14 @@ class _WeightBalanceCalculatorState extends State<WeightBalanceCalculator> {
     final isImperial = settingsService.units == 'imperial';
 
     return Scaffold(
-      backgroundColor: FormThemeHelper.backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
-        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        backgroundColor: AppColors.dialogBackgroundColor,
         title: const Text(
           'Weight & Balance Calculator',
-          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          style: TextStyle(color: AppColors.primaryTextColor),
         ),
-        foregroundColor: FormThemeHelper.primaryTextColor,
+        foregroundColor: AppColors.primaryTextColor,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -213,7 +215,7 @@ class _WeightBalanceCalculatorState extends State<WeightBalanceCalculator> {
             Container(
               decoration: BoxDecoration(
                 color: const Color(0x1A448AFF),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppTheme.extraLargeRadius,
                 border: Border.all(color: const Color(0x7F448AFF)),
               ),
               child: Padding(
@@ -344,12 +346,12 @@ class _WeightBalanceCalculatorState extends State<WeightBalanceCalculator> {
               Container(
                 decoration: BoxDecoration(
                   color: _withinLimits == true
-                      ? FormThemeHelper.sectionBackgroundColor
+                      ? AppColors.sectionBackgroundColor
                       : Colors.red.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppTheme.extraLargeRadius,
                   border: Border.all(
                     color: _withinLimits == true
-                        ? FormThemeHelper.sectionBorderColor
+                        ? AppColors.sectionBorderColor
                         : Colors.red.withValues(alpha: 0.5),
                   ),
                 ),
@@ -364,7 +366,7 @@ class _WeightBalanceCalculatorState extends State<WeightBalanceCalculator> {
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: _withinLimits == true
-                              ? FormThemeHelper.primaryTextColor
+                              ? AppColors.primaryTextColor
                               : Colors.red,
                         ),
                       ),
@@ -384,7 +386,7 @@ class _WeightBalanceCalculatorState extends State<WeightBalanceCalculator> {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: _withinLimits == true ? FormThemeHelper.primaryAccent : Colors.red,
+                          color: _withinLimits == true ? AppColors.primaryAccent : Colors.red,
                         ),
                       ),
                       if (_withinLimits == false) ...[

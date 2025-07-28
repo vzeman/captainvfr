@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/license.dart';
 import '../services/license_service.dart';
 import '../screens/licenses_screen.dart';
+import '../constants/app_theme.dart';
 
 class LicenseWarningWidget extends StatefulWidget {
   const LicenseWarningWidget({super.key});
@@ -37,7 +38,7 @@ class _LicenseWarningWidgetState extends State<LicenseWarningWidget> {
             color: expiredCount > 0
                 ? Colors.red.shade100
                 : Colors.orange.shade100,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppTheme.extraLargeRadius,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.1),
@@ -53,7 +54,7 @@ class _LicenseWarningWidgetState extends State<LicenseWarningWidget> {
               InkWell(
                 onTap: () => setState(() => _isExpanded = !_isExpanded),
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
+                  top: Radius.circular(AppTheme.borderRadiusExtraLarge),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(12),

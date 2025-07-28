@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_theme.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -54,7 +55,7 @@ class _LoadingScreenState extends State<LoadingScreen>
                   height: 120,
                   decoration: BoxDecoration(
                     color: isDarkMode ? Colors.grey[800] : Colors.grey[100],
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: AppTheme.extraLargeRadius,
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.1),
@@ -64,7 +65,7 @@ class _LoadingScreenState extends State<LoadingScreen>
                     ],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: AppTheme.extraLargeRadius,
                     child: Image.asset(
                       'assets/images/app_icon.png',
                       fit: BoxFit.contain,

@@ -6,6 +6,7 @@ import '../../models/notam.dart';
 import '../../services/notam_service.dart';
 import '../../services/notam_service_v2.dart';
 import '../../services/notam_service_v3.dart';
+import '../../constants/app_theme.dart';
 
 class AirportNotamsTab extends StatefulWidget {
   final Airport airport;
@@ -165,7 +166,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
                     ),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppTheme.extraLargeRadius,
                       border: Border.all(
                         color: theme.colorScheme.outline.withValues(alpha: 0.2),
                       ),
@@ -180,9 +181,9 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
                 const SizedBox(width: 8),
                 Material(
                   color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: AppTheme.extraLargeRadius,
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: AppTheme.extraLargeRadius,
                     onTap: _isRefreshing
                         ? null
                         : () => _loadNotams(forceRefresh: true),
@@ -308,7 +309,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppTheme.extraLargeRadius,
                 ),
                 child: Text(
                   '${notams.length}',
@@ -385,7 +386,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
                         : notam.isFuture
                         ? Colors.blue.withValues(alpha: 0.1)
                         : Colors.red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AppTheme.defaultRadius,
                     border: Border.all(
                       color: notam.isActive
                           ? Colors.green.withValues(alpha: 0.3)
@@ -492,7 +493,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppTheme.extraLargeRadius,
       ),
       child: Text(
         notam.status,
@@ -525,7 +526,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
               color: theme.colorScheme.surfaceContainerHighest.withValues(
                 alpha: 0.3,
               ),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: AppTheme.defaultRadius,
               border: Border.all(
                 color: theme.colorScheme.outline.withValues(alpha: 0.2),
               ),
@@ -615,7 +616,7 @@ class _AirportNotamsTabState extends State<AirportNotamsTab> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppTheme.extraLargeRadius,
       ),
       child: Text(
         label,

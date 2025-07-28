@@ -8,7 +8,8 @@ import '../widgets/aircraft_form_dialog.dart';
 import '../widgets/manufacturer_form_dialog.dart';
 import 'aircraft_detail_screen.dart';
 import 'manufacturer_detail_screen.dart';
-import '../utils/form_theme_helper.dart';
+import '../constants/app_theme.dart';
+import '../constants/app_colors.dart';
 
 class AircraftSettingsScreen extends StatefulWidget {
   const AircraftSettingsScreen({super.key});
@@ -44,22 +45,22 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
       appBar: AppBar(
         title: const Text(
           'Aircraft Settings',
-          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          style: TextStyle(color: AppColors.primaryTextColor),
         ),
-        backgroundColor: FormThemeHelper.dialogBackgroundColor,
-        foregroundColor: FormThemeHelper.primaryTextColor,
+        backgroundColor: AppColors.dialogBackgroundColor,
+        foregroundColor: AppColors.primaryTextColor,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: FormThemeHelper.primaryAccent,
-          labelColor: FormThemeHelper.primaryTextColor,
-          unselectedLabelColor: FormThemeHelper.secondaryTextColor,
+          indicatorColor: AppColors.primaryAccent,
+          labelColor: AppColors.primaryTextColor,
+          unselectedLabelColor: AppColors.secondaryTextColor,
           tabs: const [
             Tab(icon: Icon(Icons.airplanemode_active), text: 'Aircraft'),
             Tab(icon: Icon(Icons.business), text: 'Manufacturers'),
           ],
         ),
       ),
-      backgroundColor: FormThemeHelper.backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       body: TabBarView(
         controller: _tabController,
         children: [_buildAircraftTab(), _buildManufacturersTab()],
@@ -140,7 +141,7 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
                     ),
                     decoration: BoxDecoration(
                       color: const Color(0x1A448AFF),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppTheme.extraLargeRadius,
                       border: Border.all(color: const Color(0x7F448AFF)),
                     ),
                     child: ListTile(
@@ -235,20 +236,23 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
                 Icon(
                   Icons.business,
                   size: 64,
-                  color: FormThemeHelper.primaryAccent.withValues(alpha: 0.5),
+                  color: AppColors.primaryAccent.withValues(alpha: 0.5),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'No manufacturers configured',
                   style: TextStyle(
                     fontSize: 18,
-                    color: FormThemeHelper.primaryTextColor,
+                    color: AppColors.primaryTextColor,
                   ),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: () => _showManufacturerForm(),
-                  style: FormThemeHelper.getPrimaryButtonStyle(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryAccent,
+                    foregroundColor: Colors.white,
+                  ),
                   icon: const Icon(Icons.add),
                   label: const Text('Add First Manufacturer'),
                 ),
@@ -268,13 +272,16 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
                       '${service.manufacturers.length} manufacturer(s) configured',
                       style: TextStyle(
                         fontSize: 16,
-                        color: FormThemeHelper.primaryTextColor,
+                        color: AppColors.primaryTextColor,
                       ),
                     ),
                   ),
                   ElevatedButton.icon(
                     onPressed: () => _showManufacturerForm(),
-                    style: FormThemeHelper.getPrimaryButtonStyle(),
+                    style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryAccent,
+                    foregroundColor: Colors.white,
+                  ),
                     icon: const Icon(Icons.add),
                     label: const Text('Add Manufacturer'),
                   ),
@@ -292,14 +299,14 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: FormThemeHelper.sectionBackgroundColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: FormThemeHelper.sectionBorderColor),
+                      color: AppColors.sectionBackgroundColor,
+                      borderRadius: AppTheme.extraLargeRadius,
+                      border: Border.all(color: AppColors.sectionBorderColor),
                     ),
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       leading: CircleAvatar(
-                        backgroundColor: FormThemeHelper.primaryAccent,
+                        backgroundColor: AppColors.primaryAccent,
                         child: Text(
                           manufacturer.name.isNotEmpty
                               ? manufacturer.name[0].toUpperCase()
@@ -313,20 +320,20 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
                       title: Text(
                         manufacturer.name,
                         style: TextStyle(
-                          color: FormThemeHelper.primaryTextColor,
+                          color: AppColors.primaryTextColor,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       subtitle: Text(
                         '${manufacturer.models.length} models',
-                        style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                        style: TextStyle(color: AppColors.secondaryTextColor),
                       ),
                       trailing: PopupMenuButton<String>(
                         icon: Icon(
                           Icons.more_vert,
-                          color: FormThemeHelper.primaryTextColor,
+                          color: AppColors.primaryTextColor,
                         ),
-                        color: FormThemeHelper.dialogBackgroundColor,
+                        color: AppColors.dialogBackgroundColor,
                         onSelected: (value) {
                           if (value == 'edit') {
                             _showManufacturerForm(manufacturer: manufacturer);
@@ -339,9 +346,9 @@ class _AircraftSettingsScreenState extends State<AircraftSettingsScreen>
                             value: 'edit',
                             child: Row(
                               children: [
-                                Icon(Icons.edit, size: 20, color: FormThemeHelper.primaryTextColor),
+                                Icon(Icons.edit, size: 20, color: AppColors.primaryTextColor),
                                 const SizedBox(width: 8),
-                                Text('Edit', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                                Text('Edit', style: TextStyle(color: AppColors.primaryTextColor)),
                               ],
                             ),
                           ),

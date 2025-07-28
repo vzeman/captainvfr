@@ -1,7 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:flutter_map/flutter_map.dart';
 import '../widgets/themed_dialog.dart';
 import '../services/settings_service.dart';
+import '../services/offline_map_service.dart';
+import '../services/cache_service.dart';
+import '../services/airport_service.dart';
+import '../services/navaid_service.dart';
+import '../services/weather_service.dart';
+import '../constants/app_theme.dart';
+import '../constants/app_colors.dart';
+import 'offline_data/controllers/offline_data_state_controller.dart';
+import 'offline_data/sections/download_map_tiles_section.dart';
+import 'offline_data/dialogs/clear_cache_dialog.dart';
+import 'offline_data/helpers/date_formatter.dart';
+import 'offline_data/helpers/cache_statistics_helper.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -265,7 +279,7 @@ class SettingsScreen extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0x1A448AFF),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppTheme.defaultRadius,
         border: Border.all(color: const Color(0x7F448AFF)),
       ),
       child: Column(
@@ -362,19 +376,159 @@ class SettingsScreen extends StatelessWidget {
 }
 
 /// Settings dialog that can be shown as a modal
-class SettingsDialog {
-  const SettingsDialog._();
+class SettingsDialog extends StatefulWidget {
+  final LatLngBounds? currentMapBounds;
+  
+  const SettingsDialog({
+    super.key,
+    this.currentMapBounds,
+  });
 
-  static Future<void> show(BuildContext context) {
-    return ThemedDialog.show(
+  static Future<void> show(BuildContext context, {LatLngBounds? currentMapBounds}) {
+    return showDialog(
       context: context,
-      title: 'Settings',
       barrierDismissible: true,
-      maxWidth: 380,
-      maxHeight: 600,
-      content: Consumer<SettingsService>(
-        builder: (context, settings, child) {
-          return Column(
+      barrierColor: Colors.black.withValues(alpha: 0.87),
+      builder: (BuildContext context) {
+        return SettingsDialog(currentMapBounds: currentMapBounds);
+      },
+    );
+  }
+
+  @override
+  State<SettingsDialog> createState() => _SettingsDialogState();
+}
+
+class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final OfflineMapService _offlineMapService = OfflineMapService();
+  final CacheService _cacheService = CacheService();
+  final AirportService _airportService = AirportService();
+  final NavaidService _navaidService = NavaidService();
+  final WeatherService _weatherService = WeatherService();
+  final OfflineDataStateController _stateController = OfflineDataStateController();
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _loadAllCacheStats();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _stateController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadAllCacheStats() async {
+    _stateController.setLoading(true);
+
+    try {
+      await _cacheService.initialize();
+      await _weatherService.initialize();
+      await _offlineMapService.initialize();
+
+      final mapStats = await _offlineMapService.getCacheStatistics();
+      final stats = await CacheStatisticsHelper.getCacheStatistics(_weatherService);
+
+      _stateController.setMapCacheStats(mapStats);
+      _stateController.setCacheStats(stats);
+      _stateController.setLoading(false);
+    } catch (e) {
+      _stateController.setLoading(false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading cache stats: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isLandscape = screenSize.width > screenSize.height;
+    
+    final responsiveWidth = isLandscape ? 
+      (screenSize.width * 0.6).clamp(500.0, 800.0) : 
+      (screenSize.width * 0.9).clamp(300.0, 500.0);
+    
+    final responsiveHeight = isLandscape ? 
+      screenSize.height * 0.85 : 
+      screenSize.height * 0.8;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: responsiveWidth,
+        height: responsiveHeight,
+        decoration: BoxDecoration(
+          color: AppColors.dialogBackgroundColor,
+          borderRadius: AppTheme.dialogRadius,
+          border: Border.all(
+            color: AppColors.primaryAccentDim,
+            width: 1.0,
+          ),
+        ),
+        child: Column(
+          children: [
+            // Header with tabs
+            Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.primaryAccentFaint,
+                    width: 1.0,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TabBar(
+                      controller: _tabController,
+                      indicatorColor: AppColors.primaryAccent,
+                      labelColor: AppColors.primaryAccent,
+                      unselectedLabelColor: AppColors.secondaryTextColor,
+                      tabs: const [
+                        Tab(text: 'Settings'),
+                        Tab(text: 'Offline Data'),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: AppColors.primaryTextColor),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+            // Tab content
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  // Settings Tab
+                  _buildSettingsTab(),
+                  // Offline Data Tab
+                  _buildOfflineDataTab(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsTab() {
+    return Consumer<SettingsService>(
+      builder: (context, settings, child) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildCompactSection(
@@ -557,11 +711,537 @@ class SettingsDialog {
                 ],
               ),
             ],
-          );
-        },
-      ),
-      actions: [],
+          ),
+        );
+      },
     );
+  }
+
+  Widget _buildOfflineDataTab() {
+    return ListenableBuilder(
+      listenable: _stateController,
+      builder: (context, child) {
+        if (_stateController.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Aviation Data Caches Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Aviation Data Caches',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryTextColor,
+                    ),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.refresh, size: 20),
+                        onPressed: _stateController.isRefreshing ? null : _refreshAllData,
+                        tooltip: 'Refresh all data',
+                        color: AppColors.primaryAccent,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(maxHeight: 32, maxWidth: 32),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_forever, size: 20),
+                        onPressed: _clearAllCaches,
+                        tooltip: 'Clear all caches',
+                        color: Colors.red,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(maxHeight: 32, maxWidth: 32),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Cache cards in a more compact format
+              _buildCompactCacheCard(
+                title: 'Airports',
+                icon: Icons.flight_land,
+                count: _stateController.cacheStats['airports']?['count'] ?? 0,
+                lastFetch: DateFormatter.formatLastFetch(_stateController.cacheStats['airports']?['lastFetch']),
+                onClear: () => _clearSpecificCache('Airports'),
+              ),
+              _buildCompactCacheCard(
+                title: 'Navigation Aids',
+                icon: Icons.radar,
+                count: _stateController.cacheStats['navaids']?['count'] ?? 0,
+                lastFetch: DateFormatter.formatLastFetch(_stateController.cacheStats['navaids']?['lastFetch']),
+                onClear: () => _clearSpecificCache('Navaids'),
+              ),
+              _buildCompactCacheCard(
+                title: 'Runways',
+                icon: Icons.horizontal_rule,
+                count: _stateController.cacheStats['runways']?['count'] ?? 0,
+                lastFetch: DateFormatter.formatLastFetch(_stateController.cacheStats['runways']?['lastFetch']),
+                onClear: () => _clearSpecificCache('Runways'),
+              ),
+              _buildCompactCacheCard(
+                title: 'Frequencies',
+                icon: Icons.radio,
+                count: _stateController.cacheStats['frequencies']?['count'] ?? 0,
+                lastFetch: DateFormatter.formatLastFetch(_stateController.cacheStats['frequencies']?['lastFetch']),
+                onClear: () => _clearSpecificCache('Frequencies'),
+              ),
+              _buildCompactCacheCard(
+                title: 'Weather',
+                icon: Icons.cloud,
+                count: (_stateController.cacheStats['weather']?['metars'] ?? 0) + 
+                       (_stateController.cacheStats['weather']?['tafs'] ?? 0),
+                lastFetch: DateFormatter.formatLastFetch(_stateController.cacheStats['weather']?['lastFetch']),
+                onClear: () => _clearSpecificCache('Weather'),
+                onRefresh: _refreshWeatherData,
+              ),
+
+              const SizedBox(height: 16),
+
+              // Offline Map Tiles Section
+              const Text(
+                'Offline Map Tiles',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryTextColor,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Map tiles cache card
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0x1A448AFF),
+                  borderRadius: AppTheme.defaultRadius,
+                  border: Border.all(color: AppColors.primaryAccentFaint),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.map, color: AppColors.primaryAccent, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Map Tiles: ${(_stateController.mapCacheStats?['totalTiles'] as int?) ?? 0}',
+                                style: const TextStyle(
+                                  color: AppColors.primaryTextColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                _formatFileSize((_stateController.mapCacheStats?['totalSizeBytes'] as int?) ?? 0),
+                                style: const TextStyle(
+                                  color: AppColors.secondaryTextColor,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                          onPressed: () => _clearSpecificCache('Map Tiles'),
+                          color: Colors.red,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(maxHeight: 28, maxWidth: 28),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Download controls
+                    DownloadMapTilesSection(
+                      controller: _stateController,
+                      onDownload: _downloadCurrentArea,
+                      onStopDownload: _stopDownload,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCompactCacheCard({
+    required String title,
+    required IconData icon,
+    required int count,
+    required String lastFetch,
+    required VoidCallback onClear,
+    VoidCallback? onRefresh,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0x1A448AFF),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.primaryAccentFaint),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.primaryAccent, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$title: $count',
+                  style: const TextStyle(
+                    color: AppColors.primaryTextColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  lastFetch,
+                  style: const TextStyle(
+                    color: AppColors.secondaryTextColor,
+                    fontSize: 9,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (onRefresh != null)
+            IconButton(
+              icon: const Icon(Icons.refresh, size: 16),
+              onPressed: _stateController.isRefreshing ? null : onRefresh,
+              color: AppColors.primaryAccent,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(maxHeight: 24, maxWidth: 24),
+            ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 16),
+            onPressed: onClear,
+            color: Colors.red,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(maxHeight: 24, maxWidth: 24),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatFileSize(int bytes) {
+    const units = ['B', 'KB', 'MB', 'GB'];
+    var size = bytes.toDouble();
+    var unitIndex = 0;
+    
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+    
+    return '${size.toStringAsFixed(1)} ${units[unitIndex]}';
+  }
+
+  Future<void> _refreshAllData() async {
+    if (!mounted) return;
+    
+    _stateController.setRefreshing(true);
+
+    try {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 16),
+                Expanded(child: Text('Refreshing all aviation data...')),
+              ],
+            ),
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+
+      final futures = [
+        _airportService.refreshData(),
+        _navaidService.refreshData(),
+        _weatherService.forceReload(),
+      ];
+
+      await Future.wait(futures);
+      
+      if (mounted) {
+        await _loadAllCacheStats();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All data refreshed successfully'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error refreshing data: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        _stateController.setRefreshing(false);
+      }
+    }
+  }
+
+  Future<void> _refreshWeatherData() async {
+    if (!mounted) return;
+    
+    _stateController.setRefreshing(true);
+
+    try {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 16),
+                Expanded(child: Text('Refreshing weather data...')),
+              ],
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+
+      await _weatherService.forceReload();
+      
+      if (mounted) {
+        await _loadAllCacheStats();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Weather data refreshed successfully'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error refreshing weather data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        _stateController.setRefreshing(false);
+      }
+    }
+  }
+
+  Future<void> _clearSpecificCache(String cacheName) async {
+    final confirm = await ClearCacheDialog.show(
+      context: context,
+      cacheName: cacheName,
+    );
+
+    if (confirm == true) {
+      try {
+        switch (cacheName) {
+          case 'Airports':
+            await _cacheService.clearAirportsCache();
+            break;
+          case 'Navaids':
+            await _cacheService.clearNavaidsCache();
+            break;
+          case 'Runways':
+            await _cacheService.clearRunwaysCache();
+            break;
+          case 'Frequencies':
+            await _cacheService.clearFrequenciesCache();
+            break;
+          case 'Airspaces':
+            await _cacheService.clearAirspacesCache();
+            break;
+          case 'Reporting Points':
+            await _cacheService.clearReportingPointsCache();
+            break;
+          case 'Weather':
+            await _cacheService.clearWeatherCache();
+            break;
+          case 'Map Tiles':
+            await _offlineMapService.clearCache();
+            break;
+        }
+        await _loadAllCacheStats();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$cacheName cache cleared successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error clearing $cacheName cache: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _clearAllCaches() async {
+    final confirm = await ClearCacheDialog.show(
+      context: context,
+      cacheName: '',
+      isAllCaches: true,
+    );
+
+    if (confirm == true) {
+      try {
+        await Future.wait([
+          _cacheService.clearAllCaches(),
+          _offlineMapService.clearCache(),
+        ]);
+        await _loadAllCacheStats();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('All caches cleared successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error clearing caches: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _downloadCurrentArea() async {
+    if (widget.currentMapBounds == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please open this screen from the map to download the current area'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+    
+    await _downloadArea(
+      northEast: widget.currentMapBounds!.northEast,
+      southWest: widget.currentMapBounds!.southWest,
+    );
+  }
+
+  Future<void> _downloadArea({
+    required LatLng northEast,
+    required LatLng southWest,
+  }) async {
+    if (!mounted) return;
+    
+    _stateController.setDownloading(true);
+    _stateController.resetDownloadState();
+
+    try {
+      await _offlineMapService.downloadAreaTiles(
+        bounds: LatLngBounds(northEast, southWest),
+        minZoom: _stateController.minZoom,
+        maxZoom: _stateController.maxZoom,
+        onProgress: (current, total, skipped, downloaded) {
+          if (!mounted) return;
+          _stateController.updateDownloadProgress(current, total, skipped, downloaded);
+          
+          if (current % 25 == 0 || current == total) {
+            if (mounted) {
+              _loadAllCacheStats();
+            }
+          }
+        },
+      );
+
+      if (mounted) {
+        final message = _stateController.skippedTiles > 0
+            ? 'Downloaded ${_stateController.downloadedTiles} new tiles, skipped ${_stateController.skippedTiles} cached tiles'
+            : 'Downloaded ${_stateController.downloadedTiles} tiles successfully!';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        final isUserCancelled = e.toString().contains('cancelled by user');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isUserCancelled ? 'Download cancelled' : 'Download failed: $e',
+            ),
+            backgroundColor: isUserCancelled ? Colors.orange : Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        _stateController.resetDownloadState();
+        await _loadAllCacheStats();
+      }
+    }
+  }
+
+  void _stopDownload() {
+    if (!mounted) return;
+    _offlineMapService.cancelDownload();
   }
 
   static Widget _buildCompactSection({

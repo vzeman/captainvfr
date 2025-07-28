@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/flight.dart';
 import '../../models/moving_segment.dart';
 import '../../services/settings_service.dart';
+import '../../constants/app_theme.dart';
 
 class FlightInfoTab extends StatelessWidget {
   final Flight flight;
@@ -183,7 +184,7 @@ class FlightInfoTab extends StatelessWidget {
         color: Theme.of(
           context,
         ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: AppTheme.extraLargeRadius,
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
         ),
@@ -300,7 +301,7 @@ class FlightInfoTab extends StatelessWidget {
         color: Theme.of(
           context,
         ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: AppTheme.extraLargeRadius,
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
         ),
@@ -343,7 +344,7 @@ class FlightInfoTab extends StatelessWidget {
                     color: selectedSegment == segment
                         ? Theme.of(context).colorScheme.primaryContainer
                         : Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(8.0),
+                    borderRadius: AppTheme.defaultRadius,
                     border: Border.all(
                       color: selectedSegment == segment
                           ? Theme.of(context).colorScheme.primary
@@ -434,7 +435,7 @@ class FlightInfoTab extends StatelessWidget {
                 color: Theme.of(
                   context,
                 ).colorScheme.errorContainer.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(8.0),
+                borderRadius: AppTheme.defaultRadius,
               ),
               child: Row(
                 children: [
@@ -618,7 +619,7 @@ class FlightInfoTab extends StatelessWidget {
       padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(8.0),
+        borderRadius: AppTheme.defaultRadius,
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
         ),
@@ -665,7 +666,7 @@ class FlightInfoTab extends StatelessWidget {
       padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8.0),
+        borderRadius: AppTheme.defaultRadius,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -715,7 +716,7 @@ class FlightInfoTab extends StatelessWidget {
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: AppTheme.extraLargeRadius,
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
         ),

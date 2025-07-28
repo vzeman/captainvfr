@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/license.dart';
-import '../models/pilot.dart';
 import '../services/license_service.dart';
 import '../services/pilot_service.dart';
 import '../widgets/license_photos_widget.dart';
+import '../constants/app_theme.dart';
+import '../constants/app_colors.dart';
+import '../utils/form_theme_helper.dart';
 
 class LicenseDetailScreen extends StatefulWidget {
   final License? license;
@@ -85,7 +87,15 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
     final isEditing = widget.license != null;
 
     return Scaffold(
-      appBar: AppBar(title: Text(isEditing ? 'Edit License' : 'Add License')),
+      backgroundColor: AppColors.backgroundColor,
+      appBar: AppBar(
+        backgroundColor: AppColors.dialogBackgroundColor,
+        title: Text(
+          isEditing ? 'Edit License' : 'Add License',
+          style: const TextStyle(color: AppColors.primaryTextColor),
+        ),
+        iconTheme: const IconThemeData(color: AppColors.primaryTextColor),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -93,10 +103,12 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
           children: [
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'License Name',
+              style: const TextStyle(color: AppColors.primaryTextColor),
+              decoration: FormThemeHelper.getInputDecoration(
+                'License Name',
                 hintText: 'e.g., PPL, CPL, IR, Medical Class 1',
-                prefixIcon: Icon(Icons.card_membership),
+              ).copyWith(
+                prefixIcon: const Icon(Icons.card_membership, color: AppColors.primaryAccent),
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
@@ -108,10 +120,12 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description',
+              style: const TextStyle(color: AppColors.primaryTextColor),
+              decoration: FormThemeHelper.getInputDecoration(
+                'Description',
                 hintText: 'e.g., Private Pilot License - SEP(land)',
-                prefixIcon: Icon(Icons.description),
+              ).copyWith(
+                prefixIcon: const Icon(Icons.description, color: AppColors.primaryAccent),
               ),
               maxLines: 2,
               validator: (value) {
@@ -124,10 +138,12 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _licenseNumberController,
-              decoration: const InputDecoration(
-                labelText: 'License Number (Optional)',
+              style: const TextStyle(color: AppColors.primaryTextColor),
+              decoration: FormThemeHelper.getInputDecoration(
+                'License Number (Optional)',
                 hintText: 'e.g., UK.FCL.PPL.12345',
-                prefixIcon: Icon(Icons.confirmation_number),
+              ).copyWith(
+                prefixIcon: const Icon(Icons.confirmation_number, color: AppColors.primaryAccent),
               ),
             ),
             const SizedBox(height: 16),
@@ -165,7 +181,7 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
                                 color: Theme.of(context).colorScheme.primary,
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: AppTheme.defaultRadius,
                               ),
                               child: Text(
                                 'Current',
@@ -309,7 +325,7 @@ class _LicenseDetailScreenState extends State<LicenseDetailScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: statusColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppTheme.defaultRadius,
         border: Border.all(color: statusColor.withValues(alpha: 0.3)),
       ),
       child: Row(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_theme.dart';
 
 class SimpleLoadingScreen extends StatelessWidget {
   const SimpleLoadingScreen({super.key});
@@ -22,7 +23,7 @@ class SimpleLoadingScreen extends StatelessWidget {
                   height: 120,
                   decoration: BoxDecoration(
                     color: Colors.blue[100],
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: AppTheme.defaultRadius,
                   ),
                   child: const Icon(
                     Icons.flight_takeoff,

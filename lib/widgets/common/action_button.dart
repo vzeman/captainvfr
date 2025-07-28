@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../constants/app_theme.dart';
 
 class ActionButton extends StatelessWidget {
   final IconData icon;
@@ -24,7 +25,7 @@ class ActionButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(borderRadius: AppTheme.buttonRadius),
           side: BorderSide(
             color: theme.colorScheme.outline.withValues(alpha: 0.4), // 40% opacity
           ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/settings_service.dart';
+import '../../constants/app_colors.dart';
 import '../../utils/form_theme_helper.dart';
 import 'dart:math' as math;
 
@@ -122,15 +123,15 @@ class _WindCorrectionCalculatorState extends State<WindCorrectionCalculator> {
     final speedUnit = isImperial ? 'kts' : 'km/h';
 
     return Scaffold(
-      backgroundColor: FormThemeHelper.backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
-        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        backgroundColor: AppColors.dialogBackgroundColor,
         title: const Text(
           'Wind Correction Angle',
-          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          style: TextStyle(color: AppColors.primaryTextColor),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: FormThemeHelper.primaryTextColor),
+          icon: const Icon(Icons.arrow_back, color: AppColors.primaryTextColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -200,8 +201,8 @@ class _WindCorrectionCalculatorState extends State<WindCorrectionCalculator> {
                     children: [
                       Text(
                         'Navigation Results',
-                        style: FormThemeHelper.sectionTitleStyle.copyWith(
-                          color: FormThemeHelper.primaryTextColor,
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryTextColor).copyWith(
+                          color: AppColors.primaryTextColor,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -210,63 +211,63 @@ class _WindCorrectionCalculatorState extends State<WindCorrectionCalculator> {
                         children: [
                           Column(
                             children: [
-                              Icon(Icons.explore, size: 40, color: FormThemeHelper.primaryAccent),
+                              Icon(Icons.explore, size: 40, color: AppColors.primaryAccent),
                               const SizedBox(height: 8),
-                              Text('Heading to Fly', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                              Text('Heading to Fly', style: TextStyle(color: AppColors.primaryTextColor)),
                               Text(
                                 '${_headingToFly!.toStringAsFixed(0)}°',
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
-                                  color: FormThemeHelper.primaryAccent,
+                                  color: AppColors.primaryAccent,
                                 ),
                               ),
                             ],
                           ),
                           Column(
                             children: [
-                              Icon(Icons.rotate_left, size: 40, color: FormThemeHelper.primaryAccent),
+                              Icon(Icons.rotate_left, size: 40, color: AppColors.primaryAccent),
                               const SizedBox(height: 8),
-                              Text('Wind Correction', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                              Text('Wind Correction', style: TextStyle(color: AppColors.primaryTextColor)),
                               Text(
                                 '${_windCorrectionAngle! > 0 ? "+" : ""}${_windCorrectionAngle!.toStringAsFixed(1)}°',
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
-                                  color: FormThemeHelper.primaryAccent,
+                                  color: AppColors.primaryAccent,
                                 ),
                               ),
                             ],
                           ),
                         ],
                       ),
-                      Divider(height: 32, color: FormThemeHelper.borderColor),
+                      Divider(height: 32, color: AppColors.primaryAccent),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           Column(
                             children: [
-                              Icon(Icons.speed, size: 32, color: FormThemeHelper.primaryAccent),
+                              Icon(Icons.speed, size: 32, color: AppColors.primaryAccent),
                               const SizedBox(height: 4),
-                              Text('Ground Speed', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                              Text('Ground Speed', style: TextStyle(color: AppColors.primaryTextColor)),
                               Text(
                                 '${_groundSpeed!.toStringAsFixed(0)} $speedUnit',
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: FormThemeHelper.primaryAccent,
+                                  color: AppColors.primaryAccent,
                                 ),
                               ),
                             ],
                           ),
                           Column(
                             children: [
-                              Icon(Icons.air, size: 32, color: FormThemeHelper.primaryAccent),
+                              Icon(Icons.air, size: 32, color: AppColors.primaryAccent),
                               const SizedBox(height: 4),
-                              Text('Wind Type', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                              Text('Wind Type', style: TextStyle(color: AppColors.primaryTextColor)),
                               Text(
                                 _windType!,
-                                style: TextStyle(fontSize: 16, color: FormThemeHelper.primaryTextColor),
+                                style: TextStyle(fontSize: 16, color: AppColors.primaryTextColor),
                               ),
                             ],
                           ),
@@ -276,9 +277,9 @@ class _WindCorrectionCalculatorState extends State<WindCorrectionCalculator> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: FormThemeHelper.fillColor,
+                          color: AppColors.fillColorFaint,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: FormThemeHelper.borderColor),
+                          border: Border.all(color: AppColors.primaryAccent),
                         ),
                         child: Column(
                           children: [
@@ -286,14 +287,14 @@ class _WindCorrectionCalculatorState extends State<WindCorrectionCalculator> {
                               'Summary',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: FormThemeHelper.primaryAccent,
+                                color: AppColors.primaryAccent,
                               ),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               'To maintain course ${_courseController.text}°, fly heading ${_headingToFly!.toStringAsFixed(0)}°',
                               textAlign: TextAlign.center,
-                              style: TextStyle(color: FormThemeHelper.primaryTextColor),
+                              style: TextStyle(color: AppColors.primaryTextColor),
                             ),
                             if (_windCorrectionAngle!.abs() > 20) ...[
                               const SizedBox(height: 8),

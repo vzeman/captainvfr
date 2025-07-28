@@ -4,6 +4,7 @@ import '../services/aircraft_settings_service.dart';
 import '../models/aircraft.dart';
 import '../models/manufacturer.dart';
 import '../models/model.dart';
+import '../constants/app_colors.dart';
 import '../utils/form_theme_helper.dart';
 
 class AircraftFormDialog extends StatefulWidget {
@@ -233,7 +234,7 @@ class _AircraftFormDialogState extends State<AircraftFormDialog> {
                         children: [
                           Text(
                             'Basic Information',
-                            style: FormThemeHelper.sectionTitleStyle,
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryTextColor),
                           ),
                           const SizedBox(height: 16),
                           FormThemeHelper.buildFormField(
@@ -261,7 +262,7 @@ class _AircraftFormDialogState extends State<AircraftFormDialog> {
                             items: service.manufacturers.map((manufacturer) {
                               return DropdownMenuItem(
                                 value: manufacturer,
-                                child: Text(manufacturer.name, style: FormThemeHelper.inputTextStyle),
+                                child: Text(manufacturer.name, style: TextStyle(color: AppColors.primaryTextColor)),
                               );
                             }).toList(),
                             onChanged: (manufacturer) {
@@ -289,7 +290,7 @@ class _AircraftFormDialogState extends State<AircraftFormDialog> {
                               ).models.firstWhere((m) => m.id == modelId);
                               return DropdownMenuItem<Model>(
                                 value: model,
-                                child: Text(model.name, style: FormThemeHelper.inputTextStyle),
+                                child: Text(model.name, style: TextStyle(color: AppColors.primaryTextColor)),
                               );
                             }).toList() ?? [],
                             onChanged: (model) {

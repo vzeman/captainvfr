@@ -5,6 +5,8 @@ import '../services/checklist_service.dart';
 import '../widgets/checklist_run_dialog.dart';
 import '../widgets/aircraft_photos_widget.dart';
 import '../widgets/aircraft_documents_widget.dart';
+import '../constants/app_colors.dart';
+import '../constants/app_theme.dart';
 
 /// Detail screen for a specific aircraft, providing tabs for checklists and flight history.
 class AircraftDetailScreen extends StatelessWidget {
@@ -18,11 +20,20 @@ class AircraftDetailScreen extends StatelessWidget {
     return DefaultTabController(
       length: 5,
       child: Scaffold(
+        backgroundColor: AppColors.backgroundColor,
         appBar: AppBar(
-          title: Text(aircraft.name),
-          bottom: const TabBar(
+          backgroundColor: AppColors.dialogBackgroundColor,
+          title: Text(
+            aircraft.name,
+            style: const TextStyle(color: AppColors.primaryTextColor),
+          ),
+          iconTheme: const IconThemeData(color: AppColors.primaryTextColor),
+          bottom: TabBar(
             isScrollable: true,
-            tabs: [
+            indicatorColor: AppColors.primaryAccent,
+            labelColor: AppColors.primaryAccent,
+            unselectedLabelColor: AppColors.secondaryTextColor,
+            tabs: const [
               Tab(icon: Icon(Icons.info), text: 'Info'),
               Tab(icon: Icon(Icons.photo_library), text: 'Photos'),
               Tab(icon: Icon(Icons.folder), text: 'Documents'),
@@ -46,8 +57,11 @@ class AircraftDetailScreen extends StatelessWidget {
                       c.modelId == aircraft.modelId;
                 }).toList();
                 if (items.isEmpty) {
-                  return const Center(
-                    child: Text('No checklists available for this aircraft'),
+                  return Center(
+                    child: Text(
+                      'No checklists available for this aircraft',
+                      style: TextStyle(color: AppColors.tertiaryTextColor),
+                    ),
                   );
                 }
                 return ListView.builder(
@@ -56,13 +70,24 @@ class AircraftDetailScreen extends StatelessWidget {
                     final checklist = items[index];
                     return Card(
                       margin: const EdgeInsets.all(8),
+                      color: AppColors.sectionBackgroundColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: AppTheme.defaultRadius,
+                        side: BorderSide(color: AppColors.sectionBorderColor),
+                      ),
                       child: ListTile(
-                        title: Text(checklist.name),
+                        title: Text(
+                          checklist.name,
+                          style: const TextStyle(color: AppColors.primaryTextColor),
+                        ),
                         subtitle: checklist.description != null
-                            ? Text(checklist.description!)
+                            ? Text(
+                                checklist.description!,
+                                style: TextStyle(color: AppColors.secondaryTextColor),
+                              )
                             : null,
                         trailing: IconButton(
-                          icon: const Icon(Icons.play_arrow),
+                          icon: const Icon(Icons.play_arrow, color: AppColors.primaryAccent),
                           onPressed: () {
                             showDialog(
                               context: context,
@@ -79,7 +104,12 @@ class AircraftDetailScreen extends StatelessWidget {
                 );
               },
             ),
-            const Center(child: Text('Flight history coming soon')),
+            Center(
+              child: Text(
+                'Flight history coming soon',
+                style: TextStyle(color: AppColors.tertiaryTextColor),
+              ),
+            ),
           ],
         ),
       ),
@@ -93,6 +123,11 @@ class AircraftDetailScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Card(
+            color: AppColors.sectionBackgroundColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: AppTheme.defaultRadius,
+              side: BorderSide(color: AppColors.sectionBorderColor),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -100,7 +135,11 @@ class AircraftDetailScreen extends StatelessWidget {
                 children: [
                   const Text(
                     'Aircraft Information',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryTextColor,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   _buildInfoRow('Registration', aircraft.registration ?? 'N/A'),
@@ -117,6 +156,11 @@ class AircraftDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Card(
+            color: AppColors.sectionBackgroundColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: AppTheme.defaultRadius,
+              side: BorderSide(color: AppColors.sectionBorderColor),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -124,7 +168,11 @@ class AircraftDetailScreen extends StatelessWidget {
                 children: [
                   const Text(
                     'Performance',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryTextColor,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   _buildInfoRow(
@@ -153,6 +201,11 @@ class AircraftDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Card(
+            color: AppColors.sectionBackgroundColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: AppTheme.defaultRadius,
+              side: BorderSide(color: AppColors.sectionBorderColor),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -160,7 +213,11 @@ class AircraftDetailScreen extends StatelessWidget {
                 children: [
                   const Text(
                     'Weight & Fuel',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryTextColor,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   _buildInfoRow(
@@ -183,6 +240,11 @@ class AircraftDetailScreen extends StatelessWidget {
               aircraft.description!.isNotEmpty) ...[
             const SizedBox(height: 16),
             Card(
+              color: AppColors.sectionBackgroundColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: AppTheme.defaultRadius,
+                side: BorderSide(color: AppColors.sectionBorderColor),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -193,10 +255,14 @@ class AircraftDetailScreen extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: AppColors.primaryTextColor,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(aircraft.description!),
+                    Text(
+                      aircraft.description!,
+                      style: TextStyle(color: AppColors.secondaryTextColor),
+                    ),
                   ],
                 ),
               ),
@@ -215,12 +281,18 @@ class AircraftDetailScreen extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w500,
-              color: Colors.grey,
+              color: AppColors.secondaryTextColor,
             ),
           ),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: AppColors.primaryTextColor,
+            ),
+          ),
         ],
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../constants/app_colors.dart';
 
 class InfoRow extends StatelessWidget {
   final String label;
@@ -8,7 +9,6 @@ class InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -16,17 +16,19 @@ class InfoRow extends StatelessWidget {
         children: [
           Text(
             '$label: ',
-            style: theme.textTheme.bodyMedium?.copyWith(
+            style: TextStyle(
+              fontSize: 13,
               fontWeight: FontWeight.bold,
-              color: theme.hintColor,
+              color: AppColors.secondaryTextColor,
             ),
           ),
           const SizedBox(width: 4),
           Expanded(
             child: Text(
               value,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.textTheme.bodyMedium?.color,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.primaryTextColor,
               ),
               overflow: TextOverflow.ellipsis,
               maxLines: 2,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/settings_service.dart';
+import '../../constants/app_colors.dart';
 import '../../utils/form_theme_helper.dart';
 
 class DensityAltitudeCalculator extends StatefulWidget {
@@ -94,14 +95,14 @@ class _DensityAltitudeCalculatorState extends State<DensityAltitudeCalculator> {
     final pressureUnit = settingsService.pressureUnit;
 
     return Scaffold(
-      backgroundColor: FormThemeHelper.backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
-        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        backgroundColor: AppColors.dialogBackgroundColor,
         title: const Text(
           'Density Altitude Calculator',
-          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          style: TextStyle(color: AppColors.primaryTextColor),
         ),
-        foregroundColor: FormThemeHelper.primaryTextColor,
+        foregroundColor: AppColors.primaryTextColor,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -112,10 +113,10 @@ class _DensityAltitudeCalculatorState extends State<DensityAltitudeCalculator> {
               title: 'Input Method',
               children: [
                 RadioListTile<bool>(
-                  title: const Text('Field Elevation + Altimeter', style: FormThemeHelper.inputTextStyle),
+                  title: const Text('Field Elevation + Altimeter', style: TextStyle(color: AppColors.primaryTextColor)),
                   value: true,
                   groupValue: _useFieldElevation,
-                  activeColor: FormThemeHelper.primaryAccent,
+                  activeColor: AppColors.primaryAccent,
                   onChanged: (value) {
                     setState(() {
                       _useFieldElevation = value!;
@@ -125,10 +126,10 @@ class _DensityAltitudeCalculatorState extends State<DensityAltitudeCalculator> {
                   },
                 ),
                 RadioListTile<bool>(
-                  title: const Text('Pressure Altitude', style: FormThemeHelper.inputTextStyle),
+                  title: const Text('Pressure Altitude', style: TextStyle(color: AppColors.primaryTextColor)),
                   value: false,
                   groupValue: _useFieldElevation,
-                  activeColor: FormThemeHelper.primaryAccent,
+                  activeColor: AppColors.primaryAccent,
                   onChanged: (value) {
                     setState(() {
                       _useFieldElevation = value!;
@@ -195,7 +196,7 @@ class _DensityAltitudeCalculatorState extends State<DensityAltitudeCalculator> {
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: FormThemeHelper.primaryAccent,
+                      color: AppColors.primaryAccent,
                     ),
                   ),
                   const SizedBox(height: 16),
