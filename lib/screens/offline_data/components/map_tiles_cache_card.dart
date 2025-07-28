@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../utils/form_theme_helper.dart';
+import '../../../constants/app_colors.dart';
+import '../../../constants/app_theme.dart';
 
 /// Map tiles cache card with zoom level breakdown
 class MapTilesCacheCard extends StatelessWidget {
@@ -21,9 +22,9 @@ class MapTilesCacheCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: FormThemeHelper.sectionBackgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: FormThemeHelper.sectionBorderColor),
+        color: AppColors.sectionBackgroundColor,
+        borderRadius: AppTheme.extraLargeRadius,
+        border: Border.all(color: AppColors.sectionBorderColor),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -32,7 +33,7 @@ class MapTilesCacheCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.map, size: 24, color: FormThemeHelper.primaryAccent),
+                Icon(Icons.map, size: 24, color: AppColors.primaryAccent),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -40,7 +41,7 @@ class MapTilesCacheCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: FormThemeHelper.primaryTextColor,
+                      color: AppColors.primaryTextColor,
                     ),
                   ),
                 ),
@@ -55,12 +56,12 @@ class MapTilesCacheCard extends StatelessWidget {
             if (tileCount > 0) ...[
               Text(
                 'Total tiles: $tileCount',
-                style: TextStyle(fontSize: 16, color: FormThemeHelper.primaryTextColor),
+                style: TextStyle(fontSize: 16, color: AppColors.primaryTextColor),
               ),
               const SizedBox(height: 4),
               Text(
                 'Total size: ${totalSizeMB.toStringAsFixed(2)} MB',
-                style: TextStyle(fontSize: 16, color: FormThemeHelper.primaryTextColor),
+                style: TextStyle(fontSize: 16, color: AppColors.primaryTextColor),
               ),
               const SizedBox(height: 16),
               Text(
@@ -68,7 +69,7 @@ class MapTilesCacheCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: FormThemeHelper.primaryTextColor,
+                  color: AppColors.primaryTextColor,
                 ),
               ),
               const SizedBox(height: 8),
@@ -85,11 +86,11 @@ class MapTilesCacheCard extends StatelessWidget {
                       children: [
                         Text(
                           'Zoom $zoom:',
-                          style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                          style: TextStyle(color: AppColors.secondaryTextColor),
                         ),
                         Text(
                           '$count tiles (${sizeMB.toStringAsFixed(2)} MB)',
-                          style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                          style: TextStyle(color: AppColors.secondaryTextColor),
                         ),
                       ],
                     ),
@@ -98,7 +99,7 @@ class MapTilesCacheCard extends StatelessWidget {
             ] else
               Text(
                 'No cached tiles',
-                style: TextStyle(fontSize: 16, color: FormThemeHelper.secondaryTextColor),
+                style: TextStyle(fontSize: 16, color: AppColors.secondaryTextColor),
               ),
           ],
         ),

@@ -9,6 +9,8 @@ import '../widgets/vibration_chart.dart';
 import '../widgets/flight_detail/flight_detail_map.dart';
 import '../widgets/flight_detail/flight_info_tab.dart';
 import '../widgets/flight_detail/flight_segments_tab.dart';
+import '../constants/app_colors.dart';
+import '../constants/app_theme.dart';
 
 class FlightDetailScreen extends StatefulWidget {
   final Flight flight;
@@ -37,11 +39,20 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
     return DefaultTabController(
       length: 5,
       child: Scaffold(
+        backgroundColor: AppColors.backgroundColor,
         appBar: AppBar(
-          title: const Text('Flight Details'),
-          bottom: const TabBar(
+          backgroundColor: AppColors.dialogBackgroundColor,
+          title: const Text(
+            'Flight Details',
+            style: TextStyle(color: AppColors.primaryTextColor),
+          ),
+          iconTheme: const IconThemeData(color: AppColors.primaryTextColor),
+          bottom: TabBar(
             isScrollable: true,
-            tabs: [
+            indicatorColor: AppColors.primaryAccent,
+            labelColor: AppColors.primaryAccent,
+            unselectedLabelColor: AppColors.secondaryTextColor,
+            tabs: const [
               Tab(icon: Icon(Icons.info_outline), text: 'Info'),
               Tab(icon: Icon(Icons.timeline), text: 'Segments'),
               Tab(icon: Icon(Icons.speed), text: 'Speed'),
@@ -53,16 +64,16 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
               child: TextButton.icon(
-                icon: const Icon(Icons.menu_book, color: Colors.white),
+                icon: const Icon(Icons.menu_book, color: AppColors.primaryTextColor),
                 label: const Text(
                   'Add to Logbook',
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: AppColors.primaryTextColor),
                 ),
                 style: TextButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
+                  backgroundColor: AppColors.primaryAccent,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AppTheme.buttonRadius,
                   ),
                 ),
                 onPressed: () async {
@@ -92,7 +103,7 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Error creating logbook entry: $e'),
-                          backgroundColor: Colors.red,
+                          backgroundColor: AppColors.errorColor,
                         ),
                       );
                     }
@@ -213,11 +224,11 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 48, color: Theme.of(context).disabledColor),
+              Icon(icon, size: 48, color: AppColors.tertiaryTextColor),
               const SizedBox(height: 16),
               Text(
                 noDataMessage,
-                style: TextStyle(color: Theme.of(context).disabledColor),
+                style: TextStyle(color: AppColors.tertiaryTextColor),
               ),
             ],
           ),

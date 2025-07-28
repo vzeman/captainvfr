@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../utils/form_theme_helper.dart';
+import '../../constants/app_colors.dart';
 
 class InfoRow extends StatelessWidget {
   final String label;
@@ -19,7 +19,7 @@ class InfoRow extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.bold,
-              color: FormThemeHelper.secondaryTextColor,
+              color: AppColors.secondaryTextColor,
             ),
           ),
           const SizedBox(width: 4),
@@ -28,7 +28,7 @@ class InfoRow extends StatelessWidget {
               value,
               style: TextStyle(
                 fontSize: 13,
-                color: FormThemeHelper.primaryTextColor,
+                color: AppColors.primaryTextColor,
               ),
               overflow: TextOverflow.ellipsis,
               maxLines: 2,

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../services/settings_service.dart';
 import '../../models/aircraft.dart';
 import '../../widgets/aircraft_selector_widget.dart';
+import '../../constants/app_colors.dart';
 import '../../utils/form_theme_helper.dart';
 
 class TakeoffLandingCalculator extends StatefulWidget {
@@ -171,15 +172,15 @@ class _TakeoffLandingCalculatorState extends State<TakeoffLandingCalculator> {
     final pressureUnit = settingsService.pressureUnit;
 
     return Scaffold(
-      backgroundColor: FormThemeHelper.backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
-        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        backgroundColor: AppColors.dialogBackgroundColor,
         title: const Text(
           'Takeoff & Landing Calculator',
-          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          style: TextStyle(color: AppColors.primaryTextColor),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: FormThemeHelper.primaryTextColor),
+          icon: const Icon(Icons.arrow_back, color: AppColors.primaryTextColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -279,33 +280,33 @@ class _TakeoffLandingCalculatorState extends State<TakeoffLandingCalculator> {
                     children: [
                       Text(
                         'Performance Results',
-                        style: FormThemeHelper.sectionTitleStyle.copyWith(
-                          color: FormThemeHelper.primaryTextColor,
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryTextColor).copyWith(
+                          color: AppColors.primaryTextColor,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Density Altitude: ${isImperial ? _densityAltitude!.toStringAsFixed(0) : (_densityAltitude! / 3.28084).toStringAsFixed(0)} ${isImperial ? "ft" : "m"}',
-                        style: TextStyle(fontSize: 14, color: FormThemeHelper.primaryTextColor),
+                        style: TextStyle(fontSize: 14, color: AppColors.primaryTextColor),
                       ),
-                      Divider(height: 24, color: FormThemeHelper.borderColor),
+                      Divider(height: 24, color: AppColors.primaryAccent),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           Column(
                             children: [
-                              Icon(Icons.flight_takeoff, size: 40, color: FormThemeHelper.primaryAccent),
+                              Icon(Icons.flight_takeoff, size: 40, color: AppColors.primaryAccent),
                               const SizedBox(height: 8),
                               Text(
                                 'TAKEOFF',
-                                style: TextStyle(fontWeight: FontWeight.bold, color: FormThemeHelper.primaryTextColor),
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryTextColor),
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 'Ground Roll',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: FormThemeHelper.secondaryTextColor,
+                                  color: AppColors.secondaryTextColor,
                                 ),
                               ),
                               Text(
@@ -313,7 +314,7 @@ class _TakeoffLandingCalculatorState extends State<TakeoffLandingCalculator> {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: FormThemeHelper.primaryAccent,
+                                  color: AppColors.primaryAccent,
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -321,7 +322,7 @@ class _TakeoffLandingCalculatorState extends State<TakeoffLandingCalculator> {
                                 'Over 50ft',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: FormThemeHelper.secondaryTextColor,
+                                  color: AppColors.secondaryTextColor,
                                 ),
                               ),
                               Text(
@@ -329,25 +330,25 @@ class _TakeoffLandingCalculatorState extends State<TakeoffLandingCalculator> {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: FormThemeHelper.primaryAccent,
+                                  color: AppColors.primaryAccent,
                                 ),
                               ),
                             ],
                           ),
                           Column(
                             children: [
-                              Icon(Icons.flight_land, size: 40, color: FormThemeHelper.primaryAccent),
+                              Icon(Icons.flight_land, size: 40, color: AppColors.primaryAccent),
                               const SizedBox(height: 8),
                               Text(
                                 'LANDING',
-                                style: TextStyle(fontWeight: FontWeight.bold, color: FormThemeHelper.primaryTextColor),
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryTextColor),
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 'Ground Roll',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: FormThemeHelper.secondaryTextColor,
+                                  color: AppColors.secondaryTextColor,
                                 ),
                               ),
                               Text(
@@ -355,7 +356,7 @@ class _TakeoffLandingCalculatorState extends State<TakeoffLandingCalculator> {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: FormThemeHelper.primaryAccent,
+                                  color: AppColors.primaryAccent,
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -363,7 +364,7 @@ class _TakeoffLandingCalculatorState extends State<TakeoffLandingCalculator> {
                                 'Over 50ft',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: FormThemeHelper.secondaryTextColor,
+                                  color: AppColors.secondaryTextColor,
                                 ),
                               ),
                               Text(
@@ -371,7 +372,7 @@ class _TakeoffLandingCalculatorState extends State<TakeoffLandingCalculator> {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: FormThemeHelper.primaryAccent,
+                                  color: AppColors.primaryAccent,
                                 ),
                               ),
                             ],

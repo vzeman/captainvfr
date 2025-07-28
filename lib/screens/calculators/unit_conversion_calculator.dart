@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../constants/app_colors.dart';
 import '../../utils/form_theme_helper.dart';
 
 class UnitConversionCalculator extends StatefulWidget {
@@ -235,15 +236,15 @@ class _UnitConversionCalculatorState extends State<UnitConversionCalculator> {
     final units = _conversions[_selectedCategory]!.keys.toList();
 
     return Scaffold(
-      backgroundColor: FormThemeHelper.backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
-        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        backgroundColor: AppColors.dialogBackgroundColor,
         title: const Text(
           'Unit Conversion',
-          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          style: TextStyle(color: AppColors.primaryTextColor),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: FormThemeHelper.primaryTextColor),
+          icon: const Icon(Icons.arrow_back, color: AppColors.primaryTextColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -310,7 +311,7 @@ class _UnitConversionCalculatorState extends State<UnitConversionCalculator> {
                         ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Icon(Icons.arrow_forward, color: FormThemeHelper.primaryAccent),
+                          child: Icon(Icons.arrow_forward, color: AppColors.primaryAccent),
                         ),
                         Expanded(
                           child: FormThemeHelper.buildDropdownField<String>(
@@ -355,8 +356,8 @@ class _UnitConversionCalculatorState extends State<UnitConversionCalculator> {
                     children: [
                       Text(
                         'Result',
-                        style: FormThemeHelper.sectionTitleStyle.copyWith(
-                          color: FormThemeHelper.primaryTextColor,
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryTextColor).copyWith(
+                          color: AppColors.primaryTextColor,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -364,16 +365,16 @@ class _UnitConversionCalculatorState extends State<UnitConversionCalculator> {
                         '${_inputController.text} $_fromUnit',
                         style: const TextStyle(
                           fontSize: 16,
-                          color: FormThemeHelper.primaryTextColor,
+                          color: AppColors.primaryTextColor,
                         ),
                       ),
-                      Icon(Icons.arrow_downward, size: 32, color: FormThemeHelper.primaryAccent),
+                      Icon(Icons.arrow_downward, size: 32, color: AppColors.primaryAccent),
                       Text(
                         '${_result!.toStringAsFixed(4)} $_toUnit',
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: FormThemeHelper.primaryAccent,
+                          color: AppColors.primaryAccent,
                         ),
                       ),
                     ],

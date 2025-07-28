@@ -4,8 +4,9 @@ import 'package:intl/intl.dart';
 import '../../services/logbook_service.dart';
 import '../../models/logbook_entry.dart';
 import 'logbook_entry_dialog.dart';
-import '../../utils/form_theme_helper.dart';
+import '../../constants/app_colors.dart';
 import '../../widgets/themed_dialog.dart';
+import '../../constants/app_theme.dart';
 
 class LogBookEntriesTab extends StatelessWidget {
   const LogBookEntriesTab({super.key});
@@ -16,7 +17,7 @@ class LogBookEntriesTab extends StatelessWidget {
     final entries = logBookService.entries;
 
     return Scaffold(
-      backgroundColor: FormThemeHelper.backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       body: entries.isEmpty
           ? Center(
               child: Column(
@@ -25,7 +26,7 @@ class LogBookEntriesTab extends StatelessWidget {
                   Icon(
                     Icons.book,
                     size: 64,
-                    color: FormThemeHelper.secondaryTextColor,
+                    color: AppColors.secondaryTextColor,
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -33,7 +34,7 @@ class LogBookEntriesTab extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: FormThemeHelper.primaryTextColor,
+                      color: AppColors.primaryTextColor,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -41,7 +42,7 @@ class LogBookEntriesTab extends StatelessWidget {
                     'Add your first flight entry',
                     style: TextStyle(
                       fontSize: 14,
-                      color: FormThemeHelper.secondaryTextColor,
+                      color: AppColors.secondaryTextColor,
                     ),
                   ),
                 ],
@@ -55,7 +56,7 @@ class LogBookEntriesTab extends StatelessWidget {
               },
             ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: FormThemeHelper.primaryAccent,
+        backgroundColor: AppColors.primaryAccent,
         foregroundColor: Colors.white,
         onPressed: () {
           LogBookEntryDialog.show(context);
@@ -77,11 +78,11 @@ class _LogBookEntryTile extends StatelessWidget {
     final timeFormat = DateFormat('HH:mm');
 
     return Card(
-      color: FormThemeHelper.sectionBackgroundColor,
+      color: AppColors.sectionBackgroundColor,
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: FormThemeHelper.sectionBorderColor),
+        borderRadius: AppTheme.defaultRadius,
+        side: BorderSide(color: AppColors.sectionBorderColor),
       ),
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: ListTile(
@@ -96,7 +97,7 @@ class _LogBookEntryTile extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: FormThemeHelper.primaryTextColor,
+                  color: AppColors.primaryTextColor,
                 ),
               ),
             ),
@@ -105,7 +106,7 @@ class _LogBookEntryTile extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: FormThemeHelper.primaryAccent,
+                color: AppColors.primaryAccent,
               ),
             ),
           ],
@@ -119,28 +120,28 @@ class _LogBookEntryTile extends StatelessWidget {
                 Icon(
                   Icons.calendar_today,
                   size: 16,
-                  color: FormThemeHelper.secondaryTextColor,
+                  color: AppColors.secondaryTextColor,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   dateFormat.format(entry.dateTimeStarted),
                   style: TextStyle(
                     fontSize: 13,
-                    color: FormThemeHelper.secondaryTextColor,
+                    color: AppColors.secondaryTextColor,
                   ),
                 ),
                 const SizedBox(width: 16),
                 Icon(
                   Icons.access_time,
                   size: 16,
-                  color: FormThemeHelper.secondaryTextColor,
+                  color: AppColors.secondaryTextColor,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   '${timeFormat.format(entry.dateTimeStarted)} - ${timeFormat.format(entry.dateTimeFinished)}',
                   style: TextStyle(
                     fontSize: 13,
-                    color: FormThemeHelper.secondaryTextColor,
+                    color: AppColors.secondaryTextColor,
                   ),
                 ),
               ],
@@ -152,14 +153,14 @@ class _LogBookEntryTile extends StatelessWidget {
                   Icon(
                     Icons.airplanemode_active,
                     size: 16,
-                    color: FormThemeHelper.secondaryTextColor,
+                    color: AppColors.secondaryTextColor,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     entry.aircraftType!,
                     style: TextStyle(
                       fontSize: 13,
-                      color: FormThemeHelper.primaryTextColor,
+                      color: AppColors.primaryTextColor,
                     ),
                   ),
                   if (entry.aircraftIdentification != null) ...[
@@ -167,7 +168,7 @@ class _LogBookEntryTile extends StatelessWidget {
                       ' (${entry.aircraftIdentification})',
                       style: TextStyle(
                         fontSize: 13,
-                        color: FormThemeHelper.secondaryTextColor,
+                        color: AppColors.secondaryTextColor,
                       ),
                     ),
                   ],
@@ -179,7 +180,7 @@ class _LogBookEntryTile extends StatelessWidget {
                         ? Icons.wb_sunny
                         : Icons.nightlight_round,
                     size: 16,
-                    color: FormThemeHelper.secondaryTextColor,
+                    color: AppColors.secondaryTextColor,
                   ),
                   const SizedBox(width: 4),
                   Text(
@@ -188,7 +189,7 @@ class _LogBookEntryTile extends StatelessWidget {
                         : 'Night',
                     style: TextStyle(
                       fontSize: 13,
-                      color: FormThemeHelper.primaryTextColor,
+                      color: AppColors.primaryTextColor,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -198,7 +199,7 @@ class _LogBookEntryTile extends StatelessWidget {
                     entry.flightRules!.name.toUpperCase(),
                     style: TextStyle(
                       fontSize: 12,
-                      color: FormThemeHelper.primaryAccent,
+                      color: AppColors.primaryAccent,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -208,6 +209,11 @@ class _LogBookEntryTile extends StatelessWidget {
           ],
         ),
         trailing: PopupMenuButton<String>(
+          color: AppColors.dialogBackgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppTheme.defaultRadius,
+            side: BorderSide(color: AppColors.sectionBorderColor),
+          ),
           onSelected: (value) async {
             if (value == 'delete') {
               final confirmed = await ThemedDialog.showConfirmation(
@@ -225,11 +231,11 @@ class _LogBookEntryTile extends StatelessWidget {
             }
           },
           itemBuilder: (context) => [
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'delete',
               child: ListTile(
-                leading: Icon(Icons.delete),
-                title: Text('Delete'),
+                leading: Icon(Icons.delete, color: Colors.red),
+                title: Text('Delete', style: TextStyle(color: Colors.red)),
                 contentPadding: EdgeInsets.zero,
               ),
             ),

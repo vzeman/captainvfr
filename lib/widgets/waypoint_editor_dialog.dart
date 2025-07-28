@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/flight_plan.dart';
 import '../services/flight_plan_service.dart';
 import '../services/settings_service.dart';
+import '../constants/app_colors.dart';
 import '../utils/form_theme_helper.dart';
 
 class WaypointEditorDialog extends StatefulWidget {
@@ -85,7 +86,7 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
             padding: const EdgeInsets.all(16),
             child: Text(
               'Are you sure you want to delete waypoint "${widget.waypoint.name ?? 'WP${widget.waypointIndex + 1}'}"?',
-              style: TextStyle(color: FormThemeHelper.primaryTextColor),
+              style: TextStyle(color: AppColors.primaryTextColor),
             ),
           ),
           actions: [
@@ -145,7 +146,7 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
                   'Position: ${widget.waypoint.latitude.toStringAsFixed(6)}, ${widget.waypoint.longitude.toStringAsFixed(6)}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: FormThemeHelper.secondaryTextColor,
+                    color: AppColors.secondaryTextColor,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -161,7 +162,7 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
                 // Altitude field
                 TextFormField(
                   controller: _altitudeController,
-                  style: FormThemeHelper.inputTextStyle,
+                  style: TextStyle(color: AppColors.primaryTextColor),
                   keyboardType: TextInputType.number,
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(
@@ -177,7 +178,7 @@ class _WaypointEditorDialogState extends State<WaypointEditorDialog> {
                         : 'Enter altitude in feet',
                   ).copyWith(
                     suffixText: isMetric ? 'm' : 'ft',
-                    suffixStyle: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                    suffixStyle: TextStyle(color: AppColors.secondaryTextColor),
                   ),
                 ),
                 const SizedBox(height: 16),

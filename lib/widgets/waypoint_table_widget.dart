@@ -6,6 +6,7 @@ import '../models/aircraft.dart';
 import '../services/flight_plan_service.dart';
 import '../services/settings_service.dart';
 import 'waypoint_editor_dialog.dart';
+import '../constants/app_theme.dart';
 
 class WaypointTableWidget extends StatefulWidget {
   final FlightPlan? flightPlan;
@@ -229,7 +230,7 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: const Color(0x1A448AFF), // Light blue background
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppTheme.largeRadius,
             border: Border.all(color: const Color(0x33448AFF)),
           ),
           child: Column(
@@ -245,14 +246,14 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                   decoration: BoxDecoration(
                     color: const Color(0x33448AFF), // Darker blue for header
                     borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(12),
-                      topRight: const Radius.circular(12),
+                      topLeft: Radius.circular(AppTheme.borderRadiusLarge),
+                      topRight: Radius.circular(AppTheme.borderRadiusLarge),
                       bottomLeft: _isExpanded
                           ? Radius.zero
-                          : const Radius.circular(12),
+                          : Radius.circular(AppTheme.borderRadiusLarge),
                       bottomRight: _isExpanded
                           ? Radius.zero
-                          : const Radius.circular(12),
+                          : Radius.circular(AppTheme.borderRadiusLarge),
                     ),
                   ),
                   child: Row(
@@ -329,8 +330,8 @@ class _WaypointTableWidgetState extends State<WaypointTableWidget>
                   decoration: const BoxDecoration(
                     color: Colors.transparent,
                     borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(12),
-                      bottomRight: Radius.circular(12),
+                      bottomLeft: Radius.circular(AppTheme.borderRadiusLarge),
+                      bottomRight: Radius.circular(AppTheme.borderRadiusLarge),
                     ),
                   ),
                   child: waypoints.isEmpty

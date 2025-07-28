@@ -4,6 +4,8 @@ import '../models/checklist.dart';
 import '../models/checklist_item.dart';
 import '../services/checklist_service.dart';
 import '../services/aircraft_settings_service.dart';
+import '../constants/app_colors.dart';
+import '../constants/app_theme.dart';
 import '../utils/form_theme_helper.dart';
 import 'checklist_item_form_dialog.dart';
 
@@ -123,7 +125,7 @@ class _ChecklistFormDialogState extends State<ChecklistFormDialog> {
               const SizedBox(height: 24),
               Text(
                 'Items',
-                style: FormThemeHelper.sectionTitleStyle,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryTextColor),
               ),
               const SizedBox(height: 8),
               ..._items.asMap().entries.map((entry) {
@@ -132,21 +134,21 @@ class _ChecklistFormDialogState extends State<ChecklistFormDialog> {
                 return Container(
                   margin: const EdgeInsets.symmetric(vertical: 4),
                   decoration: BoxDecoration(
-                    color: FormThemeHelper.sectionBackgroundColor,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: FormThemeHelper.sectionBorderColor),
+                    color: AppColors.sectionBackgroundColor,
+                    borderRadius: AppTheme.defaultRadius,
+                    border: Border.all(color: AppColors.sectionBorderColor),
                   ),
                   child: ListTile(
                           title: Text(
                             item.name,
-                            style: TextStyle(color: FormThemeHelper.primaryTextColor),
+                            style: TextStyle(color: AppColors.primaryTextColor),
                           ),
                           subtitle: Text(
                             item.targetValue ?? '',
-                            style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                            style: TextStyle(color: AppColors.secondaryTextColor),
                           ),
                           leading: IconButton(
-                            icon: Icon(Icons.arrow_upward, color: FormThemeHelper.secondaryTextColor),
+                            icon: Icon(Icons.arrow_upward, color: AppColors.secondaryTextColor),
                             onPressed: idx > 0
                                 ? () => setState(() {
                                     _items.removeAt(idx);
@@ -158,7 +160,7 @@ class _ChecklistFormDialogState extends State<ChecklistFormDialog> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: Icon(Icons.edit, color: FormThemeHelper.secondaryTextColor),
+                                icon: Icon(Icons.edit, color: AppColors.secondaryTextColor),
                                 onPressed: () async {
                                   final edited =
                                       await showDialog<ChecklistItem>(
@@ -177,7 +179,7 @@ class _ChecklistFormDialogState extends State<ChecklistFormDialog> {
                                     setState(() => _items.removeAt(idx)),
                               ),
                               IconButton(
-                                icon: Icon(Icons.arrow_downward, color: FormThemeHelper.secondaryTextColor),
+                                icon: Icon(Icons.arrow_downward, color: AppColors.secondaryTextColor),
                                 onPressed: idx < _items.length - 1
                                     ? () => setState(() {
                                         _items.removeAt(idx);

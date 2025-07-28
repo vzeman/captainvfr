@@ -5,6 +5,7 @@ import '../services/aircraft_settings_service.dart';
 import '../services/barometer_service.dart';
 import 'flight_dashboard/components/expanded_view.dart';
 import 'flight_dashboard/components/collapsed_view.dart';
+import '../constants/app_theme.dart';
 
 class FlightDashboard extends StatefulWidget {
   final bool? isExpanded;
@@ -100,7 +101,7 @@ class _FlightDashboardState extends State<FlightDashboard> {
           padding: EdgeInsets.all(_isExpanded ? 12.0 : 8.0),
           decoration: BoxDecoration(
             color: const Color(0xB3000000), // Black with 0.7 opacity
-            borderRadius: BorderRadius.circular(12.0),
+            borderRadius: AppTheme.largeRadius,
             border: Border.all(
               color: const Color(0x7F448AFF),
               width: 1.0,

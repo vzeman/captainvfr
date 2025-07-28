@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
+import '../constants/app_theme.dart';
 
 class MapZoomControls extends StatelessWidget {
   final MapController mapController;
@@ -56,7 +57,7 @@ class MapZoomControls extends StatelessWidget {
         return Container(
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.95),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: AppTheme.defaultRadius,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.2),
@@ -75,8 +76,8 @@ class MapZoomControls extends StatelessWidget {
                 enabled: canZoomIn,
                 onTap: _zoomIn,
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(8),
-                  bottomLeft: Radius.circular(8),
+                  topLeft: Radius.circular(AppTheme.borderRadiusDefault),
+                  bottomLeft: Radius.circular(AppTheme.borderRadiusDefault),
                 ),
               ),
               Container(
@@ -91,8 +92,8 @@ class MapZoomControls extends StatelessWidget {
                 enabled: canZoomOut,
                 onTap: _zoomOut,
                 borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(8),
-                  bottomRight: Radius.circular(8),
+                  topRight: Radius.circular(AppTheme.borderRadiusDefault),
+                  bottomRight: Radius.circular(AppTheme.borderRadiusDefault),
                 ),
               ),
             ],

@@ -8,6 +8,7 @@ import '../../services/settings_service.dart';
 import '../../services/weather_service.dart';
 import '../../utils/runway_wind_calculator.dart';
 import '../common/loading_widget.dart';
+import '../../constants/app_theme.dart';
 import '../common/error_widget.dart' as custom;
 import '../common/status_chip.dart';
 
@@ -315,7 +316,7 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: Colors.orange.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: AppTheme.smallRadius,
                     ),
                     child: Text(
                       'GUSTING',
@@ -431,7 +432,7 @@ class RunwayCard extends StatelessWidget {
                         color: isBestRunway 
                             ? theme.colorScheme.primary
                             : theme.colorScheme.primary.withValues(alpha: 0.2), // 20% opacity
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: AppTheme.smallRadius,
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -462,7 +463,7 @@ class RunwayCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.green,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: AppTheme.extraLargeRadius,
                         ),
                         child: const Text(
                           'BEST',
@@ -527,7 +528,7 @@ class RunwayCard extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: AppTheme.smallRadius,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/flight_plan.dart';
 import '../services/flight_plan_service.dart';
+import '../constants/app_colors.dart';
+import '../constants/app_theme.dart';
 import '../utils/form_theme_helper.dart';
 
 class FlightPlansScreen extends StatefulWidget {
@@ -31,10 +33,10 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
       appBar: AppBar(
         title: const Text(
           'Flight Plans',
-          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          style: TextStyle(color: AppColors.primaryTextColor),
         ),
-        backgroundColor: FormThemeHelper.dialogBackgroundColor,
-        foregroundColor: FormThemeHelper.primaryTextColor,
+        backgroundColor: AppColors.dialogBackgroundColor,
+        foregroundColor: AppColors.primaryTextColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -42,7 +44,7 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
           ),
         ],
       ),
-      backgroundColor: FormThemeHelper.backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       body: Consumer<FlightPlanService>(
         builder: (context, flightPlanService, child) {
           final flightPlans = flightPlanService.savedFlightPlans;
@@ -52,16 +54,16 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.flight_takeoff, size: 64, color: FormThemeHelper.secondaryTextColor),
+                  Icon(Icons.flight_takeoff, size: 64, color: AppColors.secondaryTextColor),
                   const SizedBox(height: 16),
                   Text(
                     'No flight plans yet',
-                    style: TextStyle(fontSize: 18, color: FormThemeHelper.secondaryTextColor),
+                    style: TextStyle(fontSize: 18, color: AppColors.secondaryTextColor),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Create your first flight plan to get started',
-                    style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                    style: TextStyle(color: AppColors.secondaryTextColor),
                   ),
                 ],
               ),
@@ -93,12 +95,12 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: FormThemeHelper.sectionBackgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: FormThemeHelper.sectionBorderColor),
+        color: AppColors.sectionBackgroundColor,
+        borderRadius: AppTheme.extraLargeRadius,
+        border: Border.all(color: AppColors.sectionBorderColor),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppTheme.extraLargeRadius,
         onTap: () => _loadFlightPlanAndNavigateBack(
           context,
           flightPlan,
@@ -112,8 +114,8 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: FormThemeHelper.primaryAccent,
-                  borderRadius: BorderRadius.circular(24),
+                  color: AppColors.primaryAccent,
+                  borderRadius: AppTheme.extraLargeRadius,
                 ),
                 child: const Icon(Icons.flight_takeoff, color: Colors.white),
               ),
@@ -127,30 +129,30 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        color: FormThemeHelper.primaryTextColor,
+                        color: AppColors.primaryTextColor,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _getFlightPlanSummary(flightPlan),
-                      style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                      style: TextStyle(color: AppColors.secondaryTextColor),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Created: ${_formatDate(flightPlan.createdAt)}',
-                      style: TextStyle(color: FormThemeHelper.secondaryTextColor, fontSize: 12),
+                      style: TextStyle(color: AppColors.secondaryTextColor, fontSize: 12),
                     ),
                     if (flightPlan.modifiedAt != null)
                       Text(
                         'Modified: ${_formatDate(flightPlan.modifiedAt!)}',
-                        style: TextStyle(color: FormThemeHelper.secondaryTextColor, fontSize: 12),
+                        style: TextStyle(color: AppColors.secondaryTextColor, fontSize: 12),
                       ),
                   ],
                 ),
               ),
               PopupMenuButton<String>(
-                color: FormThemeHelper.dialogBackgroundColor,
-                icon: Icon(Icons.more_vert, color: FormThemeHelper.secondaryTextColor),
+                color: AppColors.dialogBackgroundColor,
+                icon: Icon(Icons.more_vert, color: AppColors.secondaryTextColor),
                 onSelected: (value) =>
                     _handleMenuAction(context, value, flightPlan, flightPlanService),
                 itemBuilder: (context) => [
@@ -158,9 +160,9 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
                     value: 'load',
                     child: Row(
                       children: [
-                        Icon(Icons.map, size: 20, color: FormThemeHelper.primaryTextColor),
+                        Icon(Icons.map, size: 20, color: AppColors.primaryTextColor),
                         const SizedBox(width: 8),
-                        Text('Load to Map', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                        Text('Load to Map', style: TextStyle(color: AppColors.primaryTextColor)),
                       ],
                     ),
                   ),
@@ -168,9 +170,9 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
                     value: 'edit',
                     child: Row(
                       children: [
-                        Icon(Icons.edit, size: 20, color: FormThemeHelper.primaryTextColor),
+                        Icon(Icons.edit, size: 20, color: AppColors.primaryTextColor),
                         const SizedBox(width: 8),
-                        Text('Edit Name', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                        Text('Edit Name', style: TextStyle(color: AppColors.primaryTextColor)),
                       ],
                     ),
                   ),
@@ -178,9 +180,9 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
                     value: 'duplicate',
                     child: Row(
                       children: [
-                        Icon(Icons.copy, size: 20, color: FormThemeHelper.primaryTextColor),
+                        Icon(Icons.copy, size: 20, color: AppColors.primaryTextColor),
                         const SizedBox(width: 8),
-                        Text('Duplicate', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                        Text('Duplicate', style: TextStyle(color: AppColors.primaryTextColor)),
                       ],
                     ),
                   ),
@@ -381,7 +383,7 @@ class _FlightPlansScreenState extends State<FlightPlansScreen> {
           padding: const EdgeInsets.all(16),
           child: Text(
             'Are you sure you want to delete "${flightPlan.name}"?',
-            style: TextStyle(color: FormThemeHelper.primaryTextColor),
+            style: TextStyle(color: AppColors.primaryTextColor),
           ),
         ),
         actions: [

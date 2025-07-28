@@ -467,8 +467,7 @@ class TiledDataLoader {
     try {
       // CSV headers: ['id', 'name', 'type', 'country', 'top_altitude_ft', 
       //               'bottom_altitude_ft', 'geometry_type', 'geometry']
-      
-      final name = row[1]?.toString() ?? '';
+
       
       // Parse geometry from encoded string
       final geometryStr = row[7].toString();
@@ -549,11 +548,6 @@ class TiledDataLoader {
           // Simple numeric value
           bottomAltitude = double.tryParse(altStr);
         }
-      }
-      
-      // Debug parsed altitudes for Rome airspaces
-      if (name.contains('ROMA') || name.contains('CTR')) {
-        _logger.d('  Parsed altitudes: top=$topAltitude ft, bottom=$bottomAltitude ft');
       }
       
       // Get the airspace type (convert numeric if needed)

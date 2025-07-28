@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'dart:math' as math;
 import '../models/flight_plan.dart';
 import 'draggable_waypoint_marker.dart';
+import '../constants/app_theme.dart';
 
 class FlightPlanOverlay {
   /// Build flight path polylines for the entire plan.
@@ -209,7 +210,7 @@ class FlightPlanOverlay {
                 color: isSelected
                     ? Colors.yellow.withValues(alpha: 0.9)
                     : Colors.white.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: AppTheme.smallRadius,
                 border: Border.all(
                   color: isSelected ? Colors.orange : Colors.black54,
                   width: isSelected ? 1.5 : 1,
@@ -298,7 +299,7 @@ class FlightPlanOverlay {
               padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: AppTheme.smallRadius,
                 border: Border.all(
                   color: Colors.blue.withValues(alpha: 0.7),
                   width: 0.5,

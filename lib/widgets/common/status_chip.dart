@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../constants/app_theme.dart';
 
 class StatusChip extends StatelessWidget {
   final String label;
@@ -12,7 +13,7 @@ class StatusChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.2), // 20% opacity
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppTheme.extraLargeRadius,
       ),
       child: Text(
         label,

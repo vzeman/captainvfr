@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../constants/app_colors.dart';
 import '../../../utils/form_theme_helper.dart';
 
 /// Dialog for confirming cache clearing
@@ -21,7 +22,7 @@ class ClearCacheDialog {
           padding: const EdgeInsets.all(16),
           child: Text(
             content,
-            style: TextStyle(color: FormThemeHelper.primaryTextColor),
+            style: TextStyle(color: AppColors.primaryTextColor),
           ),
         ),
         actions: [

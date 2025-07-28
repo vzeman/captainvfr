@@ -5,6 +5,8 @@ import '../models/manufacturer.dart';
 import '../models/model.dart';
 import '../widgets/manufacturer_form_dialog.dart';
 import '../widgets/model_form_dialog.dart';
+import '../constants/app_colors.dart';
+import '../constants/app_theme.dart';
 import '../utils/form_theme_helper.dart';
 
 class ManufacturerDetailScreen extends StatelessWidget {
@@ -15,14 +17,14 @@ class ManufacturerDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: FormThemeHelper.backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
-        backgroundColor: FormThemeHelper.dialogBackgroundColor,
+        backgroundColor: AppColors.dialogBackgroundColor,
         title: Text(
           manufacturer.name,
-          style: const TextStyle(color: FormThemeHelper.primaryTextColor),
+          style: const TextStyle(color: AppColors.primaryTextColor),
         ),
-        foregroundColor: FormThemeHelper.primaryTextColor,
+        foregroundColor: AppColors.primaryTextColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
@@ -49,9 +51,9 @@ class ManufacturerDetailScreen extends StatelessWidget {
               Container(
                 margin: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: FormThemeHelper.sectionBackgroundColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: FormThemeHelper.sectionBorderColor),
+                  color: AppColors.sectionBackgroundColor,
+                  borderRadius: AppTheme.extraLargeRadius,
+                  border: Border.all(color: AppColors.sectionBorderColor),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -61,7 +63,7 @@ class ManufacturerDetailScreen extends StatelessWidget {
                       Row(
                         children: [
                           CircleAvatar(
-                            backgroundColor: FormThemeHelper.primaryAccent,
+                            backgroundColor: AppColors.primaryAccent,
                             radius: 30,
                             child: Text(
                               currentManufacturer.name.isNotEmpty
@@ -84,7 +86,7 @@ class ManufacturerDetailScreen extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
-                                    color: FormThemeHelper.primaryTextColor,
+                                    color: AppColors.primaryTextColor,
                                   ),
                                 ),
                               ],
@@ -98,7 +100,7 @@ class ManufacturerDetailScreen extends StatelessWidget {
                         Text(
                           currentManufacturer.description ?? '',
                           style: TextStyle(
-                            color: FormThemeHelper.secondaryTextColor,
+                            color: AppColors.secondaryTextColor,
                             fontSize: 16,
                           ),
                         ),
@@ -108,14 +110,14 @@ class ManufacturerDetailScreen extends StatelessWidget {
                         children: [
                           Icon(
                             Icons.category,
-                            color: FormThemeHelper.primaryAccent,
+                            color: AppColors.primaryAccent,
                             size: 20,
                           ),
                           const SizedBox(width: 8),
                           Text(
                             '${manufacturerModels.length} model(s)',
                             style: TextStyle(
-                              color: FormThemeHelper.secondaryTextColor,
+                              color: AppColors.secondaryTextColor,
                               fontSize: 14,
                             ),
                           ),
@@ -137,7 +139,7 @@ class ManufacturerDetailScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: FormThemeHelper.primaryTextColor,
+                          color: AppColors.primaryTextColor,
                         ),
                       ),
                     ),
@@ -164,20 +166,20 @@ class ManufacturerDetailScreen extends StatelessWidget {
                             Icon(
                               Icons.category_outlined,
                               size: 64,
-                              color: FormThemeHelper.primaryAccent.withValues(alpha: 0.5),
+                              color: AppColors.primaryAccent.withValues(alpha: 0.5),
                             ),
                             const SizedBox(height: 16),
                             Text(
                               'No models yet',
                               style: TextStyle(
                                 fontSize: 18,
-                                color: FormThemeHelper.primaryTextColor,
+                                color: AppColors.primaryTextColor,
                               ),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               'Add the first model for ${currentManufacturer.name}',
-                              style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                              style: TextStyle(color: AppColors.secondaryTextColor),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 16),
@@ -199,20 +201,20 @@ class ManufacturerDetailScreen extends StatelessWidget {
                           return Container(
                             margin: const EdgeInsets.only(bottom: 8),
                             decoration: BoxDecoration(
-                              color: FormThemeHelper.sectionBackgroundColor,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: FormThemeHelper.sectionBorderColor),
+                              color: AppColors.sectionBackgroundColor,
+                              borderRadius: AppTheme.extraLargeRadius,
+                              border: Border.all(color: AppColors.sectionBorderColor),
                             ),
                             child: ListTile(
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               leading: CircleAvatar(
-                                backgroundColor: FormThemeHelper.primaryAccent.withValues(alpha: 0.2),
+                                backgroundColor: AppColors.primaryAccent.withValues(alpha: 0.2),
                                 child: Text(
                                   model.name.isNotEmpty
                                       ? model.name[0].toUpperCase()
                                       : 'M',
                                   style: TextStyle(
-                                    color: FormThemeHelper.primaryAccent,
+                                    color: AppColors.primaryAccent,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -220,7 +222,7 @@ class ManufacturerDetailScreen extends StatelessWidget {
                               title: Text(
                                 model.name,
                                 style: TextStyle(
-                                  color: FormThemeHelper.primaryTextColor,
+                                  color: AppColors.primaryTextColor,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -229,20 +231,20 @@ class ManufacturerDetailScreen extends StatelessWidget {
                                 children: [
                                   Text(
                                     'Category: ${_getCategoryDisplayName(model.category)}',
-                                    style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                                    style: TextStyle(color: AppColors.secondaryTextColor),
                                   ),
                                   Text(
                                     '${model.engineCount} engine(s)',
-                                    style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                                    style: TextStyle(color: AppColors.secondaryTextColor),
                                   ),
                                 ],
                               ),
                               trailing: PopupMenuButton<String>(
                                 icon: Icon(
                                   Icons.more_vert,
-                                  color: FormThemeHelper.primaryTextColor,
+                                  color: AppColors.primaryTextColor,
                                 ),
-                                color: FormThemeHelper.dialogBackgroundColor,
+                                color: AppColors.dialogBackgroundColor,
                                 onSelected: (value) {
                                   if (value == 'edit') {
                                     _showModelForm(
@@ -263,9 +265,9 @@ class ManufacturerDetailScreen extends StatelessWidget {
                                     value: 'edit',
                                     child: Row(
                                       children: [
-                                        Icon(Icons.edit, size: 20, color: FormThemeHelper.primaryTextColor),
+                                        Icon(Icons.edit, size: 20, color: AppColors.primaryTextColor),
                                         const SizedBox(width: 8),
-                                        Text('Edit', style: TextStyle(color: FormThemeHelper.primaryTextColor)),
+                                        Text('Edit', style: TextStyle(color: AppColors.primaryTextColor)),
                                       ],
                                     ),
                                   ),

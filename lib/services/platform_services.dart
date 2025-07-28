@@ -1,6 +1,8 @@
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:logger/logger.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 /// Platform-specific services for Android 12+ compatibility
 class PlatformServices {
@@ -21,6 +23,46 @@ class PlatformServices {
       };
     }
     
+    // For macOS and iOS, use connectivity_plus plugin
+    if (!kIsWeb && (Platform.isMacOS || Platform.isIOS)) {
+      try {
+        final connectivity = Connectivity();
+        final connectivityResult = await connectivity.checkConnectivity();
+        final isConnected = !connectivityResult.contains(ConnectivityResult.none);
+        
+        String connectionType = 'None';
+        if (connectivityResult.contains(ConnectivityResult.wifi)) {
+          connectionType = 'WiFi';
+        } else if (connectivityResult.contains(ConnectivityResult.mobile)) {
+          connectionType = 'Mobile';
+        } else if (connectivityResult.contains(ConnectivityResult.ethernet)) {
+          connectionType = 'Ethernet';
+        } else if (connectivityResult.contains(ConnectivityResult.vpn)) {
+          connectionType = 'VPN';
+        } else if (connectivityResult.contains(ConnectivityResult.bluetooth)) {
+          connectionType = 'Bluetooth';
+        } else if (connectivityResult.contains(ConnectivityResult.other)) {
+          connectionType = 'Other';
+        }
+        
+        return {
+          'isConnected': isConnected,
+          'hasInternet': isConnected, // Assume internet if connected
+          'connectionType': connectionType,
+          'platform': Platform.operatingSystem,
+        };
+      } catch (e) {
+        _logger.e('Error checking network status with connectivity_plus', error: e);
+        return {
+          'isConnected': false,
+          'hasInternet': false,
+          'connectionType': 'Unknown',
+          'error': e.toString(),
+        };
+      }
+    }
+    
+    // For Android, use the custom platform channel
     try {
       final result = await _networkChannel.invokeMethod('checkNetworkStatus');
       return Map<String, dynamic>.from(result as Map);
@@ -46,6 +88,25 @@ class PlatformServices {
       };
     }
     
+    // For macOS and iOS, use basic connectivity info
+    if (!kIsWeb && (Platform.isMacOS || Platform.isIOS)) {
+      try {
+        final connectivity = Connectivity();
+        final connectivityResult = await connectivity.checkConnectivity();
+        
+        return {
+          'platform': Platform.operatingSystem,
+          'available': true,
+          'connectionTypes': connectivityResult.map((e) => e.name).toList(),
+          'isConnected': !connectivityResult.contains(ConnectivityResult.none),
+        };
+      } catch (e) {
+        _logger.e('Error getting network diagnostics with connectivity_plus', error: e);
+        return {'error': e.toString()};
+      }
+    }
+    
+    // For Android, use the custom platform channel
     try {
       final result = await _networkChannel.invokeMethod(
         'getNetworkDiagnostics',

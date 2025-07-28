@@ -12,13 +12,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:logger/logger.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'flight_log_screen.dart';
-import 'offline_data_screen.dart';
 import 'flight_plans_screen.dart';
 import 'aircraft_settings_screen.dart';
 import 'checklist_settings_screen.dart';
 import 'calculators_screen.dart';
 import 'settings_screen.dart';
 import 'logbook/logbook_screen.dart';
+import '../constants/app_colors.dart';
+import '../constants/app_theme.dart';
 import '../models/airport.dart';
 import '../models/runway.dart';
 import '../models/navaid.dart';
@@ -147,7 +148,7 @@ class MapScreenState extends State<MapScreen>
 
   // Airspace panel visibility and position
   bool _showCurrentAirspacePanel =
-      true; // Control visibility of current airspace panel
+      false; // Control visibility of current airspace panel
   Offset? _airspacePanelPosition; // Will be calculated dynamically to center initially
 
   // Toggle panel position
@@ -1689,9 +1690,9 @@ class MapScreenState extends State<MapScreen>
               maxHeight: MediaQuery.of(context).size.height * 0.7,
             ),
             decoration: BoxDecoration(
-              color: Colors.black87,
+              color: Colors.black.withValues(alpha: 0.87),
               borderRadius: BorderRadius.circular(8.0),
-              border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+              border: Border.all(color: AppColors.warningColor.withValues(alpha: AppColors.mediumOpacity)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1713,14 +1714,14 @@ class MapScreenState extends State<MapScreen>
                       Text(
                         'AIRSPACES AT LOCATION',
                         style: TextStyle(
-                          color: Colors.orange,
+                          color: AppColors.warningColor,
                           fontSize: titleFontSize,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white70, size: 16),
+                        icon: Icon(Icons.close, color: AppColors.secondaryTextColor, size: 16),
                         onPressed: () => Navigator.of(context).pop(),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
@@ -1738,14 +1739,14 @@ class MapScreenState extends State<MapScreen>
                         Icon(
                           Icons.flight,
                           size: 14,
-                          color: Colors.blue.shade300,
+                          color: AppColors.infoColor,
                         ),
                         const SizedBox(width: 8),
                         Text(
                           'Current altitude: ${currentAltitudeFt.round()} ft',
                           style: TextStyle(
                             fontSize: fontSize,
-                            color: Colors.white70,
+                            color: AppColors.secondaryTextColor,
                           ),
                         ),
                       ],
@@ -1765,25 +1766,25 @@ class MapScreenState extends State<MapScreen>
                         return Container(
                           decoration: isAtCurrentAltitude
                               ? BoxDecoration(
-                                  color: Colors.orange.withValues(alpha: 0.1),
+                                  color: AppColors.warningColor.withValues(alpha: AppColors.veryLowOpacity),
                                   border: Border.all(
-                                    color: Colors.orange,
+                                    color: AppColors.warningColor,
                                     width: 2,
                                   ),
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: AppTheme.defaultRadius,
                                 )
                               : BoxDecoration(
                                   border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.2),
+                                    color: AppColors.primaryTextColor.withValues(alpha: AppColors.lowOpacity),
                                     width: 1,
                                   ),
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: AppTheme.defaultRadius,
                                 ),
                           margin: const EdgeInsets.symmetric(vertical: 4),
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: AppTheme.defaultRadius,
                               onTap: () {
                                 Navigator.of(context).pop();
                                 _onAirspaceSelected(airspace);
@@ -1808,7 +1809,7 @@ class MapScreenState extends State<MapScreen>
                                           Text(
                                             airspace.name,
                                             style: TextStyle(
-                                              color: Colors.white,
+                                              color: AppColors.primaryTextColor,
                                               fontSize: fontSize,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -1817,7 +1818,7 @@ class MapScreenState extends State<MapScreen>
                                           Text(
                                             '${AirspaceUtils.getAirspaceTypeName(airspace.type)} ${AirspaceUtils.getIcaoClassName(airspace.icaoClass)}',
                                             style: TextStyle(
-                                              color: Colors.white70,
+                                              color: AppColors.secondaryTextColor,
                                               fontSize: isPhone ? 10 : 11,
                                             ),
                                           ),
@@ -1825,8 +1826,8 @@ class MapScreenState extends State<MapScreen>
                                             airspace.altitudeRange,
                                             style: TextStyle(
                                               color: isAtCurrentAltitude 
-                                                  ? Colors.orange 
-                                                  : Colors.white60,
+                                                  ? AppColors.warningColor 
+                                                  : AppColors.disabledTextColor,
                                               fontSize: isPhone ? 10 : 11,
                                               fontWeight: isAtCurrentAltitude 
                                                   ? FontWeight.bold 
@@ -1838,7 +1839,7 @@ class MapScreenState extends State<MapScreen>
                                     ),
                                     Icon(
                                       Icons.chevron_right, 
-                                      color: Colors.white30,
+                                      color: AppColors.primaryTextColor.withValues(alpha: 0.3),
                                       size: isPhone ? 18 : 20,
                                     ),
                                   ],
@@ -1885,7 +1886,7 @@ class MapScreenState extends State<MapScreen>
   }
 
   Color _getAirspaceColor(String? type, String? icaoClass) {
-    if (type == null) return Colors.grey;
+    if (type == null) return AppColors.airspaceDefault;
 
     switch (type.toUpperCase()) {
       case 'CTR':
@@ -1893,46 +1894,46 @@ class MapScreenState extends State<MapScreen>
       case 'DANGER':
       case 'P':
       case 'PROHIBITED':
-        return Colors.red;
+        return AppColors.airspaceProhibited;
       case 'TMA':
       case 'R':
       case 'RESTRICTED':
-        return Colors.orange;
+        return AppColors.airspaceRestricted;
       case 'ATZ':
-        return Colors.blue;
+        return AppColors.airspaceDanger;
       case 'TSA':
-        return Colors.purple;
+        return AppColors.airspaceMoa;
       case 'TRA':
-        return Colors.purple.shade700;
+        return AppColors.airspaceTraining;
       case 'GLIDING':
-        return Colors.green;
+        return AppColors.airspaceGliderProhibited;
       case 'TMZ':
-        return Colors.amber;
+        return AppColors.airspaceWaveWindow;
       case 'RMZ':
-        return Colors.yellow.shade700;
+        return AppColors.airspaceTransponderMandatory;
       default:
         // Check ICAO class if type doesn't match
         if (icaoClass != null) {
           switch (icaoClass.toUpperCase()) {
             case 'A':
-              return Colors.red.shade800;
+              return AppColors.airspaceClassA;
             case 'B':
-              return Colors.red.shade600;
+              return AppColors.airspaceClassB;
             case 'C':
-              return Colors.orange.shade600;
+              return AppColors.airspaceClassC;
             case 'D':
-              return Colors.blue.shade600;
+              return AppColors.airspaceClassD;
             case 'E':
-              return Colors.green.shade600;
+              return AppColors.airspaceClassE;
             case 'F':
-              return Colors.green.shade400;
+              return AppColors.airspaceClassG;
             case 'G':
-              return Colors.grey;
+              return AppColors.airspaceDefault;
             default:
-              return Colors.grey.shade600;
+              return AppColors.airspaceDefault;
           }
         }
-        return Colors.grey.shade600;
+        return AppColors.airspaceDefault;
     }
   }
 
@@ -2377,7 +2378,7 @@ class MapScreenState extends State<MapScreen>
                   '⚠️ On Demand',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.orange,
+                    color: AppColors.warningColor,
                   ),
                 ),
               ),
@@ -2388,7 +2389,7 @@ class MapScreenState extends State<MapScreen>
                   '⚠️ On Request',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.orange,
+                    color: AppColors.warningColor,
                   ),
                 ),
               ),
@@ -2399,7 +2400,7 @@ class MapScreenState extends State<MapScreen>
                   '⚠️ By NOTAM',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.orange,
+                    color: AppColors.warningColor,
                   ),
                 ),
               ),
@@ -2413,13 +2414,13 @@ class MapScreenState extends State<MapScreen>
                       'Remarks:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF448AFF),
+                        color: AppColors.primaryAccent,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       airspace.remarks!,
-                      style: const TextStyle(color: Colors.white70),
+                      style: TextStyle(color: AppColors.secondaryTextColor),
                     ),
                   ],
                 ),
@@ -2483,13 +2484,13 @@ class MapScreenState extends State<MapScreen>
                       'Description:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF448AFF),
+                        color: AppColors.primaryAccent,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       point.description!,
-                      style: const TextStyle(color: Colors.white70),
+                      style: TextStyle(color: AppColors.secondaryTextColor),
                     ),
                   ],
                 ),
@@ -2504,13 +2505,13 @@ class MapScreenState extends State<MapScreen>
                       'Remarks:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF448AFF),
+                        color: AppColors.primaryAccent,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       point.remarks!,
-                      style: const TextStyle(color: Colors.white70),
+                      style: TextStyle(color: AppColors.secondaryTextColor),
                     ),
                   ],
                 ),
@@ -2525,13 +2526,13 @@ class MapScreenState extends State<MapScreen>
                       'Tags:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF448AFF),
+                        color: AppColors.primaryAccent,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       point.tags!.join(', '),
-                      style: const TextStyle(color: Colors.white70),
+                      style: TextStyle(color: AppColors.secondaryTextColor),
                     ),
                   ],
                 ),
@@ -2661,11 +2662,11 @@ class MapScreenState extends State<MapScreen>
             '$label: ',
             style: const TextStyle(
               fontWeight: FontWeight.bold,
-              color: Color(0xFF448AFF),
+              color: AppColors.primaryAccent,
             ),
           ),
           Expanded(
-            child: Text(value, style: const TextStyle(color: Colors.white70)),
+            child: Text(value, style: TextStyle(color: AppColors.secondaryTextColor)),
           ),
         ],
       ),
@@ -3087,7 +3088,7 @@ class MapScreenState extends State<MapScreen>
                   polylines: [
                     Polyline(
                       points: _flightPathPoints,
-                      color: Colors.red,
+                      color: AppColors.errorColor,
                       strokeWidth: 6.0,
                       borderColor: Colors.white,
                       borderStrokeWidth: 2.0,
@@ -3205,7 +3206,7 @@ class MapScreenState extends State<MapScreen>
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppTheme.largeRadius,
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.2),
@@ -3280,7 +3281,7 @@ class MapScreenState extends State<MapScreen>
                   width: 50, // Ensure consistent width
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppTheme.largeRadius,
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.1),
@@ -3302,7 +3303,7 @@ class MapScreenState extends State<MapScreen>
                             height: 4,
                             decoration: BoxDecoration(
                               color: Colors.grey.withValues(alpha: 0.3),
-                              borderRadius: BorderRadius.circular(2),
+                              borderRadius: AppTheme.smallRadius,
                             ),
                           ),
                         ),
@@ -3650,7 +3651,7 @@ class MapScreenState extends State<MapScreen>
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppTheme.largeRadius,
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.1),
@@ -3665,6 +3666,11 @@ class MapScreenState extends State<MapScreen>
                   PopupMenuButton<String>(
                     icon: const Icon(Icons.menu, color: Colors.black),
                     tooltip: 'Menu',
+                    color: AppColors.dialogBackgroundColor, // Dark background
+                    shape: RoundedRectangleBorder(
+                      borderRadius: AppTheme.defaultRadius,
+                      side: BorderSide(color: AppColors.sectionBorderColor),
+                    ),
                     onSelected: (value) {
                       if (value == 'flight_log') {
                         _pauseAllTimers();
@@ -3680,14 +3686,6 @@ class MapScreenState extends State<MapScreen>
                           context,
                           MaterialPageRoute(
                             builder: (context) => const LogBookScreen(),
-                          ),
-                        ).then((_) => _resumeAllTimers());
-                      } else if (value == 'offline_maps') {
-                        _pauseAllTimers();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const OfflineDataScreen(),
                           ),
                         ).then((_) => _resumeAllTimers());
                       } else if (value == 'flight_plans') {
@@ -3744,100 +3742,93 @@ class MapScreenState extends State<MapScreen>
                         ).then((_) => _resumeAllTimers());
                       } else if (value == 'settings') {
                         _pauseAllTimers();
-                        SettingsDialog.show(context).then((_) => _resumeAllTimers());
+                        SettingsDialog.show(
+                          context,
+                          currentMapBounds: _mapController.camera.visibleBounds,
+                        ).then((_) => _resumeAllTimers());
                       } else if (value == 'website') {
                         launchUrl(Uri.parse('https://www.captainvfr.com'));
                       }
                     },
                     itemBuilder: (BuildContext context) => [
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'flight_plans',
                         child: Row(
                           children: [
-                            Icon(Icons.flight_takeoff, size: 20),
+                            Icon(Icons.flight_takeoff, size: 20, color: AppColors.primaryTextColor),
                             SizedBox(width: 8),
-                            Text('Flight Plans'),
+                            Text('Flight Plans', style: TextStyle(color: AppColors.primaryTextColor)),
                           ],
                         ),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'flight_log',
                         child: Row(
                           children: [
-                            Icon(Icons.flight, size: 20),
+                            Icon(Icons.flight, size: 20, color: AppColors.primaryTextColor),
                             SizedBox(width: 8),
-                            Text('Flight Log'),
+                            Text('Flight Log', style: TextStyle(color: AppColors.primaryTextColor)),
                           ],
                         ),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'logbook',
                         child: Row(
                           children: [
-                            Icon(Icons.menu_book, size: 20),
+                            Icon(Icons.menu_book, size: 20, color: AppColors.primaryTextColor),
                             SizedBox(width: 8),
-                            Text('LogBook'),
+                            Text('LogBook', style: TextStyle(color: AppColors.primaryTextColor)),
                           ],
                         ),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'checklists',
                         child: Row(
                           children: [
-                            Icon(Icons.list, size: 20),
+                            Icon(Icons.list, size: 20, color: AppColors.primaryTextColor),
                             SizedBox(width: 8),
-                            Text('Checklists'),
+                            Text('Checklists', style: TextStyle(color: AppColors.primaryTextColor)),
                           ],
                         ),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'airplane_settings',
                         child: Row(
                           children: [
-                            Icon(Icons.flight, size: 20),
+                            Icon(Icons.flight, size: 20, color: AppColors.primaryTextColor),
                             SizedBox(width: 8),
-                            Text('Aircrafts'),
+                            Text('Aircrafts', style: TextStyle(color: AppColors.primaryTextColor)),
                           ],
                         ),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'calculators',
                         child: Row(
                           children: [
-                            Icon(Icons.calculate, size: 20),
+                            Icon(Icons.calculate, size: 20, color: AppColors.primaryTextColor),
                             SizedBox(width: 8),
-                            Text('Calculators'),
+                            Text('Calculators', style: TextStyle(color: AppColors.primaryTextColor)),
                           ],
                         ),
                       ),
-                      const PopupMenuItem(
-                        value: 'offline_maps',
-                        child: Row(
-                          children: [
-                            Icon(Icons.map, size: 20),
-                            SizedBox(width: 8),
-                            Text('Offline Data'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'settings',
                         child: Row(
                           children: [
-                            Icon(Icons.settings, size: 20),
+                            Icon(Icons.settings, size: 20, color: AppColors.primaryTextColor),
                             SizedBox(width: 8),
-                            Text('Settings'),
+                            Text('Settings', style: TextStyle(color: AppColors.primaryTextColor)),
                           ],
                         ),
                       ),
-                      const PopupMenuDivider(),
-                      const PopupMenuItem(
+                      PopupMenuDivider(height: 1),
+                      PopupMenuItem(
                         value: 'website',
                         child: Row(
                           children: [
-                            Icon(Icons.language, size: 20),
+                            Icon(Icons.language, size: 20, color: AppColors.primaryTextColor),
                             SizedBox(width: 8),
-                            Text('Visit www.captainvfr.com'),
+                            Text('Visit www.captainvfr.com', style: TextStyle(color: AppColors.primaryTextColor)),
                           ],
                         ),
                       ),
@@ -4064,7 +4055,7 @@ class MapScreenState extends State<MapScreen>
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppTheme.smallRadius,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.2),
@@ -4080,11 +4071,11 @@ class MapScreenState extends State<MapScreen>
                     await launchUrl(Uri.parse(url));
                   }
                 },
-                child: const Text(
+                child: Text(
                   'Map data © OpenStreetMap',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.black87,
+                    color: Color.fromRGBO(0, 0, 0, 0.87),
                     decoration: TextDecoration.underline,
                     fontWeight: FontWeight.w500,
                   ),

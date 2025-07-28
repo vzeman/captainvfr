@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/pilot.dart';
 import '../../services/pilot_service.dart';
+import '../../constants/app_colors.dart';
 
 class PilotForm extends StatefulWidget {
   final Pilot? pilot;
@@ -94,8 +95,14 @@ class _PilotFormState extends State<PilotForm> {
     final isEditing = widget.pilot != null;
 
     return Scaffold(
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
-        title: Text(isEditing ? 'Edit Pilot' : 'Add Pilot'),
+        backgroundColor: AppColors.backgroundColor,
+        title: Text(
+          isEditing ? 'Edit Pilot' : 'Add Pilot',
+          style: TextStyle(color: AppColors.primaryTextColor),
+        ),
+        iconTheme: IconThemeData(color: AppColors.primaryTextColor),
       ),
       body: Form(
         key: _formKey,
@@ -107,15 +114,40 @@ class _PilotFormState extends State<PilotForm> {
               // Basic Information
               Text(
                 'Basic Information',
-                style: Theme.of(context).textTheme.titleLarge,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryTextColor,
+                ),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
+                style: TextStyle(color: AppColors.primaryTextColor),
+                decoration: InputDecoration(
                   labelText: 'Name *',
                   hintText: 'John Doe',
-                  prefixIcon: Icon(Icons.person),
+                  prefixIcon: Icon(Icons.person, color: AppColors.secondaryTextColor),
+                  labelStyle: TextStyle(color: AppColors.secondaryTextColor),
+                  hintStyle: TextStyle(color: AppColors.secondaryTextColor.withValues(alpha: 0.5)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppColors.sectionBorderColor),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppColors.primaryAccent, width: 2),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Colors.red),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Colors.red, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: AppColors.sectionBackgroundColor,
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -125,42 +157,59 @@ class _PilotFormState extends State<PilotForm> {
                 },
               ),
               const SizedBox(height: 16),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Date of Birth'),
-                subtitle: Text(
-                  _birthdate != null
-                      ? '${_birthdate!.day}/${_birthdate!.month}/${_birthdate!.year}'
-                      : 'Not set',
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.sectionBackgroundColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.sectionBorderColor),
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_birthdate != null)
-                      IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          setState(() {
-                            _birthdate = null;
-                          });
-                        },
-                      ),
-                    const Icon(Icons.calendar_today),
-                  ],
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  title: Text(
+                    'Date of Birth',
+                    style: TextStyle(color: AppColors.primaryTextColor),
+                  ),
+                  subtitle: Text(
+                    _birthdate != null
+                        ? '${_birthdate!.day}/${_birthdate!.month}/${_birthdate!.year}'
+                        : 'Not set',
+                    style: TextStyle(color: AppColors.secondaryTextColor),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_birthdate != null)
+                        IconButton(
+                          icon: Icon(Icons.clear, color: AppColors.secondaryTextColor),
+                          onPressed: () {
+                            setState(() {
+                              _birthdate = null;
+                            });
+                          },
+                        ),
+                      Icon(Icons.calendar_today, color: AppColors.secondaryTextColor),
+                    ],
+                  ),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _birthdate ?? DateTime(1990),
+                      firstDate: DateTime(1900),
+                      lastDate: DateTime.now(),
+                      builder: (context, child) {
+                        return Theme(
+                          data: ThemeData.dark(),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (date != null) {
+                      setState(() {
+                        _birthdate = date;
+                      });
+                    }
+                  },
                 ),
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: _birthdate ?? DateTime(1990),
-                    firstDate: DateTime(1900),
-                    lastDate: DateTime.now(),
-                  );
-                  if (date != null) {
-                    setState(() {
-                      _birthdate = date;
-                    });
-                  }
-                },
               ),
 
               const SizedBox(height: 24),
@@ -168,15 +217,40 @@ class _PilotFormState extends State<PilotForm> {
               // Contact Information
               Text(
                 'Contact Information',
-                style: Theme.of(context).textTheme.titleLarge,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryTextColor,
+                ),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _emailController,
-                decoration: const InputDecoration(
+                style: TextStyle(color: AppColors.primaryTextColor),
+                decoration: InputDecoration(
                   labelText: 'Email',
                   hintText: 'pilot@example.com',
-                  prefixIcon: Icon(Icons.email),
+                  prefixIcon: Icon(Icons.email, color: AppColors.secondaryTextColor),
+                  labelStyle: TextStyle(color: AppColors.secondaryTextColor),
+                  hintStyle: TextStyle(color: AppColors.secondaryTextColor.withValues(alpha: 0.5)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppColors.sectionBorderColor),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppColors.primaryAccent, width: 2),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Colors.red),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Colors.red, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: AppColors.sectionBackgroundColor,
                 ),
                 keyboardType: TextInputType.emailAddress,
                 validator: (value) {
@@ -192,10 +266,31 @@ class _PilotFormState extends State<PilotForm> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _phoneController,
-                decoration: const InputDecoration(
+                style: TextStyle(color: AppColors.primaryTextColor),
+                decoration: InputDecoration(
                   labelText: 'Phone',
                   hintText: '+1 234 567 8900',
-                  prefixIcon: Icon(Icons.phone),
+                  prefixIcon: Icon(Icons.phone, color: AppColors.secondaryTextColor),
+                  labelStyle: TextStyle(color: AppColors.secondaryTextColor),
+                  hintStyle: TextStyle(color: AppColors.secondaryTextColor.withValues(alpha: 0.5)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppColors.sectionBorderColor),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppColors.primaryAccent, width: 2),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Colors.red),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Colors.red, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: AppColors.sectionBackgroundColor,
                 ),
                 keyboardType: TextInputType.phone,
               ),
@@ -205,15 +300,40 @@ class _PilotFormState extends State<PilotForm> {
               // Certificate Information
               Text(
                 'Certificate Information',
-                style: Theme.of(context).textTheme.titleLarge,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryTextColor,
+                ),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _certificateNumberController,
-                decoration: const InputDecoration(
+                style: TextStyle(color: AppColors.primaryTextColor),
+                decoration: InputDecoration(
                   labelText: 'Certificate Number',
                   hintText: '123456789',
-                  prefixIcon: Icon(Icons.badge),
+                  prefixIcon: Icon(Icons.badge, color: AppColors.secondaryTextColor),
+                  labelStyle: TextStyle(color: AppColors.secondaryTextColor),
+                  hintStyle: TextStyle(color: AppColors.secondaryTextColor.withValues(alpha: 0.5)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppColors.sectionBorderColor),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppColors.primaryAccent, width: 2),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Colors.red),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Colors.red, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: AppColors.sectionBackgroundColor,
                 ),
               ),
 
@@ -222,20 +342,36 @@ class _PilotFormState extends State<PilotForm> {
               // Settings
               Text(
                 'Settings',
-                style: Theme.of(context).textTheme.titleLarge,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryTextColor,
+                ),
               ),
               const SizedBox(height: 8),
-              SwitchListTile(
-                title: const Text('Set as Current Pilot'),
-                subtitle: const Text(
-                  'This pilot will be selected by default for new entries',
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.sectionBackgroundColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.sectionBorderColor),
                 ),
-                value: _isCurrentUser,
-                onChanged: (value) {
-                  setState(() {
-                    _isCurrentUser = value;
-                  });
-                },
+                child: SwitchListTile(
+                  title: Text(
+                    'Set as Current Pilot',
+                    style: TextStyle(color: AppColors.primaryTextColor),
+                  ),
+                  subtitle: Text(
+                    'This pilot will be selected by default for new entries',
+                    style: TextStyle(color: AppColors.secondaryTextColor),
+                  ),
+                  value: _isCurrentUser,
+                  activeColor: AppColors.primaryAccent,
+                  onChanged: (value) {
+                    setState(() {
+                      _isCurrentUser = value;
+                    });
+                  },
+                ),
               ),
 
               const SizedBox(height: 32),
@@ -245,7 +381,18 @@ class _PilotFormState extends State<PilotForm> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _savePilot,
-                  child: Text(isEditing ? 'Update Pilot' : 'Add Pilot'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryAccent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    isEditing ? 'Update Pilot' : 'Add Pilot',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ],

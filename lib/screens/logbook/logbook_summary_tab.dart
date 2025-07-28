@@ -3,18 +3,19 @@ import 'package:provider/provider.dart';
 import '../../services/logbook_service.dart';
 import '../../services/pilot_service.dart';
 import '../../widgets/common/info_row.dart';
-import '../../utils/form_theme_helper.dart';
+import '../../constants/app_colors.dart';
+import '../../constants/app_theme.dart';
 
 class LogBookSummaryTab extends StatelessWidget {
   const LogBookSummaryTab({super.key});
 
   Widget _buildCard({required Widget child}) {
     return Card(
-      color: FormThemeHelper.sectionBackgroundColor,
+      color: AppColors.sectionBackgroundColor,
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: FormThemeHelper.sectionBorderColor),
+        borderRadius: AppTheme.defaultRadius,
+        side: BorderSide(color: AppColors.sectionBorderColor),
       ),
       child: child,
     );
@@ -46,7 +47,7 @@ class LogBookSummaryTab extends StatelessWidget {
                       'Current Pilot',
                       style: TextStyle(
                         fontSize: 14,
-                        color: FormThemeHelper.secondaryTextColor,
+                        color: AppColors.secondaryTextColor,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -55,7 +56,7 @@ class LogBookSummaryTab extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: FormThemeHelper.primaryTextColor,
+                        color: AppColors.primaryTextColor,
                       ),
                     ),
                   ],
@@ -77,7 +78,7 @@ class LogBookSummaryTab extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: FormThemeHelper.primaryTextColor,
+                      color: AppColors.primaryTextColor,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -85,7 +86,7 @@ class LogBookSummaryTab extends StatelessWidget {
                     label: 'Total Hours',
                     value: logBookService.formatDuration(statistics.totalDuration),
                   ),
-                  Divider(color: FormThemeHelper.sectionBorderColor),
+                  Divider(color: AppColors.sectionBorderColor),
                   InfoRow(
                     label: 'Single Engine',
                     value: logBookService.formatDuration(statistics.singleEngineDuration),
@@ -94,7 +95,7 @@ class LogBookSummaryTab extends StatelessWidget {
                     label: 'Multi Engine',
                     value: logBookService.formatDuration(statistics.multiEngineDuration),
                   ),
-                  Divider(color: FormThemeHelper.sectionBorderColor),
+                  Divider(color: AppColors.sectionBorderColor),
                   InfoRow(
                     label: 'As PIC',
                     value: logBookService.formatDuration(statistics.picDuration),
@@ -126,7 +127,7 @@ class LogBookSummaryTab extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: FormThemeHelper.primaryTextColor,
+                      color: AppColors.primaryTextColor,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -138,7 +139,7 @@ class LogBookSummaryTab extends StatelessWidget {
                     label: 'IFR',
                     value: logBookService.formatDuration(statistics.ifrDuration),
                   ),
-                  Divider(color: FormThemeHelper.sectionBorderColor),
+                  Divider(color: AppColors.sectionBorderColor),
                   InfoRow(
                     label: 'Day',
                     value: logBookService.formatDuration(statistics.dayDuration),
@@ -147,7 +148,7 @@ class LogBookSummaryTab extends StatelessWidget {
                     label: 'Night',
                     value: logBookService.formatDuration(statistics.nightDuration),
                   ),
-                  Divider(color: FormThemeHelper.sectionBorderColor),
+                  Divider(color: AppColors.sectionBorderColor),
                   InfoRow(
                     label: 'Simulator VFR',
                     value: logBookService.formatDuration(statistics.simulatorVfrDuration),
@@ -175,7 +176,7 @@ class LogBookSummaryTab extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: FormThemeHelper.primaryTextColor,
+                      color: AppColors.primaryTextColor,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -190,7 +191,7 @@ class LogBookSummaryTab extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: FormThemeHelper.primaryTextColor,
+                                color: AppColors.primaryTextColor,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -219,7 +220,7 @@ class LogBookSummaryTab extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: FormThemeHelper.primaryTextColor,
+                                color: AppColors.primaryTextColor,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -260,7 +261,7 @@ class LogBookSummaryTab extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: FormThemeHelper.primaryTextColor,
+                        color: AppColors.primaryTextColor,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -277,7 +278,7 @@ class LogBookSummaryTab extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: FormThemeHelper.primaryTextColor,
+                                color: AppColors.primaryTextColor,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -289,7 +290,7 @@ class LogBookSummaryTab extends StatelessWidget {
                               label: 'Takeoffs/Landings',
                               value: '$takeoffs / $landings',
                             ),
-                            Divider(color: FormThemeHelper.sectionBorderColor),
+                            Divider(color: AppColors.sectionBorderColor),
                           ],
                         ),
                       );

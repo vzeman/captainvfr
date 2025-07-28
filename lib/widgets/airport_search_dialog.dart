@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/airport.dart';
 import '../services/airport_service.dart';
-import '../utils/form_theme_helper.dart';
+import '../constants/app_colors.dart';
+import '../constants/app_theme.dart';
 
 class AirportSearchDialog extends StatefulWidget {
   final AirportService airportService;
@@ -54,50 +55,80 @@ class _AirportSearchDialogState extends State<AirportSearchDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return FormThemeHelper.buildDialog(
-      context: context,
-      title: 'Search Airports',
-      width: MediaQuery.of(context).size.width * 0.9,
-      height: MediaQuery.of(context).size.height * 0.8,
-      content: Column(
-        children: [
-          // Search field
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
+    return Dialog(
+      backgroundColor: AppColors.dialogBackgroundColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        height: MediaQuery.of(context).size.height * 0.8,
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Search Airports',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryTextColor,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Search field
+            TextField(
               controller: _searchController,
               autofocus: true,
-              style: FormThemeHelper.inputTextStyle,
-              decoration: FormThemeHelper.getInputDecoration(
-                'Search airports',
+              style: TextStyle(color: AppColors.primaryTextColor),
+              decoration: InputDecoration(
+                labelText: 'Search airports',
                 hintText: 'Enter airport name, ICAO, IATA, or city',
-              ).copyWith(
-                prefixIcon: Icon(Icons.search, color: FormThemeHelper.secondaryTextColor),
+                labelStyle: TextStyle(color: AppColors.secondaryTextColor),
+                hintStyle: TextStyle(color: AppColors.secondaryTextColor.withValues(alpha: 0.5)),
+                prefixIcon: Icon(Icons.search, color: AppColors.secondaryTextColor),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
-                        icon: Icon(Icons.clear, color: FormThemeHelper.secondaryTextColor),
+                        icon: Icon(Icons.clear, color: AppColors.secondaryTextColor),
                         onPressed: () {
                           _searchController.clear();
                         },
                       )
                     : null,
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: AppColors.primaryAccent.withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: AppColors.primaryAccent),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                fillColor: AppColors.fillColorFaint,
+                filled: true,
               ),
             ),
-          ),
-          
-          // Results
-          Expanded(
-            child: _buildSearchResults(),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          style: FormThemeHelper.getSecondaryButtonStyle(),
-          child: const Text('Cancel'),
+            const SizedBox(height: 16),
+            // Results
+            Expanded(
+              child: _buildSearchResults(),
+            ),
+            const SizedBox(height: 16),
+            // Actions
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.secondaryTextColor,
+                  ),
+                  child: const Text('Cancel'),
+                ),
+              ],
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -107,7 +138,7 @@ class _AirportSearchDialogState extends State<AirportSearchDialog> {
         child: Text(
           'Search for airports by name or code\n(e.g., "KJFK", "Kennedy", "London")',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16, color: FormThemeHelper.secondaryTextColor),
+          style: TextStyle(fontSize: 16, color: AppColors.secondaryTextColor),
         ),
       );
     }
@@ -121,21 +152,21 @@ class _AirportSearchDialogState extends State<AirportSearchDialog> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search_off, size: 64, color: FormThemeHelper.secondaryTextColor),
+            Icon(Icons.search_off, size: 64, color: AppColors.secondaryTextColor),
             const SizedBox(height: 16),
             Text(
               'No airports found for "${_searchController.text}"',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: FormThemeHelper.primaryTextColor,
+                color: AppColors.primaryTextColor,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               'Try searching by:\n• Airport name (e.g., "Kennedy")\n• ICAO code (e.g., "KJFK")\n• IATA code (e.g., "JFK")\n• City name (e.g., "New York")',
               textAlign: TextAlign.center,
-              style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+              style: TextStyle(color: AppColors.secondaryTextColor),
             ),
           ],
         ),
@@ -155,28 +186,28 @@ class _AirportSearchDialogState extends State<AirportSearchDialog> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: FormThemeHelper.sectionBackgroundColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: FormThemeHelper.sectionBorderColor),
+        color: AppColors.sectionBackgroundColor,
+        borderRadius: AppTheme.defaultRadius,
+        border: Border.all(color: AppColors.sectionBorderColor),
       ),
       child: ListTile(
         leading: Container(
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: FormThemeHelper.primaryAccent.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
+            color: AppColors.primaryAccent.withValues(alpha: 0.1),
+            borderRadius: AppTheme.defaultRadius,
           ),
           child: Icon(
             Icons.flight_takeoff,
-            color: FormThemeHelper.primaryAccent,
+            color: AppColors.primaryAccent,
           ),
         ),
         title: Text(
           airport.name,
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: FormThemeHelper.primaryTextColor,
+            color: AppColors.primaryTextColor,
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -187,7 +218,7 @@ class _AirportSearchDialogState extends State<AirportSearchDialog> {
             Text(
               '${airport.icao}${airport.iata != null && airport.iata!.isNotEmpty ? ' • ${airport.iata}' : ''}',
               style: TextStyle(
-                color: FormThemeHelper.primaryAccent,
+                color: AppColors.primaryAccent,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -195,7 +226,7 @@ class _AirportSearchDialogState extends State<AirportSearchDialog> {
               Text(
                 '${airport.municipality}, ${airport.country}',
                 style: TextStyle(
-                  color: FormThemeHelper.secondaryTextColor,
+                  color: AppColors.secondaryTextColor,
                   fontSize: 12,
                 ),
               ),
@@ -203,7 +234,7 @@ class _AirportSearchDialogState extends State<AirportSearchDialog> {
         ),
         trailing: Icon(
           Icons.location_on,
-          color: FormThemeHelper.secondaryTextColor,
+          color: AppColors.secondaryTextColor,
         ),
         onTap: () {
           widget.onAirportSelected(airport);

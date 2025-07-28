@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../services/settings_service.dart';
 import '../../models/aircraft.dart';
 import '../../widgets/aircraft_selector_widget.dart';
-import '../../utils/form_theme_helper.dart';
+import '../../constants/app_colors.dart';
 
 class ClimbPerformanceCalculator extends StatefulWidget {
   const ClimbPerformanceCalculator({super.key});
@@ -105,21 +105,21 @@ class _ClimbPerformanceCalculatorState
     final settings = Provider.of<SettingsService>(context);
 
     return Scaffold(
-      backgroundColor: FormThemeHelper.backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
         title: const Text(
           'Climb Performance',
-          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          style: TextStyle(color: AppColors.primaryTextColor),
         ),
-        backgroundColor: FormThemeHelper.dialogBackgroundColor,
-        foregroundColor: FormThemeHelper.primaryTextColor,
+        backgroundColor: AppColors.dialogBackgroundColor,
+        foregroundColor: AppColors.primaryTextColor,
       ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            FormThemeHelper.buildSection(
+            _buildSection(
               title: 'Aircraft Selection',
               children: [
                 AircraftSelectorWidget(
@@ -137,13 +137,13 @@ class _ClimbPerformanceCalculatorState
               ],
             ),
             const SizedBox(height: 16),
-            FormThemeHelper.buildSection(
+            _buildSection(
               title: 'Climb Parameters',
               children: [
                     Row(
                       children: [
                         Expanded(
-                          child: FormThemeHelper.buildFormField(
+                          child: _buildFormField(
                             controller: _currentAltitudeController,
                             labelText: 'Current Altitude (${settings.altitudeUnit})',
                             keyboardType: TextInputType.number,
@@ -160,7 +160,7 @@ class _ClimbPerformanceCalculatorState
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: FormThemeHelper.buildFormField(
+                          child: _buildFormField(
                             controller: _targetAltitudeController,
                             labelText: 'Target Altitude (${settings.altitudeUnit})',
                             keyboardType: TextInputType.number,
@@ -187,7 +187,7 @@ class _ClimbPerformanceCalculatorState
                     Row(
                       children: [
                         Expanded(
-                          child: FormThemeHelper.buildFormField(
+                          child: _buildFormField(
                             controller: _currentWeightController,
                             labelText: 'Current Weight (${settings.weightUnit})',
                             keyboardType: TextInputType.number,
@@ -209,7 +209,7 @@ class _ClimbPerformanceCalculatorState
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: FormThemeHelper.buildFormField(
+                          child: _buildFormField(
                             controller: _temperatureController,
                             labelText: 'Temperature (°${settings.temperatureUnit})',
                             keyboardType: const TextInputType.numberWithOptions(
@@ -230,7 +230,7 @@ class _ClimbPerformanceCalculatorState
                       ],
                     ),
                     const SizedBox(height: 16),
-                    FormThemeHelper.buildFormField(
+                    _buildFormField(
                       controller: _headwindController,
                       labelText: 'Headwind Component (${settings.windUnit})',
                       hintText: 'Use negative value for tailwind',
@@ -244,7 +244,10 @@ class _ClimbPerformanceCalculatorState
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: _selectedAircraft == null ? null : _calculate,
-                        style: FormThemeHelper.getPrimaryButtonStyle().copyWith(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryAccent,
+                          foregroundColor: Colors.white,
+                        ).copyWith(
                           minimumSize: WidgetStateProperty.all(const Size(double.infinity, 48)),
                         ),
                         child: const Text('Calculate Climb Performance'),
@@ -255,7 +258,11 @@ class _ClimbPerformanceCalculatorState
             if (_climbTime != null) ...[
               const SizedBox(height: 16),
               Container(
-                decoration: FormThemeHelper.getSectionDecoration(),
+                decoration: BoxDecoration(
+                  color: AppColors.sectionBackgroundColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.sectionBorderColor),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -263,8 +270,11 @@ class _ClimbPerformanceCalculatorState
                     children: [
                       Text(
                         'Climb Performance Results',
-                        style: FormThemeHelper.sectionTitleStyle.copyWith(
-                          color: FormThemeHelper.primaryTextColor,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ).copyWith(
+                          color: AppColors.primaryTextColor,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -292,22 +302,22 @@ class _ClimbPerformanceCalculatorState
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: FormThemeHelper.fillColor,
+                          color: AppColors.fillColorFaint,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: FormThemeHelper.borderColor),
+                          border: Border.all(color: AppColors.primaryAccent),
                         ),
                         child: Row(
                           children: [
                             Icon(
                               Icons.info_outline,
-                              color: FormThemeHelper.primaryAccent,
+                              color: AppColors.primaryAccent,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 'Performance based on density altitude and weight adjustments',
                                 style: TextStyle(
-                                  color: FormThemeHelper.primaryTextColor,
+                                  color: AppColors.primaryTextColor,
                                   fontSize: 12,
                                 ),
                               ),
@@ -335,7 +345,7 @@ class _ClimbPerformanceCalculatorState
           Text(
             label,
             style: TextStyle(
-              color: FormThemeHelper.primaryTextColor,
+              color: AppColors.primaryTextColor,
               fontSize: theme.textTheme.bodyMedium?.fontSize,
             ),
           ),
@@ -343,11 +353,81 @@ class _ClimbPerformanceCalculatorState
             value,
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: FormThemeHelper.primaryAccent,
+              color: AppColors.primaryAccent,
               fontSize: theme.textTheme.bodyLarge?.fontSize,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSection({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.sectionBackgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.sectionBorderColor),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryTextColor,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFormField({
+    required TextEditingController controller,
+    required String labelText,
+    String? hintText,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      validator: validator,
+      style: TextStyle(color: AppColors.primaryTextColor),
+      decoration: InputDecoration(
+        labelText: labelText,
+        hintText: hintText,
+        labelStyle: TextStyle(color: AppColors.secondaryTextColor),
+        hintStyle: TextStyle(color: AppColors.secondaryTextColor.withValues(alpha: 0.5)),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: AppColors.primaryAccent.withValues(alpha: 0.3)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: AppColors.primaryAccent),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderSide: const BorderSide(color: Colors.red),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderSide: const BorderSide(color: Colors.red),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        fillColor: AppColors.fillColorFaint,
+        filled: true,
       ),
     );
   }

@@ -5,6 +5,7 @@ import '../services/media_service.dart';
 import '../services/license_service.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../constants/app_theme.dart';
 
 class LicensePhotosWidget extends StatefulWidget {
   final License license;
@@ -120,7 +121,7 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
         fit: StackFit.expand,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: AppTheme.defaultRadius,
             child: Image.file(
               file,
               fit: BoxFit.cover,
@@ -138,7 +139,7 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: AppTheme.extraLargeRadius,
               ),
               child: IconButton(
                 icon: const Icon(Icons.delete, color: Colors.white, size: 20),
@@ -169,7 +170,7 @@ class _LicensePhotosWidgetState extends State<LicensePhotosWidget> {
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: AppTheme.extraLargeRadius,
               ),
               child: IconButton(
                 icon: const Icon(Icons.delete, color: Colors.white, size: 20),

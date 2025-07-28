@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../constants/app_theme.dart';
 
 class PositionTrackingButton extends StatelessWidget {
   final bool positionTrackingEnabled;
@@ -49,7 +50,7 @@ class PositionTrackingButton extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: Colors.orange,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppTheme.extraLargeRadius,
               ),
               child: Text(
                 _formatCountdown(autoCenteringCountdown),

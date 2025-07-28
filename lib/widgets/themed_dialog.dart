@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../constants/app_colors.dart';
+import '../constants/app_theme.dart';
 
 /// A custom dialog widget that matches the flight data panel style
 /// with dark background, rounded corners, and blue accent border
@@ -42,10 +44,10 @@ class ThemedDialog extends StatelessWidget {
         maxHeight: responsiveMaxHeight,
       ),
       decoration: BoxDecoration(
-        color: const Color(0xF0000000), // Black with 0.94 opacity
-        borderRadius: BorderRadius.circular(12.0),
+        color: AppColors.dialogBackgroundColor,
+        borderRadius: AppTheme.dialogRadius,
         border: Border.all(
-          color: const Color(0x7F448AFF), // Blue accent with 0.5 opacity
+          color: AppColors.primaryAccentDim,
           width: 1.0,
         ),
       ),
@@ -59,7 +61,7 @@ class ThemedDialog extends StatelessWidget {
               decoration: const BoxDecoration(
                 border: Border(
                   bottom: BorderSide(
-                    color: Color(0x33448AFF), // Blue accent with 0.2 opacity
+                    color: AppColors.primaryAccentFaint,
                     width: 1.0,
                   ),
                 ),
@@ -72,14 +74,14 @@ class ThemedDialog extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: AppColors.primaryTextColor,
                       ),
                     ),
                   ),
                   IconButton(
                     icon: const Icon(
                       Icons.close,
-                      color: Colors.white70,
+                      color: AppColors.primaryTextColor,
                       size: 20,
                     ),
                     onPressed: () => Navigator.of(context).pop(),
@@ -110,7 +112,7 @@ class ThemedDialog extends StatelessWidget {
               decoration: const BoxDecoration(
                 border: Border(
                   top: BorderSide(
-                    color: Color(0x33448AFF), // Blue accent with 0.2 opacity
+                    color: AppColors.primaryAccentFaint,
                     width: 1.0,
                   ),
                 ),
@@ -123,7 +125,7 @@ class ThemedDialog extends StatelessWidget {
                     return TextButton(
                       onPressed: action.onPressed,
                       style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF448AFF),
+                        foregroundColor: AppColors.primaryAccent,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 8,
@@ -136,8 +138,8 @@ class ThemedDialog extends StatelessWidget {
                     return ElevatedButton(
                       onPressed: action.onPressed,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF448AFF),
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppColors.primaryAccent,
+                        foregroundColor: AppColors.primaryTextColor,
                       ),
                       child: action.child!,
                     );
@@ -154,7 +156,7 @@ class ThemedDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 16,
-      shadowColor: Colors.black.withValues(alpha: 0.5),
+      shadowColor: Colors.black.withValues(alpha: AppColors.mediumOpacity),
       child: dialogContent,
     );
   }
@@ -174,7 +176,7 @@ class ThemedDialog extends StatelessWidget {
     return showDialog<T>(
       context: context,
       barrierDismissible: barrierDismissible,
-      barrierColor: Colors.black87,
+      barrierColor: Colors.black.withValues(alpha: 0.87),
       builder: (BuildContext context) {
         return ThemedDialog(
           title: title,
@@ -201,7 +203,7 @@ class ThemedDialog extends StatelessWidget {
     return show<bool>(
       context: context,
       title: title,
-      content: Text(message, style: const TextStyle(color: Colors.white70)),
+      content: Text(message, style: TextStyle(color: AppColors.labelTextColor)),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
@@ -211,8 +213,8 @@ class ThemedDialog extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(true),
           style: destructive
               ? ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.errorColor,
+                  foregroundColor: AppColors.primaryTextColor,
                 )
               : null,
           child: Text(confirmText),
@@ -230,21 +232,21 @@ extension ThemedFormField on Widget {
         data: ThemeData.dark().copyWith(
           inputDecorationTheme: const InputDecorationTheme(
             filled: true,
-            fillColor: Color(0x1A448AFF), // Blue accent with 0.1 opacity
+            fillColor: AppColors.primaryAccentVeryFaint,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(8.0)),
-              borderSide: BorderSide(color: Color(0x7F448AFF)),
+              borderRadius: BorderRadius.all(Radius.circular(AppTheme.formFieldBorderRadius)),
+              borderSide: BorderSide(color: AppColors.primaryAccentDim),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(8.0)),
-              borderSide: BorderSide(color: Color(0x7F448AFF)),
+              borderRadius: BorderRadius.all(Radius.circular(AppTheme.formFieldBorderRadius)),
+              borderSide: BorderSide(color: AppColors.primaryAccentDim),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(8.0)),
-              borderSide: BorderSide(color: Color(0xFF448AFF), width: 2.0),
+              borderRadius: BorderRadius.all(Radius.circular(AppTheme.formFieldBorderRadius)),
+              borderSide: BorderSide(color: AppColors.primaryAccent, width: 2.0),
             ),
-            labelStyle: TextStyle(color: Colors.white70),
-            hintStyle: TextStyle(color: Colors.white30),
+            labelStyle: TextStyle(color: AppColors.labelTextColor),
+            hintStyle: TextStyle(color: AppColors.tertiaryTextColor),
           ),
         ),
         child: this,

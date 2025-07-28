@@ -3,8 +3,9 @@ import 'package:provider/provider.dart';
 import '../services/flight_service.dart';
 import '../models/flight.dart';
 import '../widgets/themed_dialog.dart';
-import '../utils/form_theme_helper.dart';
+import '../constants/app_colors.dart';
 import 'flight_detail_screen.dart';
+import '../constants/app_theme.dart';
 
 class FlightLogScreen extends StatelessWidget {
   const FlightLogScreen({super.key});
@@ -15,16 +16,16 @@ class FlightLogScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text(
           'Flight Log',
-          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          style: TextStyle(color: AppColors.primaryTextColor),
         ),
-        backgroundColor: FormThemeHelper.dialogBackgroundColor,
-        foregroundColor: FormThemeHelper.primaryTextColor,
+        backgroundColor: AppColors.dialogBackgroundColor,
+        foregroundColor: AppColors.primaryTextColor,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      backgroundColor: FormThemeHelper.backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       body: Consumer<FlightService>(
         builder: (context, flightService, child) {
           final flights = flightService.flights.reversed
@@ -34,7 +35,7 @@ class FlightLogScreen extends StatelessWidget {
             return Center(
               child: Text(
                 'No flights recorded yet.',
-                style: TextStyle(color: FormThemeHelper.secondaryTextColor),
+                style: TextStyle(color: AppColors.secondaryTextColor),
               ),
             );
           }
@@ -63,12 +64,12 @@ class FlightLogScreen extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       decoration: BoxDecoration(
-        color: FormThemeHelper.sectionBackgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: FormThemeHelper.sectionBorderColor),
+        color: AppColors.sectionBackgroundColor,
+        borderRadius: AppTheme.defaultRadius,
+        border: Border.all(color: AppColors.sectionBorderColor),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppTheme.defaultRadius,
         onTap: () {
           Navigator.push(
             context,
@@ -91,7 +92,7 @@ class FlightLogScreen extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: FormThemeHelper.primaryTextColor,
+                        color: AppColors.primaryTextColor,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -103,7 +104,7 @@ class FlightLogScreen extends StatelessWidget {
                         '$hours:${minutes}h',
                         style: TextStyle(
                           fontSize: 16,
-                          color: FormThemeHelper.primaryAccent,
+                          color: AppColors.primaryAccent,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -163,10 +164,10 @@ class FlightLogScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: FormThemeHelper.primaryAccent.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.primaryAccent.withValues(alpha: 0.15),
+        borderRadius: AppTheme.extraLargeRadius,
         border: Border.all(
-          color: FormThemeHelper.primaryAccent.withValues(alpha: 0.3),
+          color: AppColors.primaryAccent.withValues(alpha: 0.3),
           width: 0.5,
         ),
       ),
@@ -176,14 +177,14 @@ class FlightLogScreen extends StatelessWidget {
           Icon(
             icon,
             size: 16,
-            color: FormThemeHelper.secondaryTextColor,
+            color: AppColors.secondaryTextColor,
           ),
           const SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
               fontSize: 12,
-              color: FormThemeHelper.secondaryTextColor,
+              color: AppColors.secondaryTextColor,
             ),
           ),
         ],

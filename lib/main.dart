@@ -49,6 +49,7 @@ import 'utils/performance_monitor.dart';
 import 'services/analytics_service.dart';
 import 'services/pilot_service.dart';
 import 'services/logbook_service.dart';
+import 'constants/app_theme.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -591,7 +592,7 @@ class _CaptainVFRAppState extends State<CaptainVFRApp> {
         cardTheme: CardThemeData(
           elevation: 2,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppTheme.largeRadius,
           ),
           margin: const EdgeInsets.all(8),
         ),
@@ -608,7 +609,7 @@ class _CaptainVFRAppState extends State<CaptainVFRApp> {
           color: Colors.grey[900],
           elevation: 2,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppTheme.largeRadius,
           ),
           margin: const EdgeInsets.all(8),
         ),

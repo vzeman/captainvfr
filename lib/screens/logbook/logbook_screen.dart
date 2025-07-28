@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'logbook_summary_tab.dart';
 import 'logbook_entries_tab.dart';
 import 'pilots_tab.dart';
-import '../../utils/form_theme_helper.dart';
+import '../../constants/app_colors.dart';
 
 class LogBookScreen extends StatefulWidget {
   final int initialTab;
@@ -36,19 +36,19 @@ class _LogBookScreenState extends State<LogBookScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: FormThemeHelper.backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
         title: const Text(
           'LogBook',
-          style: TextStyle(color: FormThemeHelper.primaryTextColor),
+          style: TextStyle(color: AppColors.primaryTextColor),
         ),
-        backgroundColor: FormThemeHelper.dialogBackgroundColor,
-        foregroundColor: FormThemeHelper.primaryTextColor,
+        backgroundColor: AppColors.dialogBackgroundColor,
+        foregroundColor: AppColors.primaryTextColor,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: FormThemeHelper.primaryAccent,
-          labelColor: FormThemeHelper.primaryTextColor,
-          unselectedLabelColor: FormThemeHelper.secondaryTextColor,
+          indicatorColor: AppColors.primaryAccent,
+          labelColor: AppColors.primaryTextColor,
+          unselectedLabelColor: AppColors.secondaryTextColor,
           tabs: const [
             Tab(text: 'Summary', icon: Icon(Icons.dashboard)),
             Tab(text: 'Logs', icon: Icon(Icons.list_alt)),

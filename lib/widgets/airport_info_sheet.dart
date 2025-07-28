@@ -14,6 +14,7 @@ import 'airport_info_sheet/airport_runways_tab.dart';
 import 'airport_info_sheet/airport_frequencies_tab.dart';
 import 'airport_info_sheet/airport_notams_tab.dart';
 import 'airport_info_sheet/airport_data_fetcher.dart';
+import '../constants/app_theme.dart';
 
 // Key for testing
 const Key kAirportInfoSheetKey = Key('airport_info_sheet');
@@ -211,7 +212,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet>
       height: MediaQuery.of(context).size.height * 0.8,
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.borderRadiusDefault)),
       ),
       child: Column(
         children: [
@@ -221,7 +222,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet>
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
+                top: Radius.circular(AppTheme.borderRadiusDefault),
               ),
               boxShadow: [
                 BoxShadow(

@@ -1,55 +1,47 @@
 import 'package:flutter/material.dart';
+import '../constants/app_colors.dart';
+import '../constants/app_theme.dart';
 
 /// Helper class providing consistent form styling across the application
 class FormThemeHelper {
-  // Color scheme
-  static const Color primaryAccent = Color(0xFF448AFF);
-  static const Color backgroundColor = Colors.black87;
-  static const Color dialogBackgroundColor = Color(0xE6000000);
-  static const Color sectionBackgroundColor = Color(0x1A448AFF);
-  static const Color sectionBorderColor = Color(0x7F448AFF);
-  static const Color primaryTextColor = Colors.white;
-  static const Color secondaryTextColor = Colors.white70;
-  static const Color borderColor = Color(0xFF448AFF); // Blue border like settings
-  static const Color fillColor = Colors.white12;
 
   /// Standard input decoration for form fields
   static InputDecoration getInputDecoration(String labelText, {String? hintText}) {
     return InputDecoration(
       labelText: labelText,
       hintText: hintText,
-      labelStyle: const TextStyle(color: secondaryTextColor),
-      hintStyle: const TextStyle(color: secondaryTextColor),
+      labelStyle: TextStyle(color: AppColors.labelTextColor),
+      hintStyle: TextStyle(color: AppColors.tertiaryTextColor),
       border: const OutlineInputBorder(),
       enabledBorder: const OutlineInputBorder(
-        borderSide: BorderSide(color: borderColor),
+        borderSide: BorderSide(color: AppColors.primaryAccent),
       ),
       focusedBorder: const OutlineInputBorder(
-        borderSide: BorderSide(color: primaryAccent, width: 2),
+        borderSide: BorderSide(color: AppColors.primaryAccent, width: 2),
       ),
-      errorBorder: const OutlineInputBorder(
-        borderSide: BorderSide(color: Colors.red),
+      errorBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: AppColors.errorColor),
       ),
-      focusedErrorBorder: const OutlineInputBorder(
-        borderSide: BorderSide(color: Colors.red, width: 2),
+      focusedErrorBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: AppColors.errorColor, width: 2),
       ),
       filled: true,
-      fillColor: fillColor,
+      fillColor: AppColors.fillColorFaint,
     );
   }
 
   /// Standard text style for form fields
   static const TextStyle inputTextStyle = TextStyle(
-    color: primaryTextColor,
+    color: AppColors.primaryTextColor,
     fontSize: 16,
   );
 
   /// Section container decoration
   static BoxDecoration getSectionDecoration() {
     return BoxDecoration(
-      color: sectionBackgroundColor,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: sectionBorderColor),
+      color: AppColors.sectionBackgroundColor,
+      borderRadius: AppTheme.sectionRadius,
+      border: Border.all(color: AppColors.sectionBorderColor),
     );
   }
 
@@ -57,17 +49,17 @@ class FormThemeHelper {
   static const TextStyle sectionTitleStyle = TextStyle(
     fontSize: 18,
     fontWeight: FontWeight.bold,
-    color: primaryTextColor,
+    color: AppColors.primaryTextColor,
   );
 
   /// Standard button style for primary actions
   static ButtonStyle getPrimaryButtonStyle() {
     return ElevatedButton.styleFrom(
-      backgroundColor: primaryAccent,
-      foregroundColor: primaryTextColor,
+      backgroundColor: AppColors.primaryAccent,
+      foregroundColor: AppColors.primaryTextColor,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppTheme.buttonRadius,
       ),
     );
   }
@@ -75,7 +67,7 @@ class FormThemeHelper {
   /// Standard button style for secondary actions
   static ButtonStyle getSecondaryButtonStyle() {
     return TextButton.styleFrom(
-      foregroundColor: secondaryTextColor,
+      foregroundColor: AppColors.primaryTextColor, // Use white for better contrast
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
     );
   }
@@ -83,11 +75,11 @@ class FormThemeHelper {
   /// Standard button style for outlined buttons
   static ButtonStyle getOutlinedButtonStyle() {
     return OutlinedButton.styleFrom(
-      foregroundColor: primaryAccent,
-      side: const BorderSide(color: primaryAccent),
+      foregroundColor: AppColors.primaryAccent,
+      side: const BorderSide(color: AppColors.primaryAccent),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppTheme.buttonRadius,
       ),
     );
   }
@@ -95,11 +87,11 @@ class FormThemeHelper {
   /// Standard AppBar theme
   static AppBarTheme getAppBarTheme() {
     return const AppBarTheme(
-      backgroundColor: dialogBackgroundColor,
-      foregroundColor: primaryTextColor,
+      backgroundColor: AppColors.dialogBackgroundColor,
+      foregroundColor: AppColors.primaryTextColor,
       elevation: 0,
       titleTextStyle: TextStyle(
-        color: primaryTextColor,
+        color: AppColors.primaryTextColor,
         fontSize: 20,
         fontWeight: FontWeight.w500,
       ),
@@ -138,7 +130,7 @@ class FormThemeHelper {
     return DropdownButtonFormField<T>(
       value: value,
       style: inputTextStyle,
-      dropdownColor: dialogBackgroundColor,
+      dropdownColor: AppColors.dialogBackgroundColor,
       decoration: getInputDecoration(labelText),
       items: items,
       onChanged: onChanged,
@@ -195,15 +187,15 @@ class FormThemeHelper {
         width: responsiveWidth,
         height: responsiveHeight,
         decoration: BoxDecoration(
-          color: dialogBackgroundColor,
-          borderRadius: BorderRadius.circular(12.0),
+          color: AppColors.dialogBackgroundColor,
+          borderRadius: AppTheme.dialogRadius,
           border: Border.all(
-            color: sectionBorderColor, // Blue accent with 0.5 opacity
+            color: AppColors.sectionBorderColor, // Blue accent with 0.5 opacity
             width: 1.0,
           ),
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(12.0),
+          borderRadius: AppTheme.dialogRadius,
           child: Column(
             children: [
               AppBar(
@@ -211,12 +203,12 @@ class FormThemeHelper {
                 elevation: 0,
                 title: Text(
                   title,
-                  style: const TextStyle(color: primaryTextColor),
+                  style: const TextStyle(color: AppColors.primaryTextColor),
                 ),
                 automaticallyImplyLeading: false,
                 actions: [
                   IconButton(
-                    icon: const Icon(Icons.close, color: primaryTextColor),
+                    icon: const Icon(Icons.close, color: AppColors.primaryTextColor),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -227,7 +219,7 @@ class FormThemeHelper {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     border: Border(
-                      top: BorderSide(color: borderColor.withValues(alpha: 0.3)),
+                      top: BorderSide(color: AppColors.primaryAccent.withValues(alpha: 0.3)),
                     ),
                   ),
                   child: Row(

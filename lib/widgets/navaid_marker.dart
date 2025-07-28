@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import '../models/navaid.dart';
+import '../constants/app_theme.dart';
 
 class NavaidMarker extends StatelessWidget {
   final Navaid navaid;
@@ -171,7 +172,7 @@ class NavaidInfoSheet extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.borderRadiusDefault)),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF000000).withValues(alpha: 0.2),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/background_data_service.dart';
+import '../constants/app_theme.dart';
 
 class LoadingProgressBar extends StatefulWidget {
   const LoadingProgressBar({super.key});
@@ -32,7 +33,7 @@ class _LoadingProgressBarState extends State<LoadingProgressBar> {
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
               color: Theme.of(context).primaryColor.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppTheme.extraLargeRadius,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.15),
@@ -76,7 +77,7 @@ class _LoadingProgressBarState extends State<LoadingProgressBar> {
                         if (dataService.isLoading) ...[
                           const SizedBox(height: 4),
                           ClipRRect(
-                            borderRadius: BorderRadius.circular(2),
+                            borderRadius: AppTheme.smallRadius,
                             child: LinearProgressIndicator(
                               value: dataService.progress,
                               backgroundColor: Colors.white.withValues(

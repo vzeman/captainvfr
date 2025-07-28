@@ -14,7 +14,7 @@ class OfflineMapService {
   static const String _tableName = 'tiles';
 
   final Logger _logger = Logger(
-    level: Level.warning, // Only log warnings and errors in production
+    level: Level.debug, // Temporarily set to debug for troubleshooting
   );
   Database? _database;
   bool _isInitialized = false;
@@ -71,8 +71,15 @@ class OfflineMapService {
     if (kIsWeb) {
       throw UnsupportedError('Offline maps not supported on web');
     }
-    final documentsDir = await getApplicationDocumentsDirectory();
-    return path.join(documentsDir.path, _dbName);
+    try {
+      final documentsDir = await getApplicationDocumentsDirectory();
+      final dbPath = path.join(documentsDir.path, _dbName);
+      _logger.i('Database path: $dbPath');
+      return dbPath;
+    } catch (e) {
+      _logger.e('Failed to get database path: $e');
+      throw Exception('Failed to get database path: $e');
+    }
   }
 
   /// Download and cache map tiles for a specific area
@@ -231,19 +238,28 @@ class OfflineMapService {
 
   /// Save a tile to the database
   Future<void> saveTile(int z, int x, int y, Uint8List data) async {
-    if (kIsWeb || _database == null) return;
+    if (kIsWeb || _database == null) {
+      _logger.w('Cannot save tile: Web platform or database not initialized');
+      return;
+    }
     
-    await _database!.insert(
-      _tableName,
-      {
-        'z': z,
-        'x': x,
-        'y': y,
-        'tile_data': data,
-        'download_time': DateTime.now().millisecondsSinceEpoch,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    try {
+      await _database!.insert(
+        _tableName,
+        {
+          'z': z,
+          'x': x,
+          'y': y,
+          'tile_data': data,
+          'download_time': DateTime.now().millisecondsSinceEpoch,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      _logger.d('Saved tile $z/$x/$y (${data.length} bytes)');
+    } catch (e) {
+      _logger.e('Failed to save tile $z/$x/$y: $e');
+      throw Exception('Failed to save tile: $e');
+    }
   }
 
   /// Get a tile from the database
