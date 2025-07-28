@@ -1,4 +1,12 @@
-# Workflow Guidelines
+# Development workflow
+During development use all expert agents you have available to you, so you can get the best results. 
+1. Plan - when you get new issue, read it carefully, understand what is needed to be done, if you have any questions, ask them and if you understand the issue, build implementation plan in the issue comments -> ask user to read the plan and if all is good, follow to development
+2. Development - create new branch from main branch with the name of the issue and use all your knowledge from UX, UI, code quality, performance, security, etc. to implement the issue
+3. Testing - test your code, make sure it works as expected, there are no errors, it looks good, if you need to make specific test by user, document the steps user should do to properly test the feature.
+4. Code review - create pull request, make sure you have no errors, warnings or recommendations in the code, make sure you have no duplicated code, make sure the code is clean and readable, make sure you have no useless code in the pull request, make sure you have no commented out code in the pull request, make sure you have no TODOs in the pull request
+5. Documentation - after you finish the pull request, document the changes in the issue, update website content
+
+## Guidelines
 - ALWAYS check if code has no ERRORS, WARNINGS or RECOMMENDATIONS during building to keep the code clean and without issues 
 - ALWAYS REFACTOR classes and methods to keep the code clean and readable without duplicated code, split too long classes (more than 800 lines) into smaller classes 
 - ALWAYS keep the code clean without your test files or helper files you create during development to try something, remove them after you finish the task
