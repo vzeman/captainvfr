@@ -1,9 +1,11 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../services/weather_service.dart';
+import '../../../services/tiled_data_loader.dart';
 
 /// Helper class for loading cache statistics
 class CacheStatisticsHelper {
   static Future<Map<String, dynamic>> getCacheStatistics(WeatherService weatherService) async {
+    final tiledDataLoader = TiledDataLoader();
     final Map<String, dynamic> stats = {};
 
     try {
@@ -53,6 +55,19 @@ class CacheStatisticsHelper {
         'metars': weatherStats['metars'] ?? 0,
         'tafs': weatherStats['tafs'] ?? 0,
         'lastFetch': weatherStats['lastFetch']?.toIso8601String(),
+      };
+
+      // Get obstacles and hotspots counts from spatial indexes
+      final obstaclesIndex = tiledDataLoader.getSpatialIndex('obstacles');
+      stats['obstacles'] = {
+        'count': obstaclesIndex?.size ?? 0,
+        'lastFetch': null, // Tiled data doesn't have fetch timestamps
+      };
+
+      final hotspotsIndex = tiledDataLoader.getSpatialIndex('hotspots');
+      stats['hotspots'] = {
+        'count': hotspotsIndex?.size ?? 0,
+        'lastFetch': null, // Tiled data doesn't have fetch timestamps
       };
     } catch (e) {
       // Handle error silently

@@ -6,6 +6,7 @@ import '../services/cache_service.dart';
 import '../services/airport_service.dart';
 import '../services/navaid_service.dart';
 import '../services/weather_service.dart';
+import '../services/tiled_data_loader.dart';
 import '../constants/app_colors.dart';
 import 'offline_data/controllers/offline_data_state_controller.dart';
 import 'offline_data/components/cache_card.dart';
@@ -35,6 +36,7 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
   final AirportService _airportService = AirportService();
   final NavaidService _navaidService = NavaidService();
   final WeatherService _weatherService = WeatherService();
+  final TiledDataLoader _tiledDataLoader = TiledDataLoader();
   
   final ScrollController _scrollController = ScrollController();
   final OfflineDataStateController _stateController = OfflineDataStateController();
@@ -234,6 +236,12 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
           case 'Map Tiles':
             await _offlineMapService.clearCache();
             break;
+          case 'Obstacles':
+            _tiledDataLoader.clearCacheForType('obstacles');
+            break;
+          case 'Hotspots':
+            _tiledDataLoader.clearCacheForType('hotspots');
+            break;
         }
         await _loadAllCacheStats();
         if (mounted) {
@@ -267,6 +275,8 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
           _cacheService.clearAllCaches(),
           _offlineMapService.clearCache(),
         ]);
+        // Clear tiled data caches
+        _tiledDataLoader.clearCache();
         await _loadAllCacheStats();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -508,6 +518,38 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                     ),
                     onClear: () => _clearSpecificCache('Reporting Points'),
                     subtitle: 'VFR reporting points for navigation',
+                    onRefresh: null, // OpenAIP data is now pre-downloaded offline
+                    isRefreshing: _stateController.isRefreshing,
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // Obstacles cache
+                  CacheCard(
+                    title: 'Obstacles',
+                    icon: Icons.warning,
+                    count: _stateController.cacheStats['obstacles']?['count'] ?? 0,
+                    lastFetch: DateFormatter.formatLastFetch(
+                      _stateController.cacheStats['obstacles']?['lastFetch'],
+                    ),
+                    onClear: () => _clearSpecificCache('Obstacles'),
+                    subtitle: 'Towers, buildings, and other obstacles',
+                    onRefresh: null, // OpenAIP data is now pre-downloaded offline
+                    isRefreshing: _stateController.isRefreshing,
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // Hotspots cache
+                  CacheCard(
+                    title: 'Hotspots',
+                    icon: Icons.local_fire_department,
+                    count: _stateController.cacheStats['hotspots']?['count'] ?? 0,
+                    lastFetch: DateFormatter.formatLastFetch(
+                      _stateController.cacheStats['hotspots']?['lastFetch'],
+                    ),
+                    onClear: () => _clearSpecificCache('Hotspots'),
+                    subtitle: 'Thermal activity and gliding hotspots',
                     onRefresh: null, // OpenAIP data is now pre-downloaded offline
                     isRefreshing: _stateController.isRefreshing,
                   ),
