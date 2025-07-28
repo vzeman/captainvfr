@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../../services/logbook_service.dart';
 import '../../models/logbook_entry.dart';
 import 'logbook_entry_dialog.dart';
+import '../../utils/form_theme_helper.dart';
+import '../../widgets/themed_dialog.dart';
 
 class LogBookEntriesTab extends StatelessWidget {
   const LogBookEntriesTab({super.key});
@@ -14,6 +16,7 @@ class LogBookEntriesTab extends StatelessWidget {
     final entries = logBookService.entries;
 
     return Scaffold(
+      backgroundColor: FormThemeHelper.backgroundColor,
       body: entries.isEmpty
           ? Center(
               child: Column(
@@ -22,17 +25,24 @@ class LogBookEntriesTab extends StatelessWidget {
                   Icon(
                     Icons.book,
                     size: 64,
-                    color: Theme.of(context).disabledColor,
+                    color: FormThemeHelper.secondaryTextColor,
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'No logbook entries yet',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: FormThemeHelper.primaryTextColor,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Add your first flight entry',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: FormThemeHelper.secondaryTextColor,
+                    ),
                   ),
                 ],
               ),
@@ -45,6 +55,8 @@ class LogBookEntriesTab extends StatelessWidget {
               },
             ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: FormThemeHelper.primaryAccent,
+        foregroundColor: Colors.white,
         onPressed: () {
           LogBookEntryDialog.show(context);
         },
@@ -65,6 +77,12 @@ class _LogBookEntryTile extends StatelessWidget {
     final timeFormat = DateFormat('HH:mm');
 
     return Card(
+      color: FormThemeHelper.sectionBackgroundColor,
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: FormThemeHelper.sectionBorderColor),
+      ),
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: ListTile(
         onTap: () {
@@ -75,13 +93,19 @@ class _LogBookEntryTile extends StatelessWidget {
             Expanded(
               child: Text(
                 entry.route,
-                style: Theme.of(context).textTheme.titleMedium,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: FormThemeHelper.primaryTextColor,
+                ),
               ),
             ),
             Text(
               entry.formatDuration(entry.totalDuration),
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              style: TextStyle(
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
+                color: FormThemeHelper.primaryAccent,
               ),
             ),
           ],
@@ -95,19 +119,29 @@ class _LogBookEntryTile extends StatelessWidget {
                 Icon(
                   Icons.calendar_today,
                   size: 16,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  color: FormThemeHelper.secondaryTextColor,
                 ),
                 const SizedBox(width: 4),
-                Text(dateFormat.format(entry.dateTimeStarted)),
+                Text(
+                  dateFormat.format(entry.dateTimeStarted),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: FormThemeHelper.secondaryTextColor,
+                  ),
+                ),
                 const SizedBox(width: 16),
                 Icon(
                   Icons.access_time,
                   size: 16,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  color: FormThemeHelper.secondaryTextColor,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   '${timeFormat.format(entry.dateTimeStarted)} - ${timeFormat.format(entry.dateTimeFinished)}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: FormThemeHelper.secondaryTextColor,
+                  ),
                 ),
               ],
             ),
@@ -118,12 +152,24 @@ class _LogBookEntryTile extends StatelessWidget {
                   Icon(
                     Icons.airplanemode_active,
                     size: 16,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    color: FormThemeHelper.secondaryTextColor,
                   ),
                   const SizedBox(width: 4),
-                  Text(entry.aircraftType!),
+                  Text(
+                    entry.aircraftType!,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: FormThemeHelper.primaryTextColor,
+                    ),
+                  ),
                   if (entry.aircraftIdentification != null) ...[
-                    Text(' (${entry.aircraftIdentification})'),
+                    Text(
+                      ' (${entry.aircraftIdentification})',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: FormThemeHelper.secondaryTextColor,
+                      ),
+                    ),
                   ],
                   const SizedBox(width: 16),
                 ],
@@ -133,19 +179,26 @@ class _LogBookEntryTile extends StatelessWidget {
                         ? Icons.wb_sunny
                         : Icons.nightlight_round,
                     size: 16,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    color: FormThemeHelper.secondaryTextColor,
                   ),
                   const SizedBox(width: 4),
-                  Text(entry.flightCondition == FlightCondition.day 
-                      ? 'Day' 
-                      : 'Night'),
+                  Text(
+                    entry.flightCondition == FlightCondition.day 
+                        ? 'Day' 
+                        : 'Night',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: FormThemeHelper.primaryTextColor,
+                    ),
+                  ),
                   const SizedBox(width: 16),
                 ],
                 if (entry.flightRules != null) ...[
                   Text(
                     entry.flightRules!.name.toUpperCase(),
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
+                      fontSize: 12,
+                      color: FormThemeHelper.primaryAccent,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -157,24 +210,13 @@ class _LogBookEntryTile extends StatelessWidget {
         trailing: PopupMenuButton<String>(
           onSelected: (value) async {
             if (value == 'delete') {
-              final confirmed = await showDialog<bool>(
+              final confirmed = await ThemedDialog.showConfirmation(
                 context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Delete Entry'),
-                  content: const Text(
-                    'Are you sure you want to delete this logbook entry?',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Delete'),
-                    ),
-                  ],
-                ),
+                title: 'Delete Entry',
+                message: 'Are you sure you want to delete this logbook entry?',
+                confirmText: 'Delete',
+                cancelText: 'Cancel',
+                destructive: true,
               );
 
               if (confirmed == true && context.mounted) {

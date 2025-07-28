@@ -488,8 +488,8 @@ class TiledDataLoader {
       }
       
       // Parse altitude values from CSV - might be JSON format or simple numbers
-      double? topAltitude = null;
-      double? bottomAltitude = null;
+      double? topAltitude;
+      double? bottomAltitude;
       
       // Top altitude (upper limit)
       if (row[4] != null && row[4].toString().isNotEmpty && row[4].toString() != 'null') {

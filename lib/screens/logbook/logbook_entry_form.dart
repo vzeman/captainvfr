@@ -15,7 +15,6 @@ import '../../services/aircraft_settings_service.dart';
 import '../../services/flight_service.dart';
 import '../../services/media_service.dart';
 import '../../screens/flight_detail_screen.dart';
-import '../../widgets/themed_dialog.dart';
 import 'logbook_screen.dart';
 
 class LogBookEntryForm extends StatefulWidget {

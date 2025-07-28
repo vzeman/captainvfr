@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
 import '../../models/logbook_entry.dart';
 import '../../models/model.dart' show AircraftCategory;
 import '../../models/flight_plan.dart' show FlightRules;
@@ -13,7 +10,6 @@ import '../../services/logbook_service.dart';
 import '../../services/pilot_service.dart';
 import '../../services/aircraft_settings_service.dart';
 import '../../services/flight_service.dart';
-import '../../services/media_service.dart';
 import '../../screens/flight_detail_screen.dart';
 import '../../widgets/themed_dialog.dart';
 
@@ -82,7 +78,6 @@ class _LogBookEntryDialogState extends State<LogBookEntryDialog> {
   List<String> _imagePaths = [];
   List<String> _documentPaths = [];
   String? _linkedFlightLogId;
-  final MediaService _mediaService = MediaService();
 
   @override
   void initState() {

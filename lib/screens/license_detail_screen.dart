@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/license.dart';
-import '../models/pilot.dart';
 import '../services/license_service.dart';
 import '../services/pilot_service.dart';
 import '../widgets/license_photos_widget.dart';

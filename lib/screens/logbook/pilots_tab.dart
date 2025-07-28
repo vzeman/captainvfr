@@ -7,6 +7,7 @@ import '../../models/license.dart';
 import '../../widgets/themed_dialog.dart';
 import 'pilot_form.dart';
 import '../licenses_screen.dart';
+import '../../utils/form_theme_helper.dart';
 
 class PilotsTab extends StatelessWidget {
   const PilotsTab({super.key});
@@ -17,6 +18,7 @@ class PilotsTab extends StatelessWidget {
     final pilots = pilotService.pilots;
 
     return Scaffold(
+      backgroundColor: FormThemeHelper.backgroundColor,
       body: pilots.isEmpty
           ? Center(
               child: Column(
@@ -25,17 +27,24 @@ class PilotsTab extends StatelessWidget {
                   Icon(
                     Icons.person_add,
                     size: 64,
-                    color: Theme.of(context).disabledColor,
+                    color: FormThemeHelper.secondaryTextColor,
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'No pilots added yet',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: FormThemeHelper.primaryTextColor,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Add yourself as the first pilot',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: FormThemeHelper.secondaryTextColor,
+                    ),
                   ),
                 ],
               ),
@@ -48,6 +57,8 @@ class PilotsTab extends StatelessWidget {
               },
             ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: FormThemeHelper.primaryAccent,
+        foregroundColor: Colors.white,
         onPressed: () {
           Navigator.push(
             context,
@@ -83,8 +94,18 @@ class _PilotTileState extends State<_PilotTile> {
     final isCurrentPilot = pilotService.currentPilot?.id == pilot.id;
 
     return Card(
+      color: FormThemeHelper.sectionBackgroundColor,
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: FormThemeHelper.sectionBorderColor),
+      ),
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: ExpansionTile(
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+        ),
+        child: ExpansionTile(
         onExpansionChanged: (expanded) {
           setState(() {
             _isExpanded = expanded;
@@ -92,13 +113,13 @@ class _PilotTileState extends State<_PilotTile> {
         },
         leading: CircleAvatar(
           backgroundColor: isCurrentPilot
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.surfaceContainerHighest,
+              ? FormThemeHelper.primaryAccent
+              : FormThemeHelper.sectionBorderColor,
           child: Icon(
             Icons.person,
             color: isCurrentPilot
-                ? Theme.of(context).colorScheme.onPrimary
-                : Theme.of(context).colorScheme.onSurfaceVariant,
+                ? Colors.white
+                : FormThemeHelper.secondaryTextColor,
           ),
         ),
         title: Row(
@@ -106,17 +127,21 @@ class _PilotTileState extends State<_PilotTile> {
             Expanded(
               child: Text(
                 pilot.name,
-                style: Theme.of(context).textTheme.titleMedium,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: FormThemeHelper.primaryTextColor,
+                ),
               ),
             ),
             if (isCurrentPilot)
               Chip(
                 label: const Text('Current'),
-                labelStyle: TextStyle(
-                  color: Theme.of(context).colorScheme.onPrimary,
+                labelStyle: const TextStyle(
+                  color: Colors.white,
                   fontSize: 12,
                 ),
-                backgroundColor: Theme.of(context).colorScheme.primary,
+                backgroundColor: FormThemeHelper.primaryAccent,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
@@ -126,25 +151,50 @@ class _PilotTileState extends State<_PilotTile> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (pilot.certificateNumber != null)
-              Text('Certificate: ${pilot.certificateNumber}'),
-            if (pilot.age != null) Text('Age: ${pilot.age} years'),
+              Text(
+                'Certificate: ${pilot.certificateNumber}',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: FormThemeHelper.secondaryTextColor,
+                ),
+              ),
+            if (pilot.age != null) 
+              Text(
+                'Age: ${pilot.age} years',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: FormThemeHelper.secondaryTextColor,
+                ),
+              ),
             Row(
               children: [
                 Icon(
                   Icons.card_membership,
                   size: 16,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  color: FormThemeHelper.secondaryTextColor,
                 ),
                 const SizedBox(width: 4),
-                Text('${licenses.length} licenses'),
+                Text(
+                  '${licenses.length} licenses',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: FormThemeHelper.secondaryTextColor,
+                  ),
+                ),
                 const SizedBox(width: 16),
                 Icon(
                   Icons.verified,
                   size: 16,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  color: FormThemeHelper.secondaryTextColor,
                 ),
                 const SizedBox(width: 4),
-                Text('${endorsements.length} endorsements'),
+                Text(
+                  '${endorsements.length} endorsements',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: FormThemeHelper.secondaryTextColor,
+                  ),
+                ),
                 const Spacer(),
                 AnimatedRotation(
                   turns: _isExpanded ? 0.5 : 0.0,
@@ -152,7 +202,7 @@ class _PilotTileState extends State<_PilotTile> {
                   child: Icon(
                     Icons.expand_more,
                     size: 20,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    color: FormThemeHelper.secondaryTextColor,
                   ),
                 ),
               ],
@@ -295,6 +345,7 @@ class _PilotTileState extends State<_PilotTile> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
