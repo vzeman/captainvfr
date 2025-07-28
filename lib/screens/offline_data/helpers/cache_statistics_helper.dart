@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../services/weather_service.dart';
 import '../../../services/tiled_data_loader.dart';
@@ -57,18 +59,38 @@ class CacheStatisticsHelper {
         'lastFetch': weatherStats['lastFetch']?.toIso8601String(),
       };
 
-      // Get obstacles and hotspots counts from spatial indexes
-      final obstaclesIndex = tiledDataLoader.getSpatialIndex('obstacles');
-      stats['obstacles'] = {
-        'count': obstaclesIndex?.size ?? 0,
-        'lastFetch': null, // Tiled data doesn't have fetch timestamps
-      };
+      // Get obstacles and hotspots counts from index files
+      try {
+        final obstaclesIndexData = await rootBundle.loadString('assets/data/tiles/obstacles/index.json');
+        final obstaclesIndex = json.decode(obstaclesIndexData);
+        stats['obstacles'] = {
+          'count': obstaclesIndex['totalItems'] ?? 0,
+          'lastFetch': null, // Tiled data doesn't have fetch timestamps
+        };
+      } catch (e) {
+        // Fallback to spatial index if index file not found
+        final obstaclesIndex = tiledDataLoader.getSpatialIndex('obstacles');
+        stats['obstacles'] = {
+          'count': obstaclesIndex?.size ?? 0,
+          'lastFetch': null,
+        };
+      }
 
-      final hotspotsIndex = tiledDataLoader.getSpatialIndex('hotspots');
-      stats['hotspots'] = {
-        'count': hotspotsIndex?.size ?? 0,
-        'lastFetch': null, // Tiled data doesn't have fetch timestamps
-      };
+      try {
+        final hotspotsIndexData = await rootBundle.loadString('assets/data/tiles/hotspots/index.json');
+        final hotspotsIndex = json.decode(hotspotsIndexData);
+        stats['hotspots'] = {
+          'count': hotspotsIndex['totalItems'] ?? 0,
+          'lastFetch': null, // Tiled data doesn't have fetch timestamps
+        };
+      } catch (e) {
+        // Fallback to spatial index if index file not found
+        final hotspotsIndex = tiledDataLoader.getSpatialIndex('hotspots');
+        stats['hotspots'] = {
+          'count': hotspotsIndex?.size ?? 0,
+          'lastFetch': null,
+        };
+      }
     } catch (e) {
       // Handle error silently
     }
