@@ -1,9 +1,14 @@
+import 'dart:convert';
+import 'dart:developer' as developer;
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../services/weather_service.dart';
+import '../../../services/tiled_data_loader.dart';
 
 /// Helper class for loading cache statistics
 class CacheStatisticsHelper {
   static Future<Map<String, dynamic>> getCacheStatistics(WeatherService weatherService) async {
+    final tiledDataLoader = TiledDataLoader();
     final Map<String, dynamic> stats = {};
 
     try {
@@ -54,6 +59,49 @@ class CacheStatisticsHelper {
         'tafs': weatherStats['tafs'] ?? 0,
         'lastFetch': weatherStats['lastFetch']?.toIso8601String(),
       };
+
+      // Get obstacles and hotspots counts from index files
+      try {
+        final obstaclesIndexData = await rootBundle.loadString('assets/data/tiles/obstacles/index.json');
+        final obstaclesIndex = json.decode(obstaclesIndexData);
+        final obstacleCount = obstaclesIndex['totalItems'] ?? 0;
+        developer.log('Obstacles total items from index: $obstacleCount');
+        stats['obstacles'] = {
+          'count': obstacleCount,
+          'lastFetch': null, // Tiled data doesn't have fetch timestamps
+        };
+      } catch (e) {
+        developer.log('Failed to load obstacles index: $e');
+        // Fallback to spatial index if index file not found
+        final obstaclesIndex = tiledDataLoader.getSpatialIndex('obstacles');
+        final spatialCount = obstaclesIndex?.size ?? 0;
+        developer.log('Obstacles from spatial index: $spatialCount');
+        stats['obstacles'] = {
+          'count': spatialCount,
+          'lastFetch': null,
+        };
+      }
+
+      try {
+        final hotspotsIndexData = await rootBundle.loadString('assets/data/tiles/hotspots/index.json');
+        final hotspotsIndex = json.decode(hotspotsIndexData);
+        final hotspotCount = hotspotsIndex['totalItems'] ?? 0;
+        developer.log('Hotspots total items from index: $hotspotCount');
+        stats['hotspots'] = {
+          'count': hotspotCount,
+          'lastFetch': null, // Tiled data doesn't have fetch timestamps
+        };
+      } catch (e) {
+        developer.log('Failed to load hotspots index: $e');
+        // Fallback to spatial index if index file not found
+        final hotspotsIndex = tiledDataLoader.getSpatialIndex('hotspots');
+        final spatialCount = hotspotsIndex?.size ?? 0;
+        developer.log('Hotspots from spatial index: $spatialCount');
+        stats['hotspots'] = {
+          'count': spatialCount,
+          'lastFetch': null,
+        };
+      }
     } catch (e) {
       // Handle error silently
     }

@@ -9,6 +9,7 @@ import '../services/cache_service.dart';
 import '../services/airport_service.dart';
 import '../services/navaid_service.dart';
 import '../services/weather_service.dart';
+import '../services/tiled_data_loader.dart';
 import '../constants/app_theme.dart';
 import '../constants/app_colors.dart';
 import 'offline_data/controllers/offline_data_state_controller.dart';
@@ -406,6 +407,7 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
   final AirportService _airportService = AirportService();
   final NavaidService _navaidService = NavaidService();
   final WeatherService _weatherService = WeatherService();
+  final TiledDataLoader _tiledDataLoader = TiledDataLoader();
   final OfflineDataStateController _stateController = OfflineDataStateController();
 
   @override
@@ -797,6 +799,34 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                 onClear: () => _clearSpecificCache('Frequencies'),
               ),
               _buildCompactCacheCard(
+                title: 'Airspaces',
+                icon: Icons.layers,
+                count: _stateController.cacheStats['airspaces']?['count'] ?? 0,
+                lastFetch: DateFormatter.formatLastFetch(_stateController.cacheStats['airspaces']?['lastFetch']),
+                onClear: () => _clearSpecificCache('Airspaces'),
+              ),
+              _buildCompactCacheCard(
+                title: 'Reporting Points',
+                icon: Icons.location_on,
+                count: _stateController.cacheStats['reportingPoints']?['count'] ?? 0,
+                lastFetch: DateFormatter.formatLastFetch(_stateController.cacheStats['reportingPoints']?['lastFetch']),
+                onClear: () => _clearSpecificCache('Reporting Points'),
+              ),
+              _buildCompactCacheCard(
+                title: 'Obstacles',
+                icon: Icons.warning,
+                count: _stateController.cacheStats['obstacles']?['count'] ?? 0,
+                lastFetch: DateFormatter.formatLastFetch(_stateController.cacheStats['obstacles']?['lastFetch']),
+                onClear: () => _clearSpecificCache('Obstacles'),
+              ),
+              _buildCompactCacheCard(
+                title: 'Hotspots',
+                icon: Icons.local_fire_department,
+                count: _stateController.cacheStats['hotspots']?['count'] ?? 0,
+                lastFetch: DateFormatter.formatLastFetch(_stateController.cacheStats['hotspots']?['lastFetch']),
+                onClear: () => _clearSpecificCache('Hotspots'),
+              ),
+              _buildCompactCacheCard(
                 title: 'Weather',
                 icon: Icons.cloud,
                 count: (_stateController.cacheStats['weather']?['metars'] ?? 0) + 
@@ -1109,6 +1139,12 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
           case 'Map Tiles':
             await _offlineMapService.clearCache();
             break;
+          case 'Obstacles':
+            _tiledDataLoader.clearCacheForType('obstacles');
+            break;
+          case 'Hotspots':
+            _tiledDataLoader.clearCacheForType('hotspots');
+            break;
         }
         await _loadAllCacheStats();
         if (mounted) {
@@ -1142,6 +1178,8 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
           _cacheService.clearAllCaches(),
           _offlineMapService.clearCache(),
         ]);
+        // Clear tiled data caches
+        _tiledDataLoader.clearCache();
         await _loadAllCacheStats();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

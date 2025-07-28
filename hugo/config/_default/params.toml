@@ -46,3 +46,4 @@
     maxAutomaticLinksInPage = 50
     maxAutomaticLinksInParagraph = 5
     minParagraphLength = 30
+    enableAutoKeywords = true
