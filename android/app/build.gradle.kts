@@ -33,7 +33,7 @@ android {
     defaultConfig {
         applicationId = "com.captainvfr.captainvfr"
         minSdk = 21  // Android 5.0 minimum
-        targetSdk = 34  // Android 14 target for latest features
+        targetSdk = 35  // Android 15 target for latest features
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
