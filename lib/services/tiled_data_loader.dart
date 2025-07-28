@@ -340,9 +340,9 @@ class TiledDataLoader {
       int elevation = 0;
       if (row[6] != null) {
         final elevStr = row[6].toString();
-        if (elevStr.startsWith('{') && elevStr.contains('value:')) {
-          // Extract value from JSON-like format: {value: 380, unit: 0, referenceDatum: 1}
-          final match = RegExp(r'value:\s*(\d+)').firstMatch(elevStr);
+        if (elevStr.startsWith('{') && elevStr.contains('"value"')) {
+          // Extract value from JSON-like format: {"value":380,"unit":0,"referenceDatum":1}
+          final match = RegExp(r'"value":\s*(\d+)').firstMatch(elevStr);
           if (match != null) {
             elevation = int.tryParse(match.group(1)!) ?? 0;
           }
@@ -494,9 +494,9 @@ class TiledDataLoader {
       if (row[4] != null && row[4].toString().isNotEmpty && row[4].toString() != 'null') {
         final altStr = row[4].toString();
         if (altStr.startsWith('{') && altStr.contains('value')) {
-          // Parse JSON format: {value: 10000, unit: 1, referenceDatum: 0}
-          final valueMatch = RegExp(r'value:\s*(\d+(?:\.\d+)?)').firstMatch(altStr);
-          final unitMatch = RegExp(r'unit:\s*(\d+)').firstMatch(altStr);
+          // Parse JSON format: {"value":10000,"unit":1,"referenceDatum":0}
+          final valueMatch = RegExp(r'"value":\s*(\d+(?:\.\d+)?)').firstMatch(altStr);
+          final unitMatch = RegExp(r'"unit":\s*(\d+)').firstMatch(altStr);
           
           if (valueMatch != null) {
             var value = double.parse(valueMatch.group(1)!);
@@ -635,8 +635,8 @@ class TiledDataLoader {
       if (row[5] != null && row[5].toString().isNotEmpty) {
         final elevStr = row[5].toString();
         if (elevStr.startsWith('{')) {
-          // Parse JSON format: {value: 259, unit: 0, referenceDatum: 1}
-          final match = RegExp(r'value:\s*(\d+)').firstMatch(elevStr);
+          // Parse JSON format: {"value":259,"unit":0,"referenceDatum":1}
+          final match = RegExp(r'"value":\s*(\d+)').firstMatch(elevStr);
           if (match != null) {
             elevationFt = int.parse(match.group(1)!);
           }
@@ -650,8 +650,8 @@ class TiledDataLoader {
       if (row[6] != null && row[6].toString().isNotEmpty) {
         final heightStr = row[6].toString();
         if (heightStr.startsWith('{')) {
-          // Parse JSON format: {value: 104, unit: 0, referenceDatum: 0}
-          final match = RegExp(r'value:\s*(\d+)').firstMatch(heightStr);
+          // Parse JSON format: {"value":104,"unit":0,"referenceDatum":0}
+          final match = RegExp(r'"value":\s*(\d+)').firstMatch(heightStr);
           if (match != null) {
             heightFt = int.parse(match.group(1)!);
           }
@@ -692,8 +692,8 @@ class TiledDataLoader {
       if (row[5] != null && row[5].toString().isNotEmpty) {
         final elevStr = row[5].toString();
         if (elevStr.startsWith('{')) {
-          // Parse JSON format: {value: 143, unit: 0, referenceDatum: 1}
-          final match = RegExp(r'value:\s*(\d+)').firstMatch(elevStr);
+          // Parse JSON format: {"value":143,"unit":0,"referenceDatum":1}
+          final match = RegExp(r'"value":\s*(\d+)').firstMatch(elevStr);
           if (match != null) {
             elevationFt = int.parse(match.group(1)!);
           }
