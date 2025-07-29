@@ -36,6 +36,8 @@ import '../services/weather_service.dart';
 import '../services/offline_map_service.dart';
 import '../services/offline_tile_provider.dart';
 import '../services/flight_plan_service.dart';
+import '../services/flight_plan_tile_download_service.dart';
+import '../screens/offline_data/controllers/offline_data_state_controller.dart';
 import '../widgets/navaid_marker.dart';
 import '../widgets/optimized_marker_layer.dart';
 import '../widgets/airport_info_sheet.dart';
@@ -96,6 +98,8 @@ class MapScreenState extends State<MapScreen>
   OfflineMapService?
   _offlineMapService; // Make nullable to prevent LateInitializationError
   late final FlightPlanService _flightPlanService;
+  FlightPlanTileDownloadService? _tileDownloadService;
+  OfflineDataStateController? _offlineDataController;
   OpenAIPService? _openAIPService;
   SpatialAirspaceService? _spatialAirspaceService;
   late final MapController _mapController;
@@ -2716,6 +2720,19 @@ class MapScreenState extends State<MapScreen>
         try {
           _offlineMapService = OfflineMapService();
           await _offlineMapService!.initialize();
+          
+          // Initialize tile download service for flight plans
+          _offlineDataController = OfflineDataStateController();
+          _tileDownloadService = FlightPlanTileDownloadService(
+            offlineMapService: _offlineMapService!,
+            offlineDataController: _offlineDataController!,
+          );
+          
+          // Connect tile download service to flight plan service
+          _flightPlanService.setTileDownloadService(_tileDownloadService!);
+          if (mounted) {
+            _flightPlanService.setContext(context);
+          }
         } catch (e) {
           // Handle initialization errors gracefully
           _logger.w('Offline maps not available: ${e.toString().split('(')[0]}');
