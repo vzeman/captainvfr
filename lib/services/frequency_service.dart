@@ -289,7 +289,7 @@ class FrequencyService {
   /// Get frequencies for a specific airport
   List<Frequency> getFrequenciesForAirport(String airportIdent, {List<OpenAIPFrequency>? openAIPFrequencies}) {
     // Try unified data first
-    final unified = this.getUnifiedFrequenciesForAirport(airportIdent, openAIPFrequencies: openAIPFrequencies);
+    final unified = getUnifiedFrequenciesForAirport(airportIdent, openAIPFrequencies: openAIPFrequencies);
     if (unified.isNotEmpty) {
       return unified.map((f) => f.toFrequency()).toList();
     }
