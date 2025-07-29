@@ -564,6 +564,9 @@ class MapScreenState extends State<MapScreen>
     _locationRetryTimer?.cancel();
     _locationStreamSubscription?.cancel();
     
+    // Cancel any active tile downloads
+    _tileDownloadService?.cancelAllDownloads();
+    
     _flightService.removeListener(_onFlightPathUpdated);
     _flightPlanService.removeListener(_onFlightPlanUpdated);
     _cacheService.removeListener(_onCacheUpdated);
@@ -576,6 +579,7 @@ class MapScreenState extends State<MapScreen>
     _mapController.dispose();
     _flightService.dispose();
     _spatialAirspaceService?.dispose();
+    _offlineDataController?.dispose();
     super.dispose();
   }
 
