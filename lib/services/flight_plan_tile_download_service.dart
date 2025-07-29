@@ -255,10 +255,12 @@ class FlightPlanTileDownloadService {
   
   /// Validate that all tiles are downloaded for saved flight plans
   Future<List<FlightPlanValidationResult>> validateAllFlightPlans(List<FlightPlan> flightPlans) async {
+    debugPrint('FlightPlanTileDownloadService: Validating ${flightPlans.length} flight plans');
     final results = <FlightPlanValidationResult>[];
     
     // Only validate if the feature is enabled
     if (!_offlineDataController.downloadMapTilesForFlightPlan) {
+      debugPrint('FlightPlanTileDownloadService: Validation skipped - download feature is disabled');
       return results;
     }
     
