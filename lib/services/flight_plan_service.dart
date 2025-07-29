@@ -78,10 +78,16 @@ class FlightPlanService extends ChangeNotifier {
       
       // Trigger automatic tile download if service is available
       if (_tileDownloadService != null && _context != null && _currentFlightPlan!.waypoints.isNotEmpty) {
+        debugPrint('FlightPlanService: Triggering tile download for ${_currentFlightPlan!.name}');
         _tileDownloadService!.downloadTilesForFlightPlan(
           flightPlan: _currentFlightPlan!,
           context: _context!,
         );
+      } else {
+        debugPrint('FlightPlanService: Cannot trigger tile download - '
+            'tileDownloadService: ${_tileDownloadService != null}, '
+            'context: ${_context != null}, '
+            'waypoints: ${_currentFlightPlan?.waypoints.length ?? 0}');
       }
     } catch (e) {
       // debugPrint('Error saving flight plan: $e');

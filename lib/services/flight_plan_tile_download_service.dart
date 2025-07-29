@@ -38,13 +38,17 @@ class FlightPlanTileDownloadService {
     required BuildContext context,
     double bufferKm = 10.0, // 10km buffer around route
   }) async {
+    debugPrint('FlightPlanTileDownloadService: downloadTilesForFlightPlan called for ${flightPlan.name}');
+    
     // Check if the feature is enabled
     if (!_offlineDataController.downloadMapTilesForFlightPlan) {
+      debugPrint('FlightPlanTileDownloadService: Feature is disabled in settings');
       return;
     }
 
     // Check if we have waypoints
     if (flightPlan.waypoints.isEmpty) {
+      debugPrint('FlightPlanTileDownloadService: No waypoints in flight plan');
       return;
     }
 
@@ -87,6 +91,7 @@ class FlightPlanTileDownloadService {
     final bounds = _calculateRouteBufferBounds(flightPlan.waypoints, bufferKm);
     
     // Show notification that download is starting
+    debugPrint('FlightPlanTileDownloadService: Showing download notification for $estimatedTiles tiles');
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -110,6 +115,8 @@ class FlightPlanTileDownloadService {
           backgroundColor: Colors.blue,
         ),
       );
+    } else {
+      debugPrint('FlightPlanTileDownloadService: Context not mounted, cannot show notification');
     }
 
     // Add to download queue
@@ -317,6 +324,8 @@ class FlightPlanTileDownloadService {
   
   /// Add download request to queue and process it
   void _addToQueue(_DownloadRequest request) {
+    debugPrint('FlightPlanTileDownloadService: Adding download request to queue');
+    
     // Check if this flight plan is already in queue
     final existingIndex = _downloadQueue.indexWhere((r) => r.flightPlanId == request.flightPlanId);
     if (existingIndex != -1) {
@@ -325,6 +334,8 @@ class FlightPlanTileDownloadService {
     } else {
       _downloadQueue.add(request);
     }
+    
+    debugPrint('FlightPlanTileDownloadService: Queue size: ${_downloadQueue.length}, Processing: $_isProcessingQueue');
     
     // Start processing queue if not already running
     if (!_isProcessingQueue) {
@@ -338,14 +349,17 @@ class FlightPlanTileDownloadService {
       return;
     }
     
+    debugPrint('FlightPlanTileDownloadService: Starting queue processing');
     _isProcessingQueue = true;
     
     try {
       while (_downloadQueue.isNotEmpty) {
         final request = _downloadQueue.removeAt(0);
+        debugPrint('FlightPlanTileDownloadService: Processing download for flight plan ${request.flightPlanId}');
         
         // Skip if already downloading
         if (_activeDownloads.containsKey(request.flightPlanId)) {
+          debugPrint('FlightPlanTileDownloadService: Skipping - already downloading');
           continue;
         }
         
@@ -358,6 +372,7 @@ class FlightPlanTileDownloadService {
       }
     } finally {
       _isProcessingQueue = false;
+      debugPrint('FlightPlanTileDownloadService: Queue processing complete');
     }
   }
 
