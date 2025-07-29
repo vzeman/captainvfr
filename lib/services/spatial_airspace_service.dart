@@ -71,8 +71,6 @@ class SpatialAirspaceService extends ChangeNotifier {
       developer.log('⚠️ Spatial index not ready, skipping query');
       return [];
     }
-
-    final startTime = DateTime.now();
     
     // First, ensure the tiles for this area are loaded
     await _tiledDataLoader.loadAirspacesForArea(
@@ -114,8 +112,6 @@ class SpatialAirspaceService extends ChangeNotifier {
       }).toList();
     }
 
-    final queryTime = DateTime.now().difference(startTime).inMicroseconds;
-
     return candidates;
   }
 
@@ -130,8 +126,6 @@ class SpatialAirspaceService extends ChangeNotifier {
     if (!_isIndexBuilt) {
       return [];
     }
-
-    final startTime = DateTime.now();
     
     // First, ensure the tiles for this area are loaded (small area around the point)
     const buffer = 0.1; // degrees
@@ -174,9 +168,6 @@ class SpatialAirspaceService extends ChangeNotifier {
       }).toList();
     }
 
-    final queryTime = DateTime.now().difference(startTime).inMicroseconds;
-    developer.log('⚡ Point query completed in $queryTimeμs, found ${candidates.length} airspaces');
-    
     return candidates;
   }
 
