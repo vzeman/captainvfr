@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../models/airport.dart';
 import '../../models/frequency.dart';
+import '../../models/unified_frequency.dart';
+import '../../services/frequency_service.dart';
 import '../common/loading_widget.dart';
 import '../common/error_widget.dart' as custom;
 
-class AirportFrequenciesTab extends StatelessWidget {
+class AirportFrequenciesTab extends StatefulWidget {
   final Airport airport;
   final bool isLoading;
   final String? error;
@@ -21,16 +23,43 @@ class AirportFrequenciesTab extends StatelessWidget {
   });
 
   @override
+  State<AirportFrequenciesTab> createState() => _AirportFrequenciesTabState();
+}
+
+class _AirportFrequenciesTabState extends State<AirportFrequenciesTab> {
+  List<UnifiedFrequency>? _unifiedFrequencies;
+  
+  @override
+  void initState() {
+    super.initState();
+    _fetchUnifiedFrequencies();
+  }
+  
+  Future<void> _fetchUnifiedFrequencies() async {
+    try {
+      final frequencyService = FrequencyService();
+      _unifiedFrequencies = frequencyService.getUnifiedFrequenciesForAirport(widget.airport.icao);
+    } catch (e) {
+      // Silently fail - unified frequencies are optional
+    }
+  }
+  
+  bool _hasOpenAIPData() {
+    if (_unifiedFrequencies == null || _unifiedFrequencies!.isEmpty) return false;
+    return _unifiedFrequencies!.any((freq) => freq.dataSources.contains('openaip'));
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (isLoading) {
+    if (widget.isLoading) {
       return const LoadingWidget(message: 'Loading frequency data...');
     }
 
-    if (error != null) {
-      return custom.ErrorWidget(error: error!, onRetry: onRetry);
+    if (widget.error != null) {
+      return custom.ErrorWidget(error: widget.error!, onRetry: widget.onRetry);
     }
 
-    if (frequencies.isEmpty) {
+    if (widget.frequencies.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(32),
@@ -55,15 +84,47 @@ class AirportFrequenciesTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Frequency List
-          Text(
-            'Frequencies (${frequencies.length})',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              Text(
+                'Frequencies (${widget.frequencies.length})',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              if (_hasOpenAIPData()) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 14,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Enhanced with OpenAIP',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 8),
 
-          ...frequencies.map(
+          ...widget.frequencies.map(
             (frequency) => FrequencyCard(frequency: frequency),
           ),
         ],

@@ -771,6 +771,27 @@ Future<void> _finalCleanup() async {
   }
   
   print('   ✅ Cleanup complete');
+  
+  // Generate OpenAIP data tiles
+  print('\n🔄 Generating OpenAIP data tiles...');
+  print('   Note: This requires OPENAIP_API_KEY environment variable');
+  
+  // Try to run the OpenAIP data generation script
+  try {
+    final result = await Process.run(
+      'dart',
+      ['scripts/generate_openaip_runway_tiles_v2.dart'],
+      environment: Platform.environment,
+    );
+    
+    if (result.exitCode == 0) {
+      print('   ✅ OpenAIP data tiles generated successfully');
+    } else {
+      print('   ⚠️ OpenAIP data generation skipped (API key may not be set)');
+    }
+  } catch (e) {
+    print('   ⚠️ Could not run OpenAIP data generation: $e');
+  }
 }
 
 class Coordinates {

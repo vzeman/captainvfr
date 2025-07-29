@@ -205,6 +205,76 @@ class TiledDataLoader {
     );
   }
   
+  /// Load OpenAIP runways for a given area
+  Future<List<Map<String, dynamic>>> loadOpenAIPRunwaysForArea({
+    required double minLat,
+    required double maxLat,
+    required double minLon,
+    required double maxLon,
+  }) async {
+    final tiles = getTilesForArea(
+      minLat: minLat,
+      maxLat: maxLat,
+      minLon: minLon,
+      maxLon: maxLon,
+    );
+    
+    final allRunways = <Map<String, dynamic>>[];
+    
+    for (final tile in tiles) {
+      final tilePath = 'assets/data/tiles/openaip_runways/tile_${tile}.json.gz';
+      
+      try {
+        final data = await rootBundle.load(tilePath);
+        final decompressed = GZipDecoder().decodeBytes(data.buffer.asUint8List());
+        final jsonStr = utf8.decode(decompressed);
+        final tileData = json.decode(jsonStr) as Map<String, dynamic>;
+        
+        final runways = tileData['runways'] as List<dynamic>? ?? [];
+        allRunways.addAll(runways.cast<Map<String, dynamic>>());
+      } catch (e) {
+        // Tile might not exist - this is okay
+      }
+    }
+    
+    return allRunways;
+  }
+  
+  /// Load OpenAIP frequencies for a given area
+  Future<List<Map<String, dynamic>>> loadOpenAIPFrequenciesForArea({
+    required double minLat,
+    required double maxLat,
+    required double minLon,
+    required double maxLon,
+  }) async {
+    final tiles = getTilesForArea(
+      minLat: minLat,
+      maxLat: maxLat,
+      minLon: minLon,
+      maxLon: maxLon,
+    );
+    
+    final allFrequencies = <Map<String, dynamic>>[];
+    
+    for (final tile in tiles) {
+      final tilePath = 'assets/data/tiles/openaip_frequencies/tile_${tile}.json.gz';
+      
+      try {
+        final data = await rootBundle.load(tilePath);
+        final decompressed = GZipDecoder().decodeBytes(data.buffer.asUint8List());
+        final jsonStr = utf8.decode(decompressed);
+        final tileData = json.decode(jsonStr) as Map<String, dynamic>;
+        
+        final frequencies = tileData['frequencies'] as List<dynamic>? ?? [];
+        allFrequencies.addAll(frequencies.cast<Map<String, dynamic>>());
+      } catch (e) {
+        // Tile might not exist - this is okay
+      }
+    }
+    
+    return allFrequencies;
+  }
+  
   /// Generic method to load data for an area
   Future<List<T>> _loadDataForArea<T>({
     required String dataType,

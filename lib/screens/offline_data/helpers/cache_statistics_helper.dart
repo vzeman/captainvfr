@@ -102,6 +102,39 @@ class CacheStatisticsHelper {
           'lastFetch': null,
         };
       }
+      
+      // Get OpenAIP data counts from index files
+      try {
+        final openAIPRunwaysIndexData = await rootBundle.loadString('assets/data/tiles/openaip_runways/index.json');
+        final openAIPRunwaysIndex = json.decode(openAIPRunwaysIndexData);
+        final openAIPRunwayCount = openAIPRunwaysIndex['totalItems'] ?? 0;
+        stats['openaip_runways'] = {
+          'count': openAIPRunwayCount,
+          'lastFetch': null,
+        };
+      } catch (e) {
+        // OpenAIP runway data not available
+        stats['openaip_runways'] = {
+          'count': 0,
+          'lastFetch': null,
+        };
+      }
+      
+      try {
+        final openAIPFreqIndexData = await rootBundle.loadString('assets/data/tiles/openaip_frequencies/index.json');
+        final openAIPFreqIndex = json.decode(openAIPFreqIndexData);
+        final openAIPFreqCount = openAIPFreqIndex['totalItems'] ?? 0;
+        stats['openaip_frequencies'] = {
+          'count': openAIPFreqCount,
+          'lastFetch': null,
+        };
+      } catch (e) {
+        // OpenAIP frequency data not available
+        stats['openaip_frequencies'] = {
+          'count': 0,
+          'lastFetch': null,
+        };
+      }
     } catch (e) {
       // Handle error silently
     }

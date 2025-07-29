@@ -1,10 +1,13 @@
 // import 'dart:developer' show log;
 import '../../models/airport.dart';
 import '../../models/runway.dart';
+import '../../models/unified_runway.dart';
 import '../../models/frequency.dart';
+import '../../models/unified_frequency.dart';
 import '../../services/weather_service.dart';
 import '../../services/runway_service.dart';
 import '../../services/bundled_frequency_service.dart';
+import '../../services/frequency_service.dart';
 
 class AirportDataFetcher {
   final WeatherService weatherService;
@@ -80,6 +83,19 @@ class AirportDataFetcher {
     );
     
     return runwayService.getRunwaysForAirport(airport.icao);
+  }
+  
+  Future<List<UnifiedRunway>> fetchUnifiedRunways(Airport airport) async {
+    // For tiled data, we need to load the area around the airport first
+    const buffer = 0.5; // degrees - small buffer around airport
+    await runwayService.loadRunwaysForArea(
+      minLat: airport.position.latitude - buffer,
+      maxLat: airport.position.latitude + buffer,
+      minLon: airport.position.longitude - buffer,
+      maxLon: airport.position.longitude + buffer,
+    );
+    
+    return runwayService.getUnifiedRunwaysForAirport(airport.icao);
   }
 
   Future<List<Frequency>> fetchFrequencies(Airport airport) async {

@@ -2,9 +2,12 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import '../models/frequency.dart';
+import '../models/unified_frequency.dart';
+import '../models/openaip_frequency.dart';
 import 'cache_service.dart';
 import 'tiled_data_loader.dart';
 import 'bundled_frequency_service.dart';
+import 'openaip_service.dart';
 
 class FrequencyService {
   static const String _baseUrl =
@@ -21,7 +24,9 @@ class FrequencyService {
   
   // Cache for tiled data
   final Map<String, List<Frequency>> _frequenciesByAirport = {};
+  final Map<String, List<UnifiedFrequency>> _unifiedFrequenciesByAirport = {};
   final Set<String> _loadedAreas = {};
+  OpenAIPService? _openAIPService;
 
   // Singleton pattern
   static final FrequencyService _instance = FrequencyService._internal();
@@ -45,6 +50,15 @@ class FrequencyService {
     developer.log('🔧 FrequencyService: Starting initialization...');
     await _cacheService.initialize();
     developer.log('🔧 FrequencyService: Cache service initialized');
+    
+    // Initialize OpenAIP service
+    try {
+      _openAIPService = OpenAIPService();
+      await _openAIPService!.initialize();
+      developer.log('✅ OpenAIP service initialized for frequencies');
+    } catch (e) {
+      developer.log('⚠️ OpenAIP service not available for frequencies: $e');
+    }
     
     // Check if tiled data is available
     try {
@@ -99,30 +113,24 @@ class FrequencyService {
     }
   }
   
-  /// Load frequencies for a given map area (for tiled data)
+  /// Load frequencies for a specific area
   Future<void> loadFrequenciesForArea({
     required double minLat,
     required double maxLat,
     required double minLon,
     required double maxLon,
   }) async {
-    if (!_useTiledData) {
-      // If not using tiled data, this is a no-op
-      return;
-    }
+    if (!_useTiledData) return;
     
-    // Create area key for tracking
-    final areaKey = '${minLat.toStringAsFixed(2)}_${maxLat.toStringAsFixed(2)}_${minLon.toStringAsFixed(2)}_${maxLon.toStringAsFixed(2)}';
+    // Create area key to avoid duplicate loading
+    final areaKey = '${minLat.toStringAsFixed(1)}_${minLon.toStringAsFixed(1)}_${maxLat.toStringAsFixed(1)}_${maxLon.toStringAsFixed(1)}';
     
-    // Skip if already loaded
     if (_loadedAreas.contains(areaKey)) {
-      return;
+      return; // Already loaded this area
     }
     
     try {
-      developer.log('📍 Loading frequencies for area: ($minLat, $minLon) to ($maxLat, $maxLon)');
-      
-      // Load frequencies from tiles
+      // Load OurAirports frequencies from tiles
       final frequencies = await _tiledDataLoader.loadFrequenciesForArea(
         minLat: minLat,
         maxLat: maxLat,
@@ -130,18 +138,50 @@ class FrequencyService {
         maxLon: maxLon,
       );
       
-      // Group by airport
+      // Load OpenAIP frequencies if service is available
+      final openAIPFrequenciesByAirport = <String, List<OpenAIPFrequency>>{};
+      if (_openAIPService != null) {
+        try {
+          final openFrequencies = await _openAIPService!.loadOpenAIPFrequenciesForArea(
+            minLat: minLat,
+            maxLat: maxLat,
+            minLon: minLon,
+            maxLon: maxLon,
+          );
+          
+          // Group OpenAIP frequencies by airport
+          for (final frequency in openFrequencies) {
+            openAIPFrequenciesByAirport.putIfAbsent(frequency.airportIdent, () => []).add(frequency);
+          }
+        } catch (e) {
+          developer.log('⚠️ Error loading OpenAIP frequencies: $e');
+        }
+      }
+      
+      // Group by airport and prevent duplicates
       for (final frequency in frequencies) {
-        _frequenciesByAirport.putIfAbsent(frequency.airportIdent, () => []).add(frequency);
+        final airportFrequencies = _frequenciesByAirport.putIfAbsent(frequency.airportIdent, () => []);
+        
+        // Check if this frequency already exists (by ID to avoid duplicates)
+        final alreadyExists = airportFrequencies.any((f) => f.id == frequency.id);
+        
+        // Only add if it's not already in the list
+        if (!alreadyExists) {
+          airportFrequencies.add(frequency);
+        }
+        
+        // Clear unified cache if we have OpenAIP data for this airport
+        if (openAIPFrequenciesByAirport.containsKey(frequency.airportIdent)) {
+          _unifiedFrequenciesByAirport.remove(frequency.airportIdent.toUpperCase());
+        }
       }
       
       _loadedAreas.add(areaKey);
       
-      developer.log('✅ Loaded ${frequencies.length} frequencies for area');
+      developer.log('📻 Loaded ${frequencies.length} frequencies for area');
     } catch (e) {
       developer.log('❌ Error loading frequencies for area: $e');
     }
-  }
 
   /// Fetch frequencies from remote source
   Future<void> fetchFrequencies({bool forceRefresh = false}) async {
@@ -247,7 +287,13 @@ class FrequencyService {
   }
 
   /// Get frequencies for a specific airport
-  List<Frequency> getFrequenciesForAirport(String airportIdent) {
+  List<Frequency> getFrequenciesForAirport(String airportIdent, {List<OpenAIPFrequency>? openAIPFrequencies}) {
+    // Try unified data first
+    final unified = this.getUnifiedFrequenciesForAirport(airportIdent, openAIPFrequencies: openAIPFrequencies);
+    if (unified.isNotEmpty) {
+      return unified.map((f) => f.toFrequency()).toList();
+    }
+    
     if (_useTiledData) {
       // Return from tiled data cache
       return _frequenciesByAirport[airportIdent.toUpperCase()] ?? 
@@ -283,6 +329,64 @@ class FrequencyService {
         .toList();
 
     return caseInsensitiveMatches;
+  }
+  
+  /// Get unified frequencies combining multiple sources
+  List<UnifiedFrequency> getUnifiedFrequenciesForAirport(String airportIdent, {List<OpenAIPFrequency>? openAIPFrequencies}) {
+    final upperIdent = airportIdent.toUpperCase();
+    
+    // Check cache first (only if no OpenAIP data provided)
+    if (openAIPFrequencies == null && _unifiedFrequenciesByAirport.containsKey(upperIdent)) {
+      return _unifiedFrequenciesByAirport[upperIdent]!;
+    }
+    
+    final unifiedFrequencies = <UnifiedFrequency>[];
+    final processedKeys = <String>{};
+    
+    // 1. Get OurAirports frequencies
+    final ourAirportsFrequencies = <Frequency>[];
+    if (_useTiledData) {
+      ourAirportsFrequencies.addAll(
+        _frequenciesByAirport[upperIdent] ?? _frequenciesByAirport[airportIdent] ?? []
+      );
+    } else if (_useBundledData) {
+      ourAirportsFrequencies.addAll(_bundledService.getFrequenciesForAirport(airportIdent));
+    }
+    
+    // Convert to unified format
+    for (final frequency in ourAirportsFrequencies) {
+      final unified = UnifiedFrequency.fromOurAirports(frequency);
+      unifiedFrequencies.add(unified);
+      processedKeys.add('${unified.type}_${unified.frequencyMhz}');
+    }
+    
+    // 2. Add OpenAIP frequencies if provided
+    if (openAIPFrequencies != null && openAIPFrequencies.isNotEmpty) {
+      for (final openAIPFrequency in openAIPFrequencies) {
+        final unified = UnifiedFrequency.fromOpenAIP(openAIPFrequency);
+        
+        // Check if we already have this frequency from OurAirports
+        final existingIndex = unifiedFrequencies.indexWhere(
+          (f) => f.matches(unified)
+        );
+        
+        if (existingIndex >= 0) {
+          // Merge data, preferring OurAirports data with OpenAIP filling gaps
+          unifiedFrequencies[existingIndex] = UnifiedFrequency.merge(
+            unifiedFrequencies[existingIndex],
+            unified,
+          );
+        } else {
+          // Add new frequency from OpenAIP
+          unifiedFrequencies.add(unified);
+        }
+      }
+    }
+    
+    // Cache the results
+    _unifiedFrequenciesByAirport[upperIdent] = unifiedFrequencies;
+    
+    return unifiedFrequencies;
   }
 
   /// Get frequencies for multiple airports
@@ -344,6 +448,7 @@ class FrequencyService {
       await _cacheService.clearFrequencies();
       _frequencies.clear();
       _frequenciesByAirport.clear();
+      _unifiedFrequenciesByAirport.clear();
       _loadedAreas.clear();
       _tiledDataLoader.clearCacheForType('frequencies');
       developer.log('✅ Frequency cache cleared');

@@ -1,11 +1,13 @@
 /// Runway model for OpenAIP data
 class OpenAIPRunway {
+  final String? airportIdent;
   final String designator;
   final int? lengthM; // Length in meters
   final int? widthM; // Width in meters
   final RunwaySurface? surface;
   
   OpenAIPRunway({
+    this.airportIdent,
     required this.designator,
     this.lengthM,
     this.widthM,
@@ -14,6 +16,7 @@ class OpenAIPRunway {
   
   factory OpenAIPRunway.fromJson(Map<String, dynamic> json) {
     return OpenAIPRunway(
+      airportIdent: json['airport_ident'],
       designator: json['des'] ?? '',
       lengthM: json['len'],
       widthM: json['wid'],
@@ -25,6 +28,7 @@ class OpenAIPRunway {
   
   Map<String, dynamic> toJson() {
     return {
+      if (airportIdent != null) 'airport_ident': airportIdent,
       'des': designator,
       if (lengthM != null) 'len': lengthM,
       if (widthM != null) 'wid': widthM,

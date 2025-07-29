@@ -6,7 +6,7 @@ import '../models/openaip_runway.dart';
 import 'cache_service.dart';
 import 'bundled_runway_service.dart';
 import 'tiled_data_loader.dart';
-// import 'openaip_service.dart'; // Reserved for future use
+import 'openaip_service.dart';
 
 class RunwayService {
   static const String _baseUrl =
@@ -25,7 +25,7 @@ class RunwayService {
   final Map<String, List<Runway>> _runwaysByAirport = {};
   final Map<String, List<UnifiedRunway>> _unifiedRunwaysByAirport = {};
   final Set<String> _loadedAreas = {};
-  // OpenAIPService? _openAIPService; // Reserved for future use
+  OpenAIPService? _openAIPService;
 
   // Singleton pattern
   static final RunwayService _instance = RunwayService._internal();
@@ -45,12 +45,13 @@ class RunwayService {
   Future<void> initialize() async {
     await _cacheService.initialize();
     
-    // Reserved for future OpenAIP service integration
-    // try {
-    //   _openAIPService = OpenAIPService();
-    // } catch (e) {
-    //   developer.log('OpenAIP service not available: $e');
-    // }
+    // Initialize OpenAIP service
+    try {
+      _openAIPService = OpenAIPService();
+      await _openAIPService!.initialize();
+    } catch (e) {
+      // OpenAIP service not available: $e
+    }
     
     // Check if tiled data is available
     try {
@@ -131,6 +132,28 @@ class RunwayService {
         maxLon: maxLon,
       );
       
+      // Load OpenAIP runways if service is available
+      final openAIPRunwaysByAirport = <String, List<OpenAIPRunway>>{};
+      if (_openAIPService != null) {
+        try {
+          final openRunways = await _openAIPService!.loadOpenAIPRunwaysForArea(
+            minLat: minLat,
+            maxLat: maxLat,
+            minLon: minLon,
+            maxLon: maxLon,
+          );
+          
+          // Group OpenAIP runways by airport
+          for (final runway in openRunways) {
+            if (runway.airportIdent != null) {
+              openAIPRunwaysByAirport.putIfAbsent(runway.airportIdent!, () => []).add(runway);
+            }
+          }
+        } catch (e) {
+          // Error loading OpenAIP runways: $e
+        }
+      }
+      
       // Group by airport and prevent duplicates
       for (final runway in runways) {
         final airportRunways = _runwaysByAirport.putIfAbsent(runway.airportIdent, () => []);
@@ -141,6 +164,11 @@ class RunwayService {
         // Only add if it's not already in the list
         if (!alreadyExists) {
           airportRunways.add(runway);
+        }
+        
+        // Clear unified cache if we have OpenAIP data for this airport
+        if (openAIPRunwaysByAirport.containsKey(runway.airportIdent)) {
+          _unifiedRunwaysByAirport.remove(runway.airportIdent.toUpperCase());
         }
       }
       

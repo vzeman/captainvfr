@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/airport.dart';
 import '../../models/runway.dart';
+import '../../models/unified_runway.dart';
 import '../../services/runway_service.dart';
 import '../../services/settings_service.dart';
 import '../../services/weather_service.dart';
@@ -42,11 +43,13 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
   String? _bestRunway;
   bool _isLoadingWind = true;
   String? _lastProcessedMetar;
+  List<UnifiedRunway>? _unifiedRunways;
 
   @override
   void initState() {
     super.initState();
     _fetchWindData();
+    _fetchUnifiedRunways();
   }
 
   @override
@@ -69,6 +72,21 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
       debugPrint('No wind data present, attempting to fetch');
       _fetchWindData();
     }
+  }
+  
+  Future<void> _fetchUnifiedRunways() async {
+    try {
+      _unifiedRunways = widget.runwayService.getUnifiedRunwaysForAirport(widget.airport.icao);
+    } catch (e) {
+      // Silently fail - unified runways are optional
+    }
+  }
+  
+  bool _hasOpenAIPData() {
+    if (_unifiedRunways == null || _unifiedRunways!.isEmpty) return false;
+    return _unifiedRunways!.any((runway) => 
+      runway.dataSource == 'openaip' || runway.dataSource == 'merged'
+    );
   }
 
   Future<void> _fetchWindData() async {
@@ -198,11 +216,43 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
           ],
 
           // Individual Runways
-          Text(
-            'Runways (${widget.runways.length})',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              Text(
+                'Runways (${widget.runways.length})',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              if (_hasOpenAIPData()) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 14,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Enhanced with OpenAIP',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 8),
 

@@ -497,6 +497,40 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
                   ),
 
                   const SizedBox(height: 8),
+                  
+                  // OpenAIP Runways cache
+                  if (_stateController.cacheStats['openaip_runways'] != null &&
+                      (_stateController.cacheStats['openaip_runways']?['count'] ?? 0) > 0)
+                    CacheCard(
+                      title: 'OpenAIP Runways',
+                      icon: Icons.flight_takeoff,
+                      count: _stateController.cacheStats['openaip_runways']?['count'] ?? 0,
+                      lastFetch: 'Supplemental data',
+                      onClear: () {}, // OpenAIP data is tiled
+                      subtitle: 'Additional runway data from OpenAIP',
+                      isRefreshing: _stateController.isRefreshing,
+                    ),
+                  
+                  if (_stateController.cacheStats['openaip_runways'] != null &&
+                      (_stateController.cacheStats['openaip_runways']?['count'] ?? 0) > 0)
+                    const SizedBox(height: 8),
+                  
+                  // OpenAIP Frequencies cache
+                  if (_stateController.cacheStats['openaip_frequencies'] != null &&
+                      (_stateController.cacheStats['openaip_frequencies']?['count'] ?? 0) > 0)
+                    CacheCard(
+                      title: 'OpenAIP Frequencies',
+                      icon: Icons.settings_input_antenna,
+                      count: _stateController.cacheStats['openaip_frequencies']?['count'] ?? 0,
+                      lastFetch: 'Supplemental data',
+                      onClear: () {}, // OpenAIP data is tiled
+                      subtitle: 'Additional frequency data from OpenAIP',
+                      isRefreshing: _stateController.isRefreshing,
+                    ),
+                  
+                  if (_stateController.cacheStats['openaip_frequencies'] != null &&
+                      (_stateController.cacheStats['openaip_frequencies']?['count'] ?? 0) > 0)
+                    const SizedBox(height: 8),
 
                   // Airspaces cache
                   CacheCard(
