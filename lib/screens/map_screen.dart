@@ -557,19 +557,15 @@ class MapScreenState extends State<MapScreen>
 
   /// Validate flight plan tiles on startup
   Future<void> _validateFlightPlanTiles() async {
-    debugPrint('MapScreen: Starting flight plan tile validation');
-    
     // Wait a bit to ensure UI is ready and flight plans are loaded
     await Future.delayed(const Duration(seconds: 2));
     
     if (!mounted || _tileDownloadService == null || _offlineDataController == null) {
-      debugPrint('MapScreen: Cannot validate - services not ready');
       return;
     }
     
     // Check if validation is enabled
     if (!_offlineDataController!.validateTilesOnStartup) {
-      debugPrint('MapScreen: Tile validation is disabled in settings');
       return;
     }
     
@@ -579,7 +575,6 @@ class MapScreenState extends State<MapScreen>
       
       // Get all saved flight plans
       final flightPlans = _flightPlanService.savedFlightPlans;
-      debugPrint('MapScreen: Found ${flightPlans.length} saved flight plans to validate');
       if (flightPlans.isEmpty) return;
       
       // Show progress indicator
@@ -600,9 +595,7 @@ class MapScreenState extends State<MapScreen>
       }
       
       // Validate all flight plans
-      debugPrint('MapScreen: Validating flight plans for missing tiles...');
       final validationResults = await _tileDownloadService!.validateAllFlightPlans(flightPlans);
-      debugPrint('MapScreen: Validation complete - ${validationResults.length} flight plans have missing tiles');
       
       // Close progress dialog
       if (mounted) {
@@ -611,13 +604,9 @@ class MapScreenState extends State<MapScreen>
       
       // If there are missing tiles, show dialog
       if (validationResults.isNotEmpty && mounted) {
-        debugPrint('MapScreen: Showing missing tiles dialog');
         await _showMissingTilesDialog(validationResults);
-      } else {
-        debugPrint('MapScreen: All flight plans have complete tile coverage');
       }
     } catch (e) {
-      debugPrint('Error validating flight plan tiles: $e');
       // Close progress dialog if still showing
       if (mounted && Navigator.canPop(context)) {
         Navigator.of(context).pop();

@@ -351,17 +351,14 @@ class FlightPlanTileDownloadService {
       return;
     }
     
-    debugPrint('FlightPlanTileDownloadService: Starting queue processing');
     _isProcessingQueue = true;
     
     try {
       while (_downloadQueue.isNotEmpty) {
         final request = _downloadQueue.removeAt(0);
-        debugPrint('FlightPlanTileDownloadService: Processing download for flight plan ${request.flightPlanId}');
         
         // Skip if already downloading
         if (_activeDownloads.containsKey(request.flightPlanId)) {
-          debugPrint('FlightPlanTileDownloadService: Skipping - already downloading');
           continue;
         }
         
@@ -374,7 +371,6 @@ class FlightPlanTileDownloadService {
       }
     } finally {
       _isProcessingQueue = false;
-      debugPrint('FlightPlanTileDownloadService: Queue processing complete');
     }
   }
 
