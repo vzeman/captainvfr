@@ -555,6 +555,128 @@ class MapScreenState extends State<MapScreen>
     _locationStreamSubscription?.resume();
   }
 
+  /// Validate flight plan tiles on startup
+  Future<void> _validateFlightPlanTiles() async {
+    // Wait a bit to ensure UI is ready
+    await Future.delayed(const Duration(seconds: 2));
+    
+    if (!mounted || _tileDownloadService == null || _offlineDataController == null) return;
+    
+    // Check if validation is enabled
+    if (!_offlineDataController!.validateTilesOnStartup) return;
+    
+    try {
+      // Get all saved flight plans
+      final flightPlans = _flightPlanService.savedFlightPlans;
+      if (flightPlans.isEmpty) return;
+      
+      // Show progress indicator
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 16),
+                Expanded(child: Text('Checking flight plan map tiles...')),
+              ],
+            ),
+          ),
+        );
+      }
+      
+      // Validate all flight plans
+      final validationResults = await _tileDownloadService!.validateAllFlightPlans(flightPlans);
+      
+      // Close progress dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      
+      // If there are missing tiles, show dialog
+      if (validationResults.isNotEmpty && mounted) {
+        await _showMissingTilesDialog(validationResults);
+      }
+    } catch (e) {
+      debugPrint('Error validating flight plan tiles: $e');
+      // Close progress dialog if still showing
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+    }
+  }
+  
+  /// Show dialog for missing tiles with download option
+  Future<void> _showMissingTilesDialog(List<FlightPlanValidationResult> validationResults) async {
+    final totalMissing = validationResults.fold<int>(0, (sum, result) => sum + result.missingTiles);
+    
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Missing Map Tiles'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Some flight plans are missing offline map tiles. '
+                'Would you like to download them now?',
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Total missing tiles: $totalMissing',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ...validationResults.map((result) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.flight, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${result.flightPlan.name}: ${result.missingTiles} tiles '
+                        '(${result.percentageMissing.toStringAsFixed(1)}% missing)',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Later'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Download Now'),
+          ),
+        ],
+      ),
+    );
+    
+    if (result == true) {
+      // Download missing tiles for all flight plans
+      for (final validationResult in validationResults) {
+        if (mounted) {
+          await _tileDownloadService!.downloadTilesForFlightPlan(
+            flightPlan: validationResult.flightPlan,
+            context: context,
+          );
+        }
+      }
+    }
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -2737,6 +2859,9 @@ class MapScreenState extends State<MapScreen>
           if (mounted) {
             _flightPlanService.setContext(context);
           }
+          
+          // Validate flight plan tiles on startup
+          _validateFlightPlanTiles();
         } catch (e) {
           // Handle initialization errors gracefully
           _logger.w('Offline maps not available: ${e.toString().split('(')[0]}');

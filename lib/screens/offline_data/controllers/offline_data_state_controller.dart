@@ -6,6 +6,7 @@ class OfflineDataStateController extends ChangeNotifier {
   static const String _keyMinZoom = 'offline_min_zoom';
   static const String _keyMaxZoom = 'offline_max_zoom';
   static const String _keyDownloadMapTilesForFlightPlan = 'download_map_tiles_for_flight_plan';
+  static const String _keyValidateTilesOnStartup = 'validate_tiles_on_startup';
   
   SharedPreferences? _prefs;
   bool _isLoading = true;
@@ -19,6 +20,7 @@ class OfflineDataStateController extends ChangeNotifier {
   int _minZoom = 8;
   int _maxZoom = 14;
   bool _downloadMapTilesForFlightPlan = true;
+  bool _validateTilesOnStartup = true;
 
   // Cache statistics
   Map<String, dynamic>? _mapCacheStats;
@@ -36,6 +38,7 @@ class OfflineDataStateController extends ChangeNotifier {
   int get minZoom => _minZoom;
   int get maxZoom => _maxZoom;
   bool get downloadMapTilesForFlightPlan => _downloadMapTilesForFlightPlan;
+  bool get validateTilesOnStartup => _validateTilesOnStartup;
   Map<String, dynamic>? get mapCacheStats => _mapCacheStats;
   Map<String, dynamic> get cacheStats => _cacheStats;
 
@@ -53,6 +56,7 @@ class OfflineDataStateController extends ChangeNotifier {
       _minZoom = _prefs!.getInt(_keyMinZoom) ?? 8;
       _maxZoom = _prefs!.getInt(_keyMaxZoom) ?? 14;
       _downloadMapTilesForFlightPlan = _prefs!.getBool(_keyDownloadMapTilesForFlightPlan) ?? true;
+      _validateTilesOnStartup = _prefs!.getBool(_keyValidateTilesOnStartup) ?? true;
       notifyListeners();
     }
   }
@@ -117,6 +121,12 @@ class OfflineDataStateController extends ChangeNotifier {
   void setDownloadMapTilesForFlightPlan(bool value) {
     _downloadMapTilesForFlightPlan = value;
     _prefs?.setBool(_keyDownloadMapTilesForFlightPlan, value);
+    notifyListeners();
+  }
+  
+  void setValidateTilesOnStartup(bool value) {
+    _validateTilesOnStartup = value;
+    _prefs?.setBool(_keyValidateTilesOnStartup, value);
     notifyListeners();
   }
 

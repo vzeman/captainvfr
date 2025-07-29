@@ -246,6 +246,75 @@ class FlightPlanTileDownloadService {
     _errorLog.clear();
   }
   
+  /// Validate that all tiles are downloaded for saved flight plans
+  Future<List<FlightPlanValidationResult>> validateAllFlightPlans(List<FlightPlan> flightPlans) async {
+    final results = <FlightPlanValidationResult>[];
+    
+    // Only validate if the feature is enabled
+    if (!_offlineDataController.downloadMapTilesForFlightPlan) {
+      return results;
+    }
+    
+    for (final flightPlan in flightPlans) {
+      if (flightPlan.waypoints.isEmpty) {
+        continue;
+      }
+      
+      try {
+        final bounds = _calculateRouteBufferBounds(flightPlan.waypoints, 10.0);
+        final missingTiles = await _checkMissingTiles(
+          bounds: bounds,
+          minZoom: _offlineDataController.minZoom,
+          maxZoom: _offlineDataController.maxZoom,
+        );
+        
+        if (missingTiles > 0) {
+          results.add(FlightPlanValidationResult(
+            flightPlan: flightPlan,
+            missingTiles: missingTiles,
+            totalTiles: estimateTilesForFlightPlan(flightPlan, 10.0),
+          ));
+        }
+      } catch (e) {
+        debugPrint('Error validating flight plan ${flightPlan.name}: $e');
+      }
+    }
+    
+    return results;
+  }
+  
+  /// Check how many tiles are missing for a given area
+  Future<int> _checkMissingTiles({
+    required LatLngBounds bounds,
+    required int minZoom,
+    required int maxZoom,
+  }) async {
+    int missingCount = 0;
+    
+    try {
+      await _offlineMapService.initialize();
+      
+      // Check each zoom level
+      for (int z = minZoom; z <= maxZoom; z++) {
+        final tileBounds = _getTileBounds(bounds, z);
+        
+        for (int x = tileBounds.minX; x <= tileBounds.maxX; x++) {
+          for (int y = tileBounds.minY; y <= tileBounds.maxY; y++) {
+            // Check if tile exists in cache
+            final exists = await _offlineMapService.hasTile(z, x, y);
+            if (!exists) {
+              missingCount++;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking missing tiles: $e');
+    }
+    
+    return missingCount;
+  }
+  
   /// Add download request to queue and process it
   void _addToQueue(_DownloadRequest request) {
     // Check if this flight plan is already in queue
@@ -401,4 +470,19 @@ class _DownloadRequest {
     required this.minZoom,
     required this.maxZoom,
   });
+}
+
+/// Result of flight plan tile validation
+class FlightPlanValidationResult {
+  final FlightPlan flightPlan;
+  final int missingTiles;
+  final int totalTiles;
+  
+  FlightPlanValidationResult({
+    required this.flightPlan,
+    required this.missingTiles,
+    required this.totalTiles,
+  });
+  
+  double get percentageMissing => (missingTiles / totalTiles) * 100;
 }

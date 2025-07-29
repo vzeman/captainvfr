@@ -44,6 +44,25 @@ class DownloadMapTilesSection extends StatelessWidget {
           activeColor: AppColors.primaryAccent,
           contentPadding: EdgeInsets.zero,
         ),
+        const SizedBox(height: 8),
+        CheckboxListTile(
+          title: const Text(
+            'Validate tiles on startup',
+            style: TextStyle(color: AppColors.primaryTextColor),
+          ),
+          subtitle: const Text(
+            'Check for missing flight plan tiles when app starts',
+            style: TextStyle(color: AppColors.secondaryTextColor, fontSize: 12),
+          ),
+          value: controller.validateTilesOnStartup,
+          onChanged: (value) {
+            if (value != null) {
+              controller.setValidateTilesOnStartup(value);
+            }
+          },
+          activeColor: AppColors.primaryAccent,
+          contentPadding: EdgeInsets.zero,
+        ),
         const SizedBox(height: 16),
         Row(
           children: [
