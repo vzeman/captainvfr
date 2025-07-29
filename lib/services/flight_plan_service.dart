@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:hive/hive.dart';
 import '../models/flight_plan.dart';
@@ -7,6 +7,7 @@ import '../models/navaid.dart';
 import '../models/aircraft.dart';
 import '../models/reporting_point.dart';
 import '../services/aircraft_service.dart';
+import '../services/flight_plan_tile_download_service.dart';
 
 class FlightPlanService extends ChangeNotifier {
   FlightPlan? _currentFlightPlan;
@@ -16,6 +17,8 @@ class FlightPlanService extends ChangeNotifier {
   List<FlightPlan> _savedFlightPlans = [];
   Box<FlightPlan>? _flightPlanBox;
   final AircraftService? _aircraftService;
+  FlightPlanTileDownloadService? _tileDownloadService;
+  BuildContext? _context;
   
   // Callback for when a flight plan is loaded
   void Function(FlightPlan)? onFlightPlanLoaded;
@@ -28,6 +31,16 @@ class FlightPlanService extends ChangeNotifier {
 
   FlightPlanService({AircraftService? aircraftService})
     : _aircraftService = aircraftService;
+
+  // Set the tile download service for automatic map tile downloads
+  void setTileDownloadService(FlightPlanTileDownloadService service) {
+    _tileDownloadService = service;
+  }
+
+  // Set the context for showing notifications
+  void setContext(BuildContext context) {
+    _context = context;
+  }
 
   // Initialize Hive box for flight plans
   Future<void> initialize() async {
@@ -62,6 +75,14 @@ class FlightPlanService extends ChangeNotifier {
       await _flightPlanBox!.put(_currentFlightPlan!.id, _currentFlightPlan!);
       _loadSavedFlightPlans();
       // debugPrint('Flight plan saved: ${_currentFlightPlan!.name}');
+      
+      // Trigger automatic tile download if service is available
+      if (_tileDownloadService != null && _context != null && _currentFlightPlan!.waypoints.isNotEmpty) {
+        _tileDownloadService!.downloadTilesForFlightPlan(
+          flightPlan: _currentFlightPlan!,
+          context: _context!,
+        );
+      }
     } catch (e) {
       // debugPrint('Error saving flight plan: $e');
     }

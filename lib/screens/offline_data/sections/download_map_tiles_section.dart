@@ -26,6 +26,44 @@ class DownloadMapTilesSection extends StatelessWidget {
           style: TextStyle(color: AppColors.secondaryTextColor),
         ),
         const SizedBox(height: 16),
+        CheckboxListTile(
+          title: const Text(
+            'Flight plan - download map tiles',
+            style: TextStyle(color: AppColors.primaryTextColor),
+          ),
+          subtitle: const Text(
+            'Automatically download map tiles along saved flight plans',
+            style: TextStyle(color: AppColors.secondaryTextColor, fontSize: 12),
+          ),
+          value: controller.downloadMapTilesForFlightPlan,
+          onChanged: (value) {
+            if (value != null) {
+              controller.setDownloadMapTilesForFlightPlan(value);
+            }
+          },
+          activeColor: AppColors.primaryAccent,
+          contentPadding: EdgeInsets.zero,
+        ),
+        const SizedBox(height: 8),
+        CheckboxListTile(
+          title: const Text(
+            'Validate tiles on startup',
+            style: TextStyle(color: AppColors.primaryTextColor),
+          ),
+          subtitle: const Text(
+            'Check for missing flight plan tiles when app starts',
+            style: TextStyle(color: AppColors.secondaryTextColor, fontSize: 12),
+          ),
+          value: controller.validateTilesOnStartup,
+          onChanged: (value) {
+            if (value != null) {
+              controller.setValidateTilesOnStartup(value);
+            }
+          },
+          activeColor: AppColors.primaryAccent,
+          contentPadding: EdgeInsets.zero,
+        ),
+        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(

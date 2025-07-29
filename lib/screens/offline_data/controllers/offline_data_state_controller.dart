@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// State controller for offline data screen
 class OfflineDataStateController extends ChangeNotifier {
+  static const String _keyMinZoom = 'offline_min_zoom';
+  static const String _keyMaxZoom = 'offline_max_zoom';
+  static const String _keyDownloadMapTilesForFlightPlan = 'download_map_tiles_for_flight_plan';
+  static const String _keyValidateTilesOnStartup = 'validate_tiles_on_startup';
+  
+  SharedPreferences? _prefs;
   bool _isLoading = true;
   bool _isRefreshing = false;
   bool _isDownloading = false;
@@ -12,6 +19,8 @@ class OfflineDataStateController extends ChangeNotifier {
   int _downloadedTiles = 0;
   int _minZoom = 8;
   int _maxZoom = 14;
+  bool _downloadMapTilesForFlightPlan = true;
+  bool _validateTilesOnStartup = true;
 
   // Cache statistics
   Map<String, dynamic>? _mapCacheStats;
@@ -28,8 +37,29 @@ class OfflineDataStateController extends ChangeNotifier {
   int get downloadedTiles => _downloadedTiles;
   int get minZoom => _minZoom;
   int get maxZoom => _maxZoom;
+  bool get downloadMapTilesForFlightPlan => _downloadMapTilesForFlightPlan;
+  bool get validateTilesOnStartup => _validateTilesOnStartup;
   Map<String, dynamic>? get mapCacheStats => _mapCacheStats;
   Map<String, dynamic> get cacheStats => _cacheStats;
+
+  OfflineDataStateController() {
+    _init();
+  }
+
+  Future<void> _init() async {
+    _prefs = await SharedPreferences.getInstance();
+    _loadSettings();
+  }
+
+  void _loadSettings() {
+    if (_prefs != null) {
+      _minZoom = _prefs!.getInt(_keyMinZoom) ?? 8;
+      _maxZoom = _prefs!.getInt(_keyMaxZoom) ?? 14;
+      _downloadMapTilesForFlightPlan = _prefs!.getBool(_keyDownloadMapTilesForFlightPlan) ?? true;
+      _validateTilesOnStartup = _prefs!.getBool(_keyValidateTilesOnStartup) ?? true;
+      notifyListeners();
+    }
+  }
 
   // Setters
   void setLoading(bool value) {
@@ -75,6 +105,7 @@ class OfflineDataStateController extends ChangeNotifier {
     if (_minZoom > _maxZoom) {
       _maxZoom = _minZoom;
     }
+    _prefs?.setInt(_keyMinZoom, _minZoom);
     notifyListeners();
   }
 
@@ -83,9 +114,21 @@ class OfflineDataStateController extends ChangeNotifier {
     if (_maxZoom < _minZoom) {
       _minZoom = _maxZoom;
     }
+    _prefs?.setInt(_keyMaxZoom, _maxZoom);
     notifyListeners();
   }
 
+  void setDownloadMapTilesForFlightPlan(bool value) {
+    _downloadMapTilesForFlightPlan = value;
+    _prefs?.setBool(_keyDownloadMapTilesForFlightPlan, value);
+    notifyListeners();
+  }
+  
+  void setValidateTilesOnStartup(bool value) {
+    _validateTilesOnStartup = value;
+    _prefs?.setBool(_keyValidateTilesOnStartup, value);
+    notifyListeners();
+  }
 
   void setMapCacheStats(Map<String, dynamic>? stats) {
     _mapCacheStats = stats;

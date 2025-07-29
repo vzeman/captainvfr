@@ -20,10 +20,12 @@ import 'offline_data/helpers/cache_statistics_helper.dart';
 /// Screen for managing all offline data and caches
 class OfflineDataScreen extends StatefulWidget {
   final LatLngBounds? currentMapBounds;
+  final OfflineDataStateController? stateController;
   
   const OfflineDataScreen({
     super.key,
     this.currentMapBounds,
+    this.stateController,
   });
 
   @override
@@ -39,18 +41,22 @@ class _OfflineDataScreenState extends State<OfflineDataScreen> {
   final TiledDataLoader _tiledDataLoader = TiledDataLoader();
   
   final ScrollController _scrollController = ScrollController();
-  final OfflineDataStateController _stateController = OfflineDataStateController();
+  late final OfflineDataStateController _stateController;
 
   @override
   void initState() {
     super.initState();
+    _stateController = widget.stateController ?? OfflineDataStateController();
     _loadAllCacheStats();
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
-    _stateController.dispose();
+    // Only dispose if we created the controller
+    if (widget.stateController == null) {
+      _stateController.dispose();
+    }
     super.dispose();
   }
 

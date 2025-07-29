@@ -36,6 +36,8 @@ import '../services/weather_service.dart';
 import '../services/offline_map_service.dart';
 import '../services/offline_tile_provider.dart';
 import '../services/flight_plan_service.dart';
+import '../services/flight_plan_tile_download_service.dart';
+import '../screens/offline_data/controllers/offline_data_state_controller.dart';
 import '../widgets/navaid_marker.dart';
 import '../widgets/optimized_marker_layer.dart';
 import '../widgets/airport_info_sheet.dart';
@@ -96,6 +98,8 @@ class MapScreenState extends State<MapScreen>
   OfflineMapService?
   _offlineMapService; // Make nullable to prevent LateInitializationError
   late final FlightPlanService _flightPlanService;
+  FlightPlanTileDownloadService? _tileDownloadService;
+  OfflineDataStateController? _offlineDataController;
   OpenAIPService? _openAIPService;
   SpatialAirspaceService? _spatialAirspaceService;
   late final MapController _mapController;
@@ -551,6 +555,134 @@ class MapScreenState extends State<MapScreen>
     _locationStreamSubscription?.resume();
   }
 
+  /// Validate flight plan tiles on startup
+  Future<void> _validateFlightPlanTiles() async {
+    // Wait a bit to ensure UI is ready and flight plans are loaded
+    await Future.delayed(const Duration(seconds: 2));
+    
+    if (!mounted || _tileDownloadService == null || _offlineDataController == null) {
+      return;
+    }
+    
+    // Check if validation is enabled
+    if (!_offlineDataController!.validateTilesOnStartup) {
+      return;
+    }
+    
+    try {
+      // Ensure flight plan service is initialized
+      await _flightPlanService.initialize();
+      
+      // Get all saved flight plans
+      final flightPlans = _flightPlanService.savedFlightPlans;
+      if (flightPlans.isEmpty) return;
+      
+      // Show progress indicator
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 16),
+                Expanded(child: Text('Checking flight plan map tiles...')),
+              ],
+            ),
+          ),
+        );
+      }
+      
+      // Validate all flight plans
+      final validationResults = await _tileDownloadService!.validateAllFlightPlans(flightPlans);
+      
+      // Close progress dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      
+      // If there are missing tiles, show dialog
+      if (validationResults.isNotEmpty && mounted) {
+        await _showMissingTilesDialog(validationResults);
+      }
+    } catch (e) {
+      // Close progress dialog if still showing
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+    }
+  }
+  
+  /// Show dialog for missing tiles with download option
+  Future<void> _showMissingTilesDialog(List<FlightPlanValidationResult> validationResults) async {
+    final totalMissing = validationResults.fold<int>(0, (sum, result) => sum + result.missingTiles);
+    
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Missing Map Tiles'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Some flight plans are missing offline map tiles. '
+                'Would you like to download them now?',
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Total missing tiles: $totalMissing',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ...validationResults.map((result) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.flight, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${result.flightPlan.name}: ${result.missingTiles} tiles '
+                        '(${result.percentageMissing.toStringAsFixed(1)}% missing)',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Later'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Download Now'),
+          ),
+        ],
+      ),
+    );
+    
+    if (result == true) {
+      // Download missing tiles for all flight plans
+      for (final validationResult in validationResults) {
+        if (mounted) {
+          await _tileDownloadService!.downloadTilesForFlightPlan(
+            flightPlan: validationResult.flightPlan,
+            context: context,
+          );
+        }
+      }
+    }
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -559,6 +691,9 @@ class MapScreenState extends State<MapScreen>
     _performanceReportTimer?.cancel();
     _locationRetryTimer?.cancel();
     _locationStreamSubscription?.cancel();
+    
+    // Cancel any active tile downloads
+    _tileDownloadService?.cancelAllDownloads();
     
     _flightService.removeListener(_onFlightPathUpdated);
     _flightPlanService.removeListener(_onFlightPlanUpdated);
@@ -572,6 +707,7 @@ class MapScreenState extends State<MapScreen>
     _mapController.dispose();
     _flightService.dispose();
     _spatialAirspaceService?.dispose();
+    _offlineDataController?.dispose();
     super.dispose();
   }
 
@@ -2716,6 +2852,21 @@ class MapScreenState extends State<MapScreen>
         try {
           _offlineMapService = OfflineMapService();
           await _offlineMapService!.initialize();
+          
+          // Initialize tile download service for flight plans
+          _offlineDataController = OfflineDataStateController();
+          _tileDownloadService = FlightPlanTileDownloadService(
+            offlineMapService: _offlineMapService!,
+            offlineDataController: _offlineDataController!,
+          );
+          
+          // Connect tile download service to flight plan service
+          _flightPlanService.setTileDownloadService(_tileDownloadService!);
+          if (mounted) {
+            _flightPlanService.setContext(context);
+          }
+          
+          // Don't validate here - services might not be fully ready
         } catch (e) {
           // Handle initialization errors gracefully
           _logger.w('Offline maps not available: ${e.toString().split('(')[0]}');
@@ -2728,6 +2879,11 @@ class MapScreenState extends State<MapScreen>
         setState(() {
           _servicesInitialized = true;
         });
+        
+        // Validate flight plan tiles after all services are initialized
+        if (_tileDownloadService != null) {
+          _validateFlightPlanTiles();
+        }
       }
     } catch (e) {
       // debugPrint('⚠️ Error initializing services: $e');

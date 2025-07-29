@@ -44,13 +44,9 @@ class SpatialAirspaceService extends ChangeNotifier {
     final airspaces = await _openAIPService.getCachedAirspaces();
     if (airspaces.isNotEmpty) {
       _allAirspaces = airspaces;
-      developer.log('🚀 Spatial index will be built dynamically as tiles are loaded');
-      developer.log('📊 Managing ${airspaces.length} airspaces');
       _isIndexBuilt = true;
       notifyListeners();
     } else {
-      developer.log('⚠️ No cached airspaces available, initializing with empty index');
-      developer.log('📡 Airspaces will be loaded on-demand from tiled data');
       _allAirspaces = [];
       _isIndexBuilt = true; // Allow queries even with empty initial data
       notifyListeners();
@@ -75,8 +71,6 @@ class SpatialAirspaceService extends ChangeNotifier {
       developer.log('⚠️ Spatial index not ready, skipping query');
       return [];
     }
-
-    final startTime = DateTime.now();
     
     // First, ensure the tiles for this area are loaded
     await _tiledDataLoader.loadAirspacesForArea(
@@ -95,8 +89,7 @@ class SpatialAirspaceService extends ChangeNotifier {
     
     // Query the spatial index
     var candidates = spatialIndex.search(bounds).whereType<Airspace>().toList();
-    developer.log('🔨 Using dynamic spatial index: found ${candidates.length} airspaces');
-    
+
     // Apply additional filters
     if (currentAltitude != null || typeFilter != null || icaoClassFilter != null) {
       candidates = candidates.where((airspace) {
@@ -119,9 +112,6 @@ class SpatialAirspaceService extends ChangeNotifier {
       }).toList();
     }
 
-    final queryTime = DateTime.now().difference(startTime).inMicroseconds;
-    developer.log('🚀 Spatial query completed in $queryTimeμs, found ${candidates.length} airspaces');
-    
     return candidates;
   }
 
@@ -134,11 +124,8 @@ class SpatialAirspaceService extends ChangeNotifier {
     await _ensureIndexBuilt();
     
     if (!_isIndexBuilt) {
-      developer.log('⚠️ Spatial index not ready, skipping query');
       return [];
     }
-
-    final startTime = DateTime.now();
     
     // First, ensure the tiles for this area are loaded (small area around the point)
     const buffer = 0.1; // degrees
@@ -158,8 +145,7 @@ class SpatialAirspaceService extends ChangeNotifier {
     
     // Query the spatial index
     var candidates = spatialIndex.searchPoint(point).whereType<Airspace>().toList();
-    developer.log('🔨 Using dynamic spatial index for point: found ${candidates.length} airspaces');
-    
+
     // Apply additional filters
     if (currentAltitude != null || typeFilter != null || icaoClassFilter != null) {
       candidates = candidates.where((airspace) {
@@ -182,9 +168,6 @@ class SpatialAirspaceService extends ChangeNotifier {
       }).toList();
     }
 
-    final queryTime = DateTime.now().difference(startTime).inMicroseconds;
-    developer.log('⚡ Point query completed in $queryTimeμs, found ${candidates.length} airspaces');
-    
     return candidates;
   }
 
