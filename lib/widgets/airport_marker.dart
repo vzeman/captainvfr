@@ -72,7 +72,8 @@ class AirportMarker extends StatelessWidget {
         final calculatedSize = (maxLengthM / metersPerPixel) * 1.05;
         
         // Ensure minimum size for visibility
-        // At zoom 10+, don't enforce minimum size to prevent overlap
+        // At zoom 10+, use actual calculated size without minimum to prevent overlap
+        // At lower zooms, enforce minimum size for visibility
         runwayVisualizationSize = mapZoom >= 10 ? calculatedSize : math.max(visualSize * 1.5, calculatedSize);
       } else {
         runwayVisualizationSize = visualSize * 3.5; // Default size
@@ -254,8 +255,9 @@ class AirportMarkersLayer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Base marker size based on zoom
-    // At zoom 10+, use smaller markers to not overlap runway info (if runways are shown)
-    final baseMarkerSize = mapZoom >= 10 ? 20.0 : 8.0;
+    // At zoom 10+, use smaller markers (10px) to not overlap runway visualizations
+    // At lower zooms, use larger markers (24px) for better visibility
+    final baseMarkerSize = mapZoom >= 10 ? 10.0 : 24.0;
 
     final markers = airports.map((airport) {
       // Small airports and balloonports get 25% smaller markers (75% of base size)

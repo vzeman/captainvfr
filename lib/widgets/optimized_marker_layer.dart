@@ -192,13 +192,14 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
     final positions = visibleAirports.map((a) => a.position).toList();
 
     // Calculate base marker size with smooth interpolation based on zoom level
+    // At zoom 10+, use small markers (10px) to not overlap with runway visualizations
     double baseMarkerSize;
-    if (currentZoom >= 12) {
-      // Linear interpolation from zoom 12 to 15
-      baseMarkerSize = 40.0 + (currentZoom - 12) * 3.0; // 40 at zoom 12, up to 49 at zoom 15
+    if (currentZoom >= 10) {
+      // Small fixed size when runways are visible
+      baseMarkerSize = 10.0;
     } else if (currentZoom >= 8) {
-      // Linear interpolation from zoom 8 to 12
-      baseMarkerSize = 24.0 + (currentZoom - 8) * 4.0; // 24 at zoom 8, 40 at zoom 12
+      // Linear interpolation from zoom 8 to 10
+      baseMarkerSize = 24.0 - (currentZoom - 8) * 7.0; // 24 at zoom 8, down to 10 at zoom 10
     } else if (currentZoom >= 5) {
       // Linear interpolation from zoom 5 to 8
       baseMarkerSize = 15.0 + (currentZoom - 5) * 3.0; // 15 at zoom 5, 24 at zoom 8
@@ -208,7 +209,7 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
     }
     
     // Clamp to reasonable bounds
-    baseMarkerSize = baseMarkerSize.clamp(15.0, 50.0);
+    baseMarkerSize = baseMarkerSize.clamp(10.0, 30.0);
 
     // Find the maximum marker size to use for the layer
     double maxMarkerSize = baseMarkerSize;
@@ -224,18 +225,8 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
       maxMarkerSize = baseMarkerSize * 0.6;
     }
     
-    // Increase marker bounds for runway visualization at higher zoom levels
-    // Check if any airport has runway data (either format)
-    if (currentZoom >= 13) {
-      final hasRunways = visibleAirports.any((a) => 
-        (airportRunways != null && airportRunways![a.icao] != null && airportRunways![a.icao]!.isNotEmpty) ||
-        (a.runways != null && a.runways!.isNotEmpty) || 
-        a.openAIPRunways.isNotEmpty
-      );
-      if (hasRunways) {
-        maxMarkerSize = maxMarkerSize * 3.5;  // Match the runway visualization size multiplier
-      }
-    }
+    // Don't increase marker bounds for runway visualization
+    // Keep markers small when runways are visible to avoid overlap
 
     return OptimizedMarkerLayer(
       markerPositions: positions,
