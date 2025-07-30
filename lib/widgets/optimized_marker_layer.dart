@@ -192,14 +192,18 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
     final positions = visibleAirports.map((a) => a.position).toList();
 
     // Calculate base marker size with smooth interpolation based on zoom level
-    // At zoom 10+, use small markers (10px) to not overlap with runway visualizations
+    // At zoom 10-13, use smaller markers to not overlap with runway visualizations
+    // At higher zoom levels, scale up for better visibility
     double baseMarkerSize;
-    if (currentZoom >= 10) {
-      // Small fixed size when runways are visible
-      baseMarkerSize = 10.0;
+    if (currentZoom >= 14) {
+      // Scale up at very high zoom for visibility
+      baseMarkerSize = 16.0 + (currentZoom - 14) * 2.0; // 16 at zoom 14, up to 24 at zoom 18
+    } else if (currentZoom >= 10) {
+      // Smaller size when runways are visible but not too zoomed in
+      baseMarkerSize = 16.0;
     } else if (currentZoom >= 8) {
       // Linear interpolation from zoom 8 to 10
-      baseMarkerSize = 24.0 - (currentZoom - 8) * 7.0; // 24 at zoom 8, down to 10 at zoom 10
+      baseMarkerSize = 24.0 - (currentZoom - 8) * 4.0; // 24 at zoom 8, down to 16 at zoom 10
     } else if (currentZoom >= 5) {
       // Linear interpolation from zoom 5 to 8
       baseMarkerSize = 15.0 + (currentZoom - 5) * 3.0; // 15 at zoom 5, 24 at zoom 8
@@ -209,7 +213,7 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
     }
     
     // Clamp to reasonable bounds
-    baseMarkerSize = baseMarkerSize.clamp(10.0, 30.0);
+    baseMarkerSize = baseMarkerSize.clamp(15.0, 40.0);
 
     // Find the maximum marker size to use for the layer
     double maxMarkerSize = baseMarkerSize;
