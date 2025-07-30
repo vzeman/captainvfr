@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:convert';
 import 'package:flutter_map/flutter_map.dart';
@@ -267,16 +266,29 @@ class Airport implements SpatialIndexable {
       final List<dynamic> decoded = jsonDecode(frequencies!);
       // Convert OpenAIP format to expected format
       return decoded.cast<Map<String, dynamic>>().map((f) {
-        // Handle OpenAIP format
+        // Handle OpenAIP format - convert type codes even if frequency_mhz already exists
         if (f['value'] != null && f['frequency_mhz'] == null) {
+          // Original OpenAIP format with 'value' field
           return {
             'frequency_mhz': double.tryParse(f['value'].toString()) ?? 0.0,
             'type': _convertOpenAIPFrequencyType(f['type']),
             'description': f['name']?.toString(),
             ...f, // Keep original fields
           };
+        } else if (f['type'] != null) {
+          // Check if type is numeric and convert it
+          final typeStr = f['type'].toString();
+          if (RegExp(r'^\d+$').hasMatch(typeStr)) {
+            final convertedType = _convertOpenAIPFrequencyType(f['type']);
+            return {
+              ...f,
+              'type': convertedType,
+            };
+          }
+          // If not numeric, return as-is
+          return f;
         }
-        // Already in expected format
+        // Already in expected format with text type
         return f;
       }).where((f) => f['frequency_mhz'] != null && f['frequency_mhz'] > 0).toList();
     } catch (e) {
@@ -288,9 +300,13 @@ class Airport implements SpatialIndexable {
   String _convertOpenAIPFrequencyType(dynamic type) {
     if (type == null) return 'UNKNOWN';
     
+    // Debug: Print the actual type value to understand what's being passed
+    // print('Converting frequency type: $type (${type.runtimeType})');
+    
     // OpenAIP frequency type codes (based on common aviation frequencies)
+    // Updated mapping based on actual KSFO data
     switch (type.toString()) {
-      case '0': return 'ATIS';
+      case '0': return 'NORCAL APP';  // Approach Control (NORCAL for San Francisco area)
       case '1': return 'AWOS';
       case '2': return 'AWIB';
       case '3': return 'AWIS';
@@ -305,7 +321,7 @@ class Airport implements SpatialIndexable {
       case '12': return 'CENTER';
       case '13': return 'FSS';
       case '14': return 'CLEARANCE';
-      case '15': return 'EMERGENCY';
+      case '15': return 'ATIS';        // ATIS Information
       default: return 'OTHER';
     }
   }

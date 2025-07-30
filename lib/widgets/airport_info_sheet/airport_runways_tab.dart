@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +11,7 @@ import '../../services/weather_service.dart';
 import '../../utils/runway_wind_calculator.dart';
 import '../common/loading_widget.dart';
 import '../../constants/app_theme.dart';
+import '../../constants/app_colors.dart';
 import '../common/error_widget.dart' as custom;
 import '../common/status_chip.dart';
 
@@ -46,12 +48,19 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
   List<UnifiedRunway>? _unifiedRunways;
   bool _hasAttemptedWindFetch = false;
   int _windFetchAttempts = 0;
+  Timer? _windDataCheckTimer;
 
   @override
   void initState() {
     super.initState();
     _fetchWindData();
     _fetchUnifiedRunways();
+  }
+
+  @override
+  void dispose() {
+    _windDataCheckTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -66,11 +75,20 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
       _lastProcessedMetar = null;
     }
     
-    // Always check if we need to refetch when widget updates
-    _checkAndRefetchWindData();
+    // Schedule state updates after the current build cycle to avoid buildScope issues
+    // Use a debounced approach to prevent rapid successive calls
+    _windDataCheckTimer?.cancel();
+    _windDataCheckTimer = Timer(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        _checkAndRefetchWindData();
+      }
+    });
   }
 
   void _checkAndRefetchWindData() {
+    // Don't proceed if widget is being disposed or not mounted
+    if (!mounted) return;
+    
     // Check if we have new METAR data that we haven't processed yet
     final currentMetar = widget.airport.rawMetar;
     if (currentMetar != null && 
@@ -110,13 +128,6 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
         debugPrint('LZDV: Error fetching unified runways: $e');
       }
     }
-  }
-  
-  bool _hasOpenAIPData() {
-    if (_unifiedRunways == null || _unifiedRunways!.isEmpty) return false;
-    return _unifiedRunways!.any((runway) => 
-      runway.dataSource == 'openaip' || runway.dataSource == 'merged'
-    );
   }
 
   Future<void> _fetchWindData() async {
@@ -203,13 +214,6 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
 
   @override
   Widget build(BuildContext context) {
-    // Check if we need to refetch wind data on every build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _checkAndRefetchWindData();
-      }
-    });
-
     if (widget.isLoading) {
       return const LoadingWidget(message: 'Loading runway data...');
     }
@@ -229,7 +233,7 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.airplanemode_off, size: 48, color: Colors.grey),
+              Icon(Icons.airplanemode_off, size: 48, color: AppColors.secondaryTextColor),
               SizedBox(height: 16),
               Text(
                 'No runway data available for this airport',
@@ -250,9 +254,6 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
           if (_isLoadingWind) ...[
             _buildWindLoadingIndicator(context),
             const SizedBox(height: 16),
-          ] else if (_windData != null) ...[
-            _buildWindInfo(context),
-            const SizedBox(height: 16),
           ],
 
           // Individual Runways
@@ -260,38 +261,11 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
             children: [
               Text(
                 'Runways (${widget.runways.length})',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              if (_hasOpenAIPData()) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        size: 14,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Enhanced with OpenAIP',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.bold,
                 ),
-              ],
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -302,6 +276,7 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
               runway: runway,
               windComponents: _getWindComponentsForRunway(runway),
               isBestRunway: _isBestRunway(runway),
+              windData: _windData,
             ))
           // Otherwise show unified runways (OpenAIP data)
           else if (_unifiedRunways != null && _unifiedRunways!.isNotEmpty)
@@ -309,6 +284,7 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
               runway: unifiedRunway,
               windComponents: _getWindComponentsForUnifiedRunway(unifiedRunway),
               isBestRunway: _isBestUnifiedRunway(unifiedRunway),
+              windData: _windData,
             )),
         ],
       ),
@@ -353,7 +329,7 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
     final theme = Theme.of(context);
     
     return Card(
-      color: theme.colorScheme.surfaceContainerHighest,
+      color: AppColors.sectionBackgroundColor,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -376,109 +352,6 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
     );
   }
 
-  Widget _buildWindInfo(BuildContext context) {
-    final theme = Theme.of(context);
-    final windDirection = _windData!['direction']!.toInt();
-    final windSpeed = _windData!['speed']!.toInt();
-    final windGust = _windData!['gust']?.toInt();
-    final hasGust = windGust != null && windGust > windSpeed;
-    
-    return Card(
-      color: theme.colorScheme.primaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.air,
-                  color: theme.colorScheme.onPrimaryContainer,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Current Wind Conditions',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onPrimaryContainer,
-                  ),
-                ),
-                const Spacer(),
-                // Wind direction arrow
-                Transform.rotate(
-                  angle: (windDirection * math.pi / 180) - math.pi, // Convert to radians and adjust for "from" direction
-                  child: Icon(
-                    Icons.arrow_downward,
-                    color: theme.colorScheme.onPrimaryContainer,
-                    size: 24,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Text(
-                  'Wind: ${windDirection.toString().padLeft(3, '0')}° at $windSpeed${hasGust ? ' G$windGust' : ''} knots',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.onPrimaryContainer,
-                  ),
-                ),
-                if (hasGust) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.3),
-                      borderRadius: AppTheme.smallRadius,
-                    ),
-                    child: Text(
-                      'GUSTING',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange[800],
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            if (_bestRunway != null) ...[
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(
-                    Icons.flight_land,
-                    size: 16,
-                    color: theme.colorScheme.onPrimaryContainer,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Best runway for landing: $_bestRunway',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onPrimaryContainer,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Tooltip(
-                    message: 'Selected based on maximum headwind and minimum crosswind',
-                    child: Icon(
-                      Icons.info_outline,
-                      size: 14,
-                      color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 
 }
 
@@ -486,12 +359,14 @@ class RunwayCard extends StatelessWidget {
   final Runway runway;
   final List<WindComponents>? windComponents;
   final bool isBestRunway;
+  final Map<String, double>? windData;
 
   const RunwayCard({
     super.key,
     required this.runway,
     this.windComponents,
     this.isBestRunway = false,
+    this.windData,
   });
   
   static Color _getCrosswindColor(double crosswind) {
@@ -529,75 +404,91 @@ class RunwayCard extends StatelessWidget {
 
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
-          color: isBestRunway ? theme.colorScheme.primaryContainer : null,
+          color: isBestRunway ? AppColors.primaryAccent.withValues(alpha: 0.2) : AppColors.sectionBackgroundColor,
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Runway designation and basic info
+                // Top row - designation with visualization in top right
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isBestRunway 
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.primary.withValues(alpha: 0.2), // 20% opacity
-                        borderRadius: AppTheme.smallRadius,
-                      ),
+                    // Left side - runway designation and basic info
+                    Expanded(
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (isBestRunway) ...[
-                            Icon(
-                              Icons.star,
-                              size: 14,
-                              color: theme.colorScheme.onPrimary,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
                             ),
-                            const SizedBox(width: 4),
-                          ],
-                          Text(
-                            runway.designation,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
+                            decoration: BoxDecoration(
                               color: isBestRunway 
-                                  ? theme.colorScheme.onPrimary
-                                  : theme.colorScheme.primary,
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.primary.withValues(alpha: 0.3), // 30% opacity
+                              borderRadius: AppTheme.smallRadius,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isBestRunway) ...[
+                                  Icon(
+                                    Icons.star,
+                                    size: 14,
+                                    color: theme.colorScheme.onPrimary,
+                                  ),
+                                  const SizedBox(width: 4),
+                                ],
+                                Text(
+                                  runway.designation,
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: isBestRunway 
+                                        ? theme.colorScheme.onPrimary
+                                        : theme.colorScheme.primary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          if (isBestRunway)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                borderRadius: AppTheme.extraLargeRadius,
+                              ),
+                              child: const Text(
+                                'BEST',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          const SizedBox(width: 8),
+                          if (runway.lighted)
+                            Icon(
+                              Icons.lightbulb,
+                              size: 16,
+                              color: Colors.yellow[700],
+                            ),
+                          if (runway.closed)
+                            Icon(Icons.block, size: 16, color: Colors.red[700]),
                         ],
                       ),
                     ),
-                    const Spacer(),
-                    if (isBestRunway)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: AppTheme.extraLargeRadius,
-                        ),
-                        child: const Text(
-                          'BEST',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                    // Top right - runway visualization with padding
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: SizedBox(
+                        width: 50,
+                        height: 50,
+                        child: _buildRunwayVisualization(context, runway),
                       ),
-                    const SizedBox(width: 8),
-                    if (runway.lighted)
-                      Icon(
-                        Icons.lightbulb,
-                        size: 16,
-                        color: Colors.yellow[700],
-                      ),
-                    if (runway.closed)
-                      Icon(Icons.block, size: 16, color: Colors.red[700]),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -638,69 +529,57 @@ class RunwayCard extends StatelessWidget {
 
                 // Wind Components (if available)
                 if (windComponents != null && windComponents!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                      borderRadius: AppTheme.smallRadius,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Wind Components',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        ...windComponents!.map((component) => Padding(
-                          padding: const EdgeInsets.only(bottom: 2),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 40,
-                                child: Text(
-                                  component.runwayDesignation,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Icon(
-                                component.isHeadwind ? Icons.arrow_downward : Icons.arrow_upward,
-                                size: 14,
-                                color: component.isHeadwind ? Colors.green : Colors.orange,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${component.headwindAbs.toStringAsFixed(0)} kts ${component.isHeadwind ? "headwind" : "tailwind"}',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: component.isHeadwind ? Colors.green : Colors.orange,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Icon(
-                                Icons.compare_arrows,
-                                size: 14,
-                                color: _getCrosswindColor(component.crosswind),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${component.crosswind.toStringAsFixed(0)} kts crosswind',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: _getCrosswindColor(component.crosswind),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )),
-                      ],
+                  const SizedBox(height: 6),
+                  Text(
+                    'Wind Components',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                      fontSize: 11,
                     ),
                   ),
+                  const SizedBox(height: 3),
+                  ...windComponents!.map((component) => Padding(
+                    padding: const EdgeInsets.only(bottom: 1),
+                    child: Row(
+                      children: [
+                        Text(
+                          component.runwayDesignation,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primaryTextColor,
+                            fontSize: 10,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(
+                          component.isHeadwind ? Icons.arrow_downward : Icons.arrow_upward,
+                          size: 10,
+                          color: component.isHeadwind ? Colors.green : Colors.orange,
+                        ),
+                        Text(
+                          '${component.headwindAbs.toStringAsFixed(0)}${component.isHeadwind ? "H" : "T"}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: component.isHeadwind ? Colors.green : Colors.orange,
+                            fontSize: 9,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.compare_arrows,
+                          size: 10,
+                          color: _getCrosswindColor(component.crosswind),
+                        ),
+                        Text(
+                          '${component.crosswind.toStringAsFixed(0)}X',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: _getCrosswindColor(component.crosswind),
+                            fontSize: 9,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )),
                 ],
 
                 // Status indicators
@@ -734,15 +613,29 @@ class RunwayCard extends StatelessWidget {
       children: [
         Text(
           label,
-          style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+          style: theme.textTheme.bodySmall?.copyWith(color: AppColors.secondaryTextColor),
         ),
         Text(
           value,
           style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
+            color: AppColors.primaryTextColor,
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildRunwayVisualization(BuildContext context, Runway runway) {
+    return CustomPaint(
+      size: const Size(60, 80),
+      painter: _CompactRunwayPainter(
+        leHeading: runway.leHeadingDegT,
+        heHeading: runway.heHeadingDegT,
+        windData: windData,
+        leDesignation: runway.designation.split('/').first,
+        heDesignation: runway.designation.split('/').last,
+      ),
     );
   }
 }
@@ -752,12 +645,14 @@ class UnifiedRunwayCard extends StatelessWidget {
   final UnifiedRunway runway;
   final List<WindComponents>? windComponents;
   final bool isBestRunway;
+  final Map<String, double>? windData;
 
   const UnifiedRunwayCard({
     super.key,
     required this.runway,
     this.windComponents,
     this.isBestRunway = false,
+    this.windData,
   });
 
   @override
@@ -782,93 +677,109 @@ class UnifiedRunwayCard extends StatelessWidget {
 
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
-          color: isBestRunway ? theme.colorScheme.primaryContainer : null,
+          color: isBestRunway ? AppColors.primaryAccent.withValues(alpha: 0.2) : AppColors.sectionBackgroundColor,
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Runway designation and basic info
+                // Top row - designation with visualization in top right
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isBestRunway 
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.primary.withValues(alpha: 0.2),
-                        borderRadius: AppTheme.smallRadius,
-                      ),
+                    // Left side - runway designation and basic info
+                    Expanded(
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (isBestRunway) ...[
-                            Icon(
-                              Icons.star,
-                              size: 14,
-                              color: theme.colorScheme.onPrimary,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
                             ),
-                            const SizedBox(width: 4),
-                          ],
-                          Text(
-                            runway.designation,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
+                            decoration: BoxDecoration(
                               color: isBestRunway 
-                                  ? theme.colorScheme.onPrimary
-                                  : theme.colorScheme.primary,
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.primary.withValues(alpha: 0.3),
+                              borderRadius: AppTheme.smallRadius,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isBestRunway) ...[
+                                  Icon(
+                                    Icons.star,
+                                    size: 14,
+                                    color: theme.colorScheme.onPrimary,
+                                  ),
+                                  const SizedBox(width: 4),
+                                ],
+                                Text(
+                                  runway.designation,
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: isBestRunway 
+                                        ? theme.colorScheme.onPrimary
+                                        : theme.colorScheme.primary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          // Data source indicator
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.secondaryContainer,
+                              borderRadius: AppTheme.smallRadius,
+                            ),
+                            child: Text(
+                              runway.dataSource.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.onSecondaryContainer,
+                              ),
+                            ),
+                          ),
+                          if (isBestRunway) ...[
+                            const SizedBox(width: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                borderRadius: AppTheme.extraLargeRadius,
+                              ),
+                              child: const Text(
+                                'BEST',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(width: 4),
+                          if (runway.lighted)
+                            Icon(
+                              Icons.lightbulb,
+                              size: 14,
+                              color: Colors.yellow[700],
+                            ),
+                          if (runway.closed)
+                            Icon(Icons.block, size: 14, color: Colors.red[700]),
                         ],
                       ),
                     ),
-                    const Spacer(),
-                    // Data source indicator
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.secondaryContainer,
-                        borderRadius: AppTheme.smallRadius,
-                      ),
-                      child: Text(
-                        runway.dataSource.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSecondaryContainer,
-                        ),
+                    // Top right - runway visualization with padding
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: SizedBox(
+                        width: 50,
+                        height: 50,
+                        child: _buildUnifiedRunwayVisualization(context, runway),
                       ),
                     ),
-                    if (isBestRunway) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: AppTheme.extraLargeRadius,
-                        ),
-                        child: const Text(
-                          'BEST',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(width: 8),
-                    if (runway.lighted)
-                      Icon(
-                        Icons.lightbulb,
-                        size: 16,
-                        color: Colors.yellow[700],
-                      ),
-                    if (runway.closed)
-                      Icon(Icons.block, size: 16, color: Colors.red[700]),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -909,69 +820,57 @@ class UnifiedRunwayCard extends StatelessWidget {
 
                 // Wind Components (if available)
                 if (windComponents != null && windComponents!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                      borderRadius: AppTheme.smallRadius,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Wind Components',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        ...windComponents!.map((component) => Padding(
-                          padding: const EdgeInsets.only(bottom: 2),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 40,
-                                child: Text(
-                                  component.runwayDesignation,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Icon(
-                                component.isHeadwind ? Icons.arrow_downward : Icons.arrow_upward,
-                                size: 14,
-                                color: component.isHeadwind ? Colors.green : Colors.orange,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${component.headwindAbs.toStringAsFixed(0)} kts ${component.isHeadwind ? "headwind" : "tailwind"}',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: component.isHeadwind ? Colors.green : Colors.orange,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Icon(
-                                Icons.compare_arrows,
-                                size: 14,
-                                color: RunwayCard._getCrosswindColor(component.crosswind),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${component.crosswind.toStringAsFixed(0)} kts crosswind',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: RunwayCard._getCrosswindColor(component.crosswind),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )),
-                      ],
+                  const SizedBox(height: 6),
+                  Text(
+                    'Wind Components',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                      fontSize: 11,
                     ),
                   ),
+                  const SizedBox(height: 3),
+                  ...windComponents!.map((component) => Padding(
+                    padding: const EdgeInsets.only(bottom: 1),
+                    child: Row(
+                      children: [
+                        Text(
+                          component.runwayDesignation,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primaryTextColor,
+                            fontSize: 10,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(
+                          component.isHeadwind ? Icons.arrow_downward : Icons.arrow_upward,
+                          size: 10,
+                          color: component.isHeadwind ? Colors.green : Colors.orange,
+                        ),
+                        Text(
+                          '${component.headwindAbs.toStringAsFixed(0)}${component.isHeadwind ? "H" : "T"}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: component.isHeadwind ? Colors.green : Colors.orange,
+                            fontSize: 9,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.compare_arrows,
+                          size: 10,
+                          color: RunwayCard._getCrosswindColor(component.crosswind),
+                        ),
+                        Text(
+                          '${component.crosswind.toStringAsFixed(0)}X',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: RunwayCard._getCrosswindColor(component.crosswind),
+                            fontSize: 9,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )),
                 ],
 
                 // Status indicators
@@ -1005,15 +904,270 @@ class UnifiedRunwayCard extends StatelessWidget {
       children: [
         Text(
           label,
-          style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+          style: theme.textTheme.bodySmall?.copyWith(color: AppColors.secondaryTextColor),
         ),
         Text(
           value,
           style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
+            color: AppColors.primaryTextColor,
           ),
         ),
       ],
     );
+  }
+
+  Widget _buildUnifiedRunwayVisualization(BuildContext context, UnifiedRunway runway) {
+    return CustomPaint(
+      size: const Size(60, 80),
+      painter: _CompactRunwayPainter(
+        leHeading: runway.leHeadingDegT,
+        heHeading: runway.heHeadingDegT,
+        windData: windData,
+        leDesignation: runway.leIdent,
+        heDesignation: runway.heIdent,
+      ),
+    );
+  }
+}
+
+/// Compact custom painter for drawing runway and wind indicators in a small space
+class _CompactRunwayPainter extends CustomPainter {
+  final double? leHeading;
+  final double? heHeading;
+  final Map<String, double>? windData;
+  final String leDesignation;
+  final String heDesignation;
+
+  _CompactRunwayPainter({
+    this.leHeading,
+    this.heHeading,
+    this.windData,
+    required this.leDesignation,
+    required this.heDesignation,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2 + 5); // Move center down slightly
+    
+    // Use available heading (prefer LE, fallback to HE)
+    double? heading = leHeading ?? heHeading;
+    if (heading == null) {
+      // Draw placeholder circle if no heading data (smaller)
+      final placeholderPaint = Paint()
+        ..color = Colors.grey[600]!
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1;
+      
+      canvas.drawCircle(center, 10, placeholderPaint);
+      
+      // Draw "N/A" text
+      final textPainter = TextPainter(
+        text: const TextSpan(
+          text: 'N/A',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 8,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      textPainter.paint(canvas, Offset(
+        center.dx - textPainter.width / 2,
+        center.dy - textPainter.height / 2,
+      ));
+      return;
+    }
+
+    // Convert heading to radians
+    final angle = (heading - 90) * math.pi / 180; // -90 to align with visual orientation
+    
+    // Draw background circle (smaller - half size: 11px radius)
+    final backgroundPaint = Paint()
+      ..color = Colors.grey[800]!
+      ..style = PaintingStyle.fill;
+    
+    canvas.drawCircle(center, 11, backgroundPaint);
+    
+    // Draw border circle
+    final borderPaint = Paint()
+      ..color = Colors.grey[600]!
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    
+    canvas.drawCircle(center, 11, borderPaint);
+    
+    // Calculate runway endpoints - make runway line bigger relative to circle
+    final runwayLength = 18.0; // Fits better in smaller circle
+    final halfLength = runwayLength / 2;
+    final startPoint = Offset(
+      center.dx - halfLength * math.cos(angle),
+      center.dy - halfLength * math.sin(angle),
+    );
+    final endPoint = Offset(
+      center.dx + halfLength * math.cos(angle),
+      center.dy + halfLength * math.sin(angle),
+    );
+
+    // Draw runway as thick black line (wider for better visibility)
+    final runwayPaint = Paint()
+      ..color = Colors.black
+      ..strokeWidth = 6 // Much thicker line for better visibility
+      ..strokeCap = StrokeCap.round;
+    
+    canvas.drawLine(startPoint, endPoint, runwayPaint);
+    
+    // Draw runway center line
+    final centerLinePaint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 1
+      ..strokeCap = StrokeCap.round;
+    
+    canvas.drawLine(startPoint, endPoint, centerLinePaint);
+
+    // Draw runway designations at the ends, positioned away from the runway line
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+    
+    // Calculate extended positions for runway labels (further from runway line to avoid wind arrow overlap)
+    final extendedLength = runwayLength / 2 + 15; // 15 pixels beyond runway ends to avoid wind arrow
+    final leExtendedPoint = Offset(
+      center.dx - extendedLength * math.cos(angle),
+      center.dy - extendedLength * math.sin(angle),
+    );
+    final heExtendedPoint = Offset(
+      center.dx + extendedLength * math.cos(angle),
+      center.dy + extendedLength * math.sin(angle),
+    );
+
+    // LE designation (start of runway)
+    textPainter.text = TextSpan(
+      text: leDesignation,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 8,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+    textPainter.layout();
+    final leTextOffset = Offset(
+      leExtendedPoint.dx - textPainter.width / 2,
+      leExtendedPoint.dy - textPainter.height / 2,
+    );
+    textPainter.paint(canvas, leTextOffset);
+
+    // HE designation (end of runway)
+    textPainter.text = TextSpan(
+      text: heDesignation,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 8,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+    textPainter.layout();
+    final heTextOffset = Offset(
+      heExtendedPoint.dx - textPainter.width / 2,
+      heExtendedPoint.dy - textPainter.height / 2,
+    );
+    textPainter.paint(canvas, heTextOffset);
+
+    // Draw wind arrow if wind data is available - through the middle of runway
+    if (windData != null && windData!['direction'] != null) {
+      final windDirection = windData!['direction']!;
+      final windAngle = (windDirection - 90) * math.pi / 180; // -90 to align with visual orientation
+      
+      // Wind arrow goes through the center of the runway
+      final arrowLength = 20.0; // Longer arrow to go through runway
+      final windArrowStart = Offset(
+        center.dx - arrowLength * math.cos(windAngle + math.pi), // Opposite direction for "from" wind
+        center.dy - arrowLength * math.sin(windAngle + math.pi),
+      );
+      final windArrowEnd = Offset(
+        center.dx + arrowLength * math.cos(windAngle + math.pi), // Through to other side
+        center.dy + arrowLength * math.sin(windAngle + math.pi),
+      );
+      
+      // Draw wind arrow (thicker green line through runway)
+      final windPaint = Paint()
+        ..color = Colors.green
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round;
+      
+      canvas.drawLine(windArrowStart, windArrowEnd, windPaint);
+      
+      // Draw arrowhead at the end
+      final arrowSize = 5.0;
+      final arrowAngle = math.pi / 6; // 30 degrees
+      
+      final arrowPoint1 = Offset(
+        windArrowEnd.dx - arrowSize * math.cos(windAngle + math.pi + arrowAngle),
+        windArrowEnd.dy - arrowSize * math.sin(windAngle + math.pi + arrowAngle),
+      );
+      final arrowPoint2 = Offset(
+        windArrowEnd.dx - arrowSize * math.cos(windAngle + math.pi - arrowAngle),
+        windArrowEnd.dy - arrowSize * math.sin(windAngle + math.pi - arrowAngle),
+      );
+      
+      canvas.drawLine(windArrowEnd, arrowPoint1, windPaint);
+      canvas.drawLine(windArrowEnd, arrowPoint2, windPaint);
+      
+      // Wind speed label positioned to the side
+      final windSpeed = windData!['speed']?.toInt() ?? 0;
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: '${windSpeed}kt',
+          style: const TextStyle(
+            color: Colors.green,
+            fontSize: 8,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      final windTextOffset = Offset(
+        center.dx + 20,
+        center.dy - textPainter.height / 2,
+      );
+      textPainter.paint(canvas, windTextOffset);
+    }
+    
+    // Draw compass rose (N indicator) - positioned relative to smaller circle
+    final northPaint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 1;
+    
+    final northStart = Offset(center.dx, center.dy - 11);
+    final northEnd = Offset(center.dx, center.dy - 8);
+    canvas.drawLine(northStart, northEnd, northPaint);
+    
+    // North "N" label
+    final northTextPainter = TextPainter(
+      text: const TextSpan(
+        text: 'N',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 7,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    northTextPainter.layout();
+    northTextPainter.paint(canvas, Offset(
+      center.dx - northTextPainter.width / 2,
+      center.dy - 18,
+    ));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    if (oldDelegate is! _CompactRunwayPainter) return true;
+    return oldDelegate.leHeading != leHeading ||
+           oldDelegate.heHeading != heHeading ||
+           oldDelegate.windData != windData;
   }
 }

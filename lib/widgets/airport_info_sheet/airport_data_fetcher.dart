@@ -45,16 +45,18 @@ class AirportDataFetcher {
       return;
     }
 
+    String? finalMetar;
+    String? finalTaf;
+
     // Always show cached data first if available
     final cachedMetar = weatherService.getCachedMetar(airport.icao);
     final cachedTaf = weatherService.getCachedTaf(airport.icao);
 
     if (cachedMetar != null) {
-      airport.updateWeather(cachedMetar);
+      finalMetar = cachedMetar;
     }
     if (cachedTaf != null) {
-      airport.taf = cachedTaf;
-      airport.lastWeatherUpdate = DateTime.now().toUtc();
+      finalTaf = cachedTaf;
     }
 
     // Fetch weather data (this will return cached data immediately and trigger reload if needed)
@@ -62,11 +64,24 @@ class AirportDataFetcher {
     final taf = await weatherService.getTaf(airport.icao);
 
     if (metar != null) {
-      airport.updateWeather(metar);
+      finalMetar = metar;
     }
     if (taf != null) {
-      airport.taf = taf;
-      airport.lastWeatherUpdate = DateTime.now().toUtc();
+      finalTaf = taf;
+    }
+
+    // Batch all updates into a single operation to minimize widget rebuilds
+    if (finalMetar != null || finalTaf != null) {
+      // Use a deferred update to avoid buildScope issues
+      Future.microtask(() {
+        if (finalMetar != null) {
+          airport.updateWeather(finalMetar);
+        }
+        if (finalTaf != null && finalTaf != finalMetar) {
+          airport.taf = finalTaf;
+          airport.lastWeatherUpdate = DateTime.now().toUtc();
+        }
+      });
     }
   }
 
@@ -185,6 +200,20 @@ class AirportDataFetcher {
     List<Frequency> frequencies = frequencyService.getFrequenciesForAirport(
       airport.icao,
     );
+    
+    // Convert numeric frequency types to readable names for external service frequencies
+    frequencies = frequencies.map((freq) {
+      if (RegExp(r'^\d+$').hasMatch(freq.type)) {
+        return Frequency(
+          id: freq.id,
+          airportIdent: freq.airportIdent,
+          type: _convertFrequencyType(freq.type),
+          description: freq.description,
+          frequencyMhz: freq.frequencyMhz,
+        );
+      }
+      return freq;
+    }).toList();
     // log('📻 Found ${frequencies.length} frequencies for ICAO: ${airport.icao}');
 
     // Debug: Show some sample frequencies if we have any in the service
@@ -199,7 +228,18 @@ class AirportDataFetcher {
           .toList();
       // log('🔧 DEBUG: Case-insensitive match found: ${matchingFreqs.length} frequencies');
       if (matchingFreqs.isNotEmpty) {
-        frequencies = matchingFreqs;
+        frequencies = matchingFreqs.map((freq) {
+          if (RegExp(r'^\d+$').hasMatch(freq.type)) {
+            return Frequency(
+              id: freq.id,
+              airportIdent: freq.airportIdent,
+              type: _convertFrequencyType(freq.type),
+              description: freq.description,
+              frequencyMhz: freq.frequencyMhz,
+            );
+          }
+          return freq;
+        }).toList();
       }
     }
 
@@ -213,7 +253,19 @@ class AirportDataFetcher {
       );
       // log('📻 Found ${iataFrequencies.length} frequencies with IATA code');
       if (iataFrequencies.isNotEmpty) {
-        frequencies = [...frequencies, ...iataFrequencies];
+        final convertedIataFreqs = iataFrequencies.map((freq) {
+          if (RegExp(r'^\d+$').hasMatch(freq.type)) {
+            return Frequency(
+              id: freq.id,
+              airportIdent: freq.airportIdent,
+              type: _convertFrequencyType(freq.type),
+              description: freq.description,
+              frequencyMhz: freq.frequencyMhz,
+            );
+          }
+          return freq;
+        }).toList();
+        frequencies = [...frequencies, ...convertedIataFreqs];
       }
     }
 
@@ -227,7 +279,19 @@ class AirportDataFetcher {
       );
       // log('📻 Found ${localFrequencies.length} frequencies with local code');
       if (localFrequencies.isNotEmpty) {
-        frequencies = [...frequencies, ...localFrequencies];
+        final convertedLocalFreqs = localFrequencies.map((freq) {
+          if (RegExp(r'^\d+$').hasMatch(freq.type)) {
+            return Frequency(
+              id: freq.id,
+              airportIdent: freq.airportIdent,
+              type: _convertFrequencyType(freq.type),
+              description: freq.description,
+              frequencyMhz: freq.frequencyMhz,
+            );
+          }
+          return freq;
+        }).toList();
+        frequencies = [...frequencies, ...convertedLocalFreqs];
       }
     }
 
@@ -241,7 +305,19 @@ class AirportDataFetcher {
       );
       // log('📻 Found ${gpsFrequencies.length} frequencies with GPS code');
       if (gpsFrequencies.isNotEmpty) {
-        frequencies = [...frequencies, ...gpsFrequencies];
+        final convertedGpsFreqs = gpsFrequencies.map((freq) {
+          if (RegExp(r'^\d+$').hasMatch(freq.type)) {
+            return Frequency(
+              id: freq.id,
+              airportIdent: freq.airportIdent,
+              type: _convertFrequencyType(freq.type),
+              description: freq.description,
+              frequencyMhz: freq.frequencyMhz,
+            );
+          }
+          return freq;
+        }).toList();
+        frequencies = [...frequencies, ...convertedGpsFreqs];
       }
     }
 
@@ -258,5 +334,29 @@ class AirportDataFetcher {
     // }
 
     return frequencies;
+  }
+  
+  // Convert OpenAIP frequency type codes to readable types
+  String _convertFrequencyType(String type) {
+    // OpenAIP frequency type codes (based on common aviation frequencies)
+    switch (type) {
+      case '0': return 'NORCAL APP';  // Approach Control (NORCAL for San Francisco area)
+      case '1': return 'AWOS';
+      case '2': return 'AWIB';
+      case '3': return 'AWIS';
+      case '4': return 'CTAF';
+      case '5': return 'MULTICOM';
+      case '6': return 'UNICOM';
+      case '7': return 'DELIVERY';
+      case '8': return 'GROUND';
+      case '9': return 'TOWER';
+      case '10': return 'APPROACH';
+      case '11': return 'DEPARTURE';
+      case '12': return 'CENTER';
+      case '13': return 'FSS';
+      case '14': return 'CLEARANCE';
+      case '15': return 'ATIS';        // ATIS Information
+      default: return type; // Return original if not a known numeric code
+    }
   }
 }
