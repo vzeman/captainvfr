@@ -2377,6 +2377,58 @@ class MapScreenState extends State<MapScreen>
     // Show airport info sheet
     _onAirportSelected(airport);
   }
+  
+  // Handle navaid selection from search
+  void _onNavaidSelectedFromSearch(Navaid navaid) {
+    // Close the search dialog first
+    Navigator.of(context).pop();
+    
+    // Focus map on the selected navaid
+    _mapController.move(
+      navaid.position,
+      14.0, // Zoom level for navaid focus
+    );
+
+    // Handle auto-centering state the same way as manual map movement
+    if (_autoCenteringEnabled && _positionTrackingEnabled) {
+      setState(() {
+        _autoCenteringEnabled = false;
+      });
+      // Cancel any existing timer
+      _autoCenteringTimer?.cancel();
+      _countdownTimer?.cancel();
+      
+      // Handle differently based on tracking mode
+      if (_flightService.isTracking) {
+        // During flight tracking, re-enable after 3 minutes
+        _startAutoCenteringCountdown();
+      } else if (_positionTrackingEnabled) {
+        // During position tracking (without flight tracking), re-enable after delay
+        _startAutoCenteringCountdown();
+      }
+    }
+
+    // Load data for the new area
+    _loadAirports();
+    // Load navaids if they're enabled
+    if (_mapStateController.showNavaids) {
+      _loadNavaids();
+    }
+    // Load airspaces and reporting points if they're enabled
+    if (_mapStateController.showAirspaces) {
+      _loadAirspaces();
+      _loadReportingPoints();
+    }
+    // Load weather data for new airports if METAR overlay is enabled
+    if (_mapStateController.showMetar) {
+      _loadWeatherForVisibleAirports();
+    }
+    
+    // If in flight planning mode, add navaid as waypoint
+    if (_flightPlanService.isPlanning && _showFlightPlanning) {
+      _flightPlanService.addNavaidWaypoint(navaid);
+    }
+  }
 
   // Show airport search
   void _showAirportSearch() {
@@ -2384,7 +2436,9 @@ class MapScreenState extends State<MapScreen>
       context: context,
       builder: (context) => AirportSearchDialog(
         airportService: _airportService,
+        navaidService: _navaidService,
         onAirportSelected: _onAirportSelectedFromSearch,
+        onNavaidSelected: _onNavaidSelectedFromSearch,
       ),
     );
   }
