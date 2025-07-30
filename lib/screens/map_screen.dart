@@ -3068,70 +3068,72 @@ class MapScreenState extends State<MapScreen>
                       _startAutoCenteringCountdown();
                     }
                   }
+                }
 
-                  // Use frame-aware scheduler for staggered loading
-                  final scheduler = FrameAwareScheduler();
-                  
-                  // Load airports first (highest priority)
+                // Always load data when map position changes (regardless of gesture)
+                // This ensures data loads on initial map setup and programmatic moves
+                // Use frame-aware scheduler for staggered loading
+                final scheduler = FrameAwareScheduler();
+                
+                // Load airports first (highest priority)
+                scheduler.scheduleOperation(
+                  id: 'load_airports',
+                  operation: _loadAirports,
+                  debounce: const Duration(milliseconds: 300),
+                  highPriority: true,
+                );
+                
+                // Load navaids with delay
+                if (_mapStateController.showNavaids) {
                   scheduler.scheduleOperation(
-                    id: 'load_airports',
-                    operation: _loadAirports,
-                    debounce: const Duration(milliseconds: 300),
-                    highPriority: true,
-                  );
-                  
-                  // Load navaids with delay
-                  if (_mapStateController.showNavaids) {
-                    scheduler.scheduleOperation(
-                      id: 'load_navaids',
-                      operation: _loadNavaids,
-                      debounce: const Duration(milliseconds: 600),
-                    );
-                  }
-                  
-                  // Reporting points with more delay
-                  if (_mapStateController.showAirspaces) {
-                    scheduler.scheduleOperation(
-                      id: 'load_reporting_points',
-                      operation: _loadReportingPoints,
-                      debounce: const Duration(milliseconds: 800),
-                    );
-                  }
-                  
-                  // Obstacles with delay
-                  if (_mapStateController.showObstacles) {
-                    scheduler.scheduleOperation(
-                      id: 'load_obstacles',
-                      operation: _loadObstacles,
-                      debounce: const Duration(milliseconds: 900),
-                    );
-                  }
-                  
-                  // Hotspots with delay  
-                  if (_mapStateController.showHotspots) {
-                    scheduler.scheduleOperation(
-                      id: 'load_hotspots',
-                      operation: _loadHotspots,
-                      debounce: const Duration(milliseconds: 950),
-                    );
-                  }
-                  
-                  // Weather data with even more delay
-                  if (_mapStateController.showMetar) {
-                    scheduler.scheduleOperation(
-                      id: 'load_weather',
-                      operation: _loadWeatherForVisibleAirports,
-                      debounce: const Duration(milliseconds: 1000),
-                    );
-                  }
-                  
-                  // NOTAMs with lowest priority
-                  scheduler.scheduleOperation(
-                    id: 'prefetch_notams',
-                    operation: _schedulePrefetchVisibleAirportNotams,
-                    debounce: const Duration(milliseconds: 1500),
+                    id: 'load_navaids',
+                    operation: _loadNavaids,
+                    debounce: const Duration(milliseconds: 600),
                   );
                 }
+                
+                // Reporting points with more delay
+                if (_mapStateController.showAirspaces) {
+                  scheduler.scheduleOperation(
+                    id: 'load_reporting_points',
+                    operation: _loadReportingPoints,
+                    debounce: const Duration(milliseconds: 800),
+                  );
+                }
+                
+                // Obstacles with delay
+                if (_mapStateController.showObstacles) {
+                  scheduler.scheduleOperation(
+                    id: 'load_obstacles',
+                    operation: _loadObstacles,
+                    debounce: const Duration(milliseconds: 900),
+                  );
+                }
+                
+                // Hotspots with delay  
+                if (_mapStateController.showHotspots) {
+                  scheduler.scheduleOperation(
+                    id: 'load_hotspots',
+                    operation: _loadHotspots,
+                    debounce: const Duration(milliseconds: 950),
+                  );
+                }
+                
+                // Weather data with even more delay
+                if (_mapStateController.showMetar) {
+                  scheduler.scheduleOperation(
+                    id: 'load_weather',
+                    operation: _loadWeatherForVisibleAirports,
+                    debounce: const Duration(milliseconds: 1000),
+                  );
+                }
+                
+                // NOTAMs with lowest priority
+                scheduler.scheduleOperation(
+                  id: 'prefetch_notams',
+                  operation: _schedulePrefetchVisibleAirportNotams,
+                  debounce: const Duration(milliseconds: 1500),
+                );
               },
             ),
             children: [
