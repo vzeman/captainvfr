@@ -369,18 +369,6 @@ class RunwayCard extends StatelessWidget {
     this.windData,
   });
   
-  static Color _getCrosswindColor(double crosswind) {
-    const double crosswindCautionThreshold = 5.0; // knots
-    const double crosswindDangerThreshold = 10.0; // knots
-    
-    if (crosswind > crosswindDangerThreshold) {
-      return Colors.red;
-    } else if (crosswind > crosswindCautionThreshold) {
-      return Colors.orange;
-    } else {
-      return Colors.blue;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -530,65 +518,43 @@ class RunwayCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
                     children: [
-                      // Row 1: Visualization + Wind Speed
-                      Row(
-                        children: [
-                          // Runway visualization
-                          SizedBox(
-                            width: 50,
-                            height: 50,
-                            child: _buildRunwayVisualization(context, runway),
-                          ),
-                          const SizedBox(width: 16),
-                          // Wind speed from METAR
-                          if (windData != null) ...[
-                            Text(
-                              '${windData!['direction']?.toInt() ?? 0}°${windData!['speed']?.toInt() ?? 0}${windData!['gust'] != null ? 'G${windData!['gust']?.toInt()}' : ''}kt',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.primary,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ],
+                      // Runway visualization
+                      SizedBox(
+                        width: 50,
+                        height: 50,
+                        child: _buildRunwayVisualization(context, runway),
                       ),
-                      const SizedBox(height: 8),
-                      // Row 2: Wind components per runway
-                      ...windComponents!.map((component) => Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Row(
-                          children: [
-                            Text(
-                              'RW ${component.runwayDesignation}:',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primaryTextColor,
-                                fontSize: 10,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${component.headwindAbs.toStringAsFixed(0)} ${component.isHeadwind ? "Headwind" : "Tailwind"}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: component.isHeadwind ? Colors.green : Colors.orange,
-                                fontSize: 9,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${component.crosswind.toStringAsFixed(0)} Crosswind',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: _getCrosswindColor(component.crosswind),
-                                fontSize: 9,
-                              ),
-                            ),
-                          ],
+                      const SizedBox(width: 16),
+                      // Wind speed from METAR
+                      if (windData != null) ...[
+                        Text(
+                          '${windData!['direction']?.toInt() ?? 0}°${windData!['speed']?.toInt() ?? 0}${windData!['gust'] != null ? 'G${windData!['gust']?.toInt()}' : ''}kt',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary,
+                            fontSize: 11,
+                          ),
                         ),
-                      )),
+                        const SizedBox(width: 16),
+                      ],
+                      // Wind components for all runways in one row
+                      Expanded(
+                        child: Wrap(
+                          spacing: 12,
+                          runSpacing: 4,
+                          children: windComponents!.map((component) => 
+                            Text(
+                              'RW ${component.runwayDesignation}: ${component.headwindAbs.toStringAsFixed(0)} ${component.isHeadwind ? "H" : "T"}, ${component.crosswind.toStringAsFixed(0)} X',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppColors.primaryTextColor,
+                                fontSize: 9,
+                              ),
+                            ),
+                          ).toList(),
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -666,18 +632,6 @@ class UnifiedRunwayCard extends StatelessWidget {
     this.windData,
   });
 
-  static Color _getCrosswindColor(double crosswind) {
-    const double crosswindCautionThreshold = 5.0; // knots
-    const double crosswindDangerThreshold = 10.0; // knots
-    
-    if (crosswind > crosswindDangerThreshold) {
-      return Colors.red;
-    } else if (crosswind > crosswindCautionThreshold) {
-      return Colors.orange;
-    } else {
-      return Colors.blue;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -845,65 +799,43 @@ class UnifiedRunwayCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
                     children: [
-                      // Row 1: Visualization + Wind Speed
-                      Row(
-                        children: [
-                          // Runway visualization
-                          SizedBox(
-                            width: 50,
-                            height: 50,
-                            child: _buildUnifiedRunwayVisualization(context, runway),
-                          ),
-                          const SizedBox(width: 16),
-                          // Wind speed from METAR
-                          if (windData != null) ...[
-                            Text(
-                              '${windData!['direction']?.toInt() ?? 0}°${windData!['speed']?.toInt() ?? 0}${windData!['gust'] != null ? 'G${windData!['gust']?.toInt()}' : ''}kt',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.primary,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ],
+                      // Runway visualization
+                      SizedBox(
+                        width: 50,
+                        height: 50,
+                        child: _buildUnifiedRunwayVisualization(context, runway),
                       ),
-                      const SizedBox(height: 8),
-                      // Row 2: Wind components per runway
-                      ...windComponents!.map((component) => Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Row(
-                          children: [
-                            Text(
-                              'RW ${component.runwayDesignation}:',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primaryTextColor,
-                                fontSize: 10,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${component.headwindAbs.toStringAsFixed(0)} ${component.isHeadwind ? "Headwind" : "Tailwind"}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: component.isHeadwind ? Colors.green : Colors.orange,
-                                fontSize: 9,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${component.crosswind.toStringAsFixed(0)} Crosswind',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: _getCrosswindColor(component.crosswind),
-                                fontSize: 9,
-                              ),
-                            ),
-                          ],
+                      const SizedBox(width: 16),
+                      // Wind speed from METAR
+                      if (windData != null) ...[
+                        Text(
+                          '${windData!['direction']?.toInt() ?? 0}°${windData!['speed']?.toInt() ?? 0}${windData!['gust'] != null ? 'G${windData!['gust']?.toInt()}' : ''}kt',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary,
+                            fontSize: 11,
+                          ),
                         ),
-                      )),
+                        const SizedBox(width: 16),
+                      ],
+                      // Wind components for all runways in one row
+                      Expanded(
+                        child: Wrap(
+                          spacing: 12,
+                          runSpacing: 4,
+                          children: windComponents!.map((component) => 
+                            Text(
+                              'RW ${component.runwayDesignation}: ${component.headwindAbs.toStringAsFixed(0)} ${component.isHeadwind ? "H" : "T"}, ${component.crosswind.toStringAsFixed(0)} X',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppColors.primaryTextColor,
+                                fontSize: 9,
+                              ),
+                            ),
+                          ).toList(),
+                        ),
+                      ),
                     ],
                   ),
                 ],
