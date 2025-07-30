@@ -1081,25 +1081,6 @@ class _CompactRunwayPainter extends CustomPainter {
       canvas.drawLine(windArrowEnd, arrowPoint1, windPaint);
       canvas.drawLine(windArrowEnd, arrowPoint2, windPaint);
       
-      // Wind speed label positioned to the side
-      final windSpeed = windData!['speed']?.toInt() ?? 0;
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: '${windSpeed}kt',
-          style: const TextStyle(
-            color: Colors.green,
-            fontSize: 8,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      );
-      textPainter.layout();
-      final windTextOffset = Offset(
-        center.dx + 20,
-        center.dy - textPainter.height / 2,
-      );
-      textPainter.paint(canvas, windTextOffset);
     }
     
     // Draw compass rose (N indicator) - positioned relative to smaller circle
