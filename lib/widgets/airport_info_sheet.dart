@@ -15,6 +15,7 @@ import 'airport_info_sheet/airport_frequencies_tab.dart';
 import 'airport_info_sheet/airport_notams_tab.dart';
 import 'airport_info_sheet/airport_data_fetcher.dart';
 import '../constants/app_theme.dart';
+import '../constants/app_colors.dart';
 
 // Key for testing
 const Key kAirportInfoSheetKey = Key('airport_info_sheet');
@@ -211,7 +212,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet>
       key: kAirportInfoSheetKey,
       height: MediaQuery.of(context).size.height * 0.8,
       decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
+        color: AppColors.dialogBackgroundColor, // Use explicit black background
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.borderRadiusDefault)),
       ),
       child: Column(
@@ -220,13 +221,13 @@ class _AirportInfoSheetState extends State<AirportInfoSheet>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
+              color: AppColors.sectionBackgroundColor, // Use explicit dark color
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(AppTheme.borderRadiusDefault),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05), // 5% opacity
+                  color: Colors.black.withValues(alpha: 0.3), // 30% opacity for visibility
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -242,12 +243,13 @@ class _AirportInfoSheetState extends State<AirportInfoSheet>
                         widget.airport.icao,
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
+                          color: AppColors.primaryTextColor, // Explicit white
                         ),
                       ),
                       Text(
                         widget.airport.name,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.hintColor,
+                          color: AppColors.secondaryTextColor, // Explicit light gray
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -264,26 +266,43 @@ class _AirportInfoSheetState extends State<AirportInfoSheet>
           ),
 
           // Tab Bar
-          TabBar(
-            controller: _tabController,
-            isScrollable: true,
-            tabs: const [
+          Container(
+            color: AppColors.backgroundColor, // Black background for tabs
+            child: TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              labelColor: AppColors.primaryTextColor,
+              unselectedLabelColor: AppColors.secondaryTextColor,
+              indicatorColor: AppColors.primaryAccent,
+              tabs: const [
               Tab(text: 'Info', icon: Icon(Icons.info_outline)),
               Tab(text: 'Weather', icon: Icon(Icons.cloud_outlined)),
               Tab(text: 'Runways', icon: Icon(Icons.straighten)),
               Tab(text: 'Frequencies', icon: Icon(Icons.radio)),
               Tab(text: 'NOTAMs', icon: Icon(Icons.description)),
             ],
+            ),
           ),
 
           // Tab Content
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                AirportInfoTab(
-                  airport: widget.airport,
-                  onNavigate: widget.onNavigate,
+            child: Container(
+              color: AppColors.backgroundColor, // Black background for content
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                Builder(
+                  builder: (context) {
+                    debugPrint('AirportInfoSheet - passing airport to InfoTab:');
+                    debugPrint('  ICAO: ${widget.airport.icao}');
+                    debugPrint('  Name: ${widget.airport.name}');
+                    debugPrint('  City: ${widget.airport.city}');
+                    debugPrint('  Country: ${widget.airport.country}');
+                    return AirportInfoTab(
+                      airport: widget.airport,
+                      onNavigate: widget.onNavigate,
+                    );
+                  },
                 ),
                 AirportWeatherTab(
                   airport: widget.airport,
@@ -328,6 +347,7 @@ class _AirportInfoSheetState extends State<AirportInfoSheet>
                   airport: widget.airport,
                 ),
               ],
+              ),
             ),
           ),
         ],
