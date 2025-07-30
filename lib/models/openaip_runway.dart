@@ -6,6 +6,7 @@ class OpenAIPRunway {
   final int? widthM; // Width in meters
   final RunwaySurface? surface;
   final int? trueHeading; // True heading in degrees
+  final bool? pilotCtrlLighting; // Pilot controlled lighting
   
   OpenAIPRunway({
     this.airportIdent,
@@ -14,6 +15,7 @@ class OpenAIPRunway {
     this.widthM,
     this.surface,
     this.trueHeading,
+    this.pilotCtrlLighting,
   });
   
   factory OpenAIPRunway.fromJson(Map<String, dynamic> json) {
@@ -50,6 +52,7 @@ class OpenAIPRunway {
           ? RunwaySurface.fromJson(json['surface'] ?? json['surf'])
           : null,
       trueHeading: json['trueHeading'] as int?,
+      pilotCtrlLighting: json['pilotCtrlLighting'] as bool?,
     );
   }
   
@@ -60,6 +63,7 @@ class OpenAIPRunway {
       if (lengthM != null) 'len': lengthM,
       if (widthM != null) 'wid': widthM,
       if (surface != null) 'surf': surface!.toJson(),
+      if (pilotCtrlLighting != null) 'pilotCtrlLighting': pilotCtrlLighting,
     };
   }
   

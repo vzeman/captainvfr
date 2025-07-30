@@ -217,6 +217,7 @@ class Airport implements SpatialIndexable {
         widthM: maxWidth > 0 ? maxWidth : null,
         surface: runway.surface ?? oppositeEnd.surface,
         trueHeading: lowerEndHeading,
+        pilotCtrlLighting: runway.pilotCtrlLighting ?? oppositeEnd.pilotCtrlLighting,
       ));
       
       processedDesignators.add(designator);

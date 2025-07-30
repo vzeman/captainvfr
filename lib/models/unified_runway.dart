@@ -135,7 +135,7 @@ class UnifiedRunway {
       lengthFt: lengthFt,
       widthFt: widthFt,
       surface: surface,
-      lighted: true, // OpenAIP doesn't provide this, assume lighted
+      lighted: data['pilotCtrlLighting'] as bool? ?? false, // Use actual lighting data
       closed: false, // Assume open unless marked otherwise
       leIdent: leIdent,
       leLatitude: data['le_latitude'] as double?,
@@ -203,7 +203,7 @@ class UnifiedRunway {
       lengthFt: runway.lengthFt,
       widthFt: runway.widthFt,
       surface: runway.surfaceDescription,
-      lighted: true, // Assume lighted
+      lighted: runway.pilotCtrlLighting ?? false, // Use actual lighting data, default to false if unknown
       closed: false, // Assume open
       leIdent: leIdent,
       leLatitude: leLatitude,
