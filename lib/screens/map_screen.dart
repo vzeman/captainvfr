@@ -915,29 +915,33 @@ class MapScreenState extends State<MapScreen>
           });
         }
 
-        // Start loading data progressively
-        _loadAirports();
+        // Start loading data progressively after a short delay to ensure map is fully initialized
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (!mounted) return;
+          
+          _loadAirports();
 
-        // Load navaids if they should be shown
-        if (_mapStateController.showNavaids) {
-          _loadNavaids();
-        }
+          // Load navaids if they should be shown
+          if (_mapStateController.showNavaids) {
+            _loadNavaids();
+          }
 
-        // Load airspaces if they should be shown
-        if (_mapStateController.showAirspaces) {
-          _loadAirspaces();
-          _loadReportingPoints();
-        }
-        
-        // Load obstacles if they should be shown
-        if (_mapStateController.showObstacles) {
-          _loadObstacles();
-        }
-        
-        // Load hotspots if they should be shown
-        if (_mapStateController.showHotspots) {
-          _loadHotspots();
-        }
+          // Load airspaces if they should be shown
+          if (_mapStateController.showAirspaces) {
+            _loadAirspaces();
+            _loadReportingPoints();
+          }
+          
+          // Load obstacles if they should be shown
+          if (_mapStateController.showObstacles) {
+            _loadObstacles();
+          }
+          
+          // Load hotspots if they should be shown
+          if (_mapStateController.showHotspots) {
+            _loadHotspots();
+          }
+        });
       }
     });
   }
