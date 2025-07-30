@@ -401,14 +401,6 @@ class AirportService {
       return false;
     }).toList();
     
-    // Debug for LZDV
-    if (searchQuery.contains('lzdv')) {
-      developer.log('🔍 LZDV search results: ${results.length}');
-      for (var airport in results) {
-        developer.log('  Found: ${airport.icao} - ${airport.name}, runways: ${airport.runways != null ? "${airport.runways!.length} chars" : "NULL"}');
-      }
-    }
-    
     return results;
   }
 

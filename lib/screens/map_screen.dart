@@ -2245,16 +2245,8 @@ class MapScreenState extends State<MapScreen>
 
   // Handle airport selection
   Future<void> _onAirportSelected(Airport airport) async {
-    debugPrint('🎯 _onAirportSelected called for ${airport.icao}');
-    debugPrint('  Source: ${airport.runtimeType}');
-    debugPrint('  Initial data - name: "${airport.name}", city: "${airport.city}", country: "${airport.country}"');
-    debugPrint('  Initial runway data: ${airport.runways != null ? "${airport.runways!.length} chars" : "NULL"}');
-    
     // If the airport doesn't have complete data, try to load it from tiles
     Airport fullAirport = airport;
-    if (airport.icao == 'LZDV') {
-      debugPrint('LZDV: _onAirportSelected called, runways = ${airport.runways != null ? "${airport.runways!.length} chars" : "NULL"}');
-    }
     
     // Check if essential fields are missing
     final needsFullData = (airport.runways == null || airport.runways!.isEmpty) || 
@@ -2264,7 +2256,6 @@ class MapScreenState extends State<MapScreen>
         airport.country.isEmpty || airport.country == 'Unknown';
     
     if (needsFullData) {
-      debugPrint('${airport.icao}: Missing essential data, loading from tiles...');
       try {
         // Load the area around the airport to ensure we have full data
         final airports = await TiledDataLoader().loadAirportsForArea(
@@ -2274,8 +2265,6 @@ class MapScreenState extends State<MapScreen>
           maxLon: airport.position.longitude + 0.1,
         );
         
-        debugPrint('${airport.icao}: Loaded ${airports.length} airports from tiles');
-        
         // Find the airport with matching ICAO
         final tiledAirport = airports.firstWhere(
           (a) => a.icao == airport.icao,
@@ -2284,13 +2273,9 @@ class MapScreenState extends State<MapScreen>
         
         if (tiledAirport.icao == airport.icao) {
           fullAirport = tiledAirport;
-          debugPrint('${airport.icao}: Found in tiles, runways = ${tiledAirport.runways != null ? "${tiledAirport.runways!.length} chars" : "NULL"}, frequencies = ${tiledAirport.frequencies != null ? "${tiledAirport.frequencies!.length} chars" : "NULL"}');
-          debugPrint('${airport.icao}: Airport data - name: ${tiledAirport.name}, city: ${tiledAirport.city}, country: ${tiledAirport.country}, type: ${tiledAirport.type}');
-        } else {
-          debugPrint('${airport.icao}: Not found in tiles');
         }
       } catch (e) {
-        debugPrint('Failed to load full airport data: $e');
+        // Failed to load full data, continue with partial data
       }
     }
     // debugPrint('_onAirportSelected called for ${airport.icao} - ${airport.name}');
@@ -2337,8 +2322,6 @@ class MapScreenState extends State<MapScreen>
 
   // Handle airport selection from search
   void _onAirportSelectedFromSearch(Airport airport) {
-    debugPrint('Airport selected from search: ${airport.icao}, runways = ${airport.runways != null ? "${airport.runways!.length} chars" : "NULL"}');
-    
     // Close the search dialog first
     Navigator.of(context).pop();
     

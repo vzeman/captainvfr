@@ -9,10 +9,6 @@ class InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Debug for empty values
-    if (value.isEmpty) {
-      debugPrint('InfoRow - Empty value for label: $label');
-    }
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(

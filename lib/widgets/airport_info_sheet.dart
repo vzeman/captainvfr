@@ -291,18 +291,9 @@ class _AirportInfoSheetState extends State<AirportInfoSheet>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                Builder(
-                  builder: (context) {
-                    debugPrint('AirportInfoSheet - passing airport to InfoTab:');
-                    debugPrint('  ICAO: ${widget.airport.icao}');
-                    debugPrint('  Name: ${widget.airport.name}');
-                    debugPrint('  City: ${widget.airport.city}');
-                    debugPrint('  Country: ${widget.airport.country}');
-                    return AirportInfoTab(
-                      airport: widget.airport,
-                      onNavigate: widget.onNavigate,
-                    );
-                  },
+                AirportInfoTab(
+                  airport: widget.airport,
+                  onNavigate: widget.onNavigate,
                 ),
                 AirportWeatherTab(
                   airport: widget.airport,

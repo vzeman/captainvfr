@@ -14,16 +14,6 @@ class AirportInfoTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Debug logging
-    debugPrint('AirportInfoTab build - airport data:');
-    debugPrint('  ICAO: ${airport.icao}');
-    debugPrint('  Name: ${airport.name}');
-    debugPrint('  City: ${airport.city}');
-    debugPrint('  Country: ${airport.country}');
-    debugPrint('  Type: ${airport.type}');
-    debugPrint('  Position: ${airport.position}');
-    debugPrint('  Elevation: ${airport.elevation}');
-    
     return Consumer<SettingsService>(
       builder: (context, settings, child) {
         final isMetric = settings.units == 'metric';

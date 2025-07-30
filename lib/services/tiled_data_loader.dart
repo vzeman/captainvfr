@@ -473,14 +473,6 @@ class TiledDataLoader {
   /// Parse airport CSV row
   Airport? _parseAirportRow(List<dynamic> row) {
     try {
-      // Debug for LZDV
-      if (row.length > 1 && row[1].toString() == 'LZDV') {
-        _logger.i('🎯 LZDV: Parsing row with ${row.length} columns');
-        for (int i = 0; i < row.length && i < 17; i++) {
-          final value = row[i].toString();
-          _logger.i('  LZDV Column $i: ${value.length > 50 ? value.substring(0, 50) + "..." : value}');
-        }
-      }
       // CSV headers: ['id', 'ident', 'type', 'name', 'lat', 'lon', 'elevation_ft', 
       //               'country', 'municipality', 'scheduled_service', 'gps_code', 
       //               'iata_code', 'local_code', 'home_link', 'wikipedia_link',
@@ -511,21 +503,9 @@ class TiledDataLoader {
       String? runwaysJson;
       String? frequenciesJson;
       
-      // Debug for LZDV - check all columns
-      if (row[1].toString() == 'LZDV') {
-        _logger.i('LZDV: Checking columns 14-16 for runway data:');
-        if (row.length > 14) _logger.i('  Column 14: ${row[14].toString().substring(0, row[14].toString().length > 50 ? 50 : row[14].toString().length)}...');
-        if (row.length > 15) _logger.i('  Column 15: ${row[15].toString().substring(0, row[15].toString().length > 50 ? 50 : row[15].toString().length)}...');
-        if (row.length > 16) _logger.i('  Column 16: ${row[16].toString().substring(0, row[16].toString().length > 50 ? 50 : row[16].toString().length)}...');
-      }
       
       if (row.length > 15 && row[15] != null && row[15].toString().isNotEmpty) {
         runwaysJson = row[15].toString();
-        if (row[1].toString() == 'LZDV') {
-          _logger.i('LZDV: Runway JSON assigned, length: ${runwaysJson.length}');
-        }
-      } else if (row[1].toString() == 'LZDV') {
-        _logger.i('LZDV: No runway data found at column 15. Row length: ${row.length}');
       }
       
       if (row.length > 16 && row[16] != null && row[16].toString().isNotEmpty) {
@@ -558,15 +538,6 @@ class TiledDataLoader {
         frequencies: frequenciesJson,
       );
       
-      if (row[1].toString() == 'LZDV') {
-        _logger.i('LZDV: Created airport object:');
-        _logger.i('  - Row length: ${row.length}');
-        _logger.i('  - Runways JSON: ${runwaysJson != null ? "YES (${runwaysJson.length} chars)" : "NO"}');
-        _logger.i('  - Airport name: ${row[3]}');
-        _logger.i('  - City: $cityName');
-        _logger.i('  - Country: $countryName (code: $countryCode)');
-        _logger.i('  - Airport type: $type');
-      }
       
       return airport;
     } catch (e) {
