@@ -39,12 +39,10 @@ class AirportMarker extends StatelessWidget {
 
 
     // The visual size of the marker based on zoom
-    // Use the size parameter which is already adjusted for zoom
-    // Make heliport markers slightly larger to accommodate their special icons
-    final visualSize = airport.type == 'heliport' ? size * 1.2 : size;
+    final visualSize = size;
 
     // Weather indicator dot size - smaller for zoom 10+
-    final weatherDotSize = visualSize * (mapZoom >= 10 ? 0.35 : 0.3);
+    final weatherDotSize = visualSize * 0.3;
 
     // Calculate runway visualization size based on actual runway dimensions
     double runwayVisualizationSize = 0.0;
@@ -256,9 +254,8 @@ class AirportMarkersLayer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Base marker size based on zoom
-    // At zoom 10+, use smaller markers to not overlap runway info
-    final baseMarkerSize = mapZoom >= 12 ? 40.0 : 
-                          mapZoom >= 10 ? 20.0 : 28.0;
+    // At zoom 10+, use smaller markers to not overlap runway info (if runways are shown)
+    final baseMarkerSize = mapZoom >= 10 ? 20.0 : 8.0;
 
     final markers = airports.map((airport) {
       // Small airports and balloonports get 25% smaller markers (75% of base size)

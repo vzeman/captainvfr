@@ -117,10 +117,16 @@ class RunwaySurface {
   
   String get description {
     // Map OpenAIP surface codes to descriptions
+    // Based on OpenAIP data analysis:
+    // 0 appears to be Unknown/Undefined
+    // 1 is Asphalt
+    // 2 is Grass (not Concrete as previously thought)
+    // 3 is Concrete (not Grass)
     switch (mainComposite) {
+      case 0: return 'Unknown';
       case 1: return 'Asphalt';
-      case 2: return 'Concrete';
-      case 3: return 'Turf/Grass';
+      case 2: return 'Grass';
+      case 3: return 'Concrete';
       case 4: return 'Gravel';
       case 5: return 'Packed dirt';
       case 6: return 'Water';
@@ -144,6 +150,7 @@ class RunwaySurface {
   }
   
   bool get isHardSurface {
-    return [1, 2, 7, 8, 9, 10, 20].contains(mainComposite);
+    // Hard surfaces: Asphalt(1), Concrete(3), Bituminous(7), Brick(8), Macadam(9), Stone(10), Tarmac(20)
+    return [1, 3, 7, 8, 9, 10, 20].contains(mainComposite);
   }
 }
