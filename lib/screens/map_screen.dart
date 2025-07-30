@@ -2247,17 +2247,24 @@ class MapScreenState extends State<MapScreen>
   Future<void> _onAirportSelected(Airport airport) async {
     debugPrint('🎯 _onAirportSelected called for ${airport.icao}');
     debugPrint('  Source: ${airport.runtimeType}');
+    debugPrint('  Initial data - name: "${airport.name}", city: "${airport.city}", country: "${airport.country}"');
     debugPrint('  Initial runway data: ${airport.runways != null ? "${airport.runways!.length} chars" : "NULL"}');
     
-    // If the airport doesn't have runway or frequency data, try to load it from tiles
+    // If the airport doesn't have complete data, try to load it from tiles
     Airport fullAirport = airport;
     if (airport.icao == 'LZDV') {
       debugPrint('LZDV: _onAirportSelected called, runways = ${airport.runways != null ? "${airport.runways!.length} chars" : "NULL"}');
     }
     
-    if ((airport.runways == null || airport.runways!.isEmpty) || 
-        (airport.frequencies == null || airport.frequencies!.isEmpty)) {
-      debugPrint('${airport.icao}: Missing runway or frequency data, loading from tiles...');
+    // Check if essential fields are missing
+    final needsFullData = (airport.runways == null || airport.runways!.isEmpty) || 
+        (airport.frequencies == null || airport.frequencies!.isEmpty) ||
+        airport.name.isEmpty || airport.name == 'Unknown Airport' ||
+        airport.city.isEmpty || airport.city == 'Unknown' ||
+        airport.country.isEmpty || airport.country == 'Unknown';
+    
+    if (needsFullData) {
+      debugPrint('${airport.icao}: Missing essential data, loading from tiles...');
       try {
         // Load the area around the airport to ensure we have full data
         final airports = await TiledDataLoader().loadAirportsForArea(
@@ -2278,6 +2285,7 @@ class MapScreenState extends State<MapScreen>
         if (tiledAirport.icao == airport.icao) {
           fullAirport = tiledAirport;
           debugPrint('${airport.icao}: Found in tiles, runways = ${tiledAirport.runways != null ? "${tiledAirport.runways!.length} chars" : "NULL"}, frequencies = ${tiledAirport.frequencies != null ? "${tiledAirport.frequencies!.length} chars" : "NULL"}');
+          debugPrint('${airport.icao}: Airport data - name: ${tiledAirport.name}, city: ${tiledAirport.city}, country: ${tiledAirport.country}, type: ${tiledAirport.type}');
         } else {
           debugPrint('${airport.icao}: Not found in tiles');
         }

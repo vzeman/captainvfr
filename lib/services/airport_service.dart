@@ -319,9 +319,14 @@ class AirportService {
 
                   final icao = values[1].replaceAll('"', '').trim();
                   final name = values[3].replaceAll('"', '').trim();
-                  final city = values[10].replaceAll('"', '').trim();
-                  final country = values[8].replaceAll('"', '').trim();
+                  final municipality = values[10].replaceAll('"', '').trim();
+                  final countryCode = values[8].replaceAll('"', '').trim();
                   final type = values[2].replaceAll('"', '').trim();
+                  
+                  // Use municipality if available, otherwise use airport name as city
+                  final city = municipality.isNotEmpty ? municipality : name;
+                  // Convert country code to country name
+                  final country = _getCountryName(countryCode);
 
                   return Airport(
                     icao: icao,
@@ -334,6 +339,8 @@ class AirportService {
                     position: LatLng(lat, lon),
                     elevation: elevation,
                     type: type,
+                    countryCode: countryCode,
+                    municipality: municipality,
                   );
                 } catch (e) {
                   developer.log('❌ Error parsing airport data: $e');
@@ -458,5 +465,104 @@ class AirportService {
   // Clear all loaded airports
   void clear() {
     _airports.clear();
+  }
+  
+  /// Convert country code to country name
+  String _getCountryName(String countryCode) {
+    // Common country codes (expanded list)
+    final countryNames = {
+      // Europe
+      'AD': 'Andorra',
+      'AL': 'Albania',
+      'AT': 'Austria',
+      'BA': 'Bosnia and Herzegovina',
+      'BE': 'Belgium',
+      'BG': 'Bulgaria',
+      'BY': 'Belarus',
+      'CH': 'Switzerland',
+      'CY': 'Cyprus',
+      'CZ': 'Czech Republic',
+      'DE': 'Germany',
+      'DK': 'Denmark',
+      'EE': 'Estonia',
+      'ES': 'Spain',
+      'FI': 'Finland',
+      'FR': 'France',
+      'GB': 'United Kingdom',
+      'GR': 'Greece',
+      'HR': 'Croatia',
+      'HU': 'Hungary',
+      'IE': 'Ireland',
+      'IS': 'Iceland',
+      'IT': 'Italy',
+      'LI': 'Liechtenstein',
+      'LT': 'Lithuania',
+      'LU': 'Luxembourg',
+      'LV': 'Latvia',
+      'MC': 'Monaco',
+      'MD': 'Moldova',
+      'ME': 'Montenegro',
+      'MK': 'North Macedonia',
+      'MT': 'Malta',
+      'NL': 'Netherlands',
+      'NO': 'Norway',
+      'PL': 'Poland',
+      'PT': 'Portugal',
+      'RO': 'Romania',
+      'RS': 'Serbia',
+      'RU': 'Russia',
+      'SE': 'Sweden',
+      'SI': 'Slovenia',
+      'SK': 'Slovakia',
+      'SM': 'San Marino',
+      'TR': 'Turkey',
+      'UA': 'Ukraine',
+      'VA': 'Vatican City',
+      'XK': 'Kosovo',
+      // Americas
+      'US': 'United States',
+      'CA': 'Canada',
+      'MX': 'Mexico',
+      'BR': 'Brazil',
+      'AR': 'Argentina',
+      'CL': 'Chile',
+      'CO': 'Colombia',
+      'PE': 'Peru',
+      'VE': 'Venezuela',
+      // Asia
+      'CN': 'China',
+      'JP': 'Japan',
+      'KR': 'South Korea',
+      'IN': 'India',
+      'TH': 'Thailand',
+      'SG': 'Singapore',
+      'MY': 'Malaysia',
+      'ID': 'Indonesia',
+      'PH': 'Philippines',
+      'VN': 'Vietnam',
+      // Oceania
+      'AU': 'Australia',
+      'NZ': 'New Zealand',
+      'FJ': 'Fiji',
+      // Africa
+      'ZA': 'South Africa',
+      'EG': 'Egypt',
+      'MA': 'Morocco',
+      'KE': 'Kenya',
+      'NG': 'Nigeria',
+      'ET': 'Ethiopia',
+      // Middle East
+      'AE': 'United Arab Emirates',
+      'SA': 'Saudi Arabia',
+      'IL': 'Israel',
+      'JO': 'Jordan',
+      'LB': 'Lebanon',
+      'KW': 'Kuwait',
+      'QA': 'Qatar',
+      'OM': 'Oman',
+      'BH': 'Bahrain',
+    };
+    
+    return countryNames[countryCode] ?? countryCode;
   }
 }

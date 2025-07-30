@@ -532,20 +532,28 @@ class TiledDataLoader {
         frequenciesJson = row[16].toString();
       }
       
+      // Get country name from country code
+      final countryCode = row[7].toString();
+      final countryName = _getCountryName(countryCode);
+      
+      // Use municipality if available, otherwise use airport name as city
+      final municipality = row[8].toString();
+      final cityName = municipality.isNotEmpty ? municipality : row[3].toString();
+      
       final airport = Airport(
         icao: row[1].toString(), // ident field
         iata: row[11].toString().isNotEmpty ? row[11].toString() : null,
         name: row[3].toString(),
-        city: row[8].toString(), // municipality
-        country: row[7].toString(),
+        city: cityName,
+        country: countryName,
         position: LatLng(lat, lon),
         elevation: elevation,
         type: type,
         gpsCode: row[10].toString(),
         iataCode: row[11].toString().isNotEmpty ? row[11].toString() : null,
         localCode: row[12].toString(),
-        municipality: row[8].toString(),
-        countryCode: row[7].toString(),
+        municipality: municipality,
+        countryCode: countryCode,
         runways: runwaysJson,
         frequencies: frequenciesJson,
       );
@@ -555,6 +563,8 @@ class TiledDataLoader {
         _logger.i('  - Row length: ${row.length}');
         _logger.i('  - Runways JSON: ${runwaysJson != null ? "YES (${runwaysJson.length} chars)" : "NO"}');
         _logger.i('  - Airport name: ${row[3]}');
+        _logger.i('  - City: $cityName');
+        _logger.i('  - Country: $countryName (code: $countryCode)');
         _logger.i('  - Airport type: $type');
       }
       
@@ -617,6 +627,62 @@ class TiledDataLoader {
       default:
         return 'small_airport'; // Default fallback
     }
+  }
+  
+  /// Convert country code to country name
+  String _getCountryName(String countryCode) {
+    // Common European country codes
+    final countryNames = {
+      'AD': 'Andorra',
+      'AL': 'Albania',
+      'AT': 'Austria',
+      'BA': 'Bosnia and Herzegovina',
+      'BE': 'Belgium',
+      'BG': 'Bulgaria',
+      'BY': 'Belarus',
+      'CH': 'Switzerland',
+      'CY': 'Cyprus',
+      'CZ': 'Czech Republic',
+      'DE': 'Germany',
+      'DK': 'Denmark',
+      'EE': 'Estonia',
+      'ES': 'Spain',
+      'FI': 'Finland',
+      'FR': 'France',
+      'GB': 'United Kingdom',
+      'GR': 'Greece',
+      'HR': 'Croatia',
+      'HU': 'Hungary',
+      'IE': 'Ireland',
+      'IS': 'Iceland',
+      'IT': 'Italy',
+      'LI': 'Liechtenstein',
+      'LT': 'Lithuania',
+      'LU': 'Luxembourg',
+      'LV': 'Latvia',
+      'MC': 'Monaco',
+      'MD': 'Moldova',
+      'ME': 'Montenegro',
+      'MK': 'North Macedonia',
+      'MT': 'Malta',
+      'NL': 'Netherlands',
+      'NO': 'Norway',
+      'PL': 'Poland',
+      'PT': 'Portugal',
+      'RO': 'Romania',
+      'RS': 'Serbia',
+      'RU': 'Russia',
+      'SE': 'Sweden',
+      'SI': 'Slovenia',
+      'SK': 'Slovakia',
+      'SM': 'San Marino',
+      'TR': 'Turkey',
+      'UA': 'Ukraine',
+      'VA': 'Vatican City',
+      'XK': 'Kosovo',
+    };
+    
+    return countryNames[countryCode] ?? countryCode;
   }
   
   /// Parse navaid CSV row
