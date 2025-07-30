@@ -369,6 +369,27 @@ class RunwayCard extends StatelessWidget {
     this.windData,
   });
   
+  static Color _getWindStrengthColor(double value, bool isHeadwind) {
+    // For headwind/tailwind
+    if (isHeadwind) {
+      // Headwind is generally good, so green for moderate values
+      if (value <= 15) return Colors.green;
+      if (value <= 25) return Colors.orange;
+      return Colors.red;
+    } else {
+      // Tailwind is generally bad, so more restrictive
+      if (value <= 5) return Colors.green;
+      if (value <= 10) return Colors.orange;
+      return Colors.red;
+    }
+  }
+  
+  static Color _getCrosswindColor(double crosswind) {
+    if (crosswind <= 5) return Colors.green;
+    if (crosswind <= 10) return Colors.orange;
+    return Colors.red;
+  }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -545,11 +566,35 @@ class RunwayCard extends StatelessWidget {
                           spacing: 12,
                           runSpacing: 4,
                           children: windComponents!.map((component) => 
-                            Text(
-                              'RW ${component.runwayDesignation}: ${component.headwindAbs.toStringAsFixed(0)} ${component.isHeadwind ? "Headwind" : "Tailwind"}, ${component.crosswind.toStringAsFixed(0)} Crosswind',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: AppColors.primaryTextColor,
-                                fontSize: 9,
+                            RichText(
+                              text: TextSpan(
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 9,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: 'RW ${component.runwayDesignation}: ',
+                                    style: TextStyle(color: AppColors.primaryTextColor),
+                                  ),
+                                  TextSpan(
+                                    text: '${component.headwindAbs.toStringAsFixed(0)} ${component.isHeadwind ? "Headwind" : "Tailwind"}',
+                                    style: TextStyle(
+                                      color: _getWindStrengthColor(component.headwindAbs, component.isHeadwind),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: ', ',
+                                    style: TextStyle(color: AppColors.primaryTextColor),
+                                  ),
+                                  TextSpan(
+                                    text: '${component.crosswind.toStringAsFixed(0)} Crosswind',
+                                    style: TextStyle(
+                                      color: _getCrosswindColor(component.crosswind),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ).toList(),
@@ -631,6 +676,27 @@ class UnifiedRunwayCard extends StatelessWidget {
     this.isBestRunway = false,
     this.windData,
   });
+  
+  static Color _getWindStrengthColor(double value, bool isHeadwind) {
+    // For headwind/tailwind
+    if (isHeadwind) {
+      // Headwind is generally good, so green for moderate values
+      if (value <= 15) return Colors.green;
+      if (value <= 25) return Colors.orange;
+      return Colors.red;
+    } else {
+      // Tailwind is generally bad, so more restrictive
+      if (value <= 5) return Colors.green;
+      if (value <= 10) return Colors.orange;
+      return Colors.red;
+    }
+  }
+  
+  static Color _getCrosswindColor(double crosswind) {
+    if (crosswind <= 5) return Colors.green;
+    if (crosswind <= 10) return Colors.orange;
+    return Colors.red;
+  }
 
 
   @override
@@ -826,11 +892,35 @@ class UnifiedRunwayCard extends StatelessWidget {
                           spacing: 12,
                           runSpacing: 4,
                           children: windComponents!.map((component) => 
-                            Text(
-                              'RW ${component.runwayDesignation}: ${component.headwindAbs.toStringAsFixed(0)} ${component.isHeadwind ? "Headwind" : "Tailwind"}, ${component.crosswind.toStringAsFixed(0)} Crosswind',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: AppColors.primaryTextColor,
-                                fontSize: 9,
+                            RichText(
+                              text: TextSpan(
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 9,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: 'RW ${component.runwayDesignation}: ',
+                                    style: TextStyle(color: AppColors.primaryTextColor),
+                                  ),
+                                  TextSpan(
+                                    text: '${component.headwindAbs.toStringAsFixed(0)} ${component.isHeadwind ? "Headwind" : "Tailwind"}',
+                                    style: TextStyle(
+                                      color: _getWindStrengthColor(component.headwindAbs, component.isHeadwind),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: ', ',
+                                    style: TextStyle(color: AppColors.primaryTextColor),
+                                  ),
+                                  TextSpan(
+                                    text: '${component.crosswind.toStringAsFixed(0)} Crosswind',
+                                    style: TextStyle(
+                                      color: _getCrosswindColor(component.crosswind),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ).toList(),
