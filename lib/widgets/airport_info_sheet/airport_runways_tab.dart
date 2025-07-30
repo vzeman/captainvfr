@@ -982,7 +982,7 @@ class _CompactRunwayPainter extends CustomPainter {
     // Draw runway as thick black line (wider for better visibility)
     final runwayPaint = Paint()
       ..color = Colors.black
-      ..strokeWidth = 6 // Much thicker line for better visibility
+      ..strokeWidth = 8 // Thicker line for better visibility
       ..strokeCap = StrokeCap.round;
     
     canvas.drawLine(startPoint, endPoint, runwayPaint);
@@ -1060,7 +1060,7 @@ class _CompactRunwayPainter extends CustomPainter {
       // Draw wind arrow (thicker green line through runway)
       final windPaint = Paint()
         ..color = Colors.green
-        ..strokeWidth = 3
+        ..strokeWidth = 2 // Thinner arrow for cleaner look
         ..strokeCap = StrokeCap.round;
       
       canvas.drawLine(windArrowStart, windArrowEnd, windPaint);
