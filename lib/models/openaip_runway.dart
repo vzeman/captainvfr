@@ -5,6 +5,7 @@ class OpenAIPRunway {
   final int? lengthM; // Length in meters
   final int? widthM; // Width in meters
   final RunwaySurface? surface;
+  final int? trueHeading; // True heading in degrees
   
   OpenAIPRunway({
     this.airportIdent,
@@ -12,17 +13,43 @@ class OpenAIPRunway {
     this.lengthM,
     this.widthM,
     this.surface,
+    this.trueHeading,
   });
   
   factory OpenAIPRunway.fromJson(Map<String, dynamic> json) {
+    // Handle both formats: simplified (from v3 script) and full API format
+    
+    // Extract length and width from nested structure if present
+    int? lengthM;
+    int? widthM;
+    
+    if (json.containsKey('dimension') && json['dimension'] != null) {
+      // Full API format with nested dimension
+      final dimension = json['dimension'] as Map<String, dynamic>;
+      if (dimension['length'] != null) {
+        lengthM = dimension['length']['value'] as int?;
+      }
+      if (dimension['width'] != null) {
+        widthM = dimension['width']['value'] as int?;
+      }
+    } else {
+      // Simplified format
+      lengthM = json['len'] as int?;
+      widthM = json['wid'] as int?;
+    }
+    
+    // Note: Individual runway ends are stored separately in OpenAIP
+    // The designator here is for a single end (e.g., "13" or "31")
+    // The pairing happens at the airport level
     return OpenAIPRunway(
       airportIdent: json['airport_ident'],
-      designator: json['des'] ?? '',
-      lengthM: json['len'],
-      widthM: json['wid'],
-      surface: json['surf'] != null 
-          ? RunwaySurface.fromJson(json['surf'])
+      designator: json['designator'] ?? json['des'] ?? '',
+      lengthM: lengthM,
+      widthM: widthM,
+      surface: json['surface'] != null || json['surf'] != null
+          ? RunwaySurface.fromJson(json['surface'] ?? json['surf'])
           : null,
+      trueHeading: json['trueHeading'] as int?,
     );
   }
   

@@ -85,6 +85,23 @@ class MapZoomControls extends StatelessWidget {
                 height: 20,
                 color: Colors.grey.withValues(alpha: 0.3),
               ),
+              // Zoom level indicator
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  currentZoom.toStringAsFixed(1),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 20,
+                color: Colors.grey.withValues(alpha: 0.3),
+              ),
               _buildZoomButton(
                 icon: Icons.remove,
                 tooltip: canZoomOut ? 'Zoom out' : 'Minimum zoom reached',

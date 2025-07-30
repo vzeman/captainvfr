@@ -1,13 +1,11 @@
-// import 'dart:developer' show log;
+// import 'dart:developer' as developer;
 import '../../models/airport.dart';
 import '../../models/runway.dart';
 import '../../models/unified_runway.dart';
 import '../../models/frequency.dart';
-import '../../models/unified_frequency.dart';
 import '../../services/weather_service.dart';
 import '../../services/runway_service.dart';
 import '../../services/bundled_frequency_service.dart';
-import '../../services/frequency_service.dart';
 
 class AirportDataFetcher {
   final WeatherService weatherService;
@@ -73,7 +71,28 @@ class AirportDataFetcher {
   }
 
   Future<List<Runway>> fetchRunways(Airport airport) async {
-    // For tiled data, we need to load the area around the airport first
+    // First check if the airport already has runway data from embedded sources
+    if (airport.runways != null && airport.runways!.isNotEmpty) {
+      // Convert embedded runway data directly
+      final embeddedRunways = <Runway>[];
+      final openAIPRunways = airport.openAIPRunways;
+      
+      if (openAIPRunways.isNotEmpty) {
+        // Convert OpenAIP runways to Runway objects
+        for (final openAIPRunway in openAIPRunways) {
+          final unified = UnifiedRunway.fromOpenAIPRunway(
+            openAIPRunway,
+            airport.icao,
+            airportLat: airport.position.latitude,
+            airportLon: airport.position.longitude,
+          );
+          embeddedRunways.add(unified.toRunway());
+        }
+        return embeddedRunways;
+      }
+    }
+    
+    // Otherwise, load from runway service
     const buffer = 0.5; // degrees - small buffer around airport
     await runwayService.loadRunwaysForArea(
       minLat: airport.position.latitude - buffer,
@@ -82,11 +101,32 @@ class AirportDataFetcher {
       maxLon: airport.position.longitude + buffer,
     );
     
-    return runwayService.getRunwaysForAirport(airport.icao);
+    // Don't pass OpenAIP runways to avoid duplication
+    return runwayService.getRunwaysForAirport(
+      airport.icao,
+      openAIPRunways: null, // Don't pass embedded runways to avoid duplication
+      airportLat: airport.position.latitude,
+      airportLon: airport.position.longitude,
+    );
   }
   
   Future<List<UnifiedRunway>> fetchUnifiedRunways(Airport airport) async {
-    // For tiled data, we need to load the area around the airport first
+    // First check if the airport already has runway data from embedded sources
+    if (airport.runways != null && airport.runways!.isNotEmpty) {
+      final openAIPRunways = airport.openAIPRunways;
+      
+      if (openAIPRunways.isNotEmpty) {
+        // Convert OpenAIP runways to UnifiedRunway objects
+        return openAIPRunways.map((openAIPRunway) => UnifiedRunway.fromOpenAIPRunway(
+          openAIPRunway,
+          airport.icao,
+          airportLat: airport.position.latitude,
+          airportLon: airport.position.longitude,
+        )).toList();
+      }
+    }
+    
+    // Otherwise, load from runway service
     const buffer = 0.5; // degrees - small buffer around airport
     await runwayService.loadRunwaysForArea(
       minLat: airport.position.latitude - buffer,
@@ -95,10 +135,41 @@ class AirportDataFetcher {
       maxLon: airport.position.longitude + buffer,
     );
     
-    return runwayService.getUnifiedRunwaysForAirport(airport.icao);
+    // Don't pass OpenAIP runways to avoid duplication
+    return runwayService.getUnifiedRunwaysForAirport(
+      airport.icao,
+      openAIPRunways: null, // Don't pass embedded runways to avoid duplication
+      airportLat: airport.position.latitude,
+      airportLon: airport.position.longitude,
+    );
   }
 
   Future<List<Frequency>> fetchFrequencies(Airport airport) async {
+    // First check if the airport already has frequency data from TiledDataLoader
+    if (airport.frequencies != null && airport.frequencies!.isNotEmpty) {
+      // Convert embedded frequency data to Frequency objects
+      final embeddedFrequencies = <Frequency>[];
+      
+      for (final freqData in airport.frequenciesList) {
+        final freqMhz = double.tryParse(freqData['frequency_mhz']?.toString() ?? '') ?? 0.0;
+        
+        if (freqMhz > 0) {
+          final frequency = Frequency(
+            id: 0,
+            airportIdent: airport.icao,
+            type: freqData['type']?.toString() ?? '',
+            description: freqData['description']?.toString(),
+            frequencyMhz: freqMhz,
+          );
+          embeddedFrequencies.add(frequency);
+        }
+      }
+      
+      if (embeddedFrequencies.isNotEmpty) {
+        return embeddedFrequencies;
+      }
+    }
+    
     // For tiled data, we need to load the area around the airport first
     const buffer = 0.5; // degrees - small buffer around airport
     await frequencyService.loadFrequenciesForArea(

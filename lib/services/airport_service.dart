@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import '../models/airport.dart';
 import 'cache_service.dart';
+import 'tiled_data_loader.dart';
 
 // Extension to add distance calculation to LatLng (Haversine formula)
 extension LatLngExt on LatLng {
@@ -54,13 +55,47 @@ class AirportService {
 
   /// Initialize the service and load cached data
   Future<void> initialize() async {
+    developer.log('🚀 AirportService.initialize() called');
     await _cacheService.initialize();
     
     // Try to load bundled data first
     await _loadBundledAirports();
     
     if (!_bundledDataLoaded) {
+      developer.log('📦 No bundled data loaded, trying cache...');
       await _loadFromCache();
+    }
+    
+    developer.log('✅ AirportService initialized with ${_airports.length} airports');
+    
+    // If still no airports, load from TiledDataLoader as a temporary fix
+    if (_airports.isEmpty) {
+      developer.log('⚠️ No airports loaded, loading from TiledDataLoader...');
+      try {
+        final tiledLoader = TiledDataLoader();
+        
+        // Load airports from a large area (temporary fix to get search working)
+        // This covers most of Europe
+        final tiledAirports = await tiledLoader.loadAirportsForArea(
+          minLat: 35.0,  // Southern Europe
+          maxLat: 60.0,  // Northern Europe
+          minLon: -10.0, // Western Europe
+          maxLon: 30.0,  // Eastern Europe
+        );
+        
+        developer.log('📦 Loaded ${tiledAirports.length} airports from tiles');
+        
+        // Use the loaded airports directly - they already have runway data!
+        _airports = tiledAirports;
+        
+        // Cache these airports
+        await _cacheService.cacheAirports(_airports);
+        
+      } catch (e) {
+        developer.log('❌ Error loading from TiledDataLoader: $e');
+        // Fall back to network
+        await fetchNearbyAirports();
+      }
     }
   }
 
@@ -333,9 +368,11 @@ class AirportService {
   List<Airport> searchAirports(String query) {
     if (query.isEmpty) return [];
 
+    developer.log('🔍 Searching airports with query: "$query", total airports: ${_airports.length}');
+    
     final searchQuery = query.toLowerCase().trim();
 
-    return _airports.where((airport) {
+    final results = _airports.where((airport) {
       // Search by ICAO code
       if (airport.icao.toLowerCase().contains(searchQuery)) return true;
 
@@ -356,6 +393,16 @@ class AirportService {
 
       return false;
     }).toList();
+    
+    // Debug for LZDV
+    if (searchQuery.contains('lzdv')) {
+      developer.log('🔍 LZDV search results: ${results.length}');
+      for (var airport in results) {
+        developer.log('  Found: ${airport.icao} - ${airport.name}, runways: ${airport.runways != null ? "${airport.runways!.length} chars" : "NULL"}');
+      }
+    }
+    
+    return results;
   }
 
   /// Find airport by exact ICAO code

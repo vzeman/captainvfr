@@ -4,11 +4,10 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:archive/archive.dart';
 
-/// Enhanced script to generate runway and frequency tiles from OpenAIP data
-/// This fetches data for airports we already know about (from OurAirports)
-/// to supplement missing runway and frequency information
+/// Script to generate runway and frequency tiles from OpenAIP airport data
+/// This fetches airports in bulk and extracts their runway/frequency data
 
-class OpenAIPDataTileGenerator {
+class OpenAIPRunwayTileGenerator {
   static const int TILE_SIZE = 10; // degrees per tile
   late final String OPENAIP_API_KEY;
   static const String RUNWAY_OUTPUT_DIR = 'assets/data/tiles/openaip_runways';
@@ -17,25 +16,30 @@ class OpenAIPDataTileGenerator {
   // OpenAIP API endpoint
   static const String OPENAIP_BASE_URL = 'https://api.core.openaip.net/api';
   
+  // Tile configuration (10x10 degrees)
+  static const int tilesX = 36; // 360 degrees / 10 degrees
+  static const int tilesY = 18; // 180 degrees / 10 degrees
+  static const double tileWidth = 10.0;
+  static const double tileHeight = 10.0;
+  
   // Data structures
   final Map<String, List<Map<String, dynamic>>> runwayTileData = {};
   final Map<String, List<Map<String, dynamic>>> frequencyTileData = {};
   int totalRunways = 0;
   int totalFrequencies = 0;
-  final Set<String> processedAirports = {};
+  int totalAirports = 0;
   
   // Rate limiting
   DateTime? lastApiCall;
   static const Duration minTimeBetweenCalls = Duration(milliseconds: 200);
   
   Future<void> generate(String apiKey) async {
-    print('🚀 Starting OpenAIP data tile generation...');
+    print('🚀 Starting OpenAIP runway/frequency tile generation...');
     
     OPENAIP_API_KEY = apiKey;
     
     if (OPENAIP_API_KEY.isEmpty) {
       print('❌ API key is required');
-      print('Usage: dart generate_openaip_runway_tiles_v2.dart --api-key YOUR_API_KEY');
       exit(1);
     }
     
@@ -49,87 +53,16 @@ class OpenAIPDataTileGenerator {
       frequencyDir.createSync(recursive: true);
     }
     
-    // Load airport list from OurAirports data
-    final airports = await loadAirportList();
-    print('📋 Loaded ${airports.length} airports to process');
-    
-    // Process airports in batches
-    await processAirports(airports);
+    // Download airports by tiles and extract runway/frequency data
+    await downloadAirportsByTiles();
     
     // Write tiles
     await writeTiles();
     
     print('✅ Generated:');
+    print('  - Processed $totalAirports airports');
     print('  - ${runwayTileData.length} runway tiles with $totalRunways runways');
     print('  - ${frequencyTileData.length} frequency tiles with $totalFrequencies frequencies');
-  }
-  
-  Future<List<Map<String, dynamic>>> loadAirportList() async {
-    // Load airports from OurAirports CSV or existing tiles
-    // For now, we'll use a sample list for testing
-    // In production, this would read from the actual OurAirports data
-    
-    try {
-      final file = File('assets/data/raw/airports.csv');
-      if (file.existsSync()) {
-        final lines = await file.readAsLines();
-        final airports = <Map<String, dynamic>>[];
-        
-        // Skip header
-        for (int i = 1; i < lines.length && i < 1000; i++) { // Limit for testing
-          final parts = lines[i].split(',');
-          if (parts.length > 13) {
-            final ident = parts[1].replaceAll('"', '').trim();
-            final lat = double.tryParse(parts[4]) ?? 0.0;
-            final lon = double.tryParse(parts[5]) ?? 0.0;
-            
-            if (ident.isNotEmpty && lat != 0 && lon != 0) {
-              airports.add({
-                'ident': ident,
-                'latitude': lat,
-                'longitude': lon,
-              });
-            }
-          }
-        }
-        
-        return airports;
-      }
-    } catch (e) {
-      print('⚠️ Could not load airport list: $e');
-    }
-    
-    // Return a test set of major airports
-    return [
-      {'ident': 'KJFK', 'latitude': 40.6398, 'longitude': -73.7789},
-      {'ident': 'EGLL', 'latitude': 51.4706, 'longitude': -0.4619},
-      {'ident': 'LFPG', 'latitude': 49.0097, 'longitude': 2.5479},
-      {'ident': 'EDDF', 'latitude': 50.0379, 'longitude': 8.5622},
-      {'ident': 'LEMD', 'latitude': 40.4719, 'longitude': -3.5626},
-      {'ident': 'LIRF', 'latitude': 41.8003, 'longitude': 12.2389},
-      {'ident': 'EHAM', 'latitude': 52.3086, 'longitude': 4.7639},
-      {'ident': 'LSZH', 'latitude': 47.4647, 'longitude': 8.5492},
-      {'ident': 'LOWW', 'latitude': 48.1103, 'longitude': 16.5697},
-      {'ident': 'EIDW', 'latitude': 53.4213, 'longitude': -6.2701},
-    ];
-  }
-  
-  Future<void> processAirports(List<Map<String, dynamic>> airports) async {
-    int processed = 0;
-    final total = airports.length;
-    
-    for (final airport in airports) {
-      final ident = airport['ident'] as String;
-      final lat = airport['latitude'] as double;
-      final lon = airport['longitude'] as double;
-      
-      processed++;
-      if (processed % 10 == 0) {
-        print('  Progress: $processed/$total airports');
-      }
-      
-      await processAirport(ident, lat, lon);
-    }
   }
   
   Future<void> enforceRateLimit() async {
@@ -142,86 +75,130 @@ class OpenAIPDataTileGenerator {
     lastApiCall = DateTime.now();
   }
   
-  Future<void> processAirport(String icao, double lat, double lon) async {
-    if (processedAirports.contains(icao)) {
-      return;
+  Future<void> downloadAirportsByTiles() async {
+    print('\n📥 Downloading airports by geographic tiles...');
+    
+    const int totalTiles = tilesX * tilesY;
+    int completedTiles = 0;
+    
+    for (int y = 0; y < tilesY; y++) {
+      for (int x = 0; x < tilesX; x++) {
+        // Calculate tile boundaries
+        final minLon = -180.0 + (x * tileWidth);
+        final maxLon = minLon + tileWidth;
+        final minLat = -90.0 + (y * tileHeight);
+        final maxLat = minLat + tileHeight;
+        
+        completedTiles++;
+        
+        // Progress indicator
+        if (completedTiles % 10 == 0) {
+          stdout.write('\r   📍 Progress: $completedTiles/$totalTiles tiles');
+        }
+        
+        await fetchTileAirports(
+          bbox: [minLon, minLat, maxLon, maxLat],
+          tileX: x,
+          tileY: y,
+        );
+      }
+    }
+    stdout.write('\r   ✅ Downloaded all tiles                    \n');
+  }
+  
+  Future<void> fetchTileAirports({
+    required List<double> bbox,
+    required int tileX,
+    required int tileY,
+  }) async {
+    int page = 1;
+    bool hasMore = true;
+    
+    while (hasMore) {
+      try {
+        await enforceRateLimit();
+        
+        final queryParams = {
+          'page': page.toString(),
+          'limit': '100',
+          'bbox': bbox.join(','),
+        };
+        
+        final uri = Uri.parse('$OPENAIP_BASE_URL/airports')
+            .replace(queryParameters: queryParams);
+        
+        final response = await http.get(
+          uri,
+          headers: {
+            'x-openaip-api-key': OPENAIP_API_KEY,
+            'Accept': 'application/json',
+          },
+        ).timeout(const Duration(seconds: 30));
+        
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body) as Map<String, dynamic>;
+          final List<dynamic> items = data['items'] ?? [];
+          
+          // Process each airport
+          for (final airport in items) {
+            processAirport(airport as Map<String, dynamic>);
+          }
+          
+          // Check if there are more pages
+          final totalPages = data['totalPages'] ?? 1;
+          hasMore = page < totalPages;
+          page++;
+        } else if (response.statusCode == 429) {
+          // Rate limit - wait and retry
+          stdout.write('\r   ⏳ Rate limit hit, waiting...     ');
+          await Future.delayed(const Duration(seconds: 60));
+        } else {
+          hasMore = false;
+        }
+      } catch (e) {
+        // Continue on error
+        hasMore = false;
+      }
+    }
+  }
+  
+  void processAirport(Map<String, dynamic> airport) {
+    totalAirports++;
+    
+    final icao = airport['icaoCode'] ?? '';
+    final name = airport['name'] ?? '';
+    
+    // Get coordinates from geometry
+    final geometry = airport['geometry'];
+    if (geometry == null || geometry['coordinates'] == null) return;
+    
+    final coords = geometry['coordinates'] as List;
+    if (coords.length < 2) return;
+    
+    final lon = coords[0] as num;
+    final lat = coords[1] as num;
+    
+    // Process runways
+    final runways = airport['runways'] as List? ?? [];
+    if (runways.isNotEmpty) {
+      for (final runway in runways) {
+        final runwayData = parseRunway(runway, icao, name, lat.toDouble(), lon.toDouble());
+        if (runwayData != null) {
+          addRunwayToTile(runwayData, lat.toDouble(), lon.toDouble());
+          totalRunways++;
+        }
+      }
     }
     
-    processedAirports.add(icao);
-    
-    try {
-      await enforceRateLimit();
-      
-      // Fetch airport details from OpenAIP
-      final url = Uri.parse('$OPENAIP_BASE_URL/airports/$icao');
-      
-      print('  🔍 Fetching: $url');
-      
-      final response = await http.get(
-        url,
-        headers: {
-          'x-openaip-api-key': OPENAIP_API_KEY,
-          'Accept': 'application/json',
-        },
-      ).timeout(Duration(seconds: 10));
-      
-      print('  📡 $icao: Response status: ${response.statusCode}');
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        print('  📦 $icao: Response data keys: ${data.keys.toList()}');
-        
-        // Log the entire response structure for the first airport
-        if (processedAirports.length <= 2) {
-          print('  🔍 $icao: Full response structure:');
-          print(JsonEncoder.withIndent('    ').convert(data));
+    // Process frequencies
+    final frequencies = airport['frequencies'] as List? ?? [];
+    if (frequencies.isNotEmpty) {
+      for (final frequency in frequencies) {
+        final frequencyData = parseFrequency(frequency, icao, name, lat.toDouble(), lon.toDouble());
+        if (frequencyData != null) {
+          addFrequencyToTile(frequencyData, lat.toDouble(), lon.toDouble());
+          totalFrequencies++;
         }
-        
-        // Process runways
-        final runways = data['runways'] as List? ?? [];
-        print('  🛬 $icao: Found ${runways.length} runways in response');
-        
-        if (runways.isNotEmpty) {
-          for (final runway in runways) {
-            print('    - Runway data: ${json.encode(runway)}');
-            final runwayData = parseRunway(runway, icao, lat, lon);
-            if (runwayData != null) {
-              addRunwayToTile(runwayData, lat, lon);
-              totalRunways++;
-            }
-          }
-        }
-        
-        // Process frequencies
-        final frequencies = data['frequencies'] as List? ?? [];
-        print('  📻 $icao: Found ${frequencies.length} frequencies in response');
-        
-        if (frequencies.isNotEmpty) {
-          for (final frequency in frequencies) {
-            print('    - Frequency data: ${json.encode(frequency)}');
-            final frequencyData = parseFrequency(frequency, icao, lat, lon);
-            if (frequencyData != null) {
-              addFrequencyToTile(frequencyData, lat, lon);
-              totalFrequencies++;
-            }
-          }
-        }
-        
-        if (runways.isNotEmpty || frequencies.isNotEmpty) {
-          print('    ✓ $icao: ${runways.length} runways, ${frequencies.length} frequencies');
-        } else {
-          print('    ℹ️ $icao: No runways or frequencies in data');
-        }
-      } else if (response.statusCode == 404) {
-        print('    ℹ️ $icao: Not found in OpenAIP (404)');
-      } else {
-        print('    ⚠️ $icao: API error ${response.statusCode}');
-        print('    Response body: ${response.body}');
-      }
-    } catch (e) {
-      print('    ❌ $icao: $e');
-      if (e is http.ClientException) {
-        print('    Error details: ${e.message}');
       }
     }
   }
@@ -229,17 +206,47 @@ class OpenAIPDataTileGenerator {
   Map<String, dynamic>? parseRunway(
     Map<String, dynamic> runway,
     String airportIcao,
+    String airportName,
     double airportLat,
     double airportLon,
   ) {
     try {
-      // OpenAIP runway structure
+      // Extract dimensions from nested structure
+      double? length;
+      double? width;
+      
+      final dimension = runway['dimension'] as Map<String, dynamic>?;
+      if (dimension != null) {
+        final lengthData = dimension['length'] as Map<String, dynamic>?;
+        final widthData = dimension['width'] as Map<String, dynamic>?;
+        
+        if (lengthData != null && lengthData['value'] != null) {
+          length = (lengthData['value'] as num).toDouble();
+          // Convert to meters if needed (unit 0 seems to be meters already)
+        }
+        
+        if (widthData != null && widthData['value'] != null) {
+          width = (widthData['value'] as num).toDouble();
+        }
+      }
+      
+      // Extract surface information
+      final surface = runway['surface'] as Map<String, dynamic>? ?? {};
+      
+      // OpenAIP runway structure from the API
       return {
         'airport_ident': airportIcao,
-        'des': runway['des'] ?? '',
-        'len': runway['len'], // Length in meters
-        'wid': runway['wid'], // Width in meters
-        'surf': runway['surf'], // Surface information
+        'airport_name': airportName,
+        'des': runway['designator'] ?? '', // Use 'des' to match expected format
+        'len': length ?? 0, // Length in meters
+        'wid': width ?? 0, // Width in meters
+        'surf': surface, // Full surface information
+        'trueHeading': runway['trueHeading'],
+        'magneticHeading': runway['magneticHeading'],
+        'operations': runway['operations'],
+        'mainRunway': runway['mainRunway'] ?? false,
+        'takeOffOnly': runway['takeOffOnly'] ?? false,
+        'landingOnly': runway['landingOnly'] ?? false,
         'airport_lat': airportLat,
         'airport_lon': airportLon,
       };
@@ -251,27 +258,31 @@ class OpenAIPDataTileGenerator {
   Map<String, dynamic>? parseFrequency(
     Map<String, dynamic> frequency,
     String airportIcao,
+    String airportName,
     double airportLat,
     double airportLon,
   ) {
     try {
       // Parse frequency value
-      dynamic freq = frequency['frequency'];
+      dynamic value = frequency['value'];
       double frequencyMhz = 0.0;
       
-      if (freq is num) {
-        frequencyMhz = freq.toDouble();
-      } else if (freq is String) {
-        frequencyMhz = double.tryParse(freq.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+      if (value is num) {
+        frequencyMhz = value.toDouble();
+      } else if (value is String) {
+        frequencyMhz = double.tryParse(value.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
       }
       
       if (frequencyMhz == 0.0) return null;
       
       return {
         'airport_ident': airportIcao,
+        'airport_name': airportName,
         'type': frequency['type'] ?? 'UNKNOWN',
-        'description': frequency['name'] ?? frequency['description'],
+        'name': frequency['name'] ?? '',
         'frequency_mhz': frequencyMhz,
+        'unit': frequency['unit'] ?? '',
+        'primary': frequency['primary'] ?? false,
         'airport_lat': airportLat,
         'airport_lon': airportLon,
       };
@@ -398,12 +409,12 @@ void main(List<String> args) async {
   
   if (apiKey == null || apiKey.isEmpty) {
     print('❌ API key is required');
-    print('Usage: dart generate_openaip_runway_tiles_v2.dart --api-key YOUR_API_KEY');
+    print('Usage: dart generate_openaip_runway_tiles_v3.dart --api-key YOUR_API_KEY');
     print('Or set OPENAIP_API_KEY environment variable');
     print('Or add OPENAIP_API_KEY=your_key to .env file');
     exit(1);
   }
   
-  final generator = OpenAIPDataTileGenerator();
+  final generator = OpenAIPRunwayTileGenerator();
   await generator.generate(apiKey);
 }

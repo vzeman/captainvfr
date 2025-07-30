@@ -44,6 +44,8 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
   bool _isLoadingWind = true;
   String? _lastProcessedMetar;
   List<UnifiedRunway>? _unifiedRunways;
+  bool _hasAttemptedWindFetch = false;
+  int _windFetchAttempts = 0;
 
   @override
   void initState() {
@@ -55,6 +57,15 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
   @override
   void didUpdateWidget(AirportRunwaysTab oldWidget) {
     super.didUpdateWidget(oldWidget);
+    
+    // Reset attempt counter if airport changed
+    if (oldWidget.airport.icao != widget.airport.icao) {
+      _windFetchAttempts = 0;
+      _hasAttemptedWindFetch = false;
+      _windData = null;
+      _lastProcessedMetar = null;
+    }
+    
     // Always check if we need to refetch when widget updates
     _checkAndRefetchWindData();
   }
@@ -67,18 +78,37 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
         currentMetar != _lastProcessedMetar) {
       debugPrint('New METAR data detected, refetching wind data');
       _fetchWindData();
-    } else if (_windData == null && !_isLoadingWind) {
-      // If we don't have wind data and aren't loading, try to fetch
-      debugPrint('No wind data present, attempting to fetch');
+    } else if (_windData == null && !_isLoadingWind && !_hasAttemptedWindFetch) {
+      // If we don't have wind data and aren't loading, try to fetch ONCE
+      debugPrint('No wind data present, attempting to fetch (one time only)');
       _fetchWindData();
     }
   }
   
   Future<void> _fetchUnifiedRunways() async {
     try {
-      _unifiedRunways = widget.runwayService.getUnifiedRunwaysForAirport(widget.airport.icao);
+      // Get OpenAIP runways from the airport object
+      final openAIPRunways = widget.airport.openAIPRunways;
+      
+      if (widget.airport.icao == 'LZDV') {
+        debugPrint('LZDV: Fetching unified runways');
+        debugPrint('LZDV: OpenAIP runways from airport: ${openAIPRunways.length}');
+      }
+      
+      _unifiedRunways = widget.runwayService.getUnifiedRunwaysForAirport(
+        widget.airport.icao,
+        openAIPRunways: openAIPRunways.isNotEmpty ? openAIPRunways : null,
+        airportLat: widget.airport.position.latitude,
+        airportLon: widget.airport.position.longitude,
+      );
+      
+      if (widget.airport.icao == 'LZDV' && _unifiedRunways != null) {
+        debugPrint('LZDV: Got ${_unifiedRunways!.length} unified runways');
+      }
     } catch (e) {
-      // Silently fail - unified runways are optional
+      if (widget.airport.icao == 'LZDV') {
+        debugPrint('LZDV: Error fetching unified runways: $e');
+      }
     }
   }
   
@@ -92,8 +122,22 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
   Future<void> _fetchWindData() async {
     if (!mounted) return;
     
+    // Prevent excessive retries
+    if (_windFetchAttempts >= 2) {
+      debugPrint('Maximum wind fetch attempts reached, stopping');
+      setState(() {
+        _isLoadingWind = false;
+        _hasAttemptedWindFetch = true;
+      });
+      return;
+    }
+    
+    _windFetchAttempts++;
+    debugPrint('Wind fetch attempt $_windFetchAttempts');
+    
     setState(() {
       _isLoadingWind = true;
+      _hasAttemptedWindFetch = true;
     });
     
     try {
@@ -108,17 +152,9 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
         metar = await widget.weatherService.getMetar(widget.airport.icao);
         debugPrint('Fetched new METAR data: ${metar != null ? 'success' : 'null'}');
         
-        // If still no data, try to force reload the weather service
+        // If still no data, stop trying
         if (metar == null || metar.isEmpty) {
-          debugPrint('No cached METAR found, forcing weather service reload...');
-          await widget.weatherService.initialize();
-          
-          // Force reload to get fresh data
-          await widget.weatherService.forceReload();
-          
-          // Try fetching again after force reload
-          metar = await widget.weatherService.getMetar(widget.airport.icao);
-          debugPrint('After force reload result: ${metar != null ? 'success' : 'null'}');
+          debugPrint('No METAR data available for ${widget.airport.icao}');
         }
       }
       
@@ -182,7 +218,11 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
       return custom.ErrorWidget(error: widget.error!, onRetry: widget.onRetry);
     }
 
-    if (widget.runways.isEmpty) {
+    // Check both OurAirports runways and unified runways
+    final hasOurAirportsRunways = widget.runways.isNotEmpty;
+    final hasUnifiedRunways = _unifiedRunways != null && _unifiedRunways!.isNotEmpty;
+    
+    if (!hasOurAirportsRunways && !hasUnifiedRunways) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(32),
@@ -256,11 +296,20 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
           ),
           const SizedBox(height: 8),
 
-          ...widget.runways.map((runway) => RunwayCard(
-            runway: runway,
-            windComponents: _getWindComponentsForRunway(runway),
-            isBestRunway: _isBestRunway(runway),
-          )),
+          // Show OurAirports runways if available
+          if (widget.runways.isNotEmpty)
+            ...widget.runways.map((runway) => RunwayCard(
+              runway: runway,
+              windComponents: _getWindComponentsForRunway(runway),
+              isBestRunway: _isBestRunway(runway),
+            ))
+          // Otherwise show unified runways (OpenAIP data)
+          else if (_unifiedRunways != null && _unifiedRunways!.isNotEmpty)
+            ..._unifiedRunways!.map((unifiedRunway) => UnifiedRunwayCard(
+              runway: unifiedRunway,
+              windComponents: _getWindComponentsForUnifiedRunway(unifiedRunway),
+              isBestRunway: _isBestUnifiedRunway(unifiedRunway),
+            )),
         ],
       ),
     );
@@ -281,6 +330,22 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
     
     final runwayDesignations = runway.designation.split('/');
     return runwayDesignations.contains(_bestRunway);
+  }
+  
+  List<WindComponents>? _getWindComponentsForUnifiedRunway(UnifiedRunway runway) {
+    if (_windComponents == null) return null;
+    
+    return _windComponents!.where((component) {
+      // Match by runway designation
+      return component.runwayDesignation == runway.leIdent || 
+             component.runwayDesignation == runway.heIdent;
+    }).toList();
+  }
+  
+  bool _isBestUnifiedRunway(UnifiedRunway runway) {
+    if (_bestRunway == null) return false;
+    
+    return runway.leIdent == _bestRunway || runway.heIdent == _bestRunway;
   }
   
   
@@ -628,6 +693,277 @@ class RunwayCard extends StatelessWidget {
                                 '${component.crosswind.toStringAsFixed(0)} kts crosswind',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: _getCrosswindColor(component.crosswind),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Status indicators
+                if (runway.closed || runway.lighted) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      if (runway.lighted)
+                        StatusChip(
+                          label: 'Lighted',
+                          color: Colors.yellow[700]!,
+                        ),
+                      if (runway.closed)
+                        StatusChip(label: 'Closed', color: Colors.red[700]!),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRunwayDetail(BuildContext context, String label, String value) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+        ),
+        Text(
+          value,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Card widget for unified runway data (supports OpenAIP runways)
+class UnifiedRunwayCard extends StatelessWidget {
+  final UnifiedRunway runway;
+  final List<WindComponents>? windComponents;
+  final bool isBestRunway;
+
+  const UnifiedRunwayCard({
+    super.key,
+    required this.runway,
+    this.windComponents,
+    this.isBestRunway = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Consumer<SettingsService>(
+      builder: (context, settings, child) {
+        final isMetric = settings.units == 'metric';
+
+        // Format length based on units
+        final lengthStr = isMetric
+            ? '${(runway.lengthFt / 3.28084).toStringAsFixed(0)} m'
+            : '${runway.lengthFt} ft';
+
+        // Format width based on units
+        final widthStr = runway.widthFt != null
+            ? isMetric
+                  ? '${(runway.widthFt! / 3.28084).toStringAsFixed(0)} m'
+                  : '${runway.widthFt} ft'
+            : null;
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          color: isBestRunway ? theme.colorScheme.primaryContainer : null,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Runway designation and basic info
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isBestRunway 
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.primary.withValues(alpha: 0.2),
+                        borderRadius: AppTheme.smallRadius,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isBestRunway) ...[
+                            Icon(
+                              Icons.star,
+                              size: 14,
+                              color: theme.colorScheme.onPrimary,
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Text(
+                            runway.designation,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: isBestRunway 
+                                  ? theme.colorScheme.onPrimary
+                                  : theme.colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    // Data source indicator
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.secondaryContainer,
+                        borderRadius: AppTheme.smallRadius,
+                      ),
+                      child: Text(
+                        runway.dataSource.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSecondaryContainer,
+                        ),
+                      ),
+                    ),
+                    if (isBestRunway) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          borderRadius: AppTheme.extraLargeRadius,
+                        ),
+                        child: const Text(
+                          'BEST',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(width: 8),
+                    if (runway.lighted)
+                      Icon(
+                        Icons.lightbulb,
+                        size: 16,
+                        color: Colors.yellow[700],
+                      ),
+                    if (runway.closed)
+                      Icon(Icons.block, size: 16, color: Colors.red[700]),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Runway details
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildRunwayDetail(context, 'Length', lengthStr),
+                    ),
+                    if (widthStr != null)
+                      Expanded(
+                        child: _buildRunwayDetail(context, 'Width', widthStr),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildRunwayDetail(
+                        context,
+                        'Surface',
+                        runway.surfaceDescription,
+                      ),
+                    ),
+                    if (runway.leHeadingDegT != null ||
+                        runway.heHeadingDegT != null)
+                      Expanded(
+                        child: _buildRunwayDetail(
+                          context,
+                          'Heading',
+                          '${runway.leHeadingDegT?.toStringAsFixed(0) ?? 'N/A'}°/${runway.heHeadingDegT?.toStringAsFixed(0) ?? 'N/A'}°',
+                        ),
+                      ),
+                  ],
+                ),
+
+                // Wind Components (if available)
+                if (windComponents != null && windComponents!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      borderRadius: AppTheme.smallRadius,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Wind Components',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        ...windComponents!.map((component) => Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 40,
+                                child: Text(
+                                  component.runwayDesignation,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(
+                                component.isHeadwind ? Icons.arrow_downward : Icons.arrow_upward,
+                                size: 14,
+                                color: component.isHeadwind ? Colors.green : Colors.orange,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${component.headwindAbs.toStringAsFixed(0)} kts ${component.isHeadwind ? "headwind" : "tailwind"}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: component.isHeadwind ? Colors.green : Colors.orange,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Icon(
+                                Icons.compare_arrows,
+                                size: 14,
+                                color: RunwayCard._getCrosswindColor(component.crosswind),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${component.crosswind.toStringAsFixed(0)} kts crosswind',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: RunwayCard._getCrosswindColor(component.crosswind),
                                 ),
                               ),
                             ],

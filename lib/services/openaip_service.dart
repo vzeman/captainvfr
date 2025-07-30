@@ -21,9 +21,8 @@ class OpenAIPService {
   bool _initialized = false;
   
   // OpenAIP API configuration
-  static const String _baseUrl = 'https://api.airlabs.co/v1';
   static const String _openAipBaseUrl = 'https://api.openaip.net';
-  static const String OPENAIP_API_KEY = String.fromEnvironment('OPENAIP_API_KEY');
+  static const String openAipApiKey = String.fromEnvironment('OPENAIP_API_KEY');
   
   // Rate limiting
   DateTime? _lastApiCall;
@@ -518,7 +517,7 @@ class OpenAIPService {
   
   /// Get airport details from OpenAIP including runways and frequencies
   Future<Map<String, dynamic>?> getAirportDetails(String icaoCode) async {
-    if (OPENAIP_API_KEY.isEmpty) {
+    if (openAipApiKey.isEmpty) {
       developer.log('⚠️ OpenAIP API key not configured');
       return null;
     }
@@ -530,7 +529,7 @@ class OpenAIPService {
       final response = await http.get(
         url,
         headers: {
-          'x-openaip-api-key': OPENAIP_API_KEY,
+          'x-openaip-api-key': openAipApiKey,
           'Accept': 'application/json',
         },
       ).timeout(const Duration(seconds: 10));
@@ -597,7 +596,7 @@ class OpenAIPService {
     required double maxLon,
     int limit = 100,
   }) async {
-    if (OPENAIP_API_KEY.isEmpty) {
+    if (openAipApiKey.isEmpty) {
       developer.log('⚠️ OpenAIP API key not configured');
       return [];
     }
@@ -616,7 +615,7 @@ class OpenAIPService {
       final response = await http.get(
         url,
         headers: {
-          'x-openaip-api-key': OPENAIP_API_KEY,
+          'x-openaip-api-key': openAipApiKey,
           'Accept': 'application/json',
         },
       ).timeout(const Duration(seconds: 30));

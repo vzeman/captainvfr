@@ -219,8 +219,6 @@ class SpatialAirspaceService extends ChangeNotifier {
     
     if (_allAirspaces.isNotEmpty) {
       _isIndexBuilt = true;
-      developer.log('✅ Spatial index cache cleared. Index will be rebuilt dynamically as tiles are loaded.');
-      developer.log('📊 Managing ${_allAirspaces.length} airspaces');
       notifyListeners();
     } else {
       developer.log('⚠️ No airspaces available');

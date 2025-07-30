@@ -182,6 +182,7 @@ class FrequencyService {
     } catch (e) {
       developer.log('❌ Error loading frequencies for area: $e');
     }
+  }
 
   /// Fetch frequencies from remote source
   Future<void> fetchFrequencies({bool forceRefresh = false}) async {
@@ -217,7 +218,7 @@ class FrequencyService {
 
       if (response.statusCode == 200) {
         final csvData = response.body;
-        final frequencies = await _parseFrequenciesCsv(csvData);
+        final frequencies = await parseFrequenciesCsv(csvData);
 
         _frequencies = frequencies;
 
@@ -245,7 +246,7 @@ class FrequencyService {
   }
 
   /// Parse CSV data into frequency objects
-  Future<List<Frequency>> _parseFrequenciesCsv(String csvData) async {
+  Future<List<Frequency>> parseFrequenciesCsv(String csvData) async {
     final frequencies = <Frequency>[];
 
     try {
@@ -284,51 +285,6 @@ class FrequencyService {
       developer.log('❌ Error parsing frequencies CSV: $e');
       rethrow;
     }
-  }
-
-  /// Get frequencies for a specific airport
-  List<Frequency> getFrequenciesForAirport(String airportIdent, {List<OpenAIPFrequency>? openAIPFrequencies}) {
-    // Try unified data first
-    final unified = getUnifiedFrequenciesForAirport(airportIdent, openAIPFrequencies: openAIPFrequencies);
-    if (unified.isNotEmpty) {
-      return unified.map((f) => f.toFrequency()).toList();
-    }
-    
-    if (_useTiledData) {
-      // Return from tiled data cache
-      return _frequenciesByAirport[airportIdent.toUpperCase()] ?? 
-             _frequenciesByAirport[airportIdent] ?? 
-             [];
-    }
-    
-    if (_useBundledData) {
-      return _bundledService.getFrequenciesForAirport(airportIdent);
-    }
-
-    if (_frequencies.isEmpty) {
-      return [];
-    }
-
-
-    // Try exact match first
-    final exactMatches = _frequencies
-        .where((frequency) => frequency.airportIdent == airportIdent)
-        .toList();
-
-    if (exactMatches.isNotEmpty) {
-      return exactMatches;
-    }
-
-    // Try case-insensitive match
-    final caseInsensitiveMatches = _frequencies
-        .where(
-          (frequency) =>
-              frequency.airportIdent.toUpperCase() ==
-              airportIdent.toUpperCase(),
-        )
-        .toList();
-
-    return caseInsensitiveMatches;
   }
   
   /// Get unified frequencies combining multiple sources
@@ -387,6 +343,51 @@ class FrequencyService {
     _unifiedFrequenciesByAirport[upperIdent] = unifiedFrequencies;
     
     return unifiedFrequencies;
+  }
+
+  /// Get frequencies for a specific airport
+  List<Frequency> getFrequenciesForAirport(String airportIdent, {List<OpenAIPFrequency>? openAIPFrequencies}) {
+    // Try unified data first
+    final unified = getUnifiedFrequenciesForAirport(airportIdent, openAIPFrequencies: openAIPFrequencies);
+    if (unified.isNotEmpty) {
+      return unified.map((f) => f.toFrequency()).toList();
+    }
+    
+    if (_useTiledData) {
+      // Return from tiled data cache
+      return _frequenciesByAirport[airportIdent.toUpperCase()] ?? 
+             _frequenciesByAirport[airportIdent] ?? 
+             [];
+    }
+    
+    if (_useBundledData) {
+      return _bundledService.getFrequenciesForAirport(airportIdent);
+    }
+
+    if (_frequencies.isEmpty) {
+      return [];
+    }
+
+
+    // Try exact match first
+    final exactMatches = _frequencies
+        .where((frequency) => frequency.airportIdent == airportIdent)
+        .toList();
+
+    if (exactMatches.isNotEmpty) {
+      return exactMatches;
+    }
+
+    // Try case-insensitive match
+    final caseInsensitiveMatches = _frequencies
+        .where(
+          (frequency) =>
+              frequency.airportIdent.toUpperCase() ==
+              airportIdent.toUpperCase(),
+        )
+        .toList();
+
+    return caseInsensitiveMatches;
   }
 
   /// Get frequencies for multiple airports

@@ -28,6 +28,7 @@ import '../models/hotspot.dart';
 import '../models/flight_segment.dart' as flight_seg;
 import '../models/flight_plan.dart';
 import '../services/airport_service.dart';
+import '../services/tiled_data_loader.dart';
 import '../services/runway_service.dart';
 import '../services/navaid_service.dart';
 import '../services/flight_service.dart';
@@ -969,11 +970,24 @@ class MapScreenState extends State<MapScreen>
           maxLon: bounds.northEast.longitude,
         );
 
-        // Get airports within the current map bounds
-        final airports = await _airportService.getAirportsInBounds(
-          bounds.southWest,
-          bounds.northEast,
-        );
+        // Get airports from TiledDataLoader (these have runway data)
+        List<Airport> airports;
+        try {
+          airports = await TiledDataLoader().loadAirportsForArea(
+            minLat: bounds.southWest.latitude,
+            maxLat: bounds.northEast.latitude,
+            minLon: bounds.southWest.longitude,
+            maxLon: bounds.northEast.longitude,
+          );
+          debugPrint('Loaded ${airports.length} airports from TiledDataLoader with runway data');
+        } catch (e) {
+          // Fall back to AirportService if TiledDataLoader fails
+          debugPrint('TiledDataLoader failed, falling back to AirportService: $e');
+          airports = await _airportService.getAirportsInBounds(
+            bounds.southWest,
+            bounds.northEast,
+          );
+        }
 
         // Get runway data for airports if zoom level is appropriate
         final runwayDataMap = <String, List<Runway>>{};
@@ -2231,12 +2245,52 @@ class MapScreenState extends State<MapScreen>
 
   // Handle airport selection
   Future<void> _onAirportSelected(Airport airport) async {
+    debugPrint('🎯 _onAirportSelected called for ${airport.icao}');
+    debugPrint('  Source: ${airport.runtimeType}');
+    debugPrint('  Initial runway data: ${airport.runways != null ? "${airport.runways!.length} chars" : "NULL"}');
+    
+    // If the airport doesn't have runway or frequency data, try to load it from tiles
+    Airport fullAirport = airport;
+    if (airport.icao == 'LZDV') {
+      debugPrint('LZDV: _onAirportSelected called, runways = ${airport.runways != null ? "${airport.runways!.length} chars" : "NULL"}');
+    }
+    
+    if ((airport.runways == null || airport.runways!.isEmpty) || 
+        (airport.frequencies == null || airport.frequencies!.isEmpty)) {
+      debugPrint('${airport.icao}: Missing runway or frequency data, loading from tiles...');
+      try {
+        // Load the area around the airport to ensure we have full data
+        final airports = await TiledDataLoader().loadAirportsForArea(
+          minLat: airport.position.latitude - 0.1,
+          maxLat: airport.position.latitude + 0.1,
+          minLon: airport.position.longitude - 0.1,
+          maxLon: airport.position.longitude + 0.1,
+        );
+        
+        debugPrint('${airport.icao}: Loaded ${airports.length} airports from tiles');
+        
+        // Find the airport with matching ICAO
+        final tiledAirport = airports.firstWhere(
+          (a) => a.icao == airport.icao,
+          orElse: () => airport,
+        );
+        
+        if (tiledAirport.icao == airport.icao) {
+          fullAirport = tiledAirport;
+          debugPrint('${airport.icao}: Found in tiles, runways = ${tiledAirport.runways != null ? "${tiledAirport.runways!.length} chars" : "NULL"}, frequencies = ${tiledAirport.frequencies != null ? "${tiledAirport.frequencies!.length} chars" : "NULL"}');
+        } else {
+          debugPrint('${airport.icao}: Not found in tiles');
+        }
+      } catch (e) {
+        debugPrint('Failed to load full airport data: $e');
+      }
+    }
     // debugPrint('_onAirportSelected called for ${airport.icao} - ${airport.name}');
 
     // If in flight planning mode and panel is visible, add airport as waypoint instead of showing details
     if (_flightPlanService.isPlanning && _showFlightPlanning) {
       // debugPrint('Flight planning mode active - adding airport as waypoint');
-      _flightPlanService.addAirportWaypoint(airport);
+      _flightPlanService.addAirportWaypoint(fullAirport);
       // debugPrint('Added airport waypoint: ${airport.icao} - ${airport.name}');
       return;
     }
@@ -2252,7 +2306,7 @@ class MapScreenState extends State<MapScreen>
         context: context,
         isScrollControlled: true,
         builder: (BuildContext context) => AirportInfoSheet(
-          airport: airport,
+          airport: fullAirport,
           weatherService: _weatherService,
           onClose: () {
             // debugPrint('Closing bottom sheet for ${airport.icao}');
@@ -2275,6 +2329,8 @@ class MapScreenState extends State<MapScreen>
 
   // Handle airport selection from search
   void _onAirportSelectedFromSearch(Airport airport) {
+    debugPrint('Airport selected from search: ${airport.icao}, runways = ${airport.runways != null ? "${airport.runways!.length} chars" : "NULL"}');
+    
     // Close the search dialog first
     Navigator.of(context).pop();
     

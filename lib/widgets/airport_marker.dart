@@ -66,9 +66,14 @@ class AirportMarker extends StatelessWidget {
         }
       }
       
-      // Set size based on longest runway, with minimum size
+      // Set size based on longest runway
       if (maxLengthM > 0) {
-        runwayVisualizationSize = math.max(visualSize * 2, (maxLengthM / metersPerPixel) * 1.2);
+        // Calculate pixel size for runway visualization
+        // Add small buffer (1.05) for visual clarity
+        final calculatedSize = (maxLengthM / metersPerPixel) * 1.05;
+        
+        // Ensure minimum size for visibility at lower zoom levels
+        runwayVisualizationSize = math.max(visualSize * 1.5, calculatedSize);
       } else {
         runwayVisualizationSize = visualSize * 3.5; // Default size
       }
@@ -277,7 +282,8 @@ class AirportMarkersLayer extends StatelessWidget {
         }
         
         if (maxLengthM > 0) {
-          markerBounds = math.max(airportMarkerSize, (maxLengthM / metersPerPixel) * 1.2);
+          // Use actual runway length with small buffer
+          markerBounds = math.max(airportMarkerSize, (maxLengthM / metersPerPixel) * 1.05);
         }
       }
 
