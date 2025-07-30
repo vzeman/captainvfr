@@ -34,7 +34,8 @@ class AirportMarker extends StatelessWidget {
     final icon = _getAirportIcon(airport.type);
     final color = _getAirportColor(airport.type);
     final borderColor = isSelected ? Colors.amber : color;
-    final borderWidth = isSelected ? 3.0 : 2.0;
+    // Adjust border width based on zoom level
+    final borderWidth = isSelected ? (mapZoom >= 10 ? 2.0 : 3.0) : (mapZoom >= 10 ? 1.5 : 2.0);
 
 
     // The visual size of the marker based on zoom
@@ -42,8 +43,8 @@ class AirportMarker extends StatelessWidget {
     // Make heliport markers slightly larger to accommodate their special icons
     final visualSize = airport.type == 'heliport' ? size * 1.2 : size;
 
-    // Weather indicator dot size
-    final weatherDotSize = visualSize * 0.3;
+    // Weather indicator dot size - smaller for zoom 10+
+    final weatherDotSize = visualSize * (mapZoom >= 10 ? 0.35 : 0.3);
 
     // Calculate runway visualization size based on actual runway dimensions
     double runwayVisualizationSize = 0.0;
@@ -72,8 +73,9 @@ class AirportMarker extends StatelessWidget {
         // Add small buffer (1.05) for visual clarity
         final calculatedSize = (maxLengthM / metersPerPixel) * 1.05;
         
-        // Ensure minimum size for visibility at lower zoom levels
-        runwayVisualizationSize = math.max(visualSize * 1.5, calculatedSize);
+        // Ensure minimum size for visibility
+        // At zoom 10+, don't enforce minimum size to prevent overlap
+        runwayVisualizationSize = mapZoom >= 10 ? calculatedSize : math.max(visualSize * 1.5, calculatedSize);
       } else {
         runwayVisualizationSize = visualSize * 3.5; // Default size
       }
@@ -254,7 +256,9 @@ class AirportMarkersLayer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Base marker size based on zoom
-    final baseMarkerSize = mapZoom >= 12 ? 40.0 : 28.0;
+    // At zoom 10+, use smaller markers to not overlap runway info
+    final baseMarkerSize = mapZoom >= 12 ? 40.0 : 
+                          mapZoom >= 10 ? 20.0 : 28.0;
 
     final markers = airports.map((airport) {
       // Small airports and balloonports get 25% smaller markers (75% of base size)

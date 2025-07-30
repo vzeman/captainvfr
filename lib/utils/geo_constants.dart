@@ -18,7 +18,7 @@ class GeoConstants {
   static const int minRunwayLengthForLabel = 3000;
   
   /// Minimum zoom level for runway visualization
-  static const double minZoomForRunways = 5.0;
+  static const double minZoomForRunways = 10.0;
   
   /// Minimum zoom level for runway length labels
   static const double minZoomForLabels = 14.0;
