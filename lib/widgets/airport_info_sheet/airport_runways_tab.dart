@@ -546,7 +546,7 @@ class RunwayCard extends StatelessWidget {
                           runSpacing: 4,
                           children: windComponents!.map((component) => 
                             Text(
-                              'RW ${component.runwayDesignation}: ${component.headwindAbs.toStringAsFixed(0)} ${component.isHeadwind ? "H" : "T"}, ${component.crosswind.toStringAsFixed(0)} X',
+                              'RW ${component.runwayDesignation}: ${component.headwindAbs.toStringAsFixed(0)} ${component.isHeadwind ? "Headwind" : "Tailwind"}, ${component.crosswind.toStringAsFixed(0)} Crosswind',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: AppColors.primaryTextColor,
                                 fontSize: 9,
@@ -827,7 +827,7 @@ class UnifiedRunwayCard extends StatelessWidget {
                           runSpacing: 4,
                           children: windComponents!.map((component) => 
                             Text(
-                              'RW ${component.runwayDesignation}: ${component.headwindAbs.toStringAsFixed(0)} ${component.isHeadwind ? "H" : "T"}, ${component.crosswind.toStringAsFixed(0)} X',
+                              'RW ${component.runwayDesignation}: ${component.headwindAbs.toStringAsFixed(0)} ${component.isHeadwind ? "Headwind" : "Tailwind"}, ${component.crosswind.toStringAsFixed(0)} Crosswind',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: AppColors.primaryTextColor,
                                 fontSize: 9,
