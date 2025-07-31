@@ -144,13 +144,6 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
       visibleAirports = airportsInBounds;
     }
     
-    // Debug: Count heliports before and after filtering
-    final heliportCountTotal = airports.where((a) => a.type == 'heliport').length;
-    final heliportCountInBounds = airportsInBounds.where((a) => a.type == 'heliport').length;
-    final heliportCountAfterZoom = visibleAirports.where((a) => a.type == 'heliport').length;
-    if (heliportCountTotal > 0 && showHeliports) {
-      print('OptimizedAirportMarkersLayer: Heliports total: $heliportCountTotal, in bounds: $heliportCountInBounds, after zoom filter: $heliportCountAfterZoom at zoom $currentZoom');
-    }
 
     // Performance optimization: Limit number of markers to prevent slow frames
     // Since we're now only showing airports in visible bounds, we can use higher limits
@@ -216,21 +209,11 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
         
         visibleAirports = visibleAirports.take(maxMarkers).toList();
         
-        // Debug: Check if heliports survived the priority sorting
-        final heliportCountAfterSort = visibleAirports.where((a) => a.type == 'heliport').length;
-        if (showHeliports && heliportCountAfterZoom > 0) {
-          print('OptimizedAirportMarkersLayer: Heliports after priority sort: $heliportCountAfterSort (max markers: $maxMarkers)');
-        }
       }
     }
 
     final positions = visibleAirports.map((a) => a.position).toList();
     
-    // Debug: Final heliport count being rendered
-    final finalHeliportCount = visibleAirports.where((a) => a.type == 'heliport').length;
-    if (showHeliports && finalHeliportCount > 0) {
-      print('OptimizedAirportMarkersLayer: RENDERING $finalHeliportCount heliports');
-    }
 
     // Calculate base marker size with smooth interpolation based on zoom level
     // At zoom 10-13, use smaller markers to not overlap with runway visualizations
@@ -294,10 +277,6 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
           airportMarkerSize = baseMarkerSize; // Full size for large airports
         }
         
-        // Debug logging for heliports
-        if (airport.type == 'heliport') {
-          print('Building marker for heliport: ${airport.icao} - ${airport.name} at $position with size $airportMarkerSize');
-        }
 
         return AirportMarker(
           airport: airport,

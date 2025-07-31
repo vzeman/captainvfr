@@ -1025,11 +1025,6 @@ class MapScreenState extends State<MapScreen>
         if (mounted) {
           setState(() {
             _airports = airports;
-            // Debug: Count heliports in _airports list
-            final heliportCount = _airports.where((a) => a.type == 'heliport').length;
-            if (heliportCount > 0) {
-              print('MapScreen: $_airports contains $heliportCount heliports');
-            }
             _airportRunways = runwayDataMap;
           });
 
@@ -3293,17 +3288,6 @@ class MapScreenState extends State<MapScreen>
                     // Show medium and large airports always, and show small airports/heliports based on toggles
                     return true;
                   }).toList();
-                  
-                  // Debug: Log heliport counts
-                  final heliportCount = _airports.where((a) => a.type == 'heliport').length;
-                  final filteredHeliportCount = filteredAirports.where((a) => a.type == 'heliport').length;
-                  if (_mapStateController.showHeliports && heliportCount > 0) {
-                    print('MapScreen: Total heliports: $heliportCount, After filter: $filteredHeliportCount, Show heliports: ${_mapStateController.showHeliports}');
-                    if (filteredHeliportCount > 0) {
-                      final firstHeliport = filteredAirports.firstWhere((a) => a.type == 'heliport');
-                      print('MapScreen: First heliport: ${firstHeliport.icao} - ${firstHeliport.name} at ${firstHeliport.position}');
-                    }
-                  }
                   
                   return OptimizedAirportMarkersLayer(
                     airports: filteredAirports,
