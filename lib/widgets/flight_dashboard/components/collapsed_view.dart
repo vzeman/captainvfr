@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../services/flight_service.dart';
+import '../../../services/heading_service.dart';
 import '../../../services/settings_service.dart';
 import '../../../screens/flight_detail_screen.dart';
 import '../models/flight_icons.dart';
@@ -18,6 +19,7 @@ class CollapsedView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final flightService = Provider.of<FlightService>(context);
+    final headingService = Provider.of<HeadingService>(context);
     
     return Consumer<SettingsService>(
       builder: (context, settings, child) {
@@ -125,22 +127,26 @@ class CollapsedView extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Heading
+                // Heading - Use HeadingService for always-on heading data
                 Expanded(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
                         Icons.navigation,
-                        color: Colors.blueAccent,
+                        color: headingService.currentHeading != null 
+                            ? Colors.blueAccent 
+                            : Colors.grey,
                         size: iconSize,
                       ),
                       SizedBox(width: spacing),
                       Flexible(
                         child: Text(
-                          '${(flightService.currentHeading ?? 0).toStringAsFixed(0)}°',
+                          headingService.getFormattedHeading(),
                           style: TextStyle(
-                            color: Colors.white,
+                            color: headingService.currentHeading != null 
+                                ? Colors.white 
+                                : Colors.grey,
                             fontSize: fontSize,
                             fontWeight: FontWeight.bold,
                           ),
