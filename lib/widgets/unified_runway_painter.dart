@@ -3,9 +3,8 @@ import 'dart:math' as math;
 import '../models/runway.dart';
 import '../models/openaip_runway.dart';
 import '../models/unified_runway.dart';
-import '../utils/magnetic_declination_simple.dart';
-import '../utils/magnetic_declination_cache.dart';
 import '../utils/geo_constants.dart';
+import '../utils/geo_calculations.dart';
 
 /// Unified runway painter that can handle multiple data sources
 class UnifiedRunwayPainter extends CustomPainter {
@@ -108,13 +107,27 @@ class UnifiedRunwayPainter extends CustomPainter {
       if (drawnRunways.contains(runwayKey)) continue;
       drawnRunways.add(runwayKey);
       
-      // Get heading
-      final magneticHeading = runway.leHeadingDegT;
-      if (magneticHeading == null) continue;
+      // Calculate true bearing from coordinates if available, otherwise use stored heading
+      double? heading;
       
-      // Convert magnetic to true heading (using cache for performance)
-      final declination = MagneticDeclinationCache.getCached(airportLat, airportLon);
-      final heading = MagneticDeclinationSimple.magneticToTrue(magneticHeading, declination);
+      // Check if we have coordinates for both runway ends
+      if (runway.leLatitude != null && runway.leLongitude != null &&
+          runway.heLatitude != null && runway.heLongitude != null) {
+        // Calculate true bearing from LE to HE using coordinates
+        heading = GeoCalculations.calculateTrueBearing(
+          runway.leLatitude!,
+          runway.leLongitude!,
+          runway.heLatitude!,
+          runway.heLongitude!,
+        );
+        // debugPrint('Runway ${runway.designation}: Using coordinate-based bearing: ${heading.toStringAsFixed(1)}°');
+      } else {
+        // Fall back to stored heading (already in true degrees - DegT means "Degrees True")
+        heading = runway.leHeadingDegT;
+        // debugPrint('Runway ${runway.designation}: Using stored heading: ${heading?.toStringAsFixed(1)}°');
+      }
+      
+      if (heading == null) continue;
 
       // Calculate runway endpoints
       final endpoints = _calculateRunwayEndpoints(

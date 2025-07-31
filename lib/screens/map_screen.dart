@@ -260,6 +260,12 @@ class MapScreenState extends State<MapScreen>
           listen: false,
         );
         
+        // Sync MapStateController with SettingsService
+        final settings = Provider.of<SettingsService>(context, listen: false);
+        if (settings.showNavaids && !_mapStateController.showNavaids) {
+          _mapStateController.toggleNavaids();
+        }
+        
         // Set up callback to fit entire flight plan when loaded
         _flightPlanService.onFlightPlanLoaded = (flightPlan) {
           if (flightPlan.waypoints.isNotEmpty) {
@@ -984,6 +990,12 @@ class MapScreenState extends State<MapScreen>
             maxLon: bounds.northEast.longitude,
           );
           debugPrint('Loaded ${airports.length} airports from TiledDataLoader with runway data');
+          // Debug: Count airports by type
+          final typeCount = <String, int>{};
+          for (final airport in airports) {
+            typeCount[airport.type] = (typeCount[airport.type] ?? 0) + 1;
+          }
+          debugPrint('Airport types loaded: $typeCount');
         } catch (e) {
           // Fall back to AirportService if TiledDataLoader fails
           debugPrint('TiledDataLoader failed, falling back to AirportService: $e');
@@ -1013,6 +1025,11 @@ class MapScreenState extends State<MapScreen>
         if (mounted) {
           setState(() {
             _airports = airports;
+            // Debug: Count heliports in _airports list
+            final heliportCount = _airports.where((a) => a.type == 'heliport').length;
+            if (heliportCount > 0) {
+              print('MapScreen: $_airports contains $heliportCount heliports');
+            }
             _airportRunways = runwayDataMap;
           });
 
@@ -1146,16 +1163,15 @@ class MapScreenState extends State<MapScreen>
           return;
         }
 
-        // Ensure navaids are fetched
-        await _navaidService.fetchNavaids();
-
-        final totalNavaids = _navaidService.navaids.length;
-
-        if (totalNavaids == 0) {
-          return;
-        }
-
         final bounds = _mapController.camera.visibleBounds;
+        
+        // Load navaids for the visible area
+        await _navaidService.loadNavaidsForArea(
+          minLat: bounds.southWest.latitude,
+          maxLat: bounds.northEast.latitude,
+          minLon: bounds.southWest.longitude,
+          maxLon: bounds.northEast.longitude,
+        );
 
         final navaids = _navaidService.getNavaidsInBounds(
           bounds.southWest,
@@ -1591,6 +1607,18 @@ class MapScreenState extends State<MapScreen>
     setState(() {
       _mapStateController.toggleHeliports();
     });
+  }
+  
+  // Toggle navaids visibility
+  void _toggleNavaids() {
+    setState(() {
+      _mapStateController.toggleNavaids();
+    });
+    
+    if (_mapStateController.showNavaids) {
+      // Load navaids when enabled
+      _loadNavaids();
+    }
   }
 
 
@@ -2277,6 +2305,9 @@ class MapScreenState extends State<MapScreen>
         
         if (tiledAirport.icao == airport.icao) {
           fullAirport = tiledAirport;
+          debugPrint('Found matching airport in tiles: ${tiledAirport.icao} - ${tiledAirport.name}');
+        } else {
+          debugPrint('No matching airport found for ${airport.icao} in ${airports.length} loaded airports');
         }
       } catch (e) {
         // Failed to load full data, continue with partial data
@@ -2328,6 +2359,9 @@ class MapScreenState extends State<MapScreen>
   void _onAirportSelectedFromSearch(Airport airport) {
     // Close the search dialog first
     Navigator.of(context).pop();
+    
+    // Debug logging
+    print('Selected airport from search: ${airport.icao} - ${airport.name} (type: ${airport.type})');
     
     // Focus map on the selected airport
     _mapController.move(
@@ -2431,7 +2465,20 @@ class MapScreenState extends State<MapScreen>
   }
 
   // Show airport search
-  void _showAirportSearch() {
+  void _showAirportSearch() async {
+    // Load navaids for a wider area around the current map center before showing search
+    final center = _mapController.camera.center;
+    const searchRadius = 2.0; // degrees - wider area for search
+    
+    await _navaidService.loadNavaidsForArea(
+      minLat: center.latitude - searchRadius,
+      maxLat: center.latitude + searchRadius,
+      minLon: center.longitude - searchRadius,
+      maxLon: center.longitude + searchRadius,
+    );
+    
+    if (!mounted) return;
+    
     showDialog(
       context: context,
       builder: (context) => AirportSearchDialog(
@@ -3237,16 +3284,29 @@ class MapScreenState extends State<MapScreen>
               // Airport markers with tap handling (optimized)
               Consumer<SettingsService>(
                 builder: (context, settings, child) {
+                  final filteredAirports = _airports.where((airport) {
+                    // Filter heliports and balloonports based on toggle
+                    if ((airport.type == 'heliport' || airport.type == 'balloonport') && !_mapStateController.showHeliports) {
+                      return false;
+                    }
+                    // Small airports are always shown (filtered by zoom level automatically)
+                    // Show medium and large airports always, and show small airports/heliports based on toggles
+                    return true;
+                  }).toList();
+                  
+                  // Debug: Log heliport counts
+                  final heliportCount = _airports.where((a) => a.type == 'heliport').length;
+                  final filteredHeliportCount = filteredAirports.where((a) => a.type == 'heliport').length;
+                  if (_mapStateController.showHeliports && heliportCount > 0) {
+                    print('MapScreen: Total heliports: $heliportCount, After filter: $filteredHeliportCount, Show heliports: ${_mapStateController.showHeliports}');
+                    if (filteredHeliportCount > 0) {
+                      final firstHeliport = filteredAirports.firstWhere((a) => a.type == 'heliport');
+                      print('MapScreen: First heliport: ${firstHeliport.icao} - ${firstHeliport.name} at ${firstHeliport.position}');
+                    }
+                  }
+                  
                   return OptimizedAirportMarkersLayer(
-                    airports: _airports.where((airport) {
-                      // Filter heliports and balloonports based on toggle
-                      if ((airport.type == 'heliport' || airport.type == 'balloonport') && !_mapStateController.showHeliports) {
-                        return false;
-                      }
-                      // Small airports are always shown (filtered by zoom level automatically)
-                      // Show medium and large airports always, and show small airports/heliports based on toggles
-                      return true;
-                    }).toList(),
+                    airports: filteredAirports,
                     airportRunways: _airportRunways,
                     onAirportTap: _onAirportSelected,
                     showHeliports: _mapStateController.showHeliports,
@@ -3576,6 +3636,14 @@ class MapScreenState extends State<MapScreen>
                         tooltip: 'Toggle Heliports',
                         isActive: _mapStateController.showHeliports,
                         onPressed: _toggleHeliports,
+                      ),
+                      _buildLayerToggle(
+                        icon: _mapStateController.showNavaids
+                            ? Icons.navigation
+                            : Icons.navigation_outlined,
+                        tooltip: 'Toggle Navaids (VOR/NDB)',
+                        isActive: _mapStateController.showNavaids,
+                        onPressed: _toggleNavaids,
                       ),
                       _buildLayerToggle(
                         icon: _mapStateController.showMetar

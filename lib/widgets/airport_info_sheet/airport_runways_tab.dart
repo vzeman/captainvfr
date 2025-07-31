@@ -105,17 +105,20 @@ class _AirportRunwaysTabState extends State<AirportRunwaysTab> {
   
   Future<void> _fetchUnifiedRunways() async {
     try {
-      // Get OpenAIP runways from the airport object
+      // Only use OpenAIP runways if we don't have OurAirports runway data
+      final hasOurAirportsData = widget.runways.isNotEmpty;
       final openAIPRunways = widget.airport.openAIPRunways;
       
       if (widget.airport.icao == 'LZDV') {
         debugPrint('LZDV: Fetching unified runways');
+        debugPrint('LZDV: Has OurAirports data: $hasOurAirportsData');
         debugPrint('LZDV: OpenAIP runways from airport: ${openAIPRunways.length}');
       }
       
+      // Only pass OpenAIP runways if we need to extend missing data
       _unifiedRunways = widget.runwayService.getUnifiedRunwaysForAirport(
         widget.airport.icao,
-        openAIPRunways: openAIPRunways.isNotEmpty ? openAIPRunways : null,
+        openAIPRunways: hasOurAirportsData ? null : (openAIPRunways.isNotEmpty ? openAIPRunways : null),
         airportLat: widget.airport.position.latitude,
         airportLon: widget.airport.position.longitude,
       );

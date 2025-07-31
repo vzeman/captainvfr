@@ -520,8 +520,21 @@ class TiledDataLoader {
       final municipality = row[8].toString();
       final cityName = municipality.isNotEmpty ? municipality : row[3].toString();
       
+      // For heliports and other airports without ICAO codes, generate a unique identifier
+      String icaoCode = row[1].toString();
+      if (icaoCode.isEmpty && type == 'heliport') {
+        // Use the MongoDB ID as a unique identifier for heliports
+        final mongoId = row[0].toString();
+        if (mongoId.length >= 8) {
+          icaoCode = 'H_${mongoId.substring(0, 8).toUpperCase()}';
+        } else {
+          icaoCode = 'H_${mongoId.toUpperCase()}';
+        }
+        _logger.d('Generated heliport ICAO: $icaoCode for ${row[3]}');
+      }
+      
       final airport = Airport(
-        icao: row[1].toString(), // ident field
+        icao: icaoCode,
         iata: row[11].toString().isNotEmpty ? row[11].toString() : null,
         name: row[3].toString(),
         city: cityName,
