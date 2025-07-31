@@ -4,6 +4,8 @@ import 'package:latlong2/latlong.dart';
 import 'dart:math' as math;
 import '../models/airport.dart';
 import '../constants/app_theme.dart';
+import '../constants/map_marker_constants.dart';
+import '../utils/geo_constants.dart';
 
 class MetarOverlay extends StatelessWidget {
   final List<Airport> airports;
@@ -70,7 +72,7 @@ class MetarOverlay extends StatelessWidget {
     final iconSize = _getIconSize(zoom);
 
     // Only show wind data if available and zoom is sufficient
-    if (windData == null || zoom < 9) {
+    if (windData == null || zoom < MapMarkerConstants.windInfoShowZoom) {
       return Marker(
         point: airport.position,
         width: 0,
@@ -79,16 +81,29 @@ class MetarOverlay extends StatelessWidget {
       );
     }
 
+    // Calculate dynamic positioning based on zoom and airport type
+    final airportMarkerSize = _getAirportMarkerSize(airport, zoom);
+    final runwayVisualizationSize = _getRunwayVisualizationSize(airport, zoom);
+    
+    // Dynamic bottom padding: account for airport marker + runway visualization + buffer
+    final dynamicBottomPadding = math.max(
+      MapMarkerConstants.windInfoMinBottomPadding,
+      (math.max(airportMarkerSize, runwayVisualizationSize) / 2) + 40
+    );
+    
+    // Dynamic height to accommodate the positioning
+    final dynamicHeight = dynamicBottomPadding + 50;
+
     return Marker(
       point: airport.position,
       width: 120, // Width for wind label
-      height: 140, // Further increased height to position much higher above airport marker
+      height: dynamicHeight,
       child: GestureDetector(
         onTap: () => onAirportTap?.call(airport),
         child: Align(
           alignment: Alignment.bottomCenter, // Align to bottom so it appears above marker
           child: Padding(
-            padding: EdgeInsets.only(bottom: 90), // Significantly increased offset to position much higher above airport marker
+            padding: EdgeInsets.only(bottom: dynamicBottomPadding),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
@@ -156,6 +171,45 @@ class MetarOverlay extends StatelessWidget {
     return 9.0;                    // Very far zoom
   }
 
+
+  /// Calculate airport marker size based on type and zoom
+  double _getAirportMarkerSize(Airport airport, double zoom) {
+    // Base marker size calculation (matching airport_marker.dart logic)
+    double baseSize;
+    if (zoom >= 14) {
+      baseSize = 16.0 + (zoom - 14) * 2.0;
+    } else if (zoom >= 10) {
+      baseSize = 16.0;
+    } else if (zoom >= 8) {
+      baseSize = 24.0 - (zoom - 8) * 4.0;
+    } else if (zoom >= 5) {
+      baseSize = 15.0 + (zoom - 5) * 3.0;
+    } else {
+      baseSize = 15.0;
+    }
+    
+    // Adjust for airport type
+    if (airport.type == 'small_airport') {
+      return baseSize * 0.7;
+    } else if (airport.type == 'heliport') {
+      return baseSize * 0.8;
+    } else if (airport.type == 'medium_airport') {
+      return baseSize * 0.85;
+    }
+    return baseSize;
+  }
+  
+  /// Calculate runway visualization size if applicable
+  double _getRunwayVisualizationSize(Airport airport, double zoom) {
+    if (zoom < GeoConstants.minZoomForRunways) {
+      return 0;
+    }
+    
+    // This is a simplified calculation - in reality it depends on runway length
+    // For now, return a reasonable estimate
+    final baseSize = _getAirportMarkerSize(airport, zoom);
+    return baseSize * 3.5; // Default runway visualization multiplier
+  }
 
   // Parse wind data from METAR
   WindData? _parseWindFromMetar(String metar) {

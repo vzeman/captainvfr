@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'dart:math' as math;
 import '../models/airport.dart';
 import '../models/runway.dart';
 import '../models/navaid.dart';
@@ -13,6 +14,7 @@ import 'navaid_marker.dart';
 import 'obstacle_marker.dart';
 import 'hotspot_marker.dart';
 import '../utils/geo_constants.dart';
+import '../constants/map_marker_constants.dart';
 
 /// An optimized marker layer that only builds markers within the visible bounds
 class OptimizedMarkerLayer extends StatelessWidget {
@@ -380,10 +382,17 @@ class OptimizedNavaidMarkersLayer extends StatelessWidget {
     
     // Calculate marker dimensions with label space
     // Labels are shown at zoom level 11 and above for navaids
-    final showLabelNow = showLabels && currentZoom >= 11;
-    final labelHeight = showLabelNow ? 22.5 : 0; // Extra height for label (reduced by 25%)
-    final markerHeight = dynamicMarkerSize + labelHeight;
-    final markerWidth = showLabelNow ? 60.0 : dynamicMarkerSize; // Reduced width for smaller label text
+    final showLabelNow = showLabels && currentZoom >= MapMarkerConstants.navaidLabelShowZoom;
+    final labelHeight = showLabelNow ? MapMarkerConstants.navaidLabelHeight : 0;
+    
+    // Ensure minimum touch target size
+    final markerHeight = math.max(
+      dynamicMarkerSize + labelHeight,
+      MapMarkerConstants.minTouchTargetSize
+    );
+    final markerWidth = showLabelNow 
+      ? math.max(MapMarkerConstants.navaidLabelWidth, MapMarkerConstants.navaidLabelMinWidth)
+      : math.max(dynamicMarkerSize, MapMarkerConstants.minTouchTargetSize);
 
     return OptimizedMarkerLayer(
       markerPositions: positions,
