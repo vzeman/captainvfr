@@ -3460,10 +3460,8 @@ class MapScreenState extends State<MapScreen>
               if (_currentPosition != null)
                 Consumer<SettingsService>(
                   builder: (context, settings, child) {
-                    // When rotateMapWithHeading is ON: map rotates, so aircraft marker stays pointing north (no rotation)
-                    // When rotateMapWithHeading is OFF: map stays north, so aircraft marker rotates to show heading
-                    final shouldRotateMarker = !settings.rotateMapWithHeading;
-                    final markerRotation = shouldRotateMarker ? (_currentPosition?.heading ?? 0) * math.pi / 180 : 0.0;
+                    // Aircraft marker should always rotate by heading angle
+                    final markerRotation = (_currentPosition?.heading ?? 0) * math.pi / 180;
                     
                     return MarkerLayer(
                       markers: [
