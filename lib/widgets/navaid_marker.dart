@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'dart:math' as math;
 import '../models/navaid.dart';
 import '../constants/app_theme.dart';
+import '../constants/map_marker_constants.dart';
 
 class NavaidMarker extends StatelessWidget {
   final Navaid navaid;
@@ -31,8 +33,26 @@ class NavaidMarker extends StatelessWidget {
     final visualSize = size;
 
     // Determine if label should be shown based on zoom
-    final shouldShowLabel = mapZoom >= 11;
-    final fontSize = mapZoom >= 12 ? 11.0 : 9.0;
+    final shouldShowLabel = mapZoom >= MapMarkerConstants.navaidLabelShowZoom;
+    
+    // Calculate font size with responsive scaling and minimum constraint
+    double fontSize;
+    if (mapZoom >= 16) {
+      // Scale up for very high zoom levels
+      fontSize = MapMarkerConstants.navaidLabelBaseHighZoom * 
+                 MapMarkerConstants.navaidLabelScaleFactor * 
+                 (1 + (mapZoom - 16) * 0.1);
+      fontSize = math.min(fontSize, MapMarkerConstants.navaidLabelMaxFontSize);
+    } else if (mapZoom >= MapMarkerConstants.navaidHighDetailZoom) {
+      fontSize = MapMarkerConstants.navaidLabelBaseHighZoom * 
+                 MapMarkerConstants.navaidLabelScaleFactor;
+    } else {
+      fontSize = MapMarkerConstants.navaidLabelBaseLowZoom * 
+                 MapMarkerConstants.navaidLabelScaleFactor;
+    }
+    
+    // Ensure minimum readable font size
+    fontSize = math.max(fontSize, MapMarkerConstants.minReadableFontSize);
 
     return GestureDetector(
       onTap: onTap,
@@ -74,15 +94,21 @@ class NavaidMarker extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Text(
-                  navaid.ident,
-                  style: TextStyle(
-                    fontSize: fontSize,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                child: Semantics(
+                  label: 'Navigation aid ${navaid.ident} ${navaid.name}',
+                  child: Text(
+                    navaid.ident,
+                    style: TextStyle(
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textScaler: TextScaler.linear(
+                      fontSize < MapMarkerConstants.minReadableFontSize ? 1.5 : 1.0
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
           ],
