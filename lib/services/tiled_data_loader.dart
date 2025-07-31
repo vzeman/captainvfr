@@ -76,7 +76,6 @@ class TiledDataLoader {
     required double minLon,
     required double maxLon,
   }) async {
-    _logger.i('Loading airports for area: $minLat,$minLon to $maxLat,$maxLon');
     return _loadDataForArea<Airport>(
       dataType: 'airports',
       minLat: minLat,
