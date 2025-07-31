@@ -41,6 +41,8 @@ import '../services/flight_plan_tile_download_service.dart';
 import '../screens/offline_data/controllers/offline_data_state_controller.dart';
 import '../widgets/navaid_marker.dart';
 import '../widgets/optimized_marker_layer.dart';
+import '../widgets/optimized_heatmap_layer.dart';
+import '../services/flight_heatmap_processor.dart';
 import '../widgets/airport_info_sheet.dart';
 import '../widgets/flight_dashboard.dart';
 import '../widgets/airport_search_dialog.dart';
@@ -1651,6 +1653,12 @@ class MapScreenState extends State<MapScreen>
       _loadHotspots();
     }
   }
+
+  void _toggleHeatmap() {
+    setState(() {
+      _mapStateController.toggleHeatmap();
+    });
+  }
   
   // Toggle METAR weather display
   void _toggleMetar() {
@@ -2990,6 +2998,9 @@ class MapScreenState extends State<MapScreen>
       
       // Initialize runway service
       await _runwayService.initialize();
+      
+      // Initialize flight heatmap processor
+      await FlightHeatmapProcessor.init();
 
       // Initialize offline map service only on supported platforms
       if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
@@ -3272,6 +3283,13 @@ class MapScreenState extends State<MapScreen>
                 OptimizedHotspotsLayer(
                   hotspots: _hotspots,
                   onHotspotTap: _onHotspotSelected,
+                ),
+              
+              // Flight heatmap overlay
+              if (_mapStateController.showHeatmap)
+                OptimizedHeatmapLayer(
+                  opacity: 0.6,
+                  enabled: _mapStateController.showHeatmap,
                 ),
               // Airport markers with tap handling (optimized)
               Consumer<SettingsService>(
@@ -3653,6 +3671,14 @@ class MapScreenState extends State<MapScreen>
                         tooltip: 'Toggle Hotspots',
                         isActive: _mapStateController.showHotspots,
                         onPressed: _toggleHotspots,
+                      ),
+                      _buildLayerToggle(
+                        icon: _mapStateController.showHeatmap
+                            ? Icons.whatshot
+                            : Icons.whatshot_outlined,
+                        tooltip: 'Toggle Flight Heatmap',
+                        isActive: _mapStateController.showHeatmap,
+                        onPressed: _toggleHeatmap,
                       ),
                       _buildLayerToggle(
                         icon: _showCurrentAirspacePanel

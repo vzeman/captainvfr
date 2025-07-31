@@ -1,5 +1,6 @@
 import '../../../models/flight.dart';
 import '../../flight_storage_service.dart';
+import '../../flight_heatmap_processor.dart';
 import '../helpers/analytics_wrapper.dart';
 
 /// Manages flight history storage and retrieval
@@ -12,6 +13,15 @@ class FlightHistoryManager {
   Future<void> initialize() async {
     await FlightStorageService.init();
     await loadFlights();
+  }
+  
+  /// Rebuild heatmap from all existing flights
+  Future<void> rebuildHeatmap() async {
+    try {
+      await FlightHeatmapProcessor.rebuildHeatmapFromAllFlights(_flights);
+    } catch (e) {
+      throw Exception('Failed to rebuild heatmap: $e');
+    }
   }
   
   /// Load saved flights from storage
@@ -30,6 +40,9 @@ class FlightHistoryManager {
   Future<void> saveFlight(Flight flight) async {
     try {
       await FlightStorageService.saveFlight(flight);
+      
+      // Update flight heatmap
+      await FlightHeatmapProcessor.processFlightUpdate(flight);
       
       // Track analytics
       AnalyticsWrapper.track(
@@ -56,6 +69,9 @@ class FlightHistoryManager {
     try {
       final flight = _flights[index];
       await FlightStorageService.deleteFlight(flight.id);
+      
+      // Update flight heatmap (remove flight data)
+      await FlightHeatmapProcessor.processFlightUpdate(flight, isRemoval: true);
       
       // Track analytics
       AnalyticsWrapper.track('flight_deleted');

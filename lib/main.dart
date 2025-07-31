@@ -45,6 +45,7 @@ import 'models/reporting_point.dart';
 import 'models/endorsement.dart';
 import 'models/pilot.dart';
 import 'models/logbook_entry.dart';
+import 'models/heatmap_cell.dart';
 import 'utils/performance_monitor.dart';
 import 'services/analytics_service.dart';
 import 'services/pilot_service.dart';
@@ -147,6 +148,9 @@ Future<void> _initializeApp() async {
     Hive.registerAdapter(EngineTypeAdapter());
     Hive.registerAdapter(FlightConditionAdapter());
     Hive.registerAdapter(LogBookEntryAdapter());
+    
+    // Register heatmap adapter
+    Hive.registerAdapter(HeatmapCellAdapter());
 
     // Initialize cache service first
     final cacheService = CacheService();
