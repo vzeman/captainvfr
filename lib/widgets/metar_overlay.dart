@@ -85,10 +85,16 @@ class MetarOverlay extends StatelessWidget {
     final airportMarkerSize = _getAirportMarkerSize(airport, zoom);
     final runwayVisualizationSize = _getRunwayVisualizationSize(airport, zoom);
     
-    // Dynamic bottom padding: account for airport marker + runway visualization + buffer
+    // Calculate base offset based on the larger of airport marker or runway visualization
+    final baseOffset = math.max(airportMarkerSize, runwayVisualizationSize) / 2;
+    
+    // Add extra offset for lower zoom levels to ensure clear separation
+    final zoomAdjustment = zoom < 10 ? 30.0 : 20.0;
+    
+    // Dynamic bottom padding: account for marker size + zoom adjustment + buffer
     final dynamicBottomPadding = math.max(
       MapMarkerConstants.windInfoMinBottomPadding,
-      (math.max(airportMarkerSize, runwayVisualizationSize) / 2) + 40
+      baseOffset + zoomAdjustment + 20
     );
     
     // Dynamic height to accommodate the positioning
