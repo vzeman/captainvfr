@@ -38,6 +38,13 @@ class MainActivity : FlutterActivity() {
         Log.d(TAG, "CaptainVFR Starting - Android ${Build.VERSION.SDK_INT} (${Build.VERSION.RELEASE})")
         Log.d(TAG, "Device: ${Build.MANUFACTURER} ${Build.MODEL}")
         
+        // Enable edge-to-edge mode for Android 15+
+        if (Build.VERSION.SDK_INT >= 35) {
+            // This is the new way to handle edge-to-edge in Android 15
+            // Flutter will handle this internally in future versions
+            window.setDecorFitsSystemWindows(false)
+        }
+        
         // Check and request permissions
         if (!allPermissionsGranted()) {
             ActivityCompat.requestPermissions(
