@@ -38,7 +38,8 @@ class AirportMarker extends StatelessWidget {
 
 
     // The visual size of the marker based on zoom
-    final visualSize = size;
+    // Ensure minimum size to prevent NaN errors
+    final visualSize = size > 0 ? size : 24.0;
 
     // Calculate runway visualization size based on actual runway dimensions
     double runwayVisualizationSize = 0.0;
@@ -62,108 +63,144 @@ class AirportMarker extends StatelessWidget {
       }
       
       // Set size based on longest runway
-      if (maxLengthM > 0) {
+      if (maxLengthM > 0 && metersPerPixel > 0) {
         // Calculate pixel size for runway visualization
         // Add small buffer (1.05) for visual clarity
         final calculatedSize = (maxLengthM / metersPerPixel) * 1.05;
         
-        // Ensure minimum size for visibility
-        // At zoom 10+, use actual calculated size without minimum to prevent overlap
-        // At lower zooms, enforce minimum size for visibility
-        runwayVisualizationSize = mapZoom >= 10 ? calculatedSize : math.max(visualSize * 1.5, calculatedSize);
+        // Ensure the size is valid (not NaN or infinite)
+        if (calculatedSize.isFinite && calculatedSize > 0) {
+          // Ensure minimum size for visibility
+          // At zoom 10+, use actual calculated size without minimum to prevent overlap
+          // At lower zooms, enforce minimum size for visibility
+          runwayVisualizationSize = mapZoom >= 10 ? calculatedSize : math.max(visualSize * 1.5, calculatedSize);
+        } else {
+          runwayVisualizationSize = visualSize * 3.5; // Default size
+        }
       } else {
         runwayVisualizationSize = visualSize * 3.5; // Default size
       }
     }
+
+    // Determine if label should be shown based on zoom
+    // Show labels only between zoom levels 4 and 10 AND only if airport has ICAO code
+    final shouldShowLabel = showLabel && mapZoom >= 4 && mapZoom <= 10 && airport.icao.isNotEmpty;
+    final fontSize = mapZoom >= 8 ? 11.0 : 9.0;
 
     return GestureDetector(
       onTap: () {
         onTap?.call();
       },
       child: Center(
-        child: Stack(
-          alignment: Alignment.center,
-          clipBehavior: Clip.none,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Runway visualization (behind the marker)
-            if (mapZoom >= GeoConstants.minZoomForRunways)
-              if (runways != null && runways!.isNotEmpty)
-                Positioned(
-                  child: UnifiedRunwayVisualization(
-                    runways: runways!,
-                    airportIdent: airport.icao,
-                    zoom: mapZoom,
-                    size: runwayVisualizationSize,
-                    runwayColor: isSelected ? Colors.amber : Colors.black87,
-                    latitude: airport.position.latitude,
-                    longitude: airport.position.longitude,
-                    distanceUnit: distanceUnit,
+            // Stack for marker and runway visualization
+            Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                // Runway visualization (behind the marker)
+                if (mapZoom >= GeoConstants.minZoomForRunways && runwayVisualizationSize > 0)
+                  if (runways != null && runways!.isNotEmpty)
+                    UnifiedRunwayVisualization(
+                      runways: runways!,
+                      airportIdent: airport.icao,
+                      zoom: mapZoom,
+                      size: runwayVisualizationSize,
+                      runwayColor: isSelected ? Colors.amber : Colors.black87,
+                      latitude: airport.position.latitude,
+                      longitude: airport.position.longitude,
+                      distanceUnit: distanceUnit,
+                    )
+                  else if (airport.openAIPRunways.isNotEmpty)
+                    UnifiedRunwayVisualization(
+                      openAIPRunways: airport.openAIPRunways,
+                      airportIdent: airport.icao,
+                      zoom: mapZoom,
+                      size: runwayVisualizationSize,
+                      runwayColor: isSelected ? Colors.amber : Colors.black87,
+                      latitude: airport.position.latitude,
+                      longitude: airport.position.longitude,
+                      distanceUnit: distanceUnit,
+                    ),
+                
+                // Main marker
+                Container(
+                  width: visualSize,
+                  height: visualSize,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.amber.withValues(alpha: 0.2)
+                        : Colors.white.withValues(alpha: 0.9),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: borderColor, width: borderWidth),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0x33000000),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                )
-              else if (airport.openAIPRunways.isNotEmpty)
-                Positioned(
-                  child: UnifiedRunwayVisualization(
-                    openAIPRunways: airport.openAIPRunways,
-                    airportIdent: airport.icao,
-                    zoom: mapZoom,
-                    size: runwayVisualizationSize,
-                    runwayColor: isSelected ? Colors.amber : Colors.black87,
-                    latitude: airport.position.latitude,
-                    longitude: airport.position.longitude,
-                    distanceUnit: distanceUnit,
-                  ),
+                  child: airport.type == 'heliport' 
+                        ? Center(
+                            child: Container(
+                              width: visualSize * 0.6,
+                              height: visualSize * 0.6,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'H',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: visualSize * 0.3,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        : airport.type == 'balloonport'
+                        ? Center(
+                            child: Icon(Icons.air, size: visualSize * 0.5, color: color),
+                          )
+                        : Icon(icon, size: visualSize * 0.6, color: color),
                 ),
-            
-            // Main marker
-            OverflowBox(
-              // Allow the marker to visually overflow its bounds
-              maxWidth: visualSize,
-              maxHeight: visualSize,
-              child: Container(
-                width: visualSize,
-                height: visualSize,
+              ],
+            ),
+            // Show label when zoomed in enough
+            if (shouldShowLabel)
+              Container(
+                margin: const EdgeInsets.only(top: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? Colors.amber.withValues(alpha: 0.2)
-                      : Colors.white.withValues(alpha: 0.9),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: borderColor, width: borderWidth),
+                  color: Colors.white.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(4),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0x33000000),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
                     ),
                   ],
                 ),
-                child: airport.type == 'heliport' 
-                    ? Center(
-                        child: Container(
-                          width: visualSize * 0.6,
-                          height: visualSize * 0.6,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              'H',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: visualSize * 0.3,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      )
-                    : airport.type == 'balloonport'
-                    ? Center(
-                        child: Icon(Icons.air, size: visualSize * 0.5, color: color),
-                      )
-                    : Icon(icon, size: visualSize * 0.6, color: color),
+                child: Text(
+                  airport.icao.isNotEmpty ? airport.icao : airport.name,
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
           ],
         ),
       ),

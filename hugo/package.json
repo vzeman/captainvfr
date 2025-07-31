@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "description": "CaptainVFR Hugo website",
   "scripts": {
-    "start": "gulp",
-    "dev": "gulp dev",
-    "watch": "gulp watch",
-    "build": "gulp css && gulp js && hugo --minify",
-    "build:assets": "gulp css && gulp js",
+    "start": "node --max-old-space-size=9216 node_modules/.bin/gulp",
+    "dev": "node --max-old-space-size=9216 node_modules/.bin/gulp dev",
+    "watch": "node --max-old-space-size=9216 node_modules/.bin/gulp watch",
+    "build": "node --max-old-space-size=9216 node_modules/.bin/gulp css && node --max-old-space-size=9216 node_modules/.bin/gulp js && hugo --minify",
+    "build:assets": "node --max-old-space-size=9216 node_modules/.bin/gulp css && node --max-old-space-size=9216 node_modules/.bin/gulp js",
     "build:hugo": "hugo --minify",
     "production": "hugo --minify --environment production"
   },

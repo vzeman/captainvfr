@@ -58,20 +58,14 @@ class TiledDataLoader {
     final maxTileX = ((maxLon + 180) / tileWidth).ceil().clamp(0, tilesX - 1);
     final minTileY = ((minLat + 90) / tileHeight).floor().clamp(0, tilesY - 1);
     final maxTileY = ((maxLat + 90) / tileHeight).ceil().clamp(0, tilesY - 1);
-    
-    _logger.i('Tile calculation for area $minLat,$minLon to $maxLat,$maxLon:');
-    _logger.i('  X range: $minTileX to $maxTileX');
-    _logger.i('  Y range: $minTileY to $maxTileY');
-    
+
     final tiles = <String>[];
     for (int x = minTileX; x <= maxTileX; x++) {
       for (int y = minTileY; y <= maxTileY; y++) {
         tiles.add('${x}_$y');
       }
     }
-    
-    _logger.i('  Tiles to load: $tiles');
-    
+
     return tiles;
   }
   
@@ -82,7 +76,6 @@ class TiledDataLoader {
     required double minLon,
     required double maxLon,
   }) async {
-    _logger.i('Loading airports for area: $minLat,$minLon to $maxLat,$maxLon');
     return _loadDataForArea<Airport>(
       dataType: 'airports',
       minLat: minLat,
@@ -358,10 +351,8 @@ class TiledDataLoader {
   Future<List<List<dynamic>>?> _loadTile(String dataType, String tileKey) async {
     final cacheKey = '$dataType:$tileKey';
     
-    _logger.i('Loading tile: $dataType/tile_$tileKey.csv.gz');
-    
     // Check if already loaded - return cached data immediately
-    // TEMPORARY: Force reload for airports to fix LZDV issue
+    // TEMPORARY: Force reload for airports to fix LZDV issue ... review if we need this
     if (_loadedTiles.contains(cacheKey) && dataType != 'airports') {
       // Get cached data from the nested map structure
       final typeCache = _tileCache[dataType];
@@ -381,27 +372,6 @@ class TiledDataLoader {
       // Decompress
       final decompressed = GZipDecoder().decodeBytes(bytes);
       final csvString = utf8.decode(decompressed);
-      
-      // Debug for tile 19_13
-      if (tileKey == '19_13' && dataType == 'airports') {
-        _logger.i('CSV string length for tile 19_13: ${csvString.length}');
-        _logger.i('First 200 chars: ${csvString.substring(0, csvString.length > 200 ? 200 : csvString.length)}');
-        
-        // Check if LZDV is in the raw string
-        if (csvString.contains('LZDV')) {
-          _logger.i('✅ LZDV found in raw CSV string!');
-          final lzdvIndex = csvString.indexOf('LZDV');
-          _logger.i('LZDV at position $lzdvIndex');
-          
-          // Show context around LZDV
-          final start = (lzdvIndex - 50).clamp(0, csvString.length);
-          final end = (lzdvIndex + 100).clamp(0, csvString.length);
-          _logger.i('Context: ...${csvString.substring(start, end)}...');
-        } else {
-          _logger.w('❌ LZDV NOT found in raw CSV string!');
-        }
-      }
-      
       // Parse CSV with proper handling of quoted fields
       // Use a more robust configuration for complex CSV with embedded JSON
       // Handle both Unix (\n) and Windows (\r\n) line endings
@@ -412,54 +382,15 @@ class TiledDataLoader {
         shouldParseNumbers: false, // Keep everything as strings
         allowInvalid: false,
       ).convert(csvString);
-      
-      // Debug: Check if LZDV is in this tile
-      if (dataType == 'airports' && csvTable.length > 1) {
-        int lzdvCount = 0;
-        
-        // Search for LZDV in all rows and columns
-        for (int i = 0; i < csvTable.length; i++) {
-          for (int j = 0; j < csvTable[i].length; j++) {
-            if (csvTable[i][j].toString().contains('LZDV')) {
-              _logger.i('🚨 Found LZDV in tile $tileKey at row $i, column $j');
-              _logger.i('🚨 Row length: ${csvTable[i].length}');
-              if (csvTable[i].length > 1) {
-                _logger.i('🚨 Row ident (col 1): ${csvTable[i][1]}');
-              }
-              lzdvCount++;
-              break;
-            }
-          }
-        }
-        
-        if (lzdvCount == 0 && tileKey == '19_13') {
-          _logger.w('⚠️ LZDV NOT found in parsed CSV table!');
-          _logger.i('  CSV table has ${csvTable.length} rows');
-          
-          // Check the overall structure
-          int validAirportRows = 0;
-          for (int i = 1; i < csvTable.length; i++) {
-            if (csvTable[i].length >= 15) {  // Airports should have at least 15 columns
-              validAirportRows++;
-            }
-          }
-          _logger.i('  Rows with >= 15 columns: $validAirportRows');
-        }
-      }
-      
+
       // Skip header row
       if (csvTable.length > 1) {
         final dataRows = csvTable.sublist(1);
-        
-        _logger.i('Loaded ${dataRows.length} rows from tile $tileKey');
-        
         // Cache the data
         _tileCache.putIfAbsent(dataType, () => {})[tileKey] = dataRows;
         _loadedTiles.add(cacheKey);
         
         return dataRows;
-      } else {
-        _logger.w('Tile $tileKey has no data rows');
       }
     } catch (e) {
       _logger.e('Error loading tile $tileKey: $e');
@@ -530,7 +461,6 @@ class TiledDataLoader {
         } else {
           icaoCode = 'H_${mongoId.toUpperCase()}';
         }
-        _logger.d('Generated heliport ICAO: $icaoCode for ${row[3]}');
       }
       
       final airport = Airport(

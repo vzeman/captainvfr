@@ -40,21 +40,17 @@ class VibrationMeasurementService {
 
       // Skip accelerometer on web platform and macOS
       if (kIsWeb || (!kIsWeb && Platform.isMacOS)) {
-        _logger.i('Accelerometer not supported on this platform');
         return;
       }
 
       // Check if accelerometer is available
       final isAvailable = await _checkAccelerometerAvailable();
       if (!isAvailable) {
-        _logger.i('Accelerometer not available on this device');
         return;
       }
 
       // Start listening to accelerometer events
       _startAccelerometerListening();
-
-      _logger.d('VibrationMeasurementService initialized');
     } catch (e) {
       _logger.d('Failed to initialize VibrationMeasurementService', error: e);
     }

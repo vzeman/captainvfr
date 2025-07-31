@@ -31,8 +31,6 @@ void main() {
       maxLon: 20.0,  
     );
     
-    print('Loaded ${airports.length} airports in the area');
-    
     // Debug: List some airports
     print('\nFirst 10 airports:');
     for (var i = 0; i < airports.length && i < 10; i++) {

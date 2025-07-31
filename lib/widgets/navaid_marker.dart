@@ -30,25 +30,62 @@ class NavaidMarker extends StatelessWidget {
     // Use the size parameter which is already adjusted for zoom
     final visualSize = size;
 
+    // Determine if label should be shown based on zoom
+    final shouldShowLabel = mapZoom >= 11;
+    final fontSize = mapZoom >= 12 ? 11.0 : 9.0;
+
     return GestureDetector(
       onTap: onTap,
-      child: Center(
-        child: Container(
-          width: visualSize,
-          height: visualSize,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.9),
-            shape: BoxShape.circle,
-            border: Border.all(color: borderColor, width: borderWidth),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0x33000000),
-                blurRadius: 3,
-                offset: const Offset(0, 1),
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: visualSize,
+              height: visualSize,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.9),
+                shape: BoxShape.circle,
+                border: Border.all(color: borderColor, width: borderWidth),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0x33000000),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Icon(icon, size: visualSize * 0.6, color: color),
+              child: Icon(icon, size: visualSize * 0.6, color: color),
+            ),
+            // Show label when zoomed in enough
+            if (shouldShowLabel)
+              Container(
+                margin: const EdgeInsets.only(top: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  navaid.ident,
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
         ),
       ),
     );

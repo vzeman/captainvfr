@@ -64,7 +64,6 @@ class AltitudeService {
       // Check if barometer is available on the device
       if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
         _isBarometerAvailable = await _checkBarometerAvailability();
-        _logger.i('Barometer available: $_isBarometerAvailable');
       } else if (kIsWeb) {
         _logger.i('Barometer not available on web platform');
         _isBarometerAvailable = false;
