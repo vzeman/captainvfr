@@ -284,15 +284,19 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
         }
         
 
-        return AirportMarker(
-          airport: airport,
-          runways: airportRunways?[airport.icao],
-          onTap: onAirportTap != null ? () => onAirportTap!(airport) : null,
-          size: airportMarkerSize,
-          showLabel: showLabels,
-          isSelected: false,
-          mapZoom: currentZoom,
-          distanceUnit: distanceUnit,
+        return SizedBox(
+          width: markerWidth,
+          height: markerHeight,
+          child: AirportMarker(
+            airport: airport,
+            runways: airportRunways?[airport.icao],
+            onTap: onAirportTap != null ? () => onAirportTap!(airport) : null,
+            size: airportMarkerSize,
+            showLabel: showLabels,
+            isSelected: false,
+            mapZoom: currentZoom,
+            distanceUnit: distanceUnit,
+          ),
         );
       },
     );
@@ -347,11 +351,15 @@ class OptimizedNavaidMarkersLayer extends StatelessWidget {
       markerHeight: markerHeight,
       markerBuilder: (index, position) {
         final navaid = navaids[index];
-        return NavaidMarker(
-          navaid: navaid,
-          onTap: onNavaidTap != null ? () => onNavaidTap!(navaid) : null,
-          size: dynamicMarkerSize,
-          mapZoom: currentZoom,
+        return SizedBox(
+          width: markerWidth,
+          height: markerHeight,
+          child: NavaidMarker(
+            navaid: navaid,
+            onTap: onNavaidTap != null ? () => onNavaidTap!(navaid) : null,
+            size: dynamicMarkerSize,
+            mapZoom: currentZoom,
+          ),
         );
       },
     );
