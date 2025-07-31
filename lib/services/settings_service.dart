@@ -1,8 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Enum for map rotation modes
+enum MapRotationMode {
+  none,           // No rotation - map fixed north-up
+  mapRotates,     // Map rotates, aircraft marker points north (current mode)
+  aircraftRotates // Map fixed north-up, aircraft marker rotates
+}
+
 class SettingsService extends ChangeNotifier {
   static const String _keyRotateMapWithHeading = 'rotate_map_with_heading';
+  static const String _keyMapRotationMode = 'map_rotation_mode';
   static const String _keyShowAirspaces = 'show_airspaces';
   static const String _keyShowNavaids = 'show_navaids';
   static const String _keyAutoSaveFlights = 'auto_save_flights';
@@ -25,6 +33,7 @@ class SettingsService extends ChangeNotifier {
 
   // Settings with defaults
   bool _rotateMapWithHeading = false;
+  MapRotationMode _mapRotationMode = MapRotationMode.none;
   bool _showAirspaces = true;
   bool _showNavaids = true;
   bool _autoSaveFlights = true;
@@ -44,6 +53,7 @@ class SettingsService extends ChangeNotifier {
 
   // Getters
   bool get rotateMapWithHeading => _rotateMapWithHeading;
+  MapRotationMode get mapRotationMode => _mapRotationMode;
   bool get showAirspaces => _showAirspaces;
   bool get showNavaids => _showNavaids;
   bool get autoSaveFlights => _autoSaveFlights;
@@ -75,6 +85,29 @@ class SettingsService extends ChangeNotifier {
 
   void _loadSettings() {
     _rotateMapWithHeading = _prefs.getBool(_keyRotateMapWithHeading) ?? false;
+    
+    // Load map rotation mode - migrate from old boolean setting
+    final savedMode = _prefs.getString(_keyMapRotationMode);
+    if (savedMode != null) {
+      switch (savedMode) {
+        case 'none':
+          _mapRotationMode = MapRotationMode.none;
+          break;
+        case 'mapRotates':
+          _mapRotationMode = MapRotationMode.mapRotates;
+          break;
+        case 'aircraftRotates':
+          _mapRotationMode = MapRotationMode.aircraftRotates;
+          break;
+        default:
+          _mapRotationMode = MapRotationMode.none;
+      }
+    } else {
+      // Migrate from old boolean setting
+      _mapRotationMode = _rotateMapWithHeading 
+          ? MapRotationMode.mapRotates 
+          : MapRotationMode.none;
+    }
     _showAirspaces = _prefs.getBool(_keyShowAirspaces) ?? true;
     _showNavaids = _prefs.getBool(_keyShowNavaids) ?? true;
     _autoSaveFlights = _prefs.getBool(_keyAutoSaveFlights) ?? true;
@@ -97,6 +130,35 @@ class SettingsService extends ChangeNotifier {
   Future<void> setRotateMapWithHeading(bool value) async {
     _rotateMapWithHeading = value;
     await _prefs.setBool(_keyRotateMapWithHeading, value);
+    
+    // Also update the new map rotation mode for backward compatibility
+    if (value) {
+      await setMapRotationMode(MapRotationMode.mapRotates);
+    } else {
+      await setMapRotationMode(MapRotationMode.none);
+    }
+    notifyListeners();
+  }
+  
+  Future<void> setMapRotationMode(MapRotationMode mode) async {
+    _mapRotationMode = mode;
+    String modeString;
+    switch (mode) {
+      case MapRotationMode.none:
+        modeString = 'none';
+        _rotateMapWithHeading = false;
+        break;
+      case MapRotationMode.mapRotates:
+        modeString = 'mapRotates';
+        _rotateMapWithHeading = true;
+        break;
+      case MapRotationMode.aircraftRotates:
+        modeString = 'aircraftRotates';
+        _rotateMapWithHeading = false; // Keep old setting false for new mode
+        break;
+    }
+    await _prefs.setString(_keyMapRotationMode, modeString);
+    await _prefs.setBool(_keyRotateMapWithHeading, _rotateMapWithHeading);
     notifyListeners();
   }
 
@@ -222,7 +284,7 @@ class SettingsService extends ChangeNotifier {
 
   // Reset to defaults
   Future<void> resetToDefaults() async {
-    await setRotateMapWithHeading(false);
+    await setMapRotationMode(MapRotationMode.none);
     await setShowAirspaces(true);
     await setShowNavaids(true);
     await setAutoSaveFlights(true);

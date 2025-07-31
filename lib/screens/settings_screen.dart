@@ -37,13 +37,21 @@ class SettingsScreen extends StatelessWidget {
               _buildSection(
                 title: 'Map Settings',
                 children: [
-                  _buildSwitchTile(
-                    title: 'Rotate Map with Heading',
-                    subtitle:
-                        'Map rotates to match aircraft heading during tracking',
-                    value: settings.rotateMapWithHeading,
-                    onChanged: (value) =>
-                        settings.setRotateMapWithHeading(value),
+                  _buildDropdownTile<MapRotationMode>(
+                    title: 'Map Rotation Mode',
+                    subtitle: 'How map and aircraft marker should rotate',
+                    value: settings.mapRotationMode,
+                    items: const {
+                      MapRotationMode.none: 'No Rotation',
+                      MapRotationMode.mapRotates: 'Map Rotates',
+                      MapRotationMode.aircraftRotates: 'Aircraft Rotates',
+                    },
+                    descriptions: const {
+                      MapRotationMode.none: 'Map fixed north-up, aircraft marker fixed',
+                      MapRotationMode.mapRotates: 'Map rotates with heading, aircraft points north',
+                      MapRotationMode.aircraftRotates: 'Map fixed north-up, aircraft rotates with heading',
+                    },
+                    onChanged: (value) => settings.setMapRotationMode(value!),
                   ),
                 ],
               ),
@@ -315,6 +323,71 @@ class SettingsScreen extends StatelessWidget {
       value: value,
       onChanged: onChanged,
       activeColor: const Color(0xFF448AFF),
+    );
+  }
+
+  Widget _buildDropdownTile<T>({
+    required String title,
+    required String subtitle,
+    required T value,
+    required Map<T, String> items,
+    required Map<T, String> descriptions,
+    required Function(T?) onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          title: Text(title, style: const TextStyle(color: Colors.white)),
+          subtitle: Text(subtitle, style: const TextStyle(color: Colors.white70)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.grey[800],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF448AFF), width: 1),
+            ),
+            child: DropdownButton<T>(
+              value: value,
+              onChanged: onChanged,
+              dropdownColor: Colors.grey[800],
+              style: const TextStyle(color: Colors.white),
+              underline: Container(),
+              isExpanded: true,
+              items: items.entries.map((entry) {
+                return DropdownMenuItem<T>(
+                  value: entry.key,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        entry.value,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (descriptions.containsKey(entry.key))
+                        Text(
+                          descriptions[entry.key]!,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

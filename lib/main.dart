@@ -7,6 +7,7 @@ import 'screens/offline_data_screen.dart';
 import 'services/location_service.dart';
 import 'services/barometer_service.dart';
 import 'services/flight_service.dart';
+import 'services/heading_service.dart';
 import 'services/airport_service.dart';
 import 'services/cache_service.dart';
 import 'services/runway_service.dart';
@@ -247,6 +248,10 @@ Future<void> _initializeApp() async {
     // Initialize Settings service
     final settingsService = SettingsService();
     
+    // Initialize HeadingService for always-on compass reading
+    final headingService = HeadingService();
+    await headingService.initialize();
+    
     // Initialize sensor availability service
     final sensorAvailabilityService = SensorAvailabilityService();
     // Check sensors after a short delay to avoid blocking startup
@@ -326,6 +331,7 @@ Future<void> _initializeApp() async {
           ChangeNotifierProvider<PilotService>.value(value: pilotService),
           ChangeNotifierProvider<LogBookService>.value(value: logBookService),
           ChangeNotifierProvider<SettingsService>.value(value: settingsService),
+          ChangeNotifierProvider<HeadingService>.value(value: headingService),
           Provider<AirportService>.value(value: airportService),
           ChangeNotifierProvider<CacheService>.value(value: cacheService),
           Provider<RunwayService>.value(value: runwayService),
@@ -419,6 +425,7 @@ void _runMinimalApp() {
     aircraftService: aircraftSettingsService,
   );
   final settingsService = SettingsService();
+  final headingService = HeadingService();
   final cacheService = CacheService();
   final flightService = FlightService(
     barometerService: barometerService,
@@ -453,6 +460,7 @@ void _runMinimalApp() {
         ChangeNotifierProvider<PilotService>.value(value: pilotService),
         ChangeNotifierProvider<LogBookService>.value(value: logBookService),
         ChangeNotifierProvider<SettingsService>.value(value: settingsService),
+        ChangeNotifierProvider<HeadingService>.value(value: headingService),
         Provider<AirportService>.value(value: airportService),
         ChangeNotifierProvider<CacheService>.value(value: cacheService),
         Provider<RunwayService>.value(value: runwayService),
