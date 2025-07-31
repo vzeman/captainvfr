@@ -384,15 +384,8 @@ class OptimizedNavaidMarkersLayer extends StatelessWidget {
     // Labels are shown at zoom level 11 and above for navaids
     final showLabelNow = showLabels && currentZoom >= MapMarkerConstants.navaidLabelShowZoom;
     final labelHeight = showLabelNow ? MapMarkerConstants.navaidLabelHeight : 0;
-    
-    // Ensure minimum touch target size
-    final markerHeight = math.max(
-      dynamicMarkerSize + labelHeight,
-      MapMarkerConstants.minTouchTargetSize
-    );
-    final markerWidth = showLabelNow 
-      ? math.max(MapMarkerConstants.navaidLabelWidth, MapMarkerConstants.navaidLabelMinWidth)
-      : math.max(dynamicMarkerSize, MapMarkerConstants.minTouchTargetSize);
+    final markerHeight = dynamicMarkerSize + labelHeight;
+    final markerWidth = showLabelNow ? MapMarkerConstants.navaidLabelWidth : dynamicMarkerSize;
 
     return OptimizedMarkerLayer(
       markerPositions: positions,
