@@ -36,7 +36,8 @@ class NavaidMarker extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      child: Center(
+      child: FittedBox(
+        fit: BoxFit.contain,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

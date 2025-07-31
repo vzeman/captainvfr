@@ -103,13 +103,7 @@ class PerformanceMonitor {
       final stopwatch = Stopwatch()..start();
       final result = await task();
       stopwatch.stop();
-      
-      if (stopwatch.elapsedMilliseconds > 100) {
-        developer.log(
-          '⏱️ Async operation "$operation" took ${stopwatch.elapsedMilliseconds}ms',
-        );
-      }
-      
+
       return result;
     } finally {
       endOperation(operation);

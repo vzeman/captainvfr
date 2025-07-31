@@ -69,11 +69,6 @@ class BarometerService {
   Future<void> initialize() async {
     try {
       _isBarometerAvailable = await _checkBarometerAvailability();
-      if (_isBarometerAvailable) {
-        _logger.i('Barometer sensor is available');
-      } else {
-        _logger.d('Barometer sensor is not available on this device');
-      }
     } catch (e) {
       _logger.w('Failed to initialize barometer service: $e');
       _isBarometerAvailable = false;

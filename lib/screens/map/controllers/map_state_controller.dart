@@ -138,7 +138,6 @@ class MapStateController extends ChangeNotifier {
     
     // Enable auto-centering after delay
     _autoCenteringTimer = Timer(MapConstants.autoCenteringDelay, () {
-      _logger.d('Re-enabling auto-centering after delay');
       enableAutoCentering();
     });
   }

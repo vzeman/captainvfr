@@ -379,9 +379,9 @@ class OptimizedNavaidMarkersLayer extends StatelessWidget {
     final dynamicMarkerSize = currentZoom >= 12 ? 20.0 : 14.0;
     
     // Calculate marker dimensions with label space
-    // Labels are shown only between zoom levels 4 and 10
-    final showLabelNow = showLabels && currentZoom >= 4 && currentZoom <= 10;
-    final labelHeight = showLabelNow ? 25.0 : 0; // Extra height for label
+    // Labels are shown at zoom level 11 and above for navaids
+    final showLabelNow = showLabels && currentZoom >= 11;
+    final labelHeight = showLabelNow ? 30.0 : 0; // Extra height for label (increased from 25)
     final markerHeight = dynamicMarkerSize + labelHeight;
     final markerWidth = showLabelNow ? 80.0 : dynamicMarkerSize; // Wider for label text
 

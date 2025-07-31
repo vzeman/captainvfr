@@ -86,7 +86,6 @@ class AnalyticsService {
         screenName: screenName,
         screenClass: screenClass ?? screenName,
       );
-      _logger.d('Screen view logged: $screenName');
     } catch (e) {
       _logger.e('Error logging screen view: $e');
     }
@@ -110,7 +109,6 @@ class AnalyticsService {
         name: name,
         parameters: convertedParams,
       );
-      _logger.d('Event logged: $name');
     } catch (e) {
       _logger.e('Error logging event: $e');
     }
@@ -217,7 +215,6 @@ class AnalyticsService {
 
     try {
       await _analytics!.setUserProperty(name: name, value: value);
-      _logger.d('User property set: $name = $value');
     } catch (e) {
       _logger.e('Error setting user property: $e');
     }

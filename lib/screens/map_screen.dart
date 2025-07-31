@@ -989,13 +989,11 @@ class MapScreenState extends State<MapScreen>
             minLon: bounds.southWest.longitude,
             maxLon: bounds.northEast.longitude,
           );
-          debugPrint('Loaded ${airports.length} airports from TiledDataLoader with runway data');
           // Debug: Count airports by type
           final typeCount = <String, int>{};
           for (final airport in airports) {
             typeCount[airport.type] = (typeCount[airport.type] ?? 0) + 1;
           }
-          debugPrint('Airport types loaded: $typeCount');
         } catch (e) {
           // Fall back to AirportService if TiledDataLoader fails
           debugPrint('TiledDataLoader failed, falling back to AirportService: $e');
@@ -2300,7 +2298,6 @@ class MapScreenState extends State<MapScreen>
         
         if (tiledAirport.icao == airport.icao) {
           fullAirport = tiledAirport;
-          debugPrint('Found matching airport in tiles: ${tiledAirport.icao} - ${tiledAirport.name}');
         } else {
           debugPrint('No matching airport found for ${airport.icao} in ${airports.length} loaded airports');
         }
