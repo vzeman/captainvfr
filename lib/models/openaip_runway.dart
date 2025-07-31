@@ -1,34 +1,69 @@
 /// Runway model for OpenAIP data
 class OpenAIPRunway {
+  final String? airportIdent;
   final String designator;
   final int? lengthM; // Length in meters
   final int? widthM; // Width in meters
   final RunwaySurface? surface;
+  final int? trueHeading; // True heading in degrees
+  final bool? pilotCtrlLighting; // Pilot controlled lighting
   
   OpenAIPRunway({
+    this.airportIdent,
     required this.designator,
     this.lengthM,
     this.widthM,
     this.surface,
+    this.trueHeading,
+    this.pilotCtrlLighting,
   });
   
   factory OpenAIPRunway.fromJson(Map<String, dynamic> json) {
+    // Handle both formats: simplified (from v3 script) and full API format
+    
+    // Extract length and width from nested structure if present
+    int? lengthM;
+    int? widthM;
+    
+    if (json.containsKey('dimension') && json['dimension'] != null) {
+      // Full API format with nested dimension
+      final dimension = json['dimension'] as Map<String, dynamic>;
+      if (dimension['length'] != null) {
+        lengthM = dimension['length']['value'] as int?;
+      }
+      if (dimension['width'] != null) {
+        widthM = dimension['width']['value'] as int?;
+      }
+    } else {
+      // Simplified format
+      lengthM = json['len'] as int?;
+      widthM = json['wid'] as int?;
+    }
+    
+    // Note: Individual runway ends are stored separately in OpenAIP
+    // The designator here is for a single end (e.g., "13" or "31")
+    // The pairing happens at the airport level
     return OpenAIPRunway(
-      designator: json['des'] ?? '',
-      lengthM: json['len'],
-      widthM: json['wid'],
-      surface: json['surf'] != null 
-          ? RunwaySurface.fromJson(json['surf'])
+      airportIdent: json['airport_ident'],
+      designator: json['designator'] ?? json['des'] ?? '',
+      lengthM: lengthM,
+      widthM: widthM,
+      surface: json['surface'] != null || json['surf'] != null
+          ? RunwaySurface.fromJson(json['surface'] ?? json['surf'])
           : null,
+      trueHeading: json['trueHeading'] as int?,
+      pilotCtrlLighting: json['pilotCtrlLighting'] as bool?,
     );
   }
   
   Map<String, dynamic> toJson() {
     return {
+      if (airportIdent != null) 'airport_ident': airportIdent,
       'des': designator,
       if (lengthM != null) 'len': lengthM,
       if (widthM != null) 'wid': widthM,
       if (surface != null) 'surf': surface!.toJson(),
+      if (pilotCtrlLighting != null) 'pilotCtrlLighting': pilotCtrlLighting,
     };
   }
   
@@ -82,10 +117,16 @@ class RunwaySurface {
   
   String get description {
     // Map OpenAIP surface codes to descriptions
+    // Based on OpenAIP data analysis:
+    // 0 appears to be Unknown/Undefined
+    // 1 is Asphalt
+    // 2 is Grass (not Concrete as previously thought)
+    // 3 is Concrete (not Grass)
     switch (mainComposite) {
+      case 0: return 'Unknown';
       case 1: return 'Asphalt';
-      case 2: return 'Concrete';
-      case 3: return 'Turf/Grass';
+      case 2: return 'Grass';
+      case 3: return 'Concrete';
       case 4: return 'Gravel';
       case 5: return 'Packed dirt';
       case 6: return 'Water';
@@ -109,6 +150,7 @@ class RunwaySurface {
   }
   
   bool get isHardSurface {
-    return [1, 2, 7, 8, 9, 10, 20].contains(mainComposite);
+    // Hard surfaces: Asphalt(1), Concrete(3), Bituminous(7), Brick(8), Macadam(9), Stone(10), Tarmac(20)
+    return [1, 3, 7, 8, 9, 10, 20].contains(mainComposite);
   }
 }

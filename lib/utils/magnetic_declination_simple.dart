@@ -23,7 +23,13 @@ class MagneticDeclinationSimple {
       
       if (longitude >= -130 && longitude <= -110) {
         // West Coast (California, Oregon, Washington)
-        return 13.0 + (longitude + 120) * 0.1 + annualChange;
+        // San Francisco area (~122°W) should be around 13.5°E as of 2024
+        // Los Angeles area (~118°W) should be around 12°E
+        // Seattle area (~122°W) should be around 15°E
+        double baseDeclination = 14.0; // Average for West Coast
+        double latitudeAdjustment = (latitude - 40) * 0.15; // More positive going north
+        double longitudeAdjustment = (longitude + 120) * 0.1;
+        return baseDeclination + latitudeAdjustment + longitudeAdjustment + annualChange;
       } else if (longitude >= -110 && longitude <= -95) {
         // Mountain/Central (varies from +10° to 0°)
         return 10.0 + (longitude + 110) * 0.67 + annualChange;

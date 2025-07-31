@@ -464,7 +464,8 @@ List<String> _getCsvHeaders(String dataType) {
     case 'airports':
       return ['id', 'ident', 'type', 'name', 'lat', 'lon', 'elevation_ft', 
               'country', 'municipality', 'scheduled_service', 'gps_code', 
-              'iata_code', 'local_code', 'home_link', 'wikipedia_link'];
+              'iata_code', 'local_code', 'home_link', 'wikipedia_link', 
+              'runways', 'frequencies'];
     
     case 'navaids':
       return ['id', 'ident', 'name', 'type', 'frequency_khz', 'lat', 'lon', 
@@ -506,15 +507,20 @@ List<dynamic>? _convertToCsvRow(Map<String, dynamic> item, String dataType) {
         final geom = item['geometry'];
         final coords = geom?['coordinates'] ?? [];
         final props = item['properties'] ?? item;
+        
+        // Extract runways and frequencies from the original item (not properties)
+        final runways = item['runways'] ?? [];
+        final frequencies = item['frequencies'] ?? [];
+        
         return [
-          props['_id'] ?? '',
-          props['ident'] ?? '',
-          props['type'] ?? '',
-          props['name'] ?? '',
+          props['_id'] ?? item['_id'] ?? '',
+          item['icaoCode'] ?? props['ident'] ?? '', // Use icaoCode from item
+          props['type'] ?? item['type'] ?? '',
+          item['name'] ?? props['name'] ?? '', // Use name from item
           coords.length > 1 ? coords[1] : 0,
           coords.length > 0 ? coords[0] : 0,
-          json.encode(props['elevation'] ?? 0), // Keep elevation structure
-          props['iso_country'] ?? '',
+          json.encode(item['elevation'] ?? props['elevation'] ?? 0), // Keep elevation structure
+          item['country'] ?? props['iso_country'] ?? '',
           props['municipality'] ?? '',
           props['scheduled_service'] ?? 0,
           props['gps_code'] ?? '',
@@ -522,6 +528,8 @@ List<dynamic>? _convertToCsvRow(Map<String, dynamic> item, String dataType) {
           props['local_code'] ?? '',
           props['home_link'] ?? '',
           props['wikipedia_link'] ?? '',
+          json.encode(runways), // Include runways as JSON
+          json.encode(frequencies), // Include frequencies as JSON
         ];
       
       case 'navaids':
@@ -771,6 +779,27 @@ Future<void> _finalCleanup() async {
   }
   
   print('   ✅ Cleanup complete');
+  
+  // Generate OpenAIP data tiles
+  print('\n🔄 Generating OpenAIP data tiles...');
+  print('   Note: This requires OPENAIP_API_KEY environment variable');
+  
+  // Try to run the OpenAIP data generation script
+  try {
+    final result = await Process.run(
+      'dart',
+      ['scripts/generate_openaip_runway_tiles_v2.dart'],
+      environment: Platform.environment,
+    );
+    
+    if (result.exitCode == 0) {
+      print('   ✅ OpenAIP data tiles generated successfully');
+    } else {
+      print('   ⚠️ OpenAIP data generation skipped (API key may not be set)');
+    }
+  } catch (e) {
+    print('   ⚠️ Could not run OpenAIP data generation: $e');
+  }
 }
 
 class Coordinates {

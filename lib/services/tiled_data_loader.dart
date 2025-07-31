@@ -59,12 +59,18 @@ class TiledDataLoader {
     final minTileY = ((minLat + 90) / tileHeight).floor().clamp(0, tilesY - 1);
     final maxTileY = ((maxLat + 90) / tileHeight).ceil().clamp(0, tilesY - 1);
     
+    _logger.i('Tile calculation for area $minLat,$minLon to $maxLat,$maxLon:');
+    _logger.i('  X range: $minTileX to $maxTileX');
+    _logger.i('  Y range: $minTileY to $maxTileY');
+    
     final tiles = <String>[];
     for (int x = minTileX; x <= maxTileX; x++) {
       for (int y = minTileY; y <= maxTileY; y++) {
         tiles.add('${x}_$y');
       }
     }
+    
+    _logger.i('  Tiles to load: $tiles');
     
     return tiles;
   }
@@ -76,6 +82,7 @@ class TiledDataLoader {
     required double minLon,
     required double maxLon,
   }) async {
+    _logger.i('Loading airports for area: $minLat,$minLon to $maxLat,$maxLon');
     return _loadDataForArea<Airport>(
       dataType: 'airports',
       minLat: minLat,
@@ -205,6 +212,76 @@ class TiledDataLoader {
     );
   }
   
+  /// Load OpenAIP runways for a given area
+  Future<List<Map<String, dynamic>>> loadOpenAIPRunwaysForArea({
+    required double minLat,
+    required double maxLat,
+    required double minLon,
+    required double maxLon,
+  }) async {
+    final tiles = getTilesForArea(
+      minLat: minLat,
+      maxLat: maxLat,
+      minLon: minLon,
+      maxLon: maxLon,
+    );
+    
+    final allRunways = <Map<String, dynamic>>[];
+    
+    for (final tile in tiles) {
+      final tilePath = 'assets/data/tiles/openaip_runways/tile_$tile.json.gz';
+      
+      try {
+        final data = await rootBundle.load(tilePath);
+        final decompressed = GZipDecoder().decodeBytes(data.buffer.asUint8List());
+        final jsonStr = utf8.decode(decompressed);
+        final tileData = json.decode(jsonStr) as Map<String, dynamic>;
+        
+        final runways = tileData['runways'] as List<dynamic>? ?? [];
+        allRunways.addAll(runways.cast<Map<String, dynamic>>());
+      } catch (e) {
+        // Tile might not exist - this is okay
+      }
+    }
+    
+    return allRunways;
+  }
+  
+  /// Load OpenAIP frequencies for a given area
+  Future<List<Map<String, dynamic>>> loadOpenAIPFrequenciesForArea({
+    required double minLat,
+    required double maxLat,
+    required double minLon,
+    required double maxLon,
+  }) async {
+    final tiles = getTilesForArea(
+      minLat: minLat,
+      maxLat: maxLat,
+      minLon: minLon,
+      maxLon: maxLon,
+    );
+    
+    final allFrequencies = <Map<String, dynamic>>[];
+    
+    for (final tile in tiles) {
+      final tilePath = 'assets/data/tiles/openaip_frequencies/tile_$tile.json.gz';
+      
+      try {
+        final data = await rootBundle.load(tilePath);
+        final decompressed = GZipDecoder().decodeBytes(data.buffer.asUint8List());
+        final jsonStr = utf8.decode(decompressed);
+        final tileData = json.decode(jsonStr) as Map<String, dynamic>;
+        
+        final frequencies = tileData['frequencies'] as List<dynamic>? ?? [];
+        allFrequencies.addAll(frequencies.cast<Map<String, dynamic>>());
+      } catch (e) {
+        // Tile might not exist - this is okay
+      }
+    }
+    
+    return allFrequencies;
+  }
+  
   /// Generic method to load data for an area
   Future<List<T>> _loadDataForArea<T>({
     required String dataType,
@@ -281,8 +358,11 @@ class TiledDataLoader {
   Future<List<List<dynamic>>?> _loadTile(String dataType, String tileKey) async {
     final cacheKey = '$dataType:$tileKey';
     
+    _logger.i('Loading tile: $dataType/tile_$tileKey.csv.gz');
+    
     // Check if already loaded - return cached data immediately
-    if (_loadedTiles.contains(cacheKey)) {
+    // TEMPORARY: Force reload for airports to fix LZDV issue
+    if (_loadedTiles.contains(cacheKey) && dataType != 'airports') {
       // Get cached data from the nested map structure
       final typeCache = _tileCache[dataType];
       if (typeCache != null && typeCache.containsKey(tileKey)) {
@@ -302,20 +382,87 @@ class TiledDataLoader {
       final decompressed = GZipDecoder().decodeBytes(bytes);
       final csvString = utf8.decode(decompressed);
       
-      // Parse CSV
-      final csvTable = const CsvToListConverter().convert(csvString);
+      // Debug for tile 19_13
+      if (tileKey == '19_13' && dataType == 'airports') {
+        _logger.i('CSV string length for tile 19_13: ${csvString.length}');
+        _logger.i('First 200 chars: ${csvString.substring(0, csvString.length > 200 ? 200 : csvString.length)}');
+        
+        // Check if LZDV is in the raw string
+        if (csvString.contains('LZDV')) {
+          _logger.i('✅ LZDV found in raw CSV string!');
+          final lzdvIndex = csvString.indexOf('LZDV');
+          _logger.i('LZDV at position $lzdvIndex');
+          
+          // Show context around LZDV
+          final start = (lzdvIndex - 50).clamp(0, csvString.length);
+          final end = (lzdvIndex + 100).clamp(0, csvString.length);
+          _logger.i('Context: ...${csvString.substring(start, end)}...');
+        } else {
+          _logger.w('❌ LZDV NOT found in raw CSV string!');
+        }
+      }
+      
+      // Parse CSV with proper handling of quoted fields
+      // Use a more robust configuration for complex CSV with embedded JSON
+      // Handle both Unix (\n) and Windows (\r\n) line endings
+      final csvTable = CsvToListConverter(
+        eol: csvString.contains('\r\n') ? '\r\n' : '\n',
+        textDelimiter: '"',
+        fieldDelimiter: ',',
+        shouldParseNumbers: false, // Keep everything as strings
+        allowInvalid: false,
+      ).convert(csvString);
+      
+      // Debug: Check if LZDV is in this tile
+      if (dataType == 'airports' && csvTable.length > 1) {
+        int lzdvCount = 0;
+        
+        // Search for LZDV in all rows and columns
+        for (int i = 0; i < csvTable.length; i++) {
+          for (int j = 0; j < csvTable[i].length; j++) {
+            if (csvTable[i][j].toString().contains('LZDV')) {
+              _logger.i('🚨 Found LZDV in tile $tileKey at row $i, column $j');
+              _logger.i('🚨 Row length: ${csvTable[i].length}');
+              if (csvTable[i].length > 1) {
+                _logger.i('🚨 Row ident (col 1): ${csvTable[i][1]}');
+              }
+              lzdvCount++;
+              break;
+            }
+          }
+        }
+        
+        if (lzdvCount == 0 && tileKey == '19_13') {
+          _logger.w('⚠️ LZDV NOT found in parsed CSV table!');
+          _logger.i('  CSV table has ${csvTable.length} rows');
+          
+          // Check the overall structure
+          int validAirportRows = 0;
+          for (int i = 1; i < csvTable.length; i++) {
+            if (csvTable[i].length >= 15) {  // Airports should have at least 15 columns
+              validAirportRows++;
+            }
+          }
+          _logger.i('  Rows with >= 15 columns: $validAirportRows');
+        }
+      }
       
       // Skip header row
       if (csvTable.length > 1) {
         final dataRows = csvTable.sublist(1);
+        
+        _logger.i('Loaded ${dataRows.length} rows from tile $tileKey');
         
         // Cache the data
         _tileCache.putIfAbsent(dataType, () => {})[tileKey] = dataRows;
         _loadedTiles.add(cacheKey);
         
         return dataRows;
+      } else {
+        _logger.w('Tile $tileKey has no data rows');
       }
     } catch (e) {
+      _logger.e('Error loading tile $tileKey: $e');
       // Mark as loaded even if it doesn't exist to prevent repeated attempts
       _loadedTiles.add(cacheKey);
     }
@@ -328,7 +475,8 @@ class TiledDataLoader {
     try {
       // CSV headers: ['id', 'ident', 'type', 'name', 'lat', 'lon', 'elevation_ft', 
       //               'country', 'municipality', 'scheduled_service', 'gps_code', 
-      //               'iata_code', 'local_code', 'home_link', 'wikipedia_link']
+      //               'iata_code', 'local_code', 'home_link', 'wikipedia_link',
+      //               'runways', 'frequencies']
       final lat = double.parse(row[4].toString());
       final lon = double.parse(row[5].toString());
       
@@ -351,21 +499,60 @@ class TiledDataLoader {
         }
       }
       
-      return Airport(
-        icao: row[1].toString(), // ident field
+      // Parse runways and frequencies if available (columns 15 and 16)
+      String? runwaysJson;
+      String? frequenciesJson;
+      
+      
+      if (row.length > 15 && row[15] != null && row[15].toString().isNotEmpty) {
+        runwaysJson = row[15].toString();
+      }
+      
+      if (row.length > 16 && row[16] != null && row[16].toString().isNotEmpty) {
+        frequenciesJson = row[16].toString();
+      }
+      
+      // Get country name from country code
+      final countryCode = row[7].toString();
+      final countryName = _getCountryName(countryCode);
+      
+      // Use municipality if available, otherwise use airport name as city
+      final municipality = row[8].toString();
+      final cityName = municipality.isNotEmpty ? municipality : row[3].toString();
+      
+      // For heliports and other airports without ICAO codes, generate a unique identifier
+      String icaoCode = row[1].toString();
+      if (icaoCode.isEmpty && type == 'heliport') {
+        // Use the MongoDB ID as a unique identifier for heliports
+        final mongoId = row[0].toString();
+        if (mongoId.length >= 8) {
+          icaoCode = 'H_${mongoId.substring(0, 8).toUpperCase()}';
+        } else {
+          icaoCode = 'H_${mongoId.toUpperCase()}';
+        }
+        _logger.d('Generated heliport ICAO: $icaoCode for ${row[3]}');
+      }
+      
+      final airport = Airport(
+        icao: icaoCode,
         iata: row[11].toString().isNotEmpty ? row[11].toString() : null,
         name: row[3].toString(),
-        city: row[8].toString(), // municipality
-        country: row[7].toString(),
+        city: cityName,
+        country: countryName,
         position: LatLng(lat, lon),
         elevation: elevation,
         type: type,
         gpsCode: row[10].toString(),
         iataCode: row[11].toString().isNotEmpty ? row[11].toString() : null,
         localCode: row[12].toString(),
-        municipality: row[8].toString(),
-        countryCode: row[7].toString(),
+        municipality: municipality,
+        countryCode: countryCode,
+        runways: runwaysJson,
+        frequencies: frequenciesJson,
       );
+      
+      
+      return airport;
     } catch (e) {
       _logger.e('Error parsing airport row: $e');
       return null;
@@ -424,6 +611,62 @@ class TiledDataLoader {
       default:
         return 'small_airport'; // Default fallback
     }
+  }
+  
+  /// Convert country code to country name
+  String _getCountryName(String countryCode) {
+    // Common European country codes
+    final countryNames = {
+      'AD': 'Andorra',
+      'AL': 'Albania',
+      'AT': 'Austria',
+      'BA': 'Bosnia and Herzegovina',
+      'BE': 'Belgium',
+      'BG': 'Bulgaria',
+      'BY': 'Belarus',
+      'CH': 'Switzerland',
+      'CY': 'Cyprus',
+      'CZ': 'Czech Republic',
+      'DE': 'Germany',
+      'DK': 'Denmark',
+      'EE': 'Estonia',
+      'ES': 'Spain',
+      'FI': 'Finland',
+      'FR': 'France',
+      'GB': 'United Kingdom',
+      'GR': 'Greece',
+      'HR': 'Croatia',
+      'HU': 'Hungary',
+      'IE': 'Ireland',
+      'IS': 'Iceland',
+      'IT': 'Italy',
+      'LI': 'Liechtenstein',
+      'LT': 'Lithuania',
+      'LU': 'Luxembourg',
+      'LV': 'Latvia',
+      'MC': 'Monaco',
+      'MD': 'Moldova',
+      'ME': 'Montenegro',
+      'MK': 'North Macedonia',
+      'MT': 'Malta',
+      'NL': 'Netherlands',
+      'NO': 'Norway',
+      'PL': 'Poland',
+      'PT': 'Portugal',
+      'RO': 'Romania',
+      'RS': 'Serbia',
+      'RU': 'Russia',
+      'SE': 'Sweden',
+      'SI': 'Slovenia',
+      'SK': 'Slovakia',
+      'SM': 'San Marino',
+      'TR': 'Turkey',
+      'UA': 'Ukraine',
+      'VA': 'Vatican City',
+      'XK': 'Kosovo',
+    };
+    
+    return countryNames[countryCode] ?? countryCode;
   }
   
   /// Parse navaid CSV row

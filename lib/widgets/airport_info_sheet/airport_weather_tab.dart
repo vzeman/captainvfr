@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/airport.dart';
+import '../../constants/app_colors.dart';
 import '../../services/weather_interpretation_service.dart';
 import '../common/loading_widget.dart';
 import '../common/error_widget.dart' as custom;
@@ -154,7 +155,7 @@ class AirportWeatherTab extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDangerous ? Colors.red.shade50 : color.withValues(alpha: 0.1),
+        color: isDangerous ? Colors.red.shade900.withValues(alpha: 0.3) : color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isDangerous
@@ -187,7 +188,12 @@ class AirportWeatherTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text(interpretation, style: theme.textTheme.bodyMedium),
+          Text(
+            interpretation,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: isDangerous ? Colors.red.shade200 : AppColors.primaryTextColor,
+            ),
+          ),
           // Add dangerous weather explanations if present
           if (isDangerous) ...[
             const SizedBox(height: 12),
@@ -225,9 +231,9 @@ class AirportWeatherTab extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.cardColor,
+        color: AppColors.sectionBackgroundColor,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.dividerColor),
+        border: Border.all(color: AppColors.sectionBorderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,7 +242,7 @@ class AirportWeatherTab extends StatelessWidget {
             title,
             style: theme.textTheme.labelMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: theme.hintColor,
+              color: AppColors.secondaryTextColor,
             ),
           ),
           const SizedBox(height: 8),
@@ -245,6 +251,7 @@ class AirportWeatherTab extends StatelessWidget {
             style: theme.textTheme.bodyMedium?.copyWith(
               fontFamily: 'monospace',
               fontSize: 13,
+              color: AppColors.primaryTextColor,
             ),
           ),
         ],
@@ -260,12 +267,12 @@ class AirportWeatherTab extends StatelessWidget {
       children: [
         Text(
           'Last Updated',
-          style: theme.textTheme.labelMedium?.copyWith(color: theme.hintColor),
+          style: theme.textTheme.labelMedium?.copyWith(color: AppColors.secondaryTextColor),
         ),
         const SizedBox(height: 4),
         Text(
           airport.lastWeatherUpdate!.toLocal().toString().substring(0, 19),
-          style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+          style: theme.textTheme.bodySmall?.copyWith(color: AppColors.secondaryTextColor),
         ),
       ],
     );
@@ -277,11 +284,11 @@ class AirportWeatherTab extends StatelessWidget {
     return Center(
       child: Column(
         children: [
-          Icon(Icons.cloud_off, size: 48, color: theme.hintColor),
+          Icon(Icons.cloud_off, size: 48, color: AppColors.secondaryTextColor),
           const SizedBox(height: 16),
           Text(
             'No weather data available for ${airport.icao}',
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
+            style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.secondaryTextColor),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),

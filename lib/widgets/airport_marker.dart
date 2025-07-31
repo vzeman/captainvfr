@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'dart:math' as math;
 import '../models/airport.dart';
 import '../models/runway.dart';
@@ -34,16 +33,12 @@ class AirportMarker extends StatelessWidget {
     final icon = _getAirportIcon(airport.type);
     final color = _getAirportColor(airport.type);
     final borderColor = isSelected ? Colors.amber : color;
-    final borderWidth = isSelected ? 3.0 : 2.0;
+    // Adjust border width based on zoom level
+    final borderWidth = isSelected ? (mapZoom >= 10 ? 2.0 : 3.0) : (mapZoom >= 10 ? 1.5 : 2.0);
 
 
     // The visual size of the marker based on zoom
-    // Use the size parameter which is already adjusted for zoom
-    // Make heliport markers slightly larger to accommodate their special icons
-    final visualSize = airport.type == 'heliport' ? size * 1.2 : size;
-
-    // Weather indicator dot size
-    final weatherDotSize = visualSize * 0.3;
+    final visualSize = size;
 
     // Calculate runway visualization size based on actual runway dimensions
     double runwayVisualizationSize = 0.0;
@@ -66,9 +61,16 @@ class AirportMarker extends StatelessWidget {
         }
       }
       
-      // Set size based on longest runway, with minimum size
+      // Set size based on longest runway
       if (maxLengthM > 0) {
-        runwayVisualizationSize = math.max(visualSize * 2, (maxLengthM / metersPerPixel) * 1.2);
+        // Calculate pixel size for runway visualization
+        // Add small buffer (1.05) for visual clarity
+        final calculatedSize = (maxLengthM / metersPerPixel) * 1.05;
+        
+        // Ensure minimum size for visibility
+        // At zoom 10+, use actual calculated size without minimum to prevent overlap
+        // At lower zooms, enforce minimum size for visibility
+        runwayVisualizationSize = mapZoom >= 10 ? calculatedSize : math.max(visualSize * 1.5, calculatedSize);
       } else {
         runwayVisualizationSize = visualSize * 3.5; // Default size
       }
@@ -136,9 +138,23 @@ class AirportMarker extends StatelessWidget {
                 ),
                 child: airport.type == 'heliport' 
                     ? Center(
-                        child: Transform.translate(
-                          offset: Offset(visualSize * 0.02, visualSize * 0.02), // Slight offset to compensate for icon's visual weight
-                          child: FaIcon(FontAwesomeIcons.helicopter, size: visualSize * 0.45, color: color),
+                        child: Container(
+                          width: visualSize * 0.6,
+                          height: visualSize * 0.6,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              'H',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: visualSize * 0.3,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                         ),
                       )
                     : airport.type == 'balloonport'
@@ -148,22 +164,6 @@ class AirportMarker extends StatelessWidget {
                     : Icon(icon, size: visualSize * 0.6, color: color),
               ),
             ),
-
-            // Weather indicator dot (top-right corner)
-            if (airport.hasWeatherData)
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Container(
-                  width: weatherDotSize,
-                  height: weatherDotSize,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.9),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.5),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -249,7 +249,9 @@ class AirportMarkersLayer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Base marker size based on zoom
-    final baseMarkerSize = mapZoom >= 12 ? 40.0 : 28.0;
+    // At zoom 10+, use smaller markers (10px) to not overlap runway visualizations
+    // At lower zooms, use larger markers (24px) for better visibility
+    final baseMarkerSize = mapZoom >= 10 ? 16.0 : 30.0;
 
     final markers = airports.map((airport) {
       // Small airports and balloonports get 25% smaller markers (75% of base size)
@@ -277,7 +279,8 @@ class AirportMarkersLayer extends StatelessWidget {
         }
         
         if (maxLengthM > 0) {
-          markerBounds = math.max(airportMarkerSize, (maxLengthM / metersPerPixel) * 1.2);
+          // Use actual runway length with small buffer
+          markerBounds = math.max(airportMarkerSize, (maxLengthM / metersPerPixel) * 1.05);
         }
       }
 

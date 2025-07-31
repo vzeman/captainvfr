@@ -161,7 +161,12 @@ class Airport implements SpatialIndexable {
   // Get airport type as a display string
   // Runway information
   List<Map<String, dynamic>> get runwaysList {
-    if (runways == null) return [];
+    if (runways == null) {
+      return [];
+    }
+    if (runways!.isEmpty) {
+      return [];
+    }
     try {
       final List<dynamic> decoded = jsonDecode(runways!);
       return decoded.cast<Map<String, dynamic>>();
@@ -170,9 +175,88 @@ class Airport implements SpatialIndexable {
     }
   }
   
-  // Get OpenAIP runway objects
+  // Get OpenAIP runway objects (combined from individual ends)
   List<OpenAIPRunway> get openAIPRunways {
-    return runwaysList.map((r) => OpenAIPRunway.fromJson(r)).toList();
+    final list = runwaysList;
+    
+    // OpenAIP stores runway ends separately, we need to combine them
+    final runwayEnds = list.map((r) => OpenAIPRunway.fromJson(r)).toList();
+    final combinedRunways = <OpenAIPRunway>[];
+    final processedDesignators = <String>{};
+    
+    for (final runway in runwayEnds) {
+      final designator = runway.designator;
+      if (processedDesignators.contains(designator)) continue;
+      
+      // Find the opposite end
+      final oppositeDesignator = _getOppositeRunwayDesignator(designator);
+      final oppositeEnd = runwayEnds.firstWhere(
+        (r) => r.designator == oppositeDesignator,
+        orElse: () => runway, // If no opposite found, use same runway
+      );
+      
+      // Create combined runway with proper designation
+      final combinedDesignator = _formatRunwayPair(designator, oppositeDesignator);
+      
+      // Use the maximum dimensions from both ends
+      final maxLength = [runway.lengthM ?? 0, oppositeEnd.lengthM ?? 0]
+          .reduce((a, b) => a > b ? a : b);
+      final maxWidth = [runway.widthM ?? 0, oppositeEnd.widthM ?? 0]
+          .reduce((a, b) => a > b ? a : b);
+      
+      // Determine which is the lower-numbered end for correct heading
+      final num1 = int.tryParse(designator.replaceAll(RegExp(r'[LRC]$'), '')) ?? 99;
+      final num2 = int.tryParse(oppositeDesignator.replaceAll(RegExp(r'[LRC]$'), '')) ?? 99;
+      final lowerEndHeading = num1 <= num2 ? runway.trueHeading : oppositeEnd.trueHeading;
+      
+      combinedRunways.add(OpenAIPRunway(
+        airportIdent: icao,
+        designator: combinedDesignator,
+        lengthM: maxLength > 0 ? maxLength : null,
+        widthM: maxWidth > 0 ? maxWidth : null,
+        surface: runway.surface ?? oppositeEnd.surface,
+        trueHeading: lowerEndHeading,
+        pilotCtrlLighting: runway.pilotCtrlLighting ?? oppositeEnd.pilotCtrlLighting,
+      ));
+      
+      processedDesignators.add(designator);
+      processedDesignators.add(oppositeDesignator);
+    }
+    
+    return combinedRunways;
+  }
+  
+  // Helper to get opposite runway designator
+  String _getOppositeRunwayDesignator(String designator) {
+    // Remove any suffix letters
+    final numericPart = designator.replaceAll(RegExp(r'[LRC]$'), '');
+    final suffix = designator.length > numericPart.length 
+        ? designator.substring(numericPart.length) : '';
+    
+    // Parse the numeric part
+    final number = int.tryParse(numericPart);
+    if (number == null) return designator;
+    
+    // Calculate opposite (add 18, wrap at 36)
+    final opposite = number <= 18 ? number + 18 : number - 18;
+    
+    // Handle suffix for parallel runways
+    final oppositeSuffix = suffix == 'L' ? 'R' : (suffix == 'R' ? 'L' : suffix);
+    
+    return opposite.toString().padLeft(2, '0') + oppositeSuffix;
+  }
+  
+  // Helper to format runway pair designation
+  String _formatRunwayPair(String end1, String end2) {
+    // Ensure lower number comes first
+    final num1 = int.tryParse(end1.replaceAll(RegExp(r'[LRC]$'), '')) ?? 99;
+    final num2 = int.tryParse(end2.replaceAll(RegExp(r'[LRC]$'), '')) ?? 99;
+    
+    if (num1 <= num2) {
+      return '$end1/$end2';
+    } else {
+      return '$end2/$end1';
+    }
   }
 
   // Communication frequencies
@@ -180,12 +264,65 @@ class Airport implements SpatialIndexable {
     if (frequencies == null) return [];
     try {
       final List<dynamic> decoded = jsonDecode(frequencies!);
-      return decoded
-          .cast<Map<String, dynamic>>()
-          .where((f) => f['frequency_mhz'] != null)
-          .toList();
+      // Convert OpenAIP format to expected format
+      return decoded.cast<Map<String, dynamic>>().map((f) {
+        // Handle OpenAIP format - convert type codes even if frequency_mhz already exists
+        if (f['value'] != null && f['frequency_mhz'] == null) {
+          // Original OpenAIP format with 'value' field
+          return {
+            'frequency_mhz': double.tryParse(f['value'].toString()) ?? 0.0,
+            'type': _convertOpenAIPFrequencyType(f['type']),
+            'description': f['name']?.toString(),
+            ...f, // Keep original fields
+          };
+        } else if (f['type'] != null) {
+          // Check if type is numeric and convert it
+          final typeStr = f['type'].toString();
+          if (RegExp(r'^\d+$').hasMatch(typeStr)) {
+            final convertedType = _convertOpenAIPFrequencyType(f['type']);
+            return {
+              ...f,
+              'type': convertedType,
+            };
+          }
+          // If not numeric, return as-is
+          return f;
+        }
+        // Already in expected format with text type
+        return f;
+      }).where((f) => f['frequency_mhz'] != null && f['frequency_mhz'] > 0).toList();
     } catch (e) {
       return [];
+    }
+  }
+  
+  // Convert OpenAIP frequency type codes to readable types
+  String _convertOpenAIPFrequencyType(dynamic type) {
+    if (type == null) return 'UNKNOWN';
+    
+    // Debug: Print the actual type value to understand what's being passed
+    // print('Converting frequency type: $type (${type.runtimeType})');
+    
+    // OpenAIP frequency type codes (based on common aviation frequencies)
+    // Updated mapping based on actual KSFO data
+    switch (type.toString()) {
+      case '0': return 'NORCAL APP';  // Approach Control (NORCAL for San Francisco area)
+      case '1': return 'AWOS';
+      case '2': return 'AWIB';
+      case '3': return 'AWIS';
+      case '4': return 'CTAF';
+      case '5': return 'MULTICOM';
+      case '6': return 'UNICOM';
+      case '7': return 'DELIVERY';
+      case '8': return 'GROUND';
+      case '9': return 'TOWER';
+      case '10': return 'APPROACH';
+      case '11': return 'DEPARTURE';
+      case '12': return 'CENTER';
+      case '13': return 'FSS';
+      case '14': return 'CLEARANCE';
+      case '15': return 'ATIS';        // ATIS Information
+      default: return 'OTHER';
     }
   }
 
@@ -201,11 +338,7 @@ class Airport implements SpatialIndexable {
     if (mhz == 0) return null;
 
     // Format frequency to 3 decimal places
-    final mhzStr = mhz.toStringAsFixed(3);
-    return mhzStr.replaceAllMapped(
-      RegExp(r'(\d+)(\d{3})'),
-      (match) => '${match[1]}.${match[2]}',
-    );
+    return mhz.toStringAsFixed(3);
   }
 
   String? get typeDisplay {

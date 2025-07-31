@@ -1,9 +1,13 @@
 import 'dart:developer' as developer;
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import '../models/airspace.dart';
 import '../models/reporting_point.dart';
 import '../models/obstacle.dart';
 import '../models/hotspot.dart';
+import '../models/openaip_runway.dart';
+import '../models/openaip_frequency.dart';
 import 'cache_service.dart';
 import 'tiled_data_loader.dart';
 
@@ -15,6 +19,14 @@ class OpenAIPService {
   final CacheService _cacheService = CacheService();
   final TiledDataLoader _tiledDataLoader = TiledDataLoader();
   bool _initialized = false;
+  
+  // OpenAIP API configuration
+  static const String _openAipBaseUrl = 'https://api.openaip.net';
+  static const String openAipApiKey = String.fromEnvironment('OPENAIP_API_KEY');
+  
+  // Rate limiting
+  DateTime? _lastApiCall;
+  static const Duration _minTimeBetweenCalls = Duration(milliseconds: 100);
   
   // In-memory cache for reporting points (similar to airports)
   List<ReportingPoint> _reportingPointsInMemory = [];
@@ -486,6 +498,212 @@ class OpenAIPService {
       return tiledHotspots;
     } catch (e) {
       developer.log('❌ Error loading hotspots: $e');
+      return [];
+    }
+  }
+  
+  // ============== OpenAIP Airport/Runway/Frequency API Methods ==============
+  
+  /// Rate-limited API call helper
+  Future<void> _enforceRateLimit() async {
+    if (_lastApiCall != null) {
+      final timeSinceLastCall = DateTime.now().difference(_lastApiCall!);
+      if (timeSinceLastCall < _minTimeBetweenCalls) {
+        await Future.delayed(_minTimeBetweenCalls - timeSinceLastCall);
+      }
+    }
+    _lastApiCall = DateTime.now();
+  }
+  
+  /// Get airport details from OpenAIP including runways and frequencies
+  Future<Map<String, dynamic>?> getAirportDetails(String icaoCode) async {
+    if (openAipApiKey.isEmpty) {
+      developer.log('⚠️ OpenAIP API key not configured');
+      return null;
+    }
+    
+    try {
+      await _enforceRateLimit();
+      
+      final url = Uri.parse('$_openAipBaseUrl/airports/$icaoCode');
+      final response = await http.get(
+        url,
+        headers: {
+          'x-openaip-api-key': openAipApiKey,
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else if (response.statusCode == 404) {
+        developer.log('Airport $icaoCode not found in OpenAIP');
+        return null;
+      } else {
+        developer.log('Error fetching airport $icaoCode: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      developer.log('❌ Error fetching OpenAIP airport details for $icaoCode: $e');
+      return null;
+    }
+  }
+  
+  /// Get runways for an airport from OpenAIP
+  Future<List<OpenAIPRunway>> getAirportRunways(String icaoCode) async {
+    try {
+      final airportDetails = await getAirportDetails(icaoCode);
+      if (airportDetails == null) return [];
+      
+      final runwaysData = airportDetails['runways'] as List<dynamic>?;
+      if (runwaysData == null) return [];
+      
+      return runwaysData
+          .map((runway) => OpenAIPRunway.fromJson(runway as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      developer.log('❌ Error parsing OpenAIP runways for $icaoCode: $e');
+      return [];
+    }
+  }
+  
+  /// Get frequencies for an airport from OpenAIP
+  Future<List<OpenAIPFrequency>> getAirportFrequencies(String icaoCode) async {
+    try {
+      final airportDetails = await getAirportDetails(icaoCode);
+      if (airportDetails == null) return [];
+      
+      final frequenciesData = airportDetails['frequencies'] as List<dynamic>?;
+      if (frequenciesData == null) return [];
+      
+      return frequenciesData
+          .map((freq) => OpenAIPFrequency.fromJson(
+                freq as Map<String, dynamic>,
+                icaoCode,
+              ))
+          .toList();
+    } catch (e) {
+      developer.log('❌ Error parsing OpenAIP frequencies for $icaoCode: $e');
+      return [];
+    }
+  }
+  
+  /// Get all airports in a bounding box from OpenAIP
+  Future<List<Map<String, dynamic>>> getAirportsInBounds({
+    required double minLat,
+    required double maxLat,
+    required double minLon,
+    required double maxLon,
+    int limit = 100,
+  }) async {
+    if (openAipApiKey.isEmpty) {
+      developer.log('⚠️ OpenAIP API key not configured');
+      return [];
+    }
+    
+    try {
+      await _enforceRateLimit();
+      
+      // OpenAIP API endpoint for searching airports in bounds
+      final url = Uri.parse('$_openAipBaseUrl/airports').replace(
+        queryParameters: {
+          'bbox': '$minLon,$minLat,$maxLon,$maxLat',
+          'limit': limit.toString(),
+        },
+      );
+      
+      final response = await http.get(
+        url,
+        headers: {
+          'x-openaip-api-key': openAipApiKey,
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 30));
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is List) {
+          return data.cast<Map<String, dynamic>>();
+        } else if (data is Map && data['items'] is List) {
+          return (data['items'] as List).cast<Map<String, dynamic>>();
+        }
+      } else {
+        developer.log('Error fetching airports in bounds: ${response.statusCode}');
+      }
+    } catch (e) {
+      developer.log('❌ Error fetching OpenAIP airports in bounds: $e');
+    }
+    
+    return [];
+  }
+  
+  /// Load OpenAIP runways from tiled data
+  Future<List<OpenAIPRunway>> loadOpenAIPRunwaysForArea({
+    required double minLat,
+    required double maxLat,
+    required double minLon,
+    required double maxLon,
+  }) async {
+    try {
+      final runwayData = await _tiledDataLoader.loadOpenAIPRunwaysForArea(
+        minLat: minLat,
+        maxLat: maxLat,
+        minLon: minLon,
+        maxLon: maxLon,
+      );
+      
+      // Convert to OpenAIPRunway objects
+      final runways = <OpenAIPRunway>[];
+      for (final data in runwayData) {
+        try {
+          final runway = OpenAIPRunway.fromJson(data);
+          runways.add(runway);
+        } catch (e) {
+          // Skip malformed runway data
+        }
+      }
+      
+      developer.log('📦 Loaded ${runways.length} OpenAIP runways from tiles for area: [$minLat,$minLon to $maxLat,$maxLon]');
+      return runways;
+    } catch (e) {
+      developer.log('❌ Error loading OpenAIP runways from tiles: $e');
+      return [];
+    }
+  }
+  
+  /// Load OpenAIP frequencies from tiled data
+  Future<List<OpenAIPFrequency>> loadOpenAIPFrequenciesForArea({
+    required double minLat,
+    required double maxLat,
+    required double minLon,
+    required double maxLon,
+  }) async {
+    try {
+      final frequencyData = await _tiledDataLoader.loadOpenAIPFrequenciesForArea(
+        minLat: minLat,
+        maxLat: maxLat,
+        minLon: minLon,
+        maxLon: maxLon,
+      );
+      
+      // Convert to OpenAIPFrequency objects
+      final frequencies = <OpenAIPFrequency>[];
+      for (final data in frequencyData) {
+        try {
+          final frequency = OpenAIPFrequency.fromJson(
+            data,
+            data['airport_ident'] ?? '',
+          );
+          frequencies.add(frequency);
+        } catch (e) {
+          // Skip malformed frequency data
+        }
+      }
+      
+      developer.log('📦 Loaded ${frequencies.length} OpenAIP frequencies from tiles for area: [$minLat,$minLon to $maxLat,$maxLon]');
+      return frequencies;
+    } catch (e) {
+      developer.log('❌ Error loading OpenAIP frequencies from tiles: $e');
       return [];
     }
   }

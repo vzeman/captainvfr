@@ -28,6 +28,7 @@ import '../models/hotspot.dart';
 import '../models/flight_segment.dart' as flight_seg;
 import '../models/flight_plan.dart';
 import '../services/airport_service.dart';
+import '../services/tiled_data_loader.dart';
 import '../services/runway_service.dart';
 import '../services/navaid_service.dart';
 import '../services/flight_service.dart';
@@ -258,6 +259,12 @@ class MapScreenState extends State<MapScreen>
           context,
           listen: false,
         );
+        
+        // Sync MapStateController with SettingsService
+        final settings = Provider.of<SettingsService>(context, listen: false);
+        if (settings.showNavaids && !_mapStateController.showNavaids) {
+          _mapStateController.toggleNavaids();
+        }
         
         // Set up callback to fit entire flight plan when loaded
         _flightPlanService.onFlightPlanLoaded = (flightPlan) {
@@ -914,29 +921,33 @@ class MapScreenState extends State<MapScreen>
           });
         }
 
-        // Start loading data progressively
-        _loadAirports();
+        // Start loading data progressively after a short delay to ensure map is fully initialized
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (!mounted) return;
+          
+          _loadAirports();
 
-        // Load navaids if they should be shown
-        if (_mapStateController.showNavaids) {
-          _loadNavaids();
-        }
+          // Load navaids if they should be shown
+          if (_mapStateController.showNavaids) {
+            _loadNavaids();
+          }
 
-        // Load airspaces if they should be shown
-        if (_mapStateController.showAirspaces) {
-          _loadAirspaces();
-          _loadReportingPoints();
-        }
-        
-        // Load obstacles if they should be shown
-        if (_mapStateController.showObstacles) {
-          _loadObstacles();
-        }
-        
-        // Load hotspots if they should be shown
-        if (_mapStateController.showHotspots) {
-          _loadHotspots();
-        }
+          // Load airspaces if they should be shown
+          if (_mapStateController.showAirspaces) {
+            _loadAirspaces();
+            _loadReportingPoints();
+          }
+          
+          // Load obstacles if they should be shown
+          if (_mapStateController.showObstacles) {
+            _loadObstacles();
+          }
+          
+          // Load hotspots if they should be shown
+          if (_mapStateController.showHotspots) {
+            _loadHotspots();
+          }
+        });
       }
     });
   }
@@ -969,11 +980,30 @@ class MapScreenState extends State<MapScreen>
           maxLon: bounds.northEast.longitude,
         );
 
-        // Get airports within the current map bounds
-        final airports = await _airportService.getAirportsInBounds(
-          bounds.southWest,
-          bounds.northEast,
-        );
+        // Get airports from TiledDataLoader (these have runway data)
+        List<Airport> airports;
+        try {
+          airports = await TiledDataLoader().loadAirportsForArea(
+            minLat: bounds.southWest.latitude,
+            maxLat: bounds.northEast.latitude,
+            minLon: bounds.southWest.longitude,
+            maxLon: bounds.northEast.longitude,
+          );
+          debugPrint('Loaded ${airports.length} airports from TiledDataLoader with runway data');
+          // Debug: Count airports by type
+          final typeCount = <String, int>{};
+          for (final airport in airports) {
+            typeCount[airport.type] = (typeCount[airport.type] ?? 0) + 1;
+          }
+          debugPrint('Airport types loaded: $typeCount');
+        } catch (e) {
+          // Fall back to AirportService if TiledDataLoader fails
+          debugPrint('TiledDataLoader failed, falling back to AirportService: $e');
+          airports = await _airportService.getAirportsInBounds(
+            bounds.southWest,
+            bounds.northEast,
+          );
+        }
 
         // Get runway data for airports if zoom level is appropriate
         final runwayDataMap = <String, List<Runway>>{};
@@ -1128,16 +1158,15 @@ class MapScreenState extends State<MapScreen>
           return;
         }
 
-        // Ensure navaids are fetched
-        await _navaidService.fetchNavaids();
-
-        final totalNavaids = _navaidService.navaids.length;
-
-        if (totalNavaids == 0) {
-          return;
-        }
-
         final bounds = _mapController.camera.visibleBounds;
+        
+        // Load navaids for the visible area
+        await _navaidService.loadNavaidsForArea(
+          minLat: bounds.southWest.latitude,
+          maxLat: bounds.northEast.latitude,
+          minLon: bounds.southWest.longitude,
+          maxLon: bounds.northEast.longitude,
+        );
 
         final navaids = _navaidService.getNavaidsInBounds(
           bounds.southWest,
@@ -1573,6 +1602,18 @@ class MapScreenState extends State<MapScreen>
     setState(() {
       _mapStateController.toggleHeliports();
     });
+  }
+  
+  // Toggle navaids visibility
+  void _toggleNavaids() {
+    setState(() {
+      _mapStateController.toggleNavaids();
+    });
+    
+    if (_mapStateController.showNavaids) {
+      // Load navaids when enabled
+      _loadNavaids();
+    }
   }
 
 
@@ -2231,12 +2272,48 @@ class MapScreenState extends State<MapScreen>
 
   // Handle airport selection
   Future<void> _onAirportSelected(Airport airport) async {
+    // If the airport doesn't have complete data, try to load it from tiles
+    Airport fullAirport = airport;
+    
+    // Check if essential fields are missing
+    final needsFullData = (airport.runways == null || airport.runways!.isEmpty) || 
+        (airport.frequencies == null || airport.frequencies!.isEmpty) ||
+        airport.name.isEmpty || airport.name == 'Unknown Airport' ||
+        airport.city.isEmpty || airport.city == 'Unknown' ||
+        airport.country.isEmpty || airport.country == 'Unknown';
+    
+    if (needsFullData) {
+      try {
+        // Load the area around the airport to ensure we have full data
+        final airports = await TiledDataLoader().loadAirportsForArea(
+          minLat: airport.position.latitude - 0.1,
+          maxLat: airport.position.latitude + 0.1,
+          minLon: airport.position.longitude - 0.1,
+          maxLon: airport.position.longitude + 0.1,
+        );
+        
+        // Find the airport with matching ICAO
+        final tiledAirport = airports.firstWhere(
+          (a) => a.icao == airport.icao,
+          orElse: () => airport,
+        );
+        
+        if (tiledAirport.icao == airport.icao) {
+          fullAirport = tiledAirport;
+          debugPrint('Found matching airport in tiles: ${tiledAirport.icao} - ${tiledAirport.name}');
+        } else {
+          debugPrint('No matching airport found for ${airport.icao} in ${airports.length} loaded airports');
+        }
+      } catch (e) {
+        // Failed to load full data, continue with partial data
+      }
+    }
     // debugPrint('_onAirportSelected called for ${airport.icao} - ${airport.name}');
 
     // If in flight planning mode and panel is visible, add airport as waypoint instead of showing details
     if (_flightPlanService.isPlanning && _showFlightPlanning) {
       // debugPrint('Flight planning mode active - adding airport as waypoint');
-      _flightPlanService.addAirportWaypoint(airport);
+      _flightPlanService.addAirportWaypoint(fullAirport);
       // debugPrint('Added airport waypoint: ${airport.icao} - ${airport.name}');
       return;
     }
@@ -2252,7 +2329,7 @@ class MapScreenState extends State<MapScreen>
         context: context,
         isScrollControlled: true,
         builder: (BuildContext context) => AirportInfoSheet(
-          airport: airport,
+          airport: fullAirport,
           weatherService: _weatherService,
           onClose: () {
             // debugPrint('Closing bottom sheet for ${airport.icao}');
@@ -2277,6 +2354,9 @@ class MapScreenState extends State<MapScreen>
   void _onAirportSelectedFromSearch(Airport airport) {
     // Close the search dialog first
     Navigator.of(context).pop();
+    
+    // Debug logging
+    print('Selected airport from search: ${airport.icao} - ${airport.name} (type: ${airport.type})');
     
     // Focus map on the selected airport
     _mapController.move(
@@ -2326,14 +2406,81 @@ class MapScreenState extends State<MapScreen>
     // Show airport info sheet
     _onAirportSelected(airport);
   }
+  
+  // Handle navaid selection from search
+  void _onNavaidSelectedFromSearch(Navaid navaid) {
+    // Close the search dialog first
+    Navigator.of(context).pop();
+    
+    // Focus map on the selected navaid
+    _mapController.move(
+      navaid.position,
+      14.0, // Zoom level for navaid focus
+    );
+
+    // Handle auto-centering state the same way as manual map movement
+    if (_autoCenteringEnabled && _positionTrackingEnabled) {
+      setState(() {
+        _autoCenteringEnabled = false;
+      });
+      // Cancel any existing timer
+      _autoCenteringTimer?.cancel();
+      _countdownTimer?.cancel();
+      
+      // Handle differently based on tracking mode
+      if (_flightService.isTracking) {
+        // During flight tracking, re-enable after 3 minutes
+        _startAutoCenteringCountdown();
+      } else if (_positionTrackingEnabled) {
+        // During position tracking (without flight tracking), re-enable after delay
+        _startAutoCenteringCountdown();
+      }
+    }
+
+    // Load data for the new area
+    _loadAirports();
+    // Load navaids if they're enabled
+    if (_mapStateController.showNavaids) {
+      _loadNavaids();
+    }
+    // Load airspaces and reporting points if they're enabled
+    if (_mapStateController.showAirspaces) {
+      _loadAirspaces();
+      _loadReportingPoints();
+    }
+    // Load weather data for new airports if METAR overlay is enabled
+    if (_mapStateController.showMetar) {
+      _loadWeatherForVisibleAirports();
+    }
+    
+    // If in flight planning mode, add navaid as waypoint
+    if (_flightPlanService.isPlanning && _showFlightPlanning) {
+      _flightPlanService.addNavaidWaypoint(navaid);
+    }
+  }
 
   // Show airport search
-  void _showAirportSearch() {
+  void _showAirportSearch() async {
+    // Load navaids for a wider area around the current map center before showing search
+    final center = _mapController.camera.center;
+    const searchRadius = 2.0; // degrees - wider area for search
+    
+    await _navaidService.loadNavaidsForArea(
+      minLat: center.latitude - searchRadius,
+      maxLat: center.latitude + searchRadius,
+      minLon: center.longitude - searchRadius,
+      maxLon: center.longitude + searchRadius,
+    );
+    
+    if (!mounted) return;
+    
     showDialog(
       context: context,
       builder: (context) => AirportSearchDialog(
         airportService: _airportService,
+        navaidService: _navaidService,
         onAirportSelected: _onAirportSelectedFromSearch,
+        onNavaidSelected: _onNavaidSelectedFromSearch,
       ),
     );
   }
@@ -3021,70 +3168,72 @@ class MapScreenState extends State<MapScreen>
                       _startAutoCenteringCountdown();
                     }
                   }
+                }
 
-                  // Use frame-aware scheduler for staggered loading
-                  final scheduler = FrameAwareScheduler();
-                  
-                  // Load airports first (highest priority)
+                // Always load data when map position changes (regardless of gesture)
+                // This ensures data loads on initial map setup and programmatic moves
+                // Use frame-aware scheduler for staggered loading
+                final scheduler = FrameAwareScheduler();
+                
+                // Load airports first (highest priority)
+                scheduler.scheduleOperation(
+                  id: 'load_airports',
+                  operation: _loadAirports,
+                  debounce: const Duration(milliseconds: 300),
+                  highPriority: true,
+                );
+                
+                // Load navaids with delay
+                if (_mapStateController.showNavaids) {
                   scheduler.scheduleOperation(
-                    id: 'load_airports',
-                    operation: _loadAirports,
-                    debounce: const Duration(milliseconds: 300),
-                    highPriority: true,
-                  );
-                  
-                  // Load navaids with delay
-                  if (_mapStateController.showNavaids) {
-                    scheduler.scheduleOperation(
-                      id: 'load_navaids',
-                      operation: _loadNavaids,
-                      debounce: const Duration(milliseconds: 600),
-                    );
-                  }
-                  
-                  // Reporting points with more delay
-                  if (_mapStateController.showAirspaces) {
-                    scheduler.scheduleOperation(
-                      id: 'load_reporting_points',
-                      operation: _loadReportingPoints,
-                      debounce: const Duration(milliseconds: 800),
-                    );
-                  }
-                  
-                  // Obstacles with delay
-                  if (_mapStateController.showObstacles) {
-                    scheduler.scheduleOperation(
-                      id: 'load_obstacles',
-                      operation: _loadObstacles,
-                      debounce: const Duration(milliseconds: 900),
-                    );
-                  }
-                  
-                  // Hotspots with delay  
-                  if (_mapStateController.showHotspots) {
-                    scheduler.scheduleOperation(
-                      id: 'load_hotspots',
-                      operation: _loadHotspots,
-                      debounce: const Duration(milliseconds: 950),
-                    );
-                  }
-                  
-                  // Weather data with even more delay
-                  if (_mapStateController.showMetar) {
-                    scheduler.scheduleOperation(
-                      id: 'load_weather',
-                      operation: _loadWeatherForVisibleAirports,
-                      debounce: const Duration(milliseconds: 1000),
-                    );
-                  }
-                  
-                  // NOTAMs with lowest priority
-                  scheduler.scheduleOperation(
-                    id: 'prefetch_notams',
-                    operation: _schedulePrefetchVisibleAirportNotams,
-                    debounce: const Duration(milliseconds: 1500),
+                    id: 'load_navaids',
+                    operation: _loadNavaids,
+                    debounce: const Duration(milliseconds: 600),
                   );
                 }
+                
+                // Reporting points with more delay
+                if (_mapStateController.showAirspaces) {
+                  scheduler.scheduleOperation(
+                    id: 'load_reporting_points',
+                    operation: _loadReportingPoints,
+                    debounce: const Duration(milliseconds: 800),
+                  );
+                }
+                
+                // Obstacles with delay
+                if (_mapStateController.showObstacles) {
+                  scheduler.scheduleOperation(
+                    id: 'load_obstacles',
+                    operation: _loadObstacles,
+                    debounce: const Duration(milliseconds: 900),
+                  );
+                }
+                
+                // Hotspots with delay  
+                if (_mapStateController.showHotspots) {
+                  scheduler.scheduleOperation(
+                    id: 'load_hotspots',
+                    operation: _loadHotspots,
+                    debounce: const Duration(milliseconds: 950),
+                  );
+                }
+                
+                // Weather data with even more delay
+                if (_mapStateController.showMetar) {
+                  scheduler.scheduleOperation(
+                    id: 'load_weather',
+                    operation: _loadWeatherForVisibleAirports,
+                    debounce: const Duration(milliseconds: 1000),
+                  );
+                }
+                
+                // NOTAMs with lowest priority
+                scheduler.scheduleOperation(
+                  id: 'prefetch_notams',
+                  operation: _schedulePrefetchVisibleAirportNotams,
+                  debounce: const Duration(milliseconds: 1500),
+                );
               },
             ),
             children: [
@@ -3130,16 +3279,18 @@ class MapScreenState extends State<MapScreen>
               // Airport markers with tap handling (optimized)
               Consumer<SettingsService>(
                 builder: (context, settings, child) {
+                  final filteredAirports = _airports.where((airport) {
+                    // Filter heliports and balloonports based on toggle
+                    if ((airport.type == 'heliport' || airport.type == 'balloonport') && !_mapStateController.showHeliports) {
+                      return false;
+                    }
+                    // Small airports are always shown (filtered by zoom level automatically)
+                    // Show medium and large airports always, and show small airports/heliports based on toggles
+                    return true;
+                  }).toList();
+                  
                   return OptimizedAirportMarkersLayer(
-                    airports: _airports.where((airport) {
-                      // Filter heliports and balloonports based on toggle
-                      if ((airport.type == 'heliport' || airport.type == 'balloonport') && !_mapStateController.showHeliports) {
-                        return false;
-                      }
-                      // Small airports are always shown (filtered by zoom level automatically)
-                      // Show medium and large airports always, and show small airports/heliports based on toggles
-                      return true;
-                    }).toList(),
+                    airports: filteredAirports,
                     airportRunways: _airportRunways,
                     onAirportTap: _onAirportSelected,
                     showHeliports: _mapStateController.showHeliports,
@@ -3469,6 +3620,14 @@ class MapScreenState extends State<MapScreen>
                         tooltip: 'Toggle Heliports',
                         isActive: _mapStateController.showHeliports,
                         onPressed: _toggleHeliports,
+                      ),
+                      _buildLayerToggle(
+                        icon: _mapStateController.showNavaids
+                            ? Icons.navigation
+                            : Icons.navigation_outlined,
+                        tooltip: 'Toggle Navaids (VOR/NDB)',
+                        isActive: _mapStateController.showNavaids,
+                        onPressed: _toggleNavaids,
                       ),
                       _buildLayerToggle(
                         icon: _mapStateController.showMetar

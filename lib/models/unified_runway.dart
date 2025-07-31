@@ -135,7 +135,7 @@ class UnifiedRunway {
       lengthFt: lengthFt,
       widthFt: widthFt,
       surface: surface,
-      lighted: true, // OpenAIP doesn't provide this, assume lighted
+      lighted: data['pilotCtrlLighting'] as bool? ?? false, // Use actual lighting data
       closed: false, // Assume open unless marked otherwise
       leIdent: leIdent,
       leLatitude: data['le_latitude'] as double?,
@@ -163,9 +163,39 @@ class UnifiedRunway {
     final leIdent = parts.isNotEmpty ? parts[0] : '';
     final heIdent = parts.length > 1 ? parts[1] : '';
     
-    // Calculate headings from identifiers (optimized)
-    final leHeading = RunwayUtils.getHeadingFromDesignator(leIdent);
-    final heHeading = RunwayUtils.getHeadingFromDesignator(heIdent);
+    // Use actual heading if available, otherwise calculate from identifiers
+    final leHeading = runway.trueHeading?.toDouble() ?? 
+                      RunwayUtils.getHeadingFromDesignator(leIdent);
+    final heHeading = leHeading != null ? (leHeading + 180) % 360 : 
+                      RunwayUtils.getHeadingFromDesignator(heIdent);
+    
+    // Calculate runway end positions if we have airport position and runway length
+    double? leLatitude = airportLat;
+    double? leLongitude = airportLon;
+    double? heLatitude;
+    double? heLongitude;
+    
+    if (airportLat != null && airportLon != null && runway.lengthM != null && leHeading != null) {
+      // Calculate runway endpoints from center
+      // Assuming airport position is roughly at runway center
+      const metersPerDegreeLat = 111319.0;
+      final metersPerDegreeLon = 111319.0 * math.cos(airportLat * (math.pi / 180));
+      
+      final halfLengthM = runway.lengthM! / 2.0;
+      final headingRad = leHeading * (math.pi / 180);
+      
+      // Calculate LE position (half runway length backwards from center)
+      final leOffsetN = -halfLengthM * math.cos(headingRad) / metersPerDegreeLat;
+      final leOffsetE = -halfLengthM * math.sin(headingRad) / metersPerDegreeLon;
+      leLatitude = airportLat + leOffsetN;
+      leLongitude = airportLon + leOffsetE;
+      
+      // Calculate HE position (half runway length forward from center)
+      final heOffsetN = halfLengthM * math.cos(headingRad) / metersPerDegreeLat;
+      final heOffsetE = halfLengthM * math.sin(headingRad) / metersPerDegreeLon;
+      heLatitude = airportLat + heOffsetN;
+      heLongitude = airportLon + heOffsetE;
+    }
     
     return UnifiedRunway(
       airportIdent: airportIdent,
@@ -173,16 +203,16 @@ class UnifiedRunway {
       lengthFt: runway.lengthFt,
       widthFt: runway.widthFt,
       surface: runway.surfaceDescription,
-      lighted: true, // Assume lighted
+      lighted: runway.pilotCtrlLighting ?? false, // Use actual lighting data, default to false if unknown
       closed: false, // Assume open
       leIdent: leIdent,
-      leLatitude: airportLat, // Use airport position as fallback
-      leLongitude: airportLon,
+      leLatitude: leLatitude,
+      leLongitude: leLongitude,
       leElevationFt: null,
       leHeadingDegT: leHeading,
       heIdent: heIdent,
-      heLatitude: null,
-      heLongitude: null,
+      heLatitude: heLatitude,
+      heLongitude: heLongitude,
       heElevationFt: null,
       heHeadingDegT: heHeading,
       dataSource: 'openaip_simple',
@@ -277,6 +307,36 @@ class UnifiedRunway {
       hasPosition && 
       leHeadingDegT != null && 
       lengthFt > 0;
+  
+  /// Get formatted surface description
+  String get surfaceDescription {
+    switch (surface.toLowerCase()) {
+      case 'asp':
+      case 'asph':
+        return 'Asphalt';
+      case 'con':
+      case 'conc':
+        return 'Concrete';
+      case 'grs':
+      case 'grass':
+        return 'Grass';
+      case 'grv':
+      case 'gravel':
+        return 'Gravel';
+      case 'dirt':
+        return 'Dirt';
+      case 'sand':
+        return 'Sand';
+      case 'water':
+        return 'Water';
+      case 'bit':
+        return 'Bituminous';
+      case 'tar':
+        return 'Tarmac';
+      default:
+        return surface.isNotEmpty ? surface : 'Unknown';
+    }
+  }
   
   /// Convert to OurAirports Runway format
   Runway toRunway() {

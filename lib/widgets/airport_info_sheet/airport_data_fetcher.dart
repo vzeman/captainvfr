@@ -1,6 +1,7 @@
-// import 'dart:developer' show log;
+// import 'dart:developer' as developer;
 import '../../models/airport.dart';
 import '../../models/runway.dart';
+import '../../models/unified_runway.dart';
 import '../../models/frequency.dart';
 import '../../services/weather_service.dart';
 import '../../services/runway_service.dart';
@@ -44,16 +45,18 @@ class AirportDataFetcher {
       return;
     }
 
+    String? finalMetar;
+    String? finalTaf;
+
     // Always show cached data first if available
     final cachedMetar = weatherService.getCachedMetar(airport.icao);
     final cachedTaf = weatherService.getCachedTaf(airport.icao);
 
     if (cachedMetar != null) {
-      airport.updateWeather(cachedMetar);
+      finalMetar = cachedMetar;
     }
     if (cachedTaf != null) {
-      airport.taf = cachedTaf;
-      airport.lastWeatherUpdate = DateTime.now().toUtc();
+      finalTaf = cachedTaf;
     }
 
     // Fetch weather data (this will return cached data immediately and trigger reload if needed)
@@ -61,16 +64,50 @@ class AirportDataFetcher {
     final taf = await weatherService.getTaf(airport.icao);
 
     if (metar != null) {
-      airport.updateWeather(metar);
+      finalMetar = metar;
     }
     if (taf != null) {
-      airport.taf = taf;
-      airport.lastWeatherUpdate = DateTime.now().toUtc();
+      finalTaf = taf;
+    }
+
+    // Batch all updates into a single operation to minimize widget rebuilds
+    if (finalMetar != null || finalTaf != null) {
+      // Use a deferred update to avoid buildScope issues
+      Future.microtask(() {
+        if (finalMetar != null) {
+          airport.updateWeather(finalMetar);
+        }
+        if (finalTaf != null && finalTaf != finalMetar) {
+          airport.taf = finalTaf;
+          airport.lastWeatherUpdate = DateTime.now().toUtc();
+        }
+      });
     }
   }
 
   Future<List<Runway>> fetchRunways(Airport airport) async {
-    // For tiled data, we need to load the area around the airport first
+    // First check if the airport already has runway data from embedded sources
+    if (airport.runways != null && airport.runways!.isNotEmpty) {
+      // Convert embedded runway data directly
+      final embeddedRunways = <Runway>[];
+      final openAIPRunways = airport.openAIPRunways;
+      
+      if (openAIPRunways.isNotEmpty) {
+        // Convert OpenAIP runways to Runway objects
+        for (final openAIPRunway in openAIPRunways) {
+          final unified = UnifiedRunway.fromOpenAIPRunway(
+            openAIPRunway,
+            airport.icao,
+            airportLat: airport.position.latitude,
+            airportLon: airport.position.longitude,
+          );
+          embeddedRunways.add(unified.toRunway());
+        }
+        return embeddedRunways;
+      }
+    }
+    
+    // Otherwise, load from runway service
     const buffer = 0.5; // degrees - small buffer around airport
     await runwayService.loadRunwaysForArea(
       minLat: airport.position.latitude - buffer,
@@ -79,10 +116,75 @@ class AirportDataFetcher {
       maxLon: airport.position.longitude + buffer,
     );
     
-    return runwayService.getRunwaysForAirport(airport.icao);
+    // Don't pass OpenAIP runways to avoid duplication
+    return runwayService.getRunwaysForAirport(
+      airport.icao,
+      openAIPRunways: null, // Don't pass embedded runways to avoid duplication
+      airportLat: airport.position.latitude,
+      airportLon: airport.position.longitude,
+    );
+  }
+  
+  Future<List<UnifiedRunway>> fetchUnifiedRunways(Airport airport) async {
+    // First check if the airport already has runway data from embedded sources
+    if (airport.runways != null && airport.runways!.isNotEmpty) {
+      final openAIPRunways = airport.openAIPRunways;
+      
+      if (openAIPRunways.isNotEmpty) {
+        // Convert OpenAIP runways to UnifiedRunway objects
+        return openAIPRunways.map((openAIPRunway) => UnifiedRunway.fromOpenAIPRunway(
+          openAIPRunway,
+          airport.icao,
+          airportLat: airport.position.latitude,
+          airportLon: airport.position.longitude,
+        )).toList();
+      }
+    }
+    
+    // Otherwise, load from runway service
+    const buffer = 0.5; // degrees - small buffer around airport
+    await runwayService.loadRunwaysForArea(
+      minLat: airport.position.latitude - buffer,
+      maxLat: airport.position.latitude + buffer,
+      minLon: airport.position.longitude - buffer,
+      maxLon: airport.position.longitude + buffer,
+    );
+    
+    // Don't pass OpenAIP runways to avoid duplication
+    return runwayService.getUnifiedRunwaysForAirport(
+      airport.icao,
+      openAIPRunways: null, // Don't pass embedded runways to avoid duplication
+      airportLat: airport.position.latitude,
+      airportLon: airport.position.longitude,
+    );
   }
 
   Future<List<Frequency>> fetchFrequencies(Airport airport) async {
+    // First check if the airport already has frequency data from TiledDataLoader
+    if (airport.frequencies != null && airport.frequencies!.isNotEmpty) {
+      // Convert embedded frequency data to Frequency objects
+      final embeddedFrequencies = <Frequency>[];
+      
+      for (final freqData in airport.frequenciesList) {
+        final freqMhz = double.tryParse(freqData['frequency_mhz']?.toString() ?? '') ?? 0.0;
+        
+        if (freqMhz > 0) {
+          final frequency = Frequency(
+            id: 0,
+            airportIdent: airport.icao,
+            type: freqData['type']?.toString() ?? '',
+            description: freqData['description']?.toString(),
+            frequencyMhz: freqMhz,
+          );
+          embeddedFrequencies.add(frequency);
+        }
+      }
+      
+      if (embeddedFrequencies.isNotEmpty) {
+        return embeddedFrequencies;
+      }
+    }
+    
     // For tiled data, we need to load the area around the airport first
     const buffer = 0.5; // degrees - small buffer around airport
     await frequencyService.loadFrequenciesForArea(
@@ -98,6 +200,20 @@ class AirportDataFetcher {
     List<Frequency> frequencies = frequencyService.getFrequenciesForAirport(
       airport.icao,
     );
+    
+    // Convert numeric frequency types to readable names for external service frequencies
+    frequencies = frequencies.map((freq) {
+      if (RegExp(r'^\d+$').hasMatch(freq.type)) {
+        return Frequency(
+          id: freq.id,
+          airportIdent: freq.airportIdent,
+          type: _convertFrequencyType(freq.type),
+          description: freq.description,
+          frequencyMhz: freq.frequencyMhz,
+        );
+      }
+      return freq;
+    }).toList();
     // log('📻 Found ${frequencies.length} frequencies for ICAO: ${airport.icao}');
 
     // Debug: Show some sample frequencies if we have any in the service
@@ -112,7 +228,18 @@ class AirportDataFetcher {
           .toList();
       // log('🔧 DEBUG: Case-insensitive match found: ${matchingFreqs.length} frequencies');
       if (matchingFreqs.isNotEmpty) {
-        frequencies = matchingFreqs;
+        frequencies = matchingFreqs.map((freq) {
+          if (RegExp(r'^\d+$').hasMatch(freq.type)) {
+            return Frequency(
+              id: freq.id,
+              airportIdent: freq.airportIdent,
+              type: _convertFrequencyType(freq.type),
+              description: freq.description,
+              frequencyMhz: freq.frequencyMhz,
+            );
+          }
+          return freq;
+        }).toList();
       }
     }
 
@@ -126,7 +253,19 @@ class AirportDataFetcher {
       );
       // log('📻 Found ${iataFrequencies.length} frequencies with IATA code');
       if (iataFrequencies.isNotEmpty) {
-        frequencies = [...frequencies, ...iataFrequencies];
+        final convertedIataFreqs = iataFrequencies.map((freq) {
+          if (RegExp(r'^\d+$').hasMatch(freq.type)) {
+            return Frequency(
+              id: freq.id,
+              airportIdent: freq.airportIdent,
+              type: _convertFrequencyType(freq.type),
+              description: freq.description,
+              frequencyMhz: freq.frequencyMhz,
+            );
+          }
+          return freq;
+        }).toList();
+        frequencies = [...frequencies, ...convertedIataFreqs];
       }
     }
 
@@ -140,7 +279,19 @@ class AirportDataFetcher {
       );
       // log('📻 Found ${localFrequencies.length} frequencies with local code');
       if (localFrequencies.isNotEmpty) {
-        frequencies = [...frequencies, ...localFrequencies];
+        final convertedLocalFreqs = localFrequencies.map((freq) {
+          if (RegExp(r'^\d+$').hasMatch(freq.type)) {
+            return Frequency(
+              id: freq.id,
+              airportIdent: freq.airportIdent,
+              type: _convertFrequencyType(freq.type),
+              description: freq.description,
+              frequencyMhz: freq.frequencyMhz,
+            );
+          }
+          return freq;
+        }).toList();
+        frequencies = [...frequencies, ...convertedLocalFreqs];
       }
     }
 
@@ -154,7 +305,19 @@ class AirportDataFetcher {
       );
       // log('📻 Found ${gpsFrequencies.length} frequencies with GPS code');
       if (gpsFrequencies.isNotEmpty) {
-        frequencies = [...frequencies, ...gpsFrequencies];
+        final convertedGpsFreqs = gpsFrequencies.map((freq) {
+          if (RegExp(r'^\d+$').hasMatch(freq.type)) {
+            return Frequency(
+              id: freq.id,
+              airportIdent: freq.airportIdent,
+              type: _convertFrequencyType(freq.type),
+              description: freq.description,
+              frequencyMhz: freq.frequencyMhz,
+            );
+          }
+          return freq;
+        }).toList();
+        frequencies = [...frequencies, ...convertedGpsFreqs];
       }
     }
 
@@ -171,5 +334,29 @@ class AirportDataFetcher {
     // }
 
     return frequencies;
+  }
+  
+  // Convert OpenAIP frequency type codes to readable types
+  String _convertFrequencyType(String type) {
+    // OpenAIP frequency type codes (based on common aviation frequencies)
+    switch (type) {
+      case '0': return 'NORCAL APP';  // Approach Control (NORCAL for San Francisco area)
+      case '1': return 'AWOS';
+      case '2': return 'AWIB';
+      case '3': return 'AWIS';
+      case '4': return 'CTAF';
+      case '5': return 'MULTICOM';
+      case '6': return 'UNICOM';
+      case '7': return 'DELIVERY';
+      case '8': return 'GROUND';
+      case '9': return 'TOWER';
+      case '10': return 'APPROACH';
+      case '11': return 'DEPARTURE';
+      case '12': return 'CENTER';
+      case '13': return 'FSS';
+      case '14': return 'CLEARANCE';
+      case '15': return 'ATIS';        // ATIS Information
+      default: return type; // Return original if not a known numeric code
+    }
   }
 }
