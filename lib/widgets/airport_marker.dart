@@ -76,94 +76,130 @@ class AirportMarker extends StatelessWidget {
       }
     }
 
+    // Determine if label should be shown based on zoom
+    final shouldShowLabel = showLabel && mapZoom >= 11;
+    final fontSize = mapZoom >= 12 ? 11.0 : 9.0;
+
     return GestureDetector(
       onTap: () {
         onTap?.call();
       },
       child: Center(
-        child: Stack(
-          alignment: Alignment.center,
-          clipBehavior: Clip.none,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Runway visualization (behind the marker)
-            if (mapZoom >= GeoConstants.minZoomForRunways)
-              if (runways != null && runways!.isNotEmpty)
-                Positioned(
-                  child: UnifiedRunwayVisualization(
-                    runways: runways!,
-                    airportIdent: airport.icao,
-                    zoom: mapZoom,
-                    size: runwayVisualizationSize,
-                    runwayColor: isSelected ? Colors.amber : Colors.black87,
-                    latitude: airport.position.latitude,
-                    longitude: airport.position.longitude,
-                    distanceUnit: distanceUnit,
-                  ),
-                )
-              else if (airport.openAIPRunways.isNotEmpty)
-                Positioned(
-                  child: UnifiedRunwayVisualization(
-                    openAIPRunways: airport.openAIPRunways,
-                    airportIdent: airport.icao,
-                    zoom: mapZoom,
-                    size: runwayVisualizationSize,
-                    runwayColor: isSelected ? Colors.amber : Colors.black87,
-                    latitude: airport.position.latitude,
-                    longitude: airport.position.longitude,
-                    distanceUnit: distanceUnit,
+            Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                // Runway visualization (behind the marker)
+                if (mapZoom >= GeoConstants.minZoomForRunways)
+                  if (runways != null && runways!.isNotEmpty)
+                    Positioned(
+                      child: UnifiedRunwayVisualization(
+                        runways: runways!,
+                        airportIdent: airport.icao,
+                        zoom: mapZoom,
+                        size: runwayVisualizationSize,
+                        runwayColor: isSelected ? Colors.amber : Colors.black87,
+                        latitude: airport.position.latitude,
+                        longitude: airport.position.longitude,
+                        distanceUnit: distanceUnit,
+                      ),
+                    )
+                  else if (airport.openAIPRunways.isNotEmpty)
+                    Positioned(
+                      child: UnifiedRunwayVisualization(
+                        openAIPRunways: airport.openAIPRunways,
+                        airportIdent: airport.icao,
+                        zoom: mapZoom,
+                        size: runwayVisualizationSize,
+                        runwayColor: isSelected ? Colors.amber : Colors.black87,
+                        latitude: airport.position.latitude,
+                        longitude: airport.position.longitude,
+                        distanceUnit: distanceUnit,
+                      ),
+                    ),
+                
+                // Main marker
+                OverflowBox(
+                  // Allow the marker to visually overflow its bounds
+                  maxWidth: visualSize,
+                  maxHeight: visualSize,
+                  child: Container(
+                    width: visualSize,
+                    height: visualSize,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.amber.withValues(alpha: 0.2)
+                          : Colors.white.withValues(alpha: 0.9),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: borderColor, width: borderWidth),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0x33000000),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: airport.type == 'heliport' 
+                        ? Center(
+                            child: Container(
+                              width: visualSize * 0.6,
+                              height: visualSize * 0.6,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'H',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: visualSize * 0.3,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        : airport.type == 'balloonport'
+                        ? Center(
+                            child: Icon(Icons.air, size: visualSize * 0.5, color: color),
+                          )
+                        : Icon(icon, size: visualSize * 0.6, color: color),
                   ),
                 ),
-            
-            // Main marker
-            OverflowBox(
-              // Allow the marker to visually overflow its bounds
-              maxWidth: visualSize,
-              maxHeight: visualSize,
-              child: Container(
-                width: visualSize,
-                height: visualSize,
+              ],
+            ),
+            // Show label when zoomed in enough
+            if (shouldShowLabel)
+              Container(
+                margin: const EdgeInsets.only(top: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? Colors.amber.withValues(alpha: 0.2)
-                      : Colors.white.withValues(alpha: 0.9),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: borderColor, width: borderWidth),
+                  color: Colors.white.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(4),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0x33000000),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
                     ),
                   ],
                 ),
-                child: airport.type == 'heliport' 
-                    ? Center(
-                        child: Container(
-                          width: visualSize * 0.6,
-                          height: visualSize * 0.6,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              'H',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: visualSize * 0.3,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      )
-                    : airport.type == 'balloonport'
-                    ? Center(
-                        child: Icon(Icons.air, size: visualSize * 0.5, color: color),
-                      )
-                    : Icon(icon, size: visualSize * 0.6, color: color),
+                child: Text(
+                  airport.icao.isNotEmpty ? airport.icao : airport.name,
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
           ],
         ),
       ),

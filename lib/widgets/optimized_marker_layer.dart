@@ -255,11 +255,17 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
     
     // Don't increase marker bounds for runway visualization
     // Keep markers small when runways are visible to avoid overlap
+    
+    // Calculate marker dimensions with label space
+    final showLabel = showLabels && currentZoom >= 11;
+    final labelHeight = showLabel ? 25.0 : 0; // Extra height for label
+    final markerHeight = maxMarkerSize + labelHeight;
+    final markerWidth = showLabel ? 100.0 : maxMarkerSize; // Wider for label text
 
     return OptimizedMarkerLayer(
       markerPositions: positions,
-      markerWidth: maxMarkerSize,
-      markerHeight: maxMarkerSize,
+      markerWidth: markerWidth,
+      markerHeight: markerHeight,
       markerBuilder: (index, position) {
         final airport = visibleAirports[index];
         
@@ -328,11 +334,17 @@ class OptimizedNavaidMarkersLayer extends StatelessWidget {
     // Calculate dynamic marker size based on zoom level
     // Same sizing as reporting points: smaller when zoomed out, larger when zoomed in
     final dynamicMarkerSize = currentZoom >= 12 ? 20.0 : 14.0;
+    
+    // Calculate marker dimensions with label space
+    final showLabel = showLabels && currentZoom >= 11;
+    final labelHeight = showLabel ? 25.0 : 0; // Extra height for label
+    final markerHeight = dynamicMarkerSize + labelHeight;
+    final markerWidth = showLabel ? 80.0 : dynamicMarkerSize; // Wider for label text
 
     return OptimizedMarkerLayer(
       markerPositions: positions,
-      markerWidth: dynamicMarkerSize,
-      markerHeight: dynamicMarkerSize,
+      markerWidth: markerWidth,
+      markerHeight: markerHeight,
       markerBuilder: (index, position) {
         final navaid = navaids[index];
         return NavaidMarker(
