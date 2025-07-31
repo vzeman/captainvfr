@@ -29,7 +29,7 @@ class NavaidMarker extends StatelessWidget {
     // Visual size of the marker based on zoom
     // Use the size parameter which is already adjusted for zoom
     final visualSize = size;
-    
+
     // Determine if label should be shown based on zoom
     final shouldShowLabel = mapZoom >= 11;
     final fontSize = mapZoom >= 12 ? 11.0 : 9.0;

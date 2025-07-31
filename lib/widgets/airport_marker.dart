@@ -38,7 +38,8 @@ class AirportMarker extends StatelessWidget {
 
 
     // The visual size of the marker based on zoom
-    final visualSize = size;
+    // Ensure minimum size to prevent NaN errors
+    final visualSize = size > 0 ? size : 24.0;
 
     // Calculate runway visualization size based on actual runway dimensions
     double runwayVisualizationSize = 0.0;
@@ -62,23 +63,29 @@ class AirportMarker extends StatelessWidget {
       }
       
       // Set size based on longest runway
-      if (maxLengthM > 0) {
+      if (maxLengthM > 0 && metersPerPixel > 0) {
         // Calculate pixel size for runway visualization
         // Add small buffer (1.05) for visual clarity
         final calculatedSize = (maxLengthM / metersPerPixel) * 1.05;
         
-        // Ensure minimum size for visibility
-        // At zoom 10+, use actual calculated size without minimum to prevent overlap
-        // At lower zooms, enforce minimum size for visibility
-        runwayVisualizationSize = mapZoom >= 10 ? calculatedSize : math.max(visualSize * 1.5, calculatedSize);
+        // Ensure the size is valid (not NaN or infinite)
+        if (calculatedSize.isFinite && calculatedSize > 0) {
+          // Ensure minimum size for visibility
+          // At zoom 10+, use actual calculated size without minimum to prevent overlap
+          // At lower zooms, enforce minimum size for visibility
+          runwayVisualizationSize = mapZoom >= 10 ? calculatedSize : math.max(visualSize * 1.5, calculatedSize);
+        } else {
+          runwayVisualizationSize = visualSize * 3.5; // Default size
+        }
       } else {
         runwayVisualizationSize = visualSize * 3.5; // Default size
       }
     }
 
     // Determine if label should be shown based on zoom
-    final shouldShowLabel = showLabel && mapZoom >= 11;
-    final fontSize = mapZoom >= 12 ? 11.0 : 9.0;
+    // Show labels only between zoom levels 4 and 10 AND only if airport has ICAO code
+    final shouldShowLabel = showLabel && mapZoom >= 4 && mapZoom <= 10 && airport.icao.isNotEmpty;
+    final fontSize = mapZoom >= 8 ? 11.0 : 9.0;
 
     return GestureDetector(
       onTap: () {
@@ -87,63 +94,58 @@ class AirportMarker extends StatelessWidget {
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            // Stack for marker and runway visualization
             Stack(
               alignment: Alignment.center,
               clipBehavior: Clip.none,
               children: [
                 // Runway visualization (behind the marker)
-                if (mapZoom >= GeoConstants.minZoomForRunways)
+                if (mapZoom >= GeoConstants.minZoomForRunways && runwayVisualizationSize > 0)
                   if (runways != null && runways!.isNotEmpty)
-                    Positioned(
-                      child: UnifiedRunwayVisualization(
-                        runways: runways!,
-                        airportIdent: airport.icao,
-                        zoom: mapZoom,
-                        size: runwayVisualizationSize,
-                        runwayColor: isSelected ? Colors.amber : Colors.black87,
-                        latitude: airport.position.latitude,
-                        longitude: airport.position.longitude,
-                        distanceUnit: distanceUnit,
-                      ),
+                    UnifiedRunwayVisualization(
+                      runways: runways!,
+                      airportIdent: airport.icao,
+                      zoom: mapZoom,
+                      size: runwayVisualizationSize,
+                      runwayColor: isSelected ? Colors.amber : Colors.black87,
+                      latitude: airport.position.latitude,
+                      longitude: airport.position.longitude,
+                      distanceUnit: distanceUnit,
                     )
                   else if (airport.openAIPRunways.isNotEmpty)
-                    Positioned(
-                      child: UnifiedRunwayVisualization(
-                        openAIPRunways: airport.openAIPRunways,
-                        airportIdent: airport.icao,
-                        zoom: mapZoom,
-                        size: runwayVisualizationSize,
-                        runwayColor: isSelected ? Colors.amber : Colors.black87,
-                        latitude: airport.position.latitude,
-                        longitude: airport.position.longitude,
-                        distanceUnit: distanceUnit,
-                      ),
+                    UnifiedRunwayVisualization(
+                      openAIPRunways: airport.openAIPRunways,
+                      airportIdent: airport.icao,
+                      zoom: mapZoom,
+                      size: runwayVisualizationSize,
+                      runwayColor: isSelected ? Colors.amber : Colors.black87,
+                      latitude: airport.position.latitude,
+                      longitude: airport.position.longitude,
+                      distanceUnit: distanceUnit,
                     ),
                 
                 // Main marker
-                OverflowBox(
-                  // Allow the marker to visually overflow its bounds
-                  maxWidth: visualSize,
-                  maxHeight: visualSize,
-                  child: Container(
-                    width: visualSize,
-                    height: visualSize,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? Colors.amber.withValues(alpha: 0.2)
-                          : Colors.white.withValues(alpha: 0.9),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: borderColor, width: borderWidth),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0x33000000),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: airport.type == 'heliport' 
+                Container(
+                  width: visualSize,
+                  height: visualSize,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.amber.withValues(alpha: 0.2)
+                        : Colors.white.withValues(alpha: 0.9),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: borderColor, width: borderWidth),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0x33000000),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: airport.type == 'heliport' 
                         ? Center(
                             child: Container(
                               width: visualSize * 0.6,
@@ -169,7 +171,6 @@ class AirportMarker extends StatelessWidget {
                             child: Icon(Icons.air, size: visualSize * 0.5, color: color),
                           )
                         : Icon(icon, size: visualSize * 0.6, color: color),
-                  ),
                 ),
               ],
             ),

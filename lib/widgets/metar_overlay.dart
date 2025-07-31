@@ -82,15 +82,17 @@ class MetarOverlay extends StatelessWidget {
     return Marker(
       point: airport.position,
       width: 120, // Width for wind label
-      height: 80, // Height to position below airport marker
+      height: 80, // Height to position above airport marker
       child: GestureDetector(
         onTap: () => onAirportTap?.call(airport),
-        child: Padding(
-          padding: EdgeInsets.only(top: 30), // Offset to position below airport marker
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+        child: Align(
+          alignment: Alignment.bottomCenter, // Align to bottom so it appears above marker
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 30), // Offset to position above airport marker
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
               // Wind direction arrow - scales with zoom
               Container(
                 width: iconContainerSize,
@@ -132,6 +134,7 @@ class MetarOverlay extends StatelessWidget {
             ),
             ],
           ),
+        ),
         ),
       ),
     );

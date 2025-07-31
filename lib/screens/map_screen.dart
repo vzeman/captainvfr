@@ -3295,6 +3295,7 @@ class MapScreenState extends State<MapScreen>
                     onAirportTap: _onAirportSelected,
                     showHeliports: _mapStateController.showHeliports,
                     distanceUnit: settings.distanceUnit,
+                    showLabels: true,
                   );
                 },
               ),
@@ -3303,6 +3304,7 @@ class MapScreenState extends State<MapScreen>
                 OptimizedNavaidMarkersLayer(
                   navaids: _navaids,
                   onNavaidTap: _onNavaidSelected,
+                  showLabels: true,
                 ),
               // METAR overlay
               if (_mapStateController.showMetar)

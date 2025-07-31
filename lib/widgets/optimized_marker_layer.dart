@@ -12,6 +12,7 @@ import 'airport_marker.dart';
 import 'navaid_marker.dart';
 import 'obstacle_marker.dart';
 import 'hotspot_marker.dart';
+import '../utils/geo_constants.dart';
 
 /// An optimized marker layer that only builds markers within the visible bounds
 class OptimizedMarkerLayer extends StatelessWidget {
@@ -257,15 +258,57 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
     // Keep markers small when runways are visible to avoid overlap
     
     // Calculate marker dimensions with label space
-    final showLabel = showLabels && currentZoom >= 11;
-    final labelHeight = showLabel ? 25.0 : 0; // Extra height for label
-    final markerHeight = maxMarkerSize + labelHeight;
-    final markerWidth = showLabel ? 100.0 : maxMarkerSize; // Wider for label text
+    // Labels are shown only between zoom levels 4 and 10
+    final showLabelNow = showLabels && currentZoom >= 4 && currentZoom <= 10;
+    // Need to account for runway visualization size which can be larger than marker
+    double maxWidth = maxMarkerSize;
+    double maxHeight = maxMarkerSize;
+    
+    // At high zoom with runways visible, account for runway size
+    if (currentZoom >= GeoConstants.minZoomForRunways) {
+      // Calculate maximum runway visualization size for visible airports
+      double maxRunwaySize = 0;
+      for (final airport in visibleAirports) {
+        final runwayData = airportRunways?[airport.icao];
+        if (runwayData != null && runwayData.isNotEmpty || airport.openAIPRunways.isNotEmpty) {
+          final metersPerPixel = GeoConstants.metersPerPixel(airport.position.latitude, currentZoom);
+          double maxLengthM = 0;
+          
+          if (runwayData != null && runwayData.isNotEmpty) {
+            for (final runway in runwayData) {
+              final lengthM = runway.lengthFt * GeoConstants.metersPerFoot;
+              if (lengthM > maxLengthM) maxLengthM = lengthM;
+            }
+          } else if (airport.openAIPRunways.isNotEmpty) {
+            for (final runway in airport.openAIPRunways) {
+              final lengthM = runway.lengthM?.toDouble() ?? 0;
+              if (lengthM > maxLengthM) maxLengthM = lengthM;
+            }
+          }
+          
+          if (maxLengthM > 0) {
+            final runwaySize = (maxLengthM / metersPerPixel) * 1.05;
+            if (runwaySize > maxRunwaySize) maxRunwaySize = runwaySize;
+          }
+        }
+      }
+      
+      if (maxRunwaySize > 0) {
+        maxWidth = maxRunwaySize;
+        maxHeight = maxRunwaySize;
+      }
+    }
+    
+    // Add label space
+    if (showLabelNow) {
+      maxHeight += 25.0; // Extra height for label
+      maxWidth = maxWidth < 100.0 ? 100.0 : maxWidth; // Ensure minimum width for label
+    }
 
     return OptimizedMarkerLayer(
       markerPositions: positions,
-      markerWidth: markerWidth,
-      markerHeight: markerHeight,
+      markerWidth: maxWidth,
+      markerHeight: maxHeight,
       markerBuilder: (index, position) {
         final airport = visibleAirports[index];
         
@@ -284,19 +327,15 @@ class OptimizedAirportMarkersLayer extends StatelessWidget {
         }
         
 
-        return SizedBox(
-          width: markerWidth,
-          height: markerHeight,
-          child: AirportMarker(
-            airport: airport,
-            runways: airportRunways?[airport.icao],
-            onTap: onAirportTap != null ? () => onAirportTap!(airport) : null,
-            size: airportMarkerSize,
-            showLabel: showLabels,
-            isSelected: false,
-            mapZoom: currentZoom,
-            distanceUnit: distanceUnit,
-          ),
+        return AirportMarker(
+          airport: airport,
+          runways: airportRunways?[airport.icao],
+          onTap: onAirportTap != null ? () => onAirportTap!(airport) : null,
+          size: airportMarkerSize,
+          showLabel: showLabels,
+          isSelected: false,
+          mapZoom: currentZoom,
+          distanceUnit: distanceUnit,
         );
       },
     );
@@ -340,10 +379,11 @@ class OptimizedNavaidMarkersLayer extends StatelessWidget {
     final dynamicMarkerSize = currentZoom >= 12 ? 20.0 : 14.0;
     
     // Calculate marker dimensions with label space
-    final showLabel = showLabels && currentZoom >= 11;
-    final labelHeight = showLabel ? 25.0 : 0; // Extra height for label
+    // Labels are shown only between zoom levels 4 and 10
+    final showLabelNow = showLabels && currentZoom >= 4 && currentZoom <= 10;
+    final labelHeight = showLabelNow ? 25.0 : 0; // Extra height for label
     final markerHeight = dynamicMarkerSize + labelHeight;
-    final markerWidth = showLabel ? 80.0 : dynamicMarkerSize; // Wider for label text
+    final markerWidth = showLabelNow ? 80.0 : dynamicMarkerSize; // Wider for label text
 
     return OptimizedMarkerLayer(
       markerPositions: positions,
@@ -351,15 +391,11 @@ class OptimizedNavaidMarkersLayer extends StatelessWidget {
       markerHeight: markerHeight,
       markerBuilder: (index, position) {
         final navaid = navaids[index];
-        return SizedBox(
-          width: markerWidth,
-          height: markerHeight,
-          child: NavaidMarker(
-            navaid: navaid,
-            onTap: onNavaidTap != null ? () => onNavaidTap!(navaid) : null,
-            size: dynamicMarkerSize,
-            mapZoom: currentZoom,
-          ),
+        return NavaidMarker(
+          navaid: navaid,
+          onTap: onNavaidTap != null ? () => onNavaidTap!(navaid) : null,
+          size: dynamicMarkerSize,
+          mapZoom: currentZoom,
         );
       },
     );
@@ -421,63 +457,60 @@ class OptimizedReportingPointsLayer extends StatelessWidget {
 
     return GestureDetector(
       onTap: () => onReportingPointTap?.call(point),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: markerSize,
+            height: markerSize,
+            decoration: BoxDecoration(
+              color: _getPointColor(point.type).withValues(alpha: 0.9),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Icon(
+                _getPointIcon(point.type),
+                size: iconSize,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          // Show name label when zoomed in
+          if (showLabel)
             Container(
-              width: markerSize,
-              height: markerSize,
+              margin: const EdgeInsets.only(top: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
-                color: _getPointColor(point.type).withValues(alpha: 0.9),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
+                color: Colors.white.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(4),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
                   ),
                 ],
               ),
-              child: Center(
-                child: Icon(
-                  _getPointIcon(point.type),
-                  size: iconSize,
-                  color: Colors.white,
+              child: Text(
+                point.name,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            // Show name label when zoomed in
-            if (showLabel)
-              Container(
-                margin: const EdgeInsets.only(top: 2),
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(4),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 2,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
-                ),
-                child: Text(
-                  point.name,
-                  style: TextStyle(
-                    fontSize: fontSize,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }
