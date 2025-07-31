@@ -96,7 +96,6 @@ class NavaidMarker extends StatelessWidget {
                 ),
                 child: Semantics(
                   label: 'Navigation aid ${navaid.ident} ${navaid.name}',
-                  textScaleFactor: fontSize < MapMarkerConstants.minReadableFontSize ? 1.5 : 1.0,
                   child: Text(
                     navaid.ident,
                     style: TextStyle(
@@ -106,6 +105,9 @@ class NavaidMarker extends StatelessWidget {
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    textScaler: TextScaler.linear(
+                      fontSize < MapMarkerConstants.minReadableFontSize ? 1.5 : 1.0
+                    ),
                   ),
                 ),
               ),
