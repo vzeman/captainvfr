@@ -32,7 +32,7 @@ class NavaidMarker extends StatelessWidget {
 
     // Determine if label should be shown based on zoom
     final shouldShowLabel = mapZoom >= 11;
-    final fontSize = mapZoom >= 12 ? 11.0 : 9.0;
+    final fontSize = mapZoom >= 12 ? 8.25 : 6.75;
 
     return GestureDetector(
       onTap: onTap,
