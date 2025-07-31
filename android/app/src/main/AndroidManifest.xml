@@ -29,6 +29,9 @@
     
     <!-- Vibration permission -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    
+    <!-- Google Advertising ID permission -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
     <application
         android:label="Captain VFR"
         android:name="${applicationName}"
