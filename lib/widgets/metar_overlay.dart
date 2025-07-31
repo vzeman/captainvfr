@@ -88,14 +88,18 @@ class MetarOverlay extends StatelessWidget {
     // Calculate base offset based on the larger of airport marker or runway visualization
     final baseOffset = math.max(airportMarkerSize, runwayVisualizationSize) / 2;
     
-    // Add extra offset for lower zoom levels to ensure clear separation
-    final zoomAdjustment = zoom < 10 ? 30.0 : 20.0;
+    // Add significant extra offset for lower zoom levels to ensure clear separation
+    double zoomAdjustment;
+    if (zoom < 8) {
+      zoomAdjustment = 60.0;  // Very far zoom - need lots of space
+    } else if (zoom < 10) {
+      zoomAdjustment = 45.0;  // Far zoom - need good separation
+    } else {
+      zoomAdjustment = 25.0;  // Close zoom - smaller offset needed
+    }
     
     // Dynamic bottom padding: account for marker size + zoom adjustment + buffer
-    final dynamicBottomPadding = math.max(
-      MapMarkerConstants.windInfoMinBottomPadding,
-      baseOffset + zoomAdjustment + 20
-    );
+    final dynamicBottomPadding = baseOffset + zoomAdjustment + 15;
     
     // Dynamic height to accommodate the positioning
     final dynamicHeight = dynamicBottomPadding + 50;
@@ -180,23 +184,12 @@ class MetarOverlay extends StatelessWidget {
 
   /// Calculate airport marker size based on type and zoom
   double _getAirportMarkerSize(Airport airport, double zoom) {
-    // Base marker size calculation (matching airport_marker.dart logic)
-    double baseSize;
-    if (zoom >= 14) {
-      baseSize = 16.0 + (zoom - 14) * 2.0;
-    } else if (zoom >= 10) {
-      baseSize = 16.0;
-    } else if (zoom >= 8) {
-      baseSize = 24.0 - (zoom - 8) * 4.0;
-    } else if (zoom >= 5) {
-      baseSize = 15.0 + (zoom - 5) * 3.0;
-    } else {
-      baseSize = 15.0;
-    }
+    // Match the actual airport marker sizes from AirportMarkersLayer
+    final baseSize = zoom >= 10 ? 16.0 : 30.0;
     
     // Adjust for airport type
-    if (airport.type == 'small_airport') {
-      return baseSize * 0.7;
+    if (airport.type == 'small_airport' || airport.type == 'balloonport') {
+      return baseSize * 0.75;
     } else if (airport.type == 'heliport') {
       return baseSize * 0.8;
     } else if (airport.type == 'medium_airport') {
