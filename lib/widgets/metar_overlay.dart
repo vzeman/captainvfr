@@ -91,15 +91,15 @@ class MetarOverlay extends StatelessWidget {
     // Add significant extra offset for lower zoom levels to ensure clear separation
     double zoomAdjustment;
     if (zoom < 8) {
-      zoomAdjustment = 60.0;  // Very far zoom - need lots of space
+      zoomAdjustment = 75.0;  // Very far zoom - need lots of space
     } else if (zoom < 10) {
-      zoomAdjustment = 45.0;  // Far zoom - need good separation
+      zoomAdjustment = 60.0;  // Far zoom - need good separation
     } else {
-      zoomAdjustment = 25.0;  // Close zoom - smaller offset needed
+      zoomAdjustment = 35.0;  // Close zoom - smaller offset needed
     }
     
     // Dynamic bottom padding: account for marker size + zoom adjustment + buffer
-    final dynamicBottomPadding = baseOffset + zoomAdjustment + 15;
+    final dynamicBottomPadding = baseOffset + zoomAdjustment + 20;
     
     // Dynamic height to accommodate the positioning
     final dynamicHeight = dynamicBottomPadding + 50;
