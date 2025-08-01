@@ -74,6 +74,7 @@ class HeadingService extends ChangeNotifier {
                 now.difference(_lastCompassUpdate!).inMilliseconds > 
                 FlightConstants.compassThrottleInterval.inMilliseconds) {
               _lastCompassUpdate = now;
+              debugPrint('HeadingService: Heading updated to ${event.heading?.toStringAsFixed(1)}°');
               notifyListeners();
             }
           }
