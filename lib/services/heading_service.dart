@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_compass/flutter_compass.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'flight/models/flight_constants.dart';
 
 /// Service that provides always-on heading data independent from flight tracking
@@ -19,25 +20,40 @@ class HeadingService extends ChangeNotifier {
   // Service state
   bool _isInitialized = false;
   bool _isRunning = false;
+  bool _hasError = false;
+  String? _errorMessage;
   
   // Getters
   double? get currentHeading => _currentHeading;
   bool get isInitialized => _isInitialized;
   bool get isRunning => _isRunning;
   bool get hasCompass => _compassSubscription != null;
+  bool get hasError => _hasError;
+  String? get errorMessage => _errorMessage;
   
   /// Initialize the heading service
   Future<void> initialize() async {
     if (_isInitialized) return;
     
     try {
+      // Check compass permissions first
+      if (!await _checkCompassPermissions()) {
+        _hasError = true;
+        _errorMessage = 'Compass permission denied';
+        _isInitialized = true;
+        debugPrint('❌ HeadingService: Compass permission denied');
+        return;
+      }
+      
       // Start compass immediately upon initialization
       await startHeadingUpdates();
       _isInitialized = true;
       debugPrint('✅ HeadingService initialized successfully');
     } catch (e) {
       debugPrint('❌ HeadingService initialization failed: $e');
-      _isInitialized = true; // Mark as initialized even if failed to avoid retry loops
+      _hasError = true;
+      _errorMessage = e.toString();
+      _isInitialized = true; // Mark as initialized to avoid retry loops
     }
   }
   
@@ -119,6 +135,26 @@ class HeadingService extends ChangeNotifier {
     if (heading >= 292.5 && heading < 337.5) return 'NW';
     
     return '---';
+  }
+
+  /// Check if compass permissions are available
+  Future<bool> _checkCompassPermissions() async {
+    try {
+      // On iOS and Android, location permission is often required for compass
+      if (Platform.isIOS || Platform.isAndroid) {
+        final status = await Permission.locationWhenInUse.status;
+        if (status.isDenied) {
+          final result = await Permission.locationWhenInUse.request();
+          return result.isGranted;
+        }
+        return status.isGranted;
+      }
+      // For other platforms (macOS, Windows, etc.), assume available
+      return true;
+    } catch (e) {
+      debugPrint('❌ Error checking compass permissions: $e');
+      return false;
+    }
   }
   
   @override

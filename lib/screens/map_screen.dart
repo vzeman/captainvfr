@@ -180,6 +180,7 @@ class MapScreenState extends State<MapScreen>
 
   // Location and map state
   Position? _currentPosition;
+  double? _cachedHeading; // Cache current heading to avoid repeated property access
   List<LatLng> _flightPathPoints = [];
   List<flight_seg.FlightSegment> _flightSegments = [];
   List<Airport> _airports = [];
@@ -429,16 +430,16 @@ class MapScreenState extends State<MapScreen>
           }
         } else if (!_flightService.isTracking && _currentPosition != null) {
           // When not tracking, still update heading from HeadingService for always-on heading
-          final currentHeading = _headingService.currentHeading;
-          if (currentHeading != null &&
-              (_currentPosition!.heading - currentHeading).abs() > 1.0) {
+          _updateCachedHeading();
+          if (_cachedHeading != null &&
+              (_currentPosition!.heading - _cachedHeading!).abs() > 1.0) {
             _currentPosition = Position(
               latitude: _currentPosition!.latitude,
               longitude: _currentPosition!.longitude,
               timestamp: _currentPosition!.timestamp,
               accuracy: _currentPosition!.accuracy,
               altitude: _currentPosition!.altitude,
-              heading: currentHeading,
+              heading: _cachedHeading!,
               speed: _currentPosition!.speed,
               speedAccuracy: _currentPosition!.speedAccuracy,
               altitudeAccuracy: _currentPosition!.altitudeAccuracy,
@@ -448,6 +449,13 @@ class MapScreenState extends State<MapScreen>
         }
       });
     }
+  }
+
+  /// Update cached heading to avoid repeated property accesses
+  void _updateCachedHeading() {
+    final headingServiceHeading = _headingService.currentHeading;
+    final flightServiceHeading = _flightService.currentHeading;
+    _cachedHeading = headingServiceHeading ?? flightServiceHeading;
   }
 
   // Handle flight plan updates from the flight plan service
@@ -902,12 +910,12 @@ class MapScreenState extends State<MapScreen>
           
           // Handle different map rotation modes
           if (_flightService.isTracking && settings.mapRotationMode == MapRotationMode.mapRotates) {
-            final currentHeading = _headingService.currentHeading ?? _flightService.currentHeading;
-            if (currentHeading != null) {
+            _updateCachedHeading();
+            if (_cachedHeading != null) {
               _mapController.moveAndRotate(
                 LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
                 MapConstants.initialZoom,
-                -currentHeading,
+                -_cachedHeading!,
               );
             } else {
               _mapController.move(
@@ -3504,7 +3512,8 @@ class MapScreenState extends State<MapScreen>
                   builder: (context, settings, child) {
                     // Calculate aircraft marker rotation based on map rotation mode
                     double markerRotation;
-                    final currentHeading = _headingService.currentHeading ?? _currentPosition?.heading ?? 0;
+                    _updateCachedHeading();
+                    final currentHeading = _cachedHeading ?? _currentPosition?.heading ?? 0;
                     
                     switch (settings.mapRotationMode) {
                       case MapRotationMode.mapRotates:
