@@ -84,10 +84,10 @@ class HeatmapPainter extends CustomPainter {
       ..blendMode = BlendMode.multiply;
 
     for (final cell in cells) {
-      final center = mapCamera.latLngToScreenPoint(cell.center);
+      final center = mapCamera.latLngToScreenOffset(cell.center);
       
-      if (center.x < -50 || center.x > size.width + 50 ||
-          center.y < -50 || center.y > size.height + 50) {
+      if (center.dx < -50 || center.dx > size.width + 50 ||
+          center.dy < -50 || center.dy > size.height + 50) {
         continue;
       }
 
@@ -105,14 +105,14 @@ class HeatmapPainter extends CustomPainter {
       );
 
       final rect = Rect.fromCircle(
-        center: Offset(center.x, center.y),
+        center: center,
         radius: radius,
       );
 
       paint.shader = gradient.createShader(rect);
       
       canvas.drawCircle(
-        Offset(center.x, center.y),
+        center,
         radius,
         paint,
       );
@@ -145,27 +145,5 @@ class HeatmapPainter extends CustomPainter {
     return cells != oldDelegate.cells ||
            mapCamera != oldDelegate.mapCamera ||
            opacity != oldDelegate.opacity;
-  }
-}
-
-class HeatmapOverlay extends StatelessWidget {
-  final List<HeatmapCell> cells;
-  final double opacity;
-
-  const HeatmapOverlay({
-    super.key,
-    required this.cells,
-    this.opacity = 0.6,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return OverlayLayerWidget(
-      options: OverlayLayerOptions(),
-      child: OptimizedHeatmapLayer(
-        opacity: opacity,
-        enabled: cells.isNotEmpty,
-      ),
-    );
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:latlong2/latlong.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:hive/hive.dart';
 import '../models/flight.dart';
 import '../models/flight_point.dart';
@@ -53,7 +54,7 @@ class FlightHeatmapProcessor {
   }
 
   static void _updateHeatmapCells(Flight flight, bool isRemoval) {
-    if (flight.flightPoints.isEmpty) return;
+    if (flight.path.isEmpty) return;
 
     for (final entry in _gridSizes.entries) {
       final zoomLevel = entry.key;
@@ -70,7 +71,7 @@ class FlightHeatmapProcessor {
   static Set<String> _getCellsForFlight(Flight flight, double gridSize) {
     final cells = <String>{};
     
-    for (final point in flight.flightPoints) {
+    for (final point in flight.path) {
       final cellId = _getCellId(point.latitude, point.longitude, gridSize);
       cells.add(cellId);
     }

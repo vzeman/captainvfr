@@ -1,4 +1,5 @@
 import 'package:latlong2/latlong.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:hive/hive.dart';
 
 part 'heatmap_cell.g.dart';
