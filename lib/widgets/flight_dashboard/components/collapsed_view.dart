@@ -132,25 +132,31 @@ class CollapsedView extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.navigation,
-                        color: headingService.currentHeading != null 
-                            ? Colors.blueAccent 
-                            : Colors.grey,
-                        size: iconSize,
+                      Builder(
+                        builder: (context) {
+                          final hasHeading = headingService.currentHeading != null;
+                          return Icon(
+                            Icons.navigation,
+                            color: hasHeading ? Colors.blueAccent : Colors.grey,
+                            size: iconSize,
+                          );
+                        },
                       ),
                       SizedBox(width: spacing),
                       Flexible(
-                        child: Text(
-                          headingService.getFormattedHeading(),
-                          style: TextStyle(
-                            color: headingService.currentHeading != null 
-                                ? Colors.white 
-                                : Colors.grey,
-                            fontSize: fontSize,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                        child: Builder(
+                          builder: (context) {
+                            final hasHeading = headingService.currentHeading != null;
+                            return Text(
+                              headingService.getFormattedHeading(),
+                              style: TextStyle(
+                                color: hasHeading ? Colors.white : Colors.grey,
+                                fontSize: fontSize,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          },
                         ),
                       ),
                     ],
