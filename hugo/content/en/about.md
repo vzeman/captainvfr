@@ -85,8 +85,6 @@ Founded by a group of passionate aviators who experienced firsthand the challeng
 - **Free**: No barriers to entry for safety-critical tools
 - **User-friendly**: Intuitive enough for students, powerful enough for professionals
 
-Today, CaptainVFR serves thousands of pilots across the globe, from student pilots planning their first cross-country flights to experienced aviators exploring new horizons.
-
 
 {{< features-three-column
   heading="Meet the Team"
