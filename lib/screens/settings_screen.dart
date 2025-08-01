@@ -1401,4 +1401,72 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
       ),
     );
   }
+
+  /// Apply unit preset combinations to reduce code duplication
+  static Future<void> _applyUnitPreset(SettingsService settings, String preset) async {
+    await settings.setUnits(preset);
+    
+    switch (preset) {
+      case 'european_aviation':
+        await settings.setAltitudeUnit('ft');
+        await settings.setDistanceUnit('km');
+        await settings.setSpeedUnit('kt');
+        await settings.setTemperatureUnit('C');
+        await settings.setWeightUnit('kg');
+        await settings.setFuelUnit('L');
+        await settings.setWindUnit('kt');
+        await settings.setPressureUnit('hPa');
+        break;
+      case 'us_general_aviation':
+        await settings.setAltitudeUnit('ft');
+        await settings.setDistanceUnit('nm');
+        await settings.setSpeedUnit('kt');
+        await settings.setTemperatureUnit('F');
+        await settings.setWeightUnit('lbs');
+        await settings.setFuelUnit('gal');
+        await settings.setWindUnit('kt');
+        await settings.setPressureUnit('inHg');
+        break;
+      case 'metric_preference':
+        await settings.setAltitudeUnit('m');
+        await settings.setDistanceUnit('km');
+        await settings.setSpeedUnit('km/h');
+        await settings.setTemperatureUnit('C');
+        await settings.setWeightUnit('kg');
+        await settings.setFuelUnit('L');
+        await settings.setWindUnit('km/h');
+        await settings.setPressureUnit('hPa');
+        break;
+      case 'mixed_international':
+        await settings.setAltitudeUnit('ft');
+        await settings.setDistanceUnit('nm');
+        await settings.setSpeedUnit('kt');
+        await settings.setTemperatureUnit('C');
+        await settings.setWeightUnit('kg');
+        await settings.setFuelUnit('L');
+        await settings.setWindUnit('kt');
+        await settings.setPressureUnit('hPa');
+        break;
+      case 'metric':
+        await settings.setAltitudeUnit('m');
+        await settings.setDistanceUnit('km');
+        await settings.setSpeedUnit('km/h');
+        await settings.setTemperatureUnit('C');
+        await settings.setWeightUnit('kg');
+        await settings.setFuelUnit('L');
+        await settings.setWindUnit('km/h');
+        await settings.setPressureUnit('hPa');
+        break;
+      case 'imperial':
+        await settings.setAltitudeUnit('ft');
+        await settings.setDistanceUnit('nm');
+        await settings.setSpeedUnit('kt');
+        await settings.setTemperatureUnit('C');
+        await settings.setWeightUnit('lbs');
+        await settings.setFuelUnit('gal');
+        await settings.setWindUnit('kt');
+        await settings.setPressureUnit('inHg');
+        break;
+    }
+  }
 }
