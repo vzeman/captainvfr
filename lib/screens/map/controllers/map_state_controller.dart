@@ -34,6 +34,7 @@ class MapStateController extends ChangeNotifier {
   bool _showAirspaces = true;  // Default to showing airspaces
   bool _showObstacles = false;
   bool _showHotspots = false;
+  bool _showHeatmap = false;  // Flight tracking heatmap (default OFF)
 
   // Getters
   Position? get currentPosition => _currentPosition;
@@ -52,6 +53,7 @@ class MapStateController extends ChangeNotifier {
   bool get showAirspaces => _showAirspaces;
   bool get showObstacles => _showObstacles;
   bool get showHotspots => _showHotspots;
+  bool get showHeatmap => _showHeatmap;
 
   // Update current position
   void updatePosition(Position position) {
@@ -105,6 +107,11 @@ class MapStateController extends ChangeNotifier {
 
   void toggleHotspots() {
     _showHotspots = !_showHotspots;
+    notifyListeners();
+  }
+
+  void toggleHeatmap() {
+    _showHeatmap = !_showHeatmap;
     notifyListeners();
   }
 
