@@ -357,6 +357,7 @@ class MapScreenState extends State<MapScreen>
   void _setupFlightServiceListener() {
     _flightService.addListener(_onFlightPathUpdated);
     _flightPlanService.addListener(_onFlightPlanUpdated);
+    _headingService.addListener(_onHeadingUpdated);
   }
 
   // Handle flight path updates from the flight service
@@ -454,6 +455,51 @@ class MapScreenState extends State<MapScreen>
     final headingServiceHeading = _headingService.currentHeading;
     final flightServiceHeading = _flightService.currentHeading;
     _cachedHeading = headingServiceHeading ?? flightServiceHeading;
+  }
+
+  /// Handle heading updates from HeadingService
+  void _onHeadingUpdated() {
+    if (!mounted) return;
+    
+    // Update cached heading
+    _updateCachedHeading();
+    debugPrint('MapScreen: Heading updated to ${_cachedHeading?.toStringAsFixed(1)}°, tracking: ${_flightService.isTracking}, position tracking: $_positionTrackingEnabled');
+    
+    // Always update position with new heading if we have a position
+    if (_currentPosition != null && _cachedHeading != null) {
+      // Skip if flight is tracking (flight service handles updates in that case)
+      if (_flightService.isTracking) return;
+      
+      setState(() {
+        // Update the current position with new heading
+        _currentPosition = Position(
+          latitude: _currentPosition!.latitude,
+          longitude: _currentPosition!.longitude,
+          timestamp: _currentPosition!.timestamp,
+          accuracy: _currentPosition!.accuracy,
+          altitude: _currentPosition!.altitude,
+          heading: _cachedHeading!,
+          speed: _currentPosition!.speed,
+          speedAccuracy: _currentPosition!.speedAccuracy,
+          altitudeAccuracy: _currentPosition!.altitudeAccuracy,
+          headingAccuracy: _currentPosition!.headingAccuracy,
+        );
+      });
+      
+      // Read current settings to ensure we use the latest value
+      final settingsService = context.read<SettingsService>();
+      
+      // Update map rotation if position tracking is enabled and auto-centering is on
+      if (_positionTrackingEnabled && _autoCenteringEnabled && !_hasInputFocus) {
+        if (settingsService.mapRotationMode == MapRotationMode.mapRotates) {
+          _mapController.moveAndRotate(
+            LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+            _mapController.camera.zoom,
+            -_cachedHeading!,
+          );
+        }
+      }
+    }
   }
 
   // Handle flight plan updates from the flight plan service
@@ -722,6 +768,7 @@ class MapScreenState extends State<MapScreen>
     
     _flightService.removeListener(_onFlightPathUpdated);
     _flightPlanService.removeListener(_onFlightPlanUpdated);
+    _headingService.removeListener(_onHeadingUpdated);
     _cacheService.removeListener(_onCacheUpdated);
     _debounceTimer?.cancel();
     _airspaceDebounceTimer?.cancel();
@@ -1516,10 +1563,28 @@ class MapScreenState extends State<MapScreen>
         _autoCenteringTimer?.cancel();
         _countdownTimer?.cancel();
 
-        _mapController.move(
-          LatLng(position.latitude, position.longitude),
-          _mapController.camera.zoom,
-        );
+        // Handle different map rotation modes
+        final settingsService = context.read<SettingsService>();
+        switch (settingsService.mapRotationMode) {
+          case MapRotationMode.mapRotates:
+            // Update cached heading from HeadingService
+            _updateCachedHeading();
+            final heading = _cachedHeading ?? position.heading;
+            _mapController.moveAndRotate(
+              LatLng(position.latitude, position.longitude),
+              _mapController.camera.zoom,
+              -heading,
+            );
+            break;
+          case MapRotationMode.aircraftRotates:
+          case MapRotationMode.none:
+          default:
+            _mapController.move(
+              LatLng(position.latitude, position.longitude),
+              _mapController.camera.zoom,
+            );
+            break;
+        }
         _loadAirports();
       }
     } catch (e) {
@@ -1575,10 +1640,13 @@ class MapScreenState extends State<MapScreen>
         // Handle different map rotation modes
         switch (settingsService.mapRotationMode) {
           case MapRotationMode.mapRotates:
+            // Update cached heading from HeadingService
+            _updateCachedHeading();
+            final heading = _cachedHeading ?? position.heading;
             _mapController.moveAndRotate(
               LatLng(position.latitude, position.longitude),
               _mapController.camera.zoom,
-              -position.heading,
+              -heading,
             );
             break;
           case MapRotationMode.aircraftRotates:
@@ -3499,14 +3567,18 @@ class MapScreenState extends State<MapScreen>
                     
                     switch (settings.mapRotationMode) {
                       case MapRotationMode.mapRotates:
-                        // Map rotates, aircraft marker always points north (no rotation)
-                        markerRotation = 0;
+                        // Map rotates, aircraft needs to compensate for map rotation
+                        // Get current map rotation and adjust aircraft icon
+                        final mapRotation = _mapController.camera.rotation;
+                        // Subtract 90 degrees to correct for aircraft icon orientation
+                        markerRotation = (currentHeading - mapRotation - 90) * math.pi / 180;
                         break;
                       case MapRotationMode.aircraftRotates:
                       case MapRotationMode.none:
                       default:
                         // Map fixed north-up, aircraft marker rotates to show heading
-                        markerRotation = currentHeading * math.pi / 180;
+                        // Subtract 90 degrees to correct for aircraft icon orientation
+                        markerRotation = (currentHeading - 90) * math.pi / 180;
                         break;
                     }
                     
