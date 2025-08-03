@@ -3887,10 +3887,10 @@ class MapScreenState extends State<MapScreen>
           
           ],
 
-          // Menu button in top-left corner
+          // Menu button in top-right corner
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
-            left: 16,
+            right: 16,
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.9),
@@ -4257,8 +4257,8 @@ class MapScreenState extends State<MapScreen>
         
         // Responsive toggle buttons layout
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: 4,
+          runSpacing: 4,
           children: [
             _buildMenuToggleButton(
               icon: FontAwesomeIcons.helicopter,
@@ -4369,7 +4369,31 @@ class MapScreenState extends State<MapScreen>
           ),
         ),
         const SizedBox(height: 12),
-        
+        _buildMenuItem(
+          icon: Icons.search,
+          label: 'Search',
+          onPressed: () {
+            _mapStateController.closeMenuPanel();
+            _showAirportSearch();
+          },
+        ),
+        _buildMenuItem(
+          icon: _positionTrackingEnabled ? Icons.my_location : Icons.location_searching,
+          label: 'Center',
+          onPressed: () {
+            _mapStateController.closeMenuPanel();
+            _togglePositionTracking();
+          },
+        ),
+        _buildMenuItem(
+          icon: _mapStateController.showStats ? Icons.dashboard : Icons.dashboard_outlined,
+          label: 'Flight',
+          onPressed: () {
+            _mapStateController.closeMenuPanel();
+            _toggleStats();
+          },
+        ),
+
         _buildMenuItem(
           icon: Icons.flight_takeoff,
           label: 'Flight Log',
@@ -4400,7 +4424,7 @@ class MapScreenState extends State<MapScreen>
         ),
         _buildMenuItem(
           icon: Icons.route,
-          label: 'Flight Plans',
+          label: 'Planning',
           onPressed: () {
             _mapStateController.closeMenuPanel();
             _pauseAllTimers();
@@ -4428,7 +4452,7 @@ class MapScreenState extends State<MapScreen>
         ),
         _buildMenuItem(
           icon: Icons.airplanemode_active,
-          label: 'Aircraft Settings',
+          label: 'Aircrafts',
           onPressed: () {
             _mapStateController.closeMenuPanel();
             _pauseAllTimers();
@@ -4470,7 +4494,7 @@ class MapScreenState extends State<MapScreen>
         ),
         _buildMenuItem(
           icon: Icons.language,
-          label: 'Visit www.captainvfr.com',
+          label: 'www.captainvfr.com',
           onPressed: () {
             _mapStateController.closeMenuPanel();
             launchUrl(Uri.parse('https://www.captainvfr.com'));
@@ -4486,42 +4510,7 @@ class MapScreenState extends State<MapScreen>
         ),
         
         const SizedBox(height: 24),
-        
-        // Additional Controls Section
-        const Text(
-          'Controls',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        
-        _buildMenuItem(
-          icon: Icons.search,
-          label: 'Search Airports',
-          onPressed: () {
-            _mapStateController.closeMenuPanel();
-            _showAirportSearch();
-          },
-        ),
-        _buildMenuItem(
-          icon: _positionTrackingEnabled ? Icons.my_location : Icons.location_searching,
-          label: 'Position Tracking',
-          onPressed: () {
-            _mapStateController.closeMenuPanel();
-            _togglePositionTracking();
-          },
-        ),
-        _buildMenuItem(
-          icon: _mapStateController.showStats ? Icons.dashboard : Icons.dashboard_outlined,
-          label: 'Flight Dashboard',
-          onPressed: () {
-            _mapStateController.closeMenuPanel();
-            _toggleStats();
-          },
-        ),
+
       ],
     );
   }
@@ -4536,7 +4525,7 @@ class MapScreenState extends State<MapScreen>
       onTap: onPressed,
       borderRadius: AppTheme.defaultRadius,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: isActive 
               ? Colors.orange.withValues(alpha: 0.2)
@@ -4554,15 +4543,15 @@ class MapScreenState extends State<MapScreen>
           children: [
             Icon(
               icon,
-              size: 16,
+              size: 14,
               color: isActive ? Colors.orange : Colors.white,
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 4),
             Text(
               label,
               style: TextStyle(
                 color: isActive ? Colors.orange : Colors.white,
-                fontSize: 12,
+                fontSize: 10,
                 fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
               ),
             ),
