@@ -64,11 +64,22 @@ class FlightInfoTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Flight summary
-          Text(
-            'Flight Summary',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppColors.primaryTextColor,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Flight Summary',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppColors.primaryTextColor,
+                ),
+              ),
+              Text(
+                _formatDuration(flight.duration),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppColors.primaryAccent,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
 
@@ -276,14 +287,14 @@ class FlightInfoTab extends StatelessWidget {
                   Text(
                     'Total Moving',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.orange,
+                      color: AppColors.secondaryTextColor,
                     ),
                   ),
                   Text(
                     _formatDuration(flight.movingTime),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primaryTextColor,
+                      color: AppColors.primaryAccent,
                     ),
                   ),
                 ],
@@ -295,7 +306,280 @@ class FlightInfoTab extends StatelessWidget {
     );
   }
 
+  Widget _buildMovingSegmentsSection(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundColor,
+        borderRadius: AppTheme.extraLargeRadius,
+        border: Border.all(
+          color: AppColors.sectionBorderColor,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.timeline,
+                color: AppColors.primaryAccent,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Moving Segments (${flight.movingSegments.length})',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppColors.primaryAccent,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
 
+          // Moving segments list
+          ...flight.movingSegments.asMap().entries.map((entry) {
+            final index = entry.key;
+            final segment = entry.value;
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              child: GestureDetector(
+                onTap: () => onSegmentSelected(segment),
+                child: Container(
+                  padding: const EdgeInsets.all(12.0),
+                  decoration: BoxDecoration(
+                    color: selectedSegment == segment
+                        ? AppColors.sectionBackgroundColor
+                        : AppColors.backgroundColor,
+                    borderRadius: AppTheme.defaultRadius,
+                    border: Border.all(
+                      color: selectedSegment == segment
+                          ? AppColors.primaryAccent
+                          : AppColors.sectionBorderColor,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Segment ${index + 1}',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primaryTextColor,
+                                ),
+                          ),
+                          Text(
+                            segment.formattedDuration,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: AppColors.primaryAccent,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Started',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: AppColors.secondaryTextColor,
+                                    ),
+                              ),
+                              Text(
+                                segment.startZuluFormatted,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.primaryTextColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                'Stopped',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: AppColors.secondaryTextColor,
+                                    ),
+                              ),
+                              Text(
+                                segment.endZuluFormatted,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.primaryTextColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      // Enhanced flight data section
+                      const SizedBox(height: 12),
+                      _buildSegmentDetails(context, segment),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+
+          // Pause points summary
+          if (flight.pausePoints.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: AppColors.errorColor.withAlpha(51), // 0.2 opacity
+                borderRadius: AppTheme.defaultRadius,
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.pause_circle,
+                    color: AppColors.errorColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${flight.pausePoints.length} pause point${flight.pausePoints.length != 1 ? 's' : ''} recorded',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.primaryTextColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSegmentDetails(BuildContext context, MovingSegment segment) {
+    return Column(
+      children: [
+        // Speed and Heading Row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: _buildSegmentDataTile(
+                context,
+                'Avg Speed',
+                segment.formattedAverageSpeed,
+                Icons.speed,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildSegmentDataTile(
+                context,
+                'Heading',
+                segment.formattedHeading,
+                Icons.navigation,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // Distance and Altitude Change Row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: _buildSegmentDataTile(
+                context,
+                'Distance',
+                '${(segment.distance / 1000).toStringAsFixed(2)} km',
+                Icons.straighten,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildSegmentDataTile(
+                context,
+                'Alt Change',
+                segment.formattedAltitudeChange,
+                segment.altitudeChange >= 0
+                    ? Icons.trending_up
+                    : Icons.trending_down,
+                iconColor: segment.altitudeChange >= 0
+                    ? Colors.green
+                    : Colors.red,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // Altitude Details Row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: _buildSegmentDataTile(
+                context,
+                'Start Alt',
+                segment.formattedStartAltitude,
+                Icons.flight_takeoff,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildSegmentDataTile(
+                context,
+                'End Alt',
+                segment.formattedEndAltitude,
+                Icons.flight_land,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // Min/Max Altitude Row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: _buildSegmentDataTile(
+                context,
+                'Min Alt',
+                segment.formattedMinAltitude,
+                Icons.arrow_downward,
+                iconColor: Colors.orange,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildSegmentDataTile(
+                context,
+                'Max Alt',
+                segment.formattedMaxAltitude,
+                Icons.arrow_upward,
+                iconColor: Colors.blue,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
   Widget _buildTimeRow(
     BuildContext context,
@@ -334,7 +618,56 @@ class FlightInfoTab extends StatelessWidget {
     );
   }
 
-
+  Widget _buildSegmentDataTile(
+    BuildContext context,
+    String title,
+    String value,
+    IconData icon, {
+    Color? iconColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        color: AppColors.sectionBackgroundColor,
+        borderRadius: AppTheme.defaultRadius,
+        border: Border.all(
+          color: AppColors.sectionBorderColor,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 18,
+            color: iconColor ?? AppColors.secondaryTextColor,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.secondaryTextColor,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Flexible(
+            child: Text(
+              value,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryTextColor,
+              ),
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildInfoTile(
     BuildContext context, {
