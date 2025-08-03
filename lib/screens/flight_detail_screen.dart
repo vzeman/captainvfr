@@ -37,23 +37,34 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
     });
   }
 
-  /// Handles chart point selection with debouncing to improve performance.
-  /// Limits updates to approximately 60fps to prevent excessive re-renders.
+  /// Handles chart point selection with optional debouncing.
+  /// When debounce is 0, updates are immediate for smooth interaction.
   void _onChartPointSelected(int index) {
-    // Cancel any existing timer to debounce rapid touch events
+    // Cancel any existing timer
     _touchDebounce?.cancel();
-    _touchDebounce = Timer(
-      const Duration(milliseconds: FlightDetailConstants.touchDebounceMilliseconds),
-      () {
-        if (mounted) {
-          setState(() {
-            _selectedChartPointIndex = index;
-          });
-          // Update the map to show the marker at this point
-          _mapKey.currentState?.showMarkerAtIndex(index);
-        }
-      },
-    );
+    
+    if (FlightDetailConstants.touchDebounceMilliseconds == 0) {
+      // Immediate update for smooth interaction
+      if (mounted) {
+        setState(() {
+          _selectedChartPointIndex = index;
+        });
+        _mapKey.currentState?.showMarkerAtIndex(index);
+      }
+    } else {
+      // Debounced update for performance optimization
+      _touchDebounce = Timer(
+        const Duration(milliseconds: FlightDetailConstants.touchDebounceMilliseconds),
+        () {
+          if (mounted) {
+            setState(() {
+              _selectedChartPointIndex = index;
+            });
+            _mapKey.currentState?.showMarkerAtIndex(index);
+          }
+        },
+      );
+    }
   }
 
   /// Updates the map/chart split ratio based on vertical drag gesture.

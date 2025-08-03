@@ -18,7 +18,7 @@ class FlightDetailConstants {
   static const double markerBorderWidth = 2.0;
   
   // Animation and timing
-  static const int touchDebounceMilliseconds = 16; // ~60fps
+  static const int touchDebounceMilliseconds = 0; // No debounce for immediate response
   static const int mapFitDelayMilliseconds = 300;
   
   // Divider styling
