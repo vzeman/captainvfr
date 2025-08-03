@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/flight.dart';
@@ -11,6 +12,7 @@ import '../widgets/flight_detail/flight_info_tab.dart';
 import '../widgets/flight_detail/flight_segments_tab.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_theme.dart';
+import '../constants/flight_detail_constants.dart';
 
 class FlightDetailScreen extends StatefulWidget {
   final Flight flight;
@@ -23,10 +25,11 @@ class FlightDetailScreen extends StatefulWidget {
 
 class _FlightDetailScreenState extends State<FlightDetailScreen> {
   dynamic _selectedSegment; // Can be MovingSegment or FlightSegment
-  double _mapHeightFraction = 0.5; // Default 50/50 split
+  double _mapHeightFraction = FlightDetailConstants.defaultMapHeightFraction;
   bool _isDragging = false;
   final GlobalKey<FlightDetailMapState> _mapKey = GlobalKey<FlightDetailMapState>();
   int? _selectedChartPointIndex;
+  Timer? _touchDebounce;
 
   void _onSegmentSelected(dynamic segment) {
     setState(() {
@@ -34,20 +37,36 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
     });
   }
 
+  /// Handles chart point selection with debouncing to improve performance.
+  /// Limits updates to approximately 60fps to prevent excessive re-renders.
   void _onChartPointSelected(int index) {
-    setState(() {
-      _selectedChartPointIndex = index;
-    });
-    // Update the map to show the marker at this point
-    _mapKey.currentState?.showMarkerAtIndex(index);
+    // Cancel any existing timer to debounce rapid touch events
+    _touchDebounce?.cancel();
+    _touchDebounce = Timer(
+      const Duration(milliseconds: FlightDetailConstants.touchDebounceMilliseconds),
+      () {
+        if (mounted) {
+          setState(() {
+            _selectedChartPointIndex = index;
+          });
+          // Update the map to show the marker at this point
+          _mapKey.currentState?.showMarkerAtIndex(index);
+        }
+      },
+    );
   }
 
+  /// Updates the map/chart split ratio based on vertical drag gesture.
+  /// The drag sensitivity is amplified by FlightDetailConstants.dragSensitivity
+  /// to make the interaction feel more responsive to user input.
   void _onVerticalDragUpdate(DragUpdateDetails details, double totalHeight) {
     setState(() {
       // Calculate new height fraction based on drag with amplified sensitivity
-      // Multiply by 2.5 to make dragging feel more responsive
-      final delta = (details.delta.dy / totalHeight) * 2.5;
-      _mapHeightFraction = (_mapHeightFraction + delta).clamp(0.15, 0.85);
+      final delta = (details.delta.dy / totalHeight) * FlightDetailConstants.dragSensitivity;
+      _mapHeightFraction = (_mapHeightFraction + delta).clamp(
+        FlightDetailConstants.minMapHeightFraction,
+        FlightDetailConstants.maxMapHeightFraction,
+      );
     });
   }
 
@@ -63,6 +82,13 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
     });
     // Fit the map to show the entire flight track after resizing
     _mapKey.currentState?.fitMapToTrack();
+  }
+
+  @override
+  void dispose() {
+    // Clean up the timer to prevent memory leaks
+    _touchDebounce?.cancel();
+    super.dispose();
   }
 
   @override
@@ -151,8 +177,8 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
         body: LayoutBuilder(
           builder: (context, constraints) {
             final totalHeight = constraints.maxHeight;
-            final dividerHeight = 16.0;
-            final minPanelHeight = 60.0;
+            final dividerHeight = FlightDetailConstants.dividerHeight;
+            final minPanelHeight = FlightDetailConstants.minPanelHeight;
             
             // Calculate map height with proper constraints
             double mapHeight = (totalHeight - dividerHeight) * _mapHeightFraction;
@@ -188,7 +214,7 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                         _onVerticalDragUpdate(details, totalHeight),
                     onVerticalDragEnd: (_) => _onDragEnd(),
                     child: Container(
-                      height: 16,
+                      height: FlightDetailConstants.dividerHeight,
                       decoration: BoxDecoration(
                         color: _isDragging 
                             ? AppColors.primaryAccent.withAlpha(25)
@@ -196,22 +222,27 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                         border: Border(
                           top: BorderSide(
                             color: AppColors.sectionBorderColor.withAlpha(102),
-                            width: 0.5,
+                            width: FlightDetailConstants.dividerBorderWidth,
                           ),
                           bottom: BorderSide(
                             color: AppColors.sectionBorderColor.withAlpha(102),
-                            width: 0.5,
+                            width: FlightDetailConstants.dividerBorderWidth,
                           ),
                         ),
                       ),
                       child: Center(
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: FlightDetailConstants.dividerHandlePadding,
+                            vertical: 0,
+                          ),
                           decoration: BoxDecoration(
                             color: _isDragging
                                 ? AppColors.primaryAccent
                                 : AppColors.sectionBackgroundColor.withAlpha(204),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              FlightDetailConstants.dividerHandleRadius,
+                            ),
                             border: Border.all(
                               color: _isDragging
                                   ? AppColors.primaryAccent
@@ -224,14 +255,14 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                             children: [
                               Icon(
                                 Icons.keyboard_arrow_up,
-                                size: 16,
+                                size: FlightDetailConstants.dividerHandleIconSize,
                                 color: _isDragging
                                     ? AppColors.primaryTextColor
                                     : AppColors.primaryAccent,
                               ),
                               Container(
-                                height: 10,
-                                width: 3,
+                                height: FlightDetailConstants.dividerHandleBarHeight,
+                                width: FlightDetailConstants.dividerHandleBarWidth,
                                 margin: const EdgeInsets.symmetric(horizontal: 3),
                                 decoration: BoxDecoration(
                                   color: _isDragging
@@ -242,7 +273,7 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                               ),
                               Icon(
                                 Icons.keyboard_arrow_down,
-                                size: 16,
+                                size: FlightDetailConstants.dividerHandleIconSize,
                                 color: _isDragging
                                     ? AppColors.primaryTextColor
                                     : AppColors.primaryAccent,

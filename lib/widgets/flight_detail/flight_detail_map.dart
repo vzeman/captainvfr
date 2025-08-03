@@ -3,6 +3,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 import '../../models/flight.dart';
 import '../../models/moving_segment.dart';
+import '../../constants/flight_detail_constants.dart';
 
 class FlightDetailMap extends StatefulWidget {
   final Flight flight;
@@ -42,7 +43,9 @@ class FlightDetailMapState extends State<FlightDetailMap> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         // Small delay to ensure map is fully initialized
-        Future.delayed(const Duration(milliseconds: 300), () {
+        Future.delayed(
+          const Duration(milliseconds: FlightDetailConstants.mapFitDelayMilliseconds),
+          () {
           if (mounted) {
             _fitBoundsWhenReady();
           }
@@ -57,6 +60,9 @@ class FlightDetailMapState extends State<FlightDetailMap> {
     super.dispose();
   }
 
+  /// Calculates the geographical bounds of the flight path.
+  /// Adds 10% padding to ensure the entire flight track is visible
+  /// with some margin around the edges.
   void _calculateBounds() {
     if (widget.flight.path.isEmpty) return;
 
@@ -85,6 +91,9 @@ class FlightDetailMapState extends State<FlightDetailMap> {
     );
   }
 
+  /// Attempts to fit the map view to show the entire flight path.
+  /// Includes retry logic in case the map controller isn't ready yet.
+  /// Also triggers a micro zoom adjustment to force tile loading.
   void _fitBoundsWhenReady() {
     if (_flightBounds == null || !mounted) return;
 
@@ -120,7 +129,9 @@ class FlightDetailMapState extends State<FlightDetailMap> {
     }
   }
 
-  // Public method to fit map to track, called when resizing ends
+  /// Fits the map view to display the entire flight track.
+  /// This is called after the user finishes resizing the map panel
+  /// to ensure the flight path remains centered and visible.
   void fitMapToTrack() {
     if (_flightBounds == null || !mounted) return;
     
@@ -136,7 +147,13 @@ class FlightDetailMapState extends State<FlightDetailMap> {
     }
   }
 
-  // Public method to show a marker at a specific data point index
+  /// Shows a marker on the map at the GPS location corresponding to
+  /// the given data point index from the flight path.
+  /// 
+  /// [index] - The index in the flight path array (0-based)
+  /// 
+  /// This method is called when users interact with charts to visualize
+  /// the selected point's location on the map.
   void showMarkerAtIndex(int index) {
     if (!mounted || widget.flight.path.isEmpty) return;
     
@@ -320,15 +337,15 @@ class FlightDetailMapState extends State<FlightDetailMap> {
                     if (_selectedChartPoint != null)
                       Marker(
                         point: _selectedChartPoint!,
-                        width: 24,
-                        height: 24,
+                        width: FlightDetailConstants.markerSize,
+                        height: FlightDetailConstants.markerSize,
                         child: Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: Colors.deepOrange,
                             border: Border.all(
                               color: Colors.white,
-                              width: 2,
+                              width: FlightDetailConstants.markerBorderWidth,
                             ),
                             boxShadow: [
                               BoxShadow(
@@ -342,7 +359,7 @@ class FlightDetailMapState extends State<FlightDetailMap> {
                             child: Icon(
                               Icons.circle,
                               color: Colors.white,
-                              size: 8,
+                              size: FlightDetailConstants.markerIconSize,
                             ),
                           ),
                         ),
