@@ -33,6 +33,9 @@ class MapStateController extends ChangeNotifier {
   bool _showObstacles = false;
   bool _showHotspots = false;
   bool _showHeatmap = false;  // Flight tracking heatmap (default OFF)
+  
+  // Menu panel state
+  bool _isMenuPanelOpen = false;
 
   // Getters
   Position? get currentPosition => _currentPosition;
@@ -52,6 +55,7 @@ class MapStateController extends ChangeNotifier {
   bool get showObstacles => _showObstacles;
   bool get showHotspots => _showHotspots;
   bool get showHeatmap => _showHeatmap;
+  bool get isMenuPanelOpen => _isMenuPanelOpen;
 
   // Update current position
   void updatePosition(Position position) {
@@ -110,6 +114,22 @@ class MapStateController extends ChangeNotifier {
 
   void toggleHeatmap() {
     _showHeatmap = !_showHeatmap;
+    notifyListeners();
+  }
+
+  // Menu panel methods
+  void toggleMenuPanel() {
+    _isMenuPanelOpen = !_isMenuPanelOpen;
+    notifyListeners();
+  }
+
+  void closeMenuPanel() {
+    _isMenuPanelOpen = false;
+    notifyListeners();
+  }
+
+  void openMenuPanel() {
+    _isMenuPanelOpen = true;
     notifyListeners();
   }
 
