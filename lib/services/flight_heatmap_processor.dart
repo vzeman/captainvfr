@@ -3,7 +3,6 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:hive/hive.dart';
 import '../models/flight.dart';
-import '../models/flight_point.dart';
 import '../models/heatmap_cell.dart';
 import '../utils/frame_aware_scheduler.dart';
 
@@ -45,6 +44,8 @@ class FlightHeatmapProcessor {
   static Future<void> processFlightUpdate(Flight flight, {bool isRemoval = false}) async {
     await init();
     
+    print('Heatmap: Processing flight ${flight.id} with ${flight.path.length} points (removal: $isRemoval)');
+    
     _scheduler.scheduleOperation(
       id: 'heatmap_update_${flight.id}',
       operation: () => _updateHeatmapCells(flight, isRemoval),
@@ -56,6 +57,7 @@ class FlightHeatmapProcessor {
   static void _updateHeatmapCells(Flight flight, bool isRemoval) {
     if (flight.path.isEmpty) return;
 
+    int totalCellsUpdated = 0;
     for (final entry in _gridSizes.entries) {
       final zoomLevel = entry.key;
       final gridSize = entry.value;
@@ -64,8 +66,10 @@ class FlightHeatmapProcessor {
       
       for (final cellId in affectedCells) {
         _updateCellData(cellId, zoomLevel, gridSize, flight, isRemoval);
+        totalCellsUpdated++;
       }
     }
+    print('Heatmap: Updated $totalCellsUpdated cells across all zoom levels');
   }
 
   static Set<String> _getCellsForFlight(Flight flight, double gridSize) {
@@ -94,10 +98,10 @@ class FlightHeatmapProcessor {
           ? math.max(0, existingCell.flightCount - 1)
           : existingCell.flightCount + 1;
       
-      final updatedFlightIds = Set<String>.from(existingCell.flightIds ?? {});
+      final updatedFlightIds = List<String>.from(existingCell.flightIds ?? []);
       if (isRemoval) {
         updatedFlightIds.remove(flight.id);
-      } else {
+      } else if (!updatedFlightIds.contains(flight.id)) {
         updatedFlightIds.add(flight.id);
       }
       
@@ -127,7 +131,7 @@ class FlightHeatmapProcessor {
         centerLng: cellLng,
         cellSize: gridSize,
         lastUpdate: DateTime.now(),
-        flightIds: {flight.id},
+        flightIds: [flight.id],
       );
       
       _heatmapBox!.put(key, newCell);

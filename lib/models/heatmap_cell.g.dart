@@ -25,7 +25,7 @@ class HeatmapCellAdapter extends TypeAdapter<HeatmapCell> {
       centerLng: fields[5] as double,
       cellSize: fields[6] as double,
       lastUpdate: fields[7] as DateTime,
-      flightIds: (fields[8] as Set?)?.cast<String>(),
+      flightIds: (fields[8] as List?)?.cast<String>(),
     );
   }
 

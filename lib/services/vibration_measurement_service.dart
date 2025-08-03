@@ -193,9 +193,6 @@ class VibrationMeasurementService {
           _recentSamples.map((s) => s.z).reduce((a, b) => a + b) /
           _recentSamples.length;
       _isCalibrated = true;
-      _logger.d(
-        'Vibration measurement calibrated: X=$_baselineX, Y=$_baselineY, Z=$_baselineZ',
-      );
     }
   }
 

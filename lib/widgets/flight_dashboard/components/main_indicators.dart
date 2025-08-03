@@ -82,6 +82,18 @@ class MainIndicators extends StatelessWidget {
                   heading: headingService.currentHeading ?? flightService.currentHeading ?? 0,
                   targetHeading: targetHeading,
                   size: 50,
+                  onTap: () async {
+                    await headingService.requestCalibration();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Compass calibration requested'),
+                          duration: Duration(seconds: 2),
+                          backgroundColor: Color(0xE6000000),
+                        ),
+                      );
+                    }
+                  },
                 ),
               ),
             ),

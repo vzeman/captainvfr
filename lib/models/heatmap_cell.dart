@@ -31,7 +31,7 @@ class HeatmapCell extends HiveObject {
   final DateTime lastUpdate;
   
   @HiveField(8)
-  final Set<String>? flightIds;
+  final List<String>? flightIds;
 
   HeatmapCell({
     required this.cellId,
@@ -64,7 +64,7 @@ class HeatmapCell extends HiveObject {
     double? centerLng,
     double? cellSize,
     DateTime? lastUpdate,
-    Set<String>? flightIds,
+    List<String>? flightIds,
   }) {
     return HeatmapCell(
       cellId: cellId ?? this.cellId,

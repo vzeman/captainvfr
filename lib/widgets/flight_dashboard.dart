@@ -136,6 +136,7 @@ class _FlightDashboardState extends State<FlightDashboard> with WidgetsBindingOb
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_permissionNotificationKey, true);
     
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(

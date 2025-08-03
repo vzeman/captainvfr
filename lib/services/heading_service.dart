@@ -275,7 +275,7 @@ class HeadingService extends ChangeNotifier {
         // try to use the compass anyway - it might work
         if (Platform.isIOS && (whenInUseStatus.isDenied || whenInUseStatus.isPermanentlyDenied)) {
           // Track this issue for monitoring
-          AnalyticsWrapper.track('compass_permission_denied_ios', {
+          AnalyticsWrapper.track('compass_permission_denied_ios', properties: {
             'status': whenInUseStatus.toString(),
             'workaround_applied': true,
           });
@@ -302,7 +302,7 @@ class HeadingService extends ChangeNotifier {
         
         // Track if we're falling through without permission
         if (Platform.isAndroid) {
-          AnalyticsWrapper.track('compass_permission_denied_android', {
+          AnalyticsWrapper.track('compass_permission_denied_android', properties: {
             'status': whenInUseStatus.toString(),
           });
         }

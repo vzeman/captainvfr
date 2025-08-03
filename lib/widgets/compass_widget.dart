@@ -7,6 +7,7 @@ class CompassWidget extends StatelessWidget {
   final double size;
   final Color primaryColor;
   final Color accentColor;
+  final VoidCallback? onTap;
 
   const CompassWidget({
     super.key,
@@ -15,6 +16,7 @@ class CompassWidget extends StatelessWidget {
     this.size = 80,
     this.primaryColor = Colors.white,
     this.accentColor = const Color(0xFF448AFF),
+    this.onTap,
   });
 
   @override
@@ -22,15 +24,18 @@ class CompassWidget extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(
-          width: size,
-          height: size,
-          child: CustomPaint(
-            painter: CompassPainter(
-              heading: heading,
-              targetHeading: targetHeading,
-              primaryColor: primaryColor,
-              accentColor: accentColor,
+        GestureDetector(
+          onTap: onTap,
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: CustomPaint(
+              painter: CompassPainter(
+                heading: heading,
+                targetHeading: targetHeading,
+                primaryColor: primaryColor,
+                accentColor: accentColor,
+              ),
             ),
           ),
         ),
