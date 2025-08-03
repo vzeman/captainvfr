@@ -42,6 +42,8 @@ import '../services/flight_plan_tile_download_service.dart';
 import '../screens/offline_data/controllers/offline_data_state_controller.dart';
 import '../widgets/navaid_marker.dart';
 import '../widgets/optimized_marker_layer.dart';
+import '../widgets/optimized_heatmap_layer.dart';
+import '../services/flight_heatmap_processor.dart';
 import '../widgets/airport_info_sheet.dart';
 import '../widgets/flight_dashboard.dart';
 import '../widgets/airport_search_dialog.dart';
@@ -136,6 +138,7 @@ class MapScreenState extends State<MapScreen>
   bool _servicesInitialized = false;
   bool _isInitializing = false; // Guard against concurrent initialization
   bool _showFlightPlanning = false; // Toggle for integrated flight planning
+  MapRotationMode? _previousRotationMode; // Track rotation mode changes
   Timer? _debounceTimer;
   Timer? _airspaceDebounceTimer;
   Timer? _notamPrefetchTimer;
@@ -1760,6 +1763,12 @@ class MapScreenState extends State<MapScreen>
       _loadHotspots();
     }
   }
+
+  void _toggleHeatmap() {
+    setState(() {
+      _mapStateController.toggleHeatmap();
+    });
+  }
   
   // Toggle METAR weather display
   void _toggleMetar() {
@@ -3098,6 +3107,9 @@ class MapScreenState extends State<MapScreen>
       
       // Initialize runway service
       await _runwayService.initialize();
+      
+      // Initialize flight heatmap processor
+      await FlightHeatmapProcessor.init();
 
       // Initialize offline map service only on supported platforms
       if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
@@ -3381,6 +3393,13 @@ class MapScreenState extends State<MapScreen>
                   hotspots: _hotspots,
                   onHotspotTap: _onHotspotSelected,
                 ),
+              
+              // Flight heatmap overlay
+              if (_mapStateController.showHeatmap)
+                OptimizedHeatmapLayer(
+                  opacity: 0.6,
+                  enabled: _mapStateController.showHeatmap,
+                ),
               // Airport markers with tap handling (optimized)
               Consumer<SettingsService>(
                 builder: (context, settings, child) {
@@ -3568,6 +3587,21 @@ class MapScreenState extends State<MapScreen>
               if (_currentPosition != null)
                 Consumer<SettingsService>(
                   builder: (context, settings, child) {
+                    // Check if rotation mode changed and reset map if needed
+                    if (_previousRotationMode != null && 
+                        _previousRotationMode != settings.mapRotationMode) {
+                      // Mode changed
+                      if (settings.mapRotationMode != MapRotationMode.mapRotates) {
+                        // Switching from map rotates to another mode - reset map to north
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (_mapController.camera.rotation != 0) {
+                            _mapController.rotate(0);
+                          }
+                        });
+                      }
+                    }
+                    _previousRotationMode = settings.mapRotationMode;
+                    
                     // Calculate aircraft marker rotation based on map rotation mode
                     double markerRotation;
                     _updateCachedHeading();
@@ -3575,16 +3609,16 @@ class MapScreenState extends State<MapScreen>
                     
                     switch (settings.mapRotationMode) {
                       case MapRotationMode.mapRotates:
-                        // Map rotates, aircraft needs to compensate for map rotation
-                        // Get current map rotation and adjust aircraft icon
+                        // Map rotates, aircraft marker must counter-rotate to stay pointing up
+                        // Get the current map rotation and rotate marker in opposite direction
                         final mapRotation = _mapController.camera.rotation;
-                        // Icons.flight points up (North) by default, so no correction needed
-                        markerRotation = (currentHeading - mapRotation) * math.pi / 180;
+                        // Counter-rotate: if map rotates clockwise, marker rotates counter-clockwise
+                        markerRotation = -mapRotation * math.pi / 180;
                         break;
                       case MapRotationMode.aircraftRotates:
                       case MapRotationMode.none:
                         // Map fixed north-up, aircraft marker rotates to show heading
-                        // Icons.flight points up (North) by default, so no correction needed
+                        // Icons.navigation points up by default (north)
                         markerRotation = currentHeading * math.pi / 180;
                         break;
                     }
@@ -3601,7 +3635,7 @@ class MapScreenState extends State<MapScreen>
                           child: Transform.rotate(
                             angle: markerRotation,
                             child: const Icon(
-                              Icons.flight,
+                              Icons.navigation,
                               color: Colors.blue,
                               size: 30,
                               shadows: [
@@ -3779,6 +3813,14 @@ class MapScreenState extends State<MapScreen>
                         tooltip: 'Toggle Hotspots',
                         isActive: _mapStateController.showHotspots,
                         onPressed: _toggleHotspots,
+                      ),
+                      _buildLayerToggle(
+                        icon: _mapStateController.showHeatmap
+                            ? Icons.whatshot
+                            : Icons.whatshot_outlined,
+                        tooltip: 'Toggle Flight Heatmap',
+                        isActive: _mapStateController.showHeatmap,
+                        onPressed: _toggleHeatmap,
                       ),
                       _buildLayerToggle(
                         icon: _showCurrentAirspacePanel
