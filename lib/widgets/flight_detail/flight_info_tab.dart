@@ -5,6 +5,7 @@ import '../../models/flight.dart';
 import '../../models/moving_segment.dart';
 import '../../services/settings_service.dart';
 import '../../constants/app_theme.dart';
+import '../../constants/app_colors.dart';
 
 class FlightInfoTab extends StatelessWidget {
   final Flight flight;
@@ -53,12 +54,14 @@ class FlightInfoTab extends StatelessWidget {
             children: [
               Text(
                 'Flight Summary',
-                style: Theme.of(context).textTheme.titleLarge,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppColors.primaryTextColor,
+                ),
               ),
               Text(
                 _formatDuration(flight.duration),
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
+                  color: AppColors.primaryAccent,
                 ),
               ),
             ],
@@ -105,7 +108,9 @@ class FlightInfoTab extends StatelessWidget {
                 children: [
                   Text(
                     'Flight Details',
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppColors.primaryTextColor,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -181,12 +186,10 @@ class FlightInfoTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        color: AppColors.backgroundColor,
         borderRadius: AppTheme.extraLargeRadius,
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+          color: AppColors.sectionBorderColor,
         ),
       ),
       child: Column(
@@ -196,7 +199,7 @@ class FlightInfoTab extends StatelessWidget {
             children: [
               Icon(
                 Icons.schedule,
-                color: Theme.of(context).colorScheme.primary,
+                color: AppColors.primaryAccent,
                 size: 20,
               ),
               const SizedBox(width: 8),
@@ -204,7 +207,7 @@ class FlightInfoTab extends StatelessWidget {
                 child: Text(
                   'Time Tracking (Zulu Times)',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
+                    color: AppColors.primaryAccent,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -258,13 +261,14 @@ class FlightInfoTab extends StatelessWidget {
                   Text(
                     'Total Recording',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      color: AppColors.secondaryTextColor,
                     ),
                   ),
                   Text(
                     _formatDuration(flight.totalRecordingTime),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.bold,
+                      color: AppColors.primaryTextColor,
                     ),
                   ),
                 ],
@@ -275,14 +279,14 @@ class FlightInfoTab extends StatelessWidget {
                   Text(
                     'Total Moving',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      color: AppColors.secondaryTextColor,
                     ),
                   ),
                   Text(
                     _formatDuration(flight.movingTime),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: AppColors.primaryAccent,
                     ),
                   ),
                 ],
@@ -298,12 +302,10 @@ class FlightInfoTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        color: AppColors.backgroundColor,
         borderRadius: AppTheme.extraLargeRadius,
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+          color: AppColors.sectionBorderColor,
         ),
       ),
       child: Column(
@@ -313,7 +315,7 @@ class FlightInfoTab extends StatelessWidget {
             children: [
               Icon(
                 Icons.timeline,
-                color: Theme.of(context).colorScheme.primary,
+                color: AppColors.primaryAccent,
                 size: 20,
               ),
               const SizedBox(width: 8),
@@ -321,7 +323,7 @@ class FlightInfoTab extends StatelessWidget {
                 child: Text(
                   'Moving Segments (${flight.movingSegments.length})',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
+                    color: AppColors.primaryAccent,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -342,15 +344,13 @@ class FlightInfoTab extends StatelessWidget {
                   padding: const EdgeInsets.all(12.0),
                   decoration: BoxDecoration(
                     color: selectedSegment == segment
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : Theme.of(context).colorScheme.surface,
+                        ? AppColors.sectionBackgroundColor
+                        : AppColors.backgroundColor,
                     borderRadius: AppTheme.defaultRadius,
                     border: Border.all(
                       color: selectedSegment == segment
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(
-                              context,
-                            ).colorScheme.outline.withValues(alpha: 0.1),
+                          ? AppColors.primaryAccent
+                          : AppColors.sectionBorderColor,
                     ),
                   ),
                   child: Column(
@@ -362,13 +362,16 @@ class FlightInfoTab extends StatelessWidget {
                           Text(
                             'Segment ${index + 1}',
                             style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primaryTextColor,
+                                ),
                           ),
                           Text(
                             segment.formattedDuration,
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(
-                                  color: Theme.of(context).colorScheme.primary,
+                                  color: AppColors.primaryAccent,
                                   fontWeight: FontWeight.bold,
                                 ),
                           ),
@@ -385,14 +388,14 @@ class FlightInfoTab extends StatelessWidget {
                                 'Started',
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
+                                      color: AppColors.secondaryTextColor,
                                     ),
                               ),
                               Text(
                                 segment.startZuluFormatted,
-                                style: Theme.of(context).textTheme.bodySmall,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.primaryTextColor,
+                                ),
                               ),
                             ],
                           ),
@@ -403,14 +406,14 @@ class FlightInfoTab extends StatelessWidget {
                                 'Stopped',
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
+                                      color: AppColors.secondaryTextColor,
                                     ),
                               ),
                               Text(
                                 segment.endZuluFormatted,
-                                style: Theme.of(context).textTheme.bodySmall,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.primaryTextColor,
+                                ),
                               ),
                             ],
                           ),
@@ -432,16 +435,14 @@ class FlightInfoTab extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12.0),
               decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.errorContainer.withValues(alpha: 0.3),
+                color: AppColors.errorColor.withAlpha(51), // 0.2 opacity
                 borderRadius: AppTheme.defaultRadius,
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.pause_circle,
-                    color: Theme.of(context).colorScheme.error,
+                    color: AppColors.errorColor,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -449,7 +450,7 @@ class FlightInfoTab extends StatelessWidget {
                     child: Text(
                       '${flight.pausePoints.length} pause point${flight.pausePoints.length != 1 ? 's' : ''} recorded',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onErrorContainer,
+                        color: AppColors.primaryTextColor,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -585,14 +586,14 @@ class FlightInfoTab extends StatelessWidget {
           Icon(
             icon,
             size: 16,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            color: AppColors.secondaryTextColor,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                color: AppColors.secondaryTextColor,
               ),
             ),
           ),
@@ -601,6 +602,7 @@ class FlightInfoTab extends StatelessWidget {
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               fontFamily: 'monospace',
               fontWeight: FontWeight.bold,
+              color: AppColors.primaryTextColor,
             ),
           ),
         ],
@@ -618,10 +620,10 @@ class FlightInfoTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: AppColors.sectionBackgroundColor,
         borderRadius: AppTheme.defaultRadius,
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
+          color: AppColors.sectionBorderColor,
         ),
       ),
       child: Row(
@@ -629,14 +631,14 @@ class FlightInfoTab extends StatelessWidget {
           Icon(
             icon,
             size: 18,
-            color: iconColor ?? Theme.of(context).colorScheme.onSurfaceVariant,
+            color: iconColor ?? AppColors.secondaryTextColor,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               title,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                color: AppColors.secondaryTextColor,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -646,7 +648,10 @@ class FlightInfoTab extends StatelessWidget {
               value,
               style: Theme.of(
                 context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+              ).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryTextColor,
+              ),
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.end,
             ),
@@ -665,7 +670,7 @@ class FlightInfoTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: AppColors.sectionBackgroundColor,
         borderRadius: AppTheme.defaultRadius,
       ),
       child: Row(
@@ -676,7 +681,7 @@ class FlightInfoTab extends StatelessWidget {
             child: Icon(
               icon,
               size: 20,
-              color: Theme.of(context).colorScheme.primary,
+              color: AppColors.primaryAccent,
             ),
           ),
           const SizedBox(width: 8),
@@ -689,7 +694,7 @@ class FlightInfoTab extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    color: AppColors.secondaryTextColor,
                   ),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
@@ -699,7 +704,10 @@ class FlightInfoTab extends StatelessWidget {
                   value,
                   style: Theme.of(
                     context,
-                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primaryTextColor,
+                  ),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,
                 ),
@@ -715,10 +723,10 @@ class FlightInfoTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        color: AppColors.backgroundColor,
         borderRadius: AppTheme.extraLargeRadius,
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+          color: AppColors.sectionBorderColor,
         ),
       ),
       child: Column(
@@ -728,14 +736,14 @@ class FlightInfoTab extends StatelessWidget {
             children: [
               Icon(
                 Icons.flight,
-                color: Theme.of(context).colorScheme.primary,
+                color: AppColors.primaryAccent,
                 size: 20,
               ),
               const SizedBox(width: 8),
               Text(
                 'Airports',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
+                  color: AppColors.primaryAccent,
                 ),
               ),
             ],
@@ -749,7 +757,7 @@ class FlightInfoTab extends StatelessWidget {
                 Icon(
                   Icons.flight_takeoff,
                   size: 16,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  color: AppColors.secondaryTextColor,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -759,7 +767,7 @@ class FlightInfoTab extends StatelessWidget {
                       Text(
                         'Departure',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          color: AppColors.secondaryTextColor,
                         ),
                       ),
                       Text(
@@ -767,6 +775,7 @@ class FlightInfoTab extends StatelessWidget {
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           fontFamily: 'monospace',
+                          color: AppColors.primaryTextColor,
                         ),
                       ),
                     ],
@@ -784,7 +793,7 @@ class FlightInfoTab extends StatelessWidget {
                 Icon(
                   Icons.flight_land,
                   size: 16,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  color: AppColors.secondaryTextColor,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -794,7 +803,7 @@ class FlightInfoTab extends StatelessWidget {
                       Text(
                         'Arrival',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          color: AppColors.secondaryTextColor,
                         ),
                       ),
                       Text(
@@ -802,6 +811,7 @@ class FlightInfoTab extends StatelessWidget {
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           fontFamily: 'monospace',
+                          color: AppColors.primaryTextColor,
                         ),
                       ),
                     ],
