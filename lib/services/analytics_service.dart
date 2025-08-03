@@ -20,7 +20,6 @@ class AnalyticsService {
     try {
       // Skip Firebase initialization on unsupported platforms (macOS, Windows, Linux)
       if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-        _logger.i('Analytics disabled on ${Platform.operatingSystem} - Firebase not configured');
         _isInitialized = true;
         _trackingEnabled = false;
         return;
@@ -49,8 +48,6 @@ class AnalyticsService {
         _trackingEnabled = true;
         await _analytics?.setAnalyticsCollectionEnabled(true);
       }
-      
-      _logger.i('Analytics service initialized. Tracking enabled: $_trackingEnabled');
     } catch (e) {
       _logger.w('Failed to initialize analytics: $e');
       // Mark as initialized even if failed to prevent repeated attempts
@@ -66,8 +63,6 @@ class AnalyticsService {
       
       _trackingEnabled = status == PermissionStatus.granted;
       await _analytics?.setAnalyticsCollectionEnabled(_trackingEnabled);
-      
-      _logger.i('Tracking permission status: $status');
     } catch (e) {
       _logger.e('Error checking tracking permission: $e');
       _trackingEnabled = false;
@@ -230,7 +225,6 @@ class AnalyticsService {
     try {
       _trackingEnabled = enabled;
       await _analytics!.setAnalyticsCollectionEnabled(enabled);
-      _logger.i('Tracking ${enabled ? 'enabled' : 'disabled'}');
     } catch (e) {
       _logger.e('Error setting tracking enabled: $e');
     }

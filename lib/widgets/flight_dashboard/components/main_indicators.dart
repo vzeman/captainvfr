@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../services/flight_service.dart';
 import '../../../services/barometer_service.dart';
+import '../../../services/heading_service.dart';
 import '../../../services/settings_service.dart';
 import '../../../services/flight_plan_service.dart';
 import '../../../widgets/compass_widget.dart';
@@ -22,6 +23,8 @@ class MainIndicators extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final headingService = Provider.of<HeadingService>(context);
+    
     return Consumer<SettingsService>(
       builder: (context, settings, child) {
         final isMetric = settings.units == 'metric';
@@ -76,7 +79,7 @@ class MainIndicators extends StatelessWidget {
             Expanded(
               child: Center(
                 child: CompassWidget(
-                  heading: flightService.currentHeading ?? 0,
+                  heading: headingService.currentHeading ?? flightService.currentHeading ?? 0,
                   targetHeading: targetHeading,
                   size: 50,
                 ),

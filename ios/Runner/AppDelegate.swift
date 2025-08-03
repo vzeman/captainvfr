@@ -3,6 +3,7 @@ import UIKit
 import CoreMotion
 import Firebase
 import AppTrackingTransparency
+import WatchConnectivity
 
 // AltitudePlugin implementation moved to this file to avoid module issues
 class AltitudePlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
@@ -217,6 +218,8 @@ import Flutter
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
+  private var watchChannel: FlutterMethodChannel?
+  
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -238,7 +241,99 @@ import Flutter
     if let registrar = self.registrar(forPlugin: "BarometerPlugin") {
         BarometerPlugin.register(with: registrar)
     }
+    
+    // Setup Watch Connectivity
+    if let controller = window?.rootViewController as? FlutterViewController {
+        setupWatchConnectivity(with: controller.binaryMessenger)
+    }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+  
+  private func setupWatchConnectivity(with messenger: FlutterBinaryMessenger) {
+    watchChannel = FlutterMethodChannel(
+      name: "com.captainvfr.watch_connectivity",
+      binaryMessenger: messenger
+    )
+    
+    // Setup WatchConnectivity session if supported
+    if WCSession.isSupported() {
+      let session = WCSession.default
+      session.delegate = self
+      session.activate()
+    }
+    
+    // Handle Flutter method calls
+    watchChannel?.setMethodCallHandler { [weak self] call, result in
+      switch call.method {
+      case "sendTrackingState":
+        if let args = call.arguments as? [String: Any],
+           let isTracking = args["isTracking"] as? Bool {
+          self?.sendTrackingStateToWatch(isTracking: isTracking)
+          result(nil)
+        } else {
+          result(FlutterError(code: "INVALID_ARGS", message: "Invalid arguments", details: nil))
+        }
+      case "sendFlightData":
+        if let args = call.arguments as? [String: Any] {
+          self?.sendFlightDataToWatch(data: args)
+          result(nil)
+        } else {
+          result(FlutterError(code: "INVALID_ARGS", message: "Invalid arguments", details: nil))
+        }
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+  
+  private func sendTrackingStateToWatch(isTracking: Bool) {
+    guard WCSession.default.isPaired && WCSession.default.isWatchAppInstalled else { return }
+    
+    let message: [String: Any] = ["action": "syncState", "isTracking": isTracking]
+    
+    if WCSession.default.isReachable {
+      WCSession.default.sendMessage(message, replyHandler: nil, errorHandler: nil)
+    } else {
+      // Update application context for when watch becomes reachable
+      try? WCSession.default.updateApplicationContext(message)
+    }
+  }
+  
+  private func sendFlightDataToWatch(data: [String: Any]) {
+    guard WCSession.default.isPaired && WCSession.default.isWatchAppInstalled else { return }
+    
+    if WCSession.default.isReachable {
+      WCSession.default.sendMessage(data, replyHandler: nil, errorHandler: nil)
+    }
+  }
+}
+
+// MARK: - WCSessionDelegate
+extension AppDelegate: WCSessionDelegate {
+  func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+    print("WCSession activation completed with state: \(activationState)")
+  }
+  
+  func sessionDidBecomeInactive(_ session: WCSession) {}
+  
+  func sessionDidDeactivate(_ session: WCSession) {
+    session.activate()
+  }
+  
+  func session(_ session: WCSession, didReceiveMessage message: [String : Any]) {
+    DispatchQueue.main.async { [weak self] in
+      if let action = message["action"] as? String {
+        switch action {
+        case "startTracking":
+          self?.watchChannel?.invokeMethod("startTracking", arguments: nil)
+        case "stopTracking":
+          self?.watchChannel?.invokeMethod("stopTracking", arguments: nil)
+        default:
+          // Handle flight data from watch
+          self?.watchChannel?.invokeMethod("flightDataUpdate", arguments: message)
+        }
+      }
+    }
   }
 }

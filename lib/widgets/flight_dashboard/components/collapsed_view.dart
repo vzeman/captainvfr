@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../services/flight_service.dart';
 import '../../../services/heading_service.dart';
 import '../../../services/settings_service.dart';
@@ -132,70 +133,104 @@ class CollapsedView extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Builder(
-                        builder: (context) {
-                          final hasHeading = headingService.currentHeading != null;
-                          return Icon(
-                            Icons.navigation,
-                            color: hasHeading ? Colors.blueAccent : Colors.grey,
-                            size: iconSize,
-                          );
-                        },
+                      Icon(
+                        Icons.navigation,
+                        color: headingService.currentHeading != null 
+                            ? Colors.blueAccent 
+                            : Colors.grey,
+                        size: iconSize,
                       ),
                       SizedBox(width: spacing),
                       Flexible(
-                        child: Builder(
-                          builder: (context) {
-                            final hasHeading = headingService.currentHeading != null;
-                            return Text(
-                              headingService.getFormattedHeading(),
-                              style: TextStyle(
-                                color: hasHeading ? Colors.white : Colors.grey,
-                                fontSize: fontSize,
-                                fontWeight: FontWeight.bold,
+                        child: GestureDetector(
+                          onTap: headingService.hasError ? () {
+                            // Show error message
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(headingService.errorMessage ?? 'Compass not available'),
+                                action: SnackBarAction(
+                                  label: 'Settings',
+                                  onPressed: () => openAppSettings(),
+                                ),
                               ),
-                              overflow: TextOverflow.ellipsis,
                             );
-                          },
+                          } : null,
+                          child: Text(
+                            headingService.currentHeading != null 
+                                ? '${headingService.currentHeading!.round()}°'
+                                : headingService.hasError ? 'Denied' : '---°',
+                            style: TextStyle(
+                              color: headingService.currentHeading != null 
+                                  ? Colors.white 
+                                  : headingService.hasError ? Colors.orange : Colors.grey,
+                              fontSize: fontSize,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                // Tracking button - Made larger for better visibility
-                SizedBox(
+                // Tracking button - Improved design with rounded border
+                Container(
                   width: buttonSize * 1.5,
                   height: buttonSize * 1.5,
-                  child: IconButton(
-                    icon: Icon(
-                      flightService.isTracking ? Icons.stop : Icons.play_arrow,
+                  decoration: BoxDecoration(
+                    border: Border.all(
                       color: flightService.isTracking
-                          ? Colors.red
-                          : Colors.green,
-                      size: (iconSize + 4) * 1.5,
+                          ? Colors.red.withValues(alpha: 0.8)
+                          : Colors.green.withValues(alpha: 0.8),
+                      width: 2.0,
                     ),
-                    onPressed: () async {
-                      if (flightService.isTracking) {
-                        // Show confirmation dialog
-                        final shouldStop = await StopTrackingDialog.show(context);
-                        if (shouldStop == true) {
-                          final savedFlight = await flightService.stopTracking();
-                          
-                          // Navigate to flight detail if a flight was saved
-                          if (savedFlight != null && context.mounted) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => FlightDetailScreen(flight: savedFlight),
-                              ),
-                            );
+                    borderRadius: BorderRadius.circular(buttonSize * 0.75),
+                    // Subtle shadow for depth
+                    boxShadow: [
+                      BoxShadow(
+                        color: (flightService.isTracking ? Colors.red : Colors.green)
+                            .withValues(alpha: 0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(buttonSize * 0.75),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(buttonSize * 0.75),
+                      onTap: () async {
+                        if (flightService.isTracking) {
+                          // Show confirmation dialog
+                          final shouldStop = await StopTrackingDialog.show(context);
+                          if (shouldStop == true) {
+                            final savedFlight = await flightService.stopTracking();
+                            
+                            // Navigate to flight detail if a flight was saved
+                            if (savedFlight != null && context.mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => FlightDetailScreen(flight: savedFlight),
+                                ),
+                              );
+                            }
                           }
+                        } else {
+                          flightService.startTracking();
                         }
-                      } else {
-                        flightService.startTracking();
-                      }
-                    },
-                    padding: EdgeInsets.zero,
+                      },
+                      child: Center(
+                        child: Icon(
+                          flightService.isTracking ? Icons.stop : Icons.play_arrow,
+                          color: flightService.isTracking
+                              ? Colors.red
+                              : Colors.green,
+                          size: (iconSize + 4) * 1.2,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],

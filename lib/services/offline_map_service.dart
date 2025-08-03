@@ -26,7 +26,6 @@ class OfflineMapService {
     
     // Offline maps not supported on web
     if (kIsWeb) {
-      _logger.i('Offline maps not supported on web platform');
       _isInitialized = true;
       return;
     }
@@ -39,7 +38,6 @@ class OfflineMapService {
         onCreate: _createDatabase,
       );
       _isInitialized = true;
-      _logger.i('📦 Offline map service initialized');
     } catch (e) {
       _logger.e('❌ Failed to initialize offline map service: $e');
       throw Exception('Failed to initialize offline map service: $e');
@@ -74,10 +72,8 @@ class OfflineMapService {
     try {
       final documentsDir = await getApplicationDocumentsDirectory();
       final dbPath = path.join(documentsDir.path, _dbName);
-      _logger.i('Database path: $dbPath');
       return dbPath;
     } catch (e) {
-      _logger.e('Failed to get database path: $e');
       throw Exception('Failed to get database path: $e');
     }
   }
@@ -105,8 +101,6 @@ class OfflineMapService {
     // Calculate total tiles to download
     final totalTiles = _calculateTotalTiles(bounds, minZoom, maxZoom);
     int processedTiles = 0;
-
-    _logger.i('📥 Starting download of $totalTiles tiles');
 
     for (int z = minZoom; z <= maxZoom; z++) {
       if (_isCancelled) break;
@@ -152,11 +146,6 @@ class OfflineMapService {
       }
     }
 
-    _logger.i(
-      '✅ Download complete: $downloadedCount downloaded, '
-      '$failedCount failed, $skippedCount skipped',
-    );
-
     return {
       'downloaded': downloadedCount,
       'failed': failedCount,
@@ -167,7 +156,6 @@ class OfflineMapService {
   /// Cancel ongoing download
   void cancelDownload() {
     _isCancelled = true;
-    _logger.i('🛑 Download cancelled');
   }
 
   /// Download and save a single tile
@@ -255,9 +243,7 @@ class OfflineMapService {
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
-      _logger.d('Saved tile $z/$x/$y (${data.length} bytes)');
     } catch (e) {
-      _logger.e('Failed to save tile $z/$x/$y: $e');
       throw Exception('Failed to save tile: $e');
     }
   }
@@ -341,7 +327,6 @@ class OfflineMapService {
     if (kIsWeb || _database == null) return;
     
     await _database!.delete(_tableName);
-    _logger.i('🗑️ Cleared all cached tiles');
   }
 
   /// Clear old cached tiles
@@ -352,13 +337,11 @@ class OfflineMapService {
         .subtract(Duration(days: daysOld))
         .millisecondsSinceEpoch;
     
-    final deletedCount = await _database!.delete(
+    await _database!.delete(
       _tableName,
       where: 'download_time < ?',
       whereArgs: [cutoffTime],
     );
-    
-    _logger.i('🗑️ Cleared $deletedCount old tiles (older than $daysOld days)');
   }
 
   /// Check if device has sufficient storage for download

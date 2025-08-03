@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
 import 'package:archive/archive.dart';
@@ -53,11 +52,6 @@ class WeatherService {
         _metarCache = cachedMetars;
         _tafCache = cachedTafs;
         _lastFetch = lastFetch;
-
-
-        if (lastFetch != null) {
-          final age = DateTime.now().difference(lastFetch);
-        }
       }
     } catch (e) {
       _logger.w('⚠️ Failed to load cached weather data: $e');
@@ -203,13 +197,6 @@ class WeatherService {
         }
       }
 
-      if (map.isNotEmpty) {
-        final firstEntry = map.entries.first;
-        _logger.d(
-          'Sample entry: ${firstEntry.key} -> ${firstEntry.value.substring(0, math.min(100, firstEntry.value.length))}...',
-        );
-      }
-
       return map;
     } catch (e) {
       _logger.e('❌ Error parsing ${isMetar ? 'METAR' : 'TAF'} CSV', error: e);
@@ -279,7 +266,6 @@ class WeatherService {
 
     // If data is invalid, need to reload
     if (_isWeatherDataInvalid(cache[icaoCode]!)) {
-      _logger.d('🔄 Weather data for $icaoCode is invalid, triggering reload');
       return true;
     }
 
@@ -288,9 +274,6 @@ class WeatherService {
     if (timestamp != null) {
       final age = DateTime.now().difference(timestamp);
       if (age > const Duration(minutes: 15)) {
-        _logger.d(
-          '🕒 Weather data for $icaoCode is ${age.inMinutes} minutes old, triggering reload',
-        );
         return true;
       }
     } else {
@@ -324,12 +307,10 @@ class WeatherService {
   /// Trigger background reload of weather data
   void _triggerBackgroundReload() {
     if (_isReloading) {
-      _logger.d('🔄 Background reload already in progress, skipping');
       return;
     }
 
     _isReloading = true;
-    _logger.d('🔄 Triggering background weather data reload');
 
     // Start background reload
     _backgroundReload()
@@ -439,9 +420,6 @@ class WeatherService {
       }
     }
 
-    _logger.d(
-      '🌤️ Returning ${results.length}/${icaoCodes.length} METARs from cache',
-    );
     return results;
   }
 
@@ -468,9 +446,6 @@ class WeatherService {
       }
     }
 
-    _logger.d(
-      '🌤️ Returning ${results.length}/${icaoCodes.length} TAFs from cache',
-    );
     return results;
   }
 }

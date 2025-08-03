@@ -21,15 +21,13 @@ class PositionTrackingButton extends StatelessWidget {
                               !autoCenteringEnabled && 
                               autoCenteringCountdown > 0;
     
-    return SizedBox(
-      width: showCountdown ? null : 48,
-      height: 48,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          IconButton(
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        SizedBox(
+          width: 48,
+          height: 48,
+          child: IconButton(
             icon: Icon(
               positionTrackingEnabled ? Icons.gps_fixed : Icons.gps_not_fixed,
               color: positionTrackingEnabled 
@@ -45,26 +43,35 @@ class PositionTrackingButton extends StatelessWidget {
                         : 'Position tracking paused by map movement (tap to disable)')
                 : 'Enable position tracking',
           ),
-          if (showCountdown) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        ),
+        if (showCountdown)
+          Positioned(
+            right: -5,
+            top: -5,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: Colors.orange,
                 borderRadius: AppTheme.extraLargeRadius,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Text(
                 _formatCountdown(autoCenteringCountdown),
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 12,
+                  fontSize: 10,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-          ],
-        ],
-      ),
+          ),
+      ],
     );
   }
 

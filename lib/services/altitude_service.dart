@@ -65,7 +65,6 @@ class AltitudeService {
       if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
         _isBarometerAvailable = await _checkBarometerAvailability();
       } else if (kIsWeb) {
-        _logger.i('Barometer not available on web platform');
         _isBarometerAvailable = false;
       }
       _isInitialized = true;
@@ -106,7 +105,6 @@ class AltitudeService {
     }
 
     _isTracking = true;
-    _logger.i('Starting altitude tracking');
 
     try {
       if (_isBarometerAvailable && !kIsWeb) {
@@ -221,7 +219,6 @@ class AltitudeService {
     if (!_isTracking) return;
 
     _isTracking = false;
-    _logger.i('Stopping altitude tracking');
 
     await _sensorSubscription?.cancel();
     _sensorSubscription = null;
@@ -261,9 +258,6 @@ class AltitudeService {
   /// Set reference pressure for altitude calculation (QNH setting)
   void setReferencePressure(double pressureHPa) {
     _pressureSeaLevel = pressureHPa;
-    _logger.i(
-      'Reference pressure set to: ${pressureHPa.toStringAsFixed(2)} hPa',
-    );
   }
 
   /// Get reference pressure (QNH)

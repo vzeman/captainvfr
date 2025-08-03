@@ -36,8 +36,6 @@ class VibrationMeasurementService {
   /// Initialize the vibration measurement service
   Future<void> initialize() async {
     try {
-      _logger.d('Initializing VibrationMeasurementService');
-
       // Skip accelerometer on web platform and macOS
       if (kIsWeb || (!kIsWeb && Platform.isMacOS)) {
         return;
@@ -51,8 +49,8 @@ class VibrationMeasurementService {
 
       // Start listening to accelerometer events
       _startAccelerometerListening();
-    } catch (e) {
-      _logger.d('Failed to initialize VibrationMeasurementService', error: e);
+    } catch (_) {
+      // Silently fail if accelerometer is not available
     }
   }
 

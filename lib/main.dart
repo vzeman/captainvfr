@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'screens/map_screen.dart';
 import 'screens/offline_data_screen.dart';
 import 'services/location_service.dart';
@@ -70,6 +73,25 @@ void main() {
     debugPrint('❌ Uncaught error: $error');
     debugPrint('Stack trace: $stack');
   });
+}
+
+/// Check location permission and inform user if not granted
+Future<void> _checkLocationPermission() async {
+  // Only check on mobile platforms
+  if (kIsWeb || (!Platform.isIOS && !Platform.isAndroid)) {
+    return;
+  }
+  
+  try {
+    final status = await Permission.locationWhenInUse.status;
+    
+    if (status.isDenied || status.isPermanentlyDenied) {
+      // Location permission not granted - compass features will be limited
+      // The flight dashboard will handle showing a one-time dialog if needed
+    }
+  } catch (_) {
+    // Silently fail if permission check fails
+  }
 }
 
 Future<void> _initializeApp() async {
@@ -209,9 +231,17 @@ Future<void> _initializeApp() async {
       aircraftService: aircraftSettingsService,
     );
 
+    // Initialize HeadingService for always-on compass reading
+    final headingService = HeadingService();
+    await headingService.initialize();
+    
+    // Check location permission status and inform user if needed
+    _checkLocationPermission();
+    
     // Initialize flight service with logbook service and airport service
     final flightService = FlightService(
       barometerService: barometerService,
+      headingService: headingService,
       logBookService: logBookService,
       airportService: airportService,
     );
@@ -243,10 +273,6 @@ Future<void> _initializeApp() async {
 
     // Initialize Settings service
     final settingsService = SettingsService();
-    
-    // Initialize HeadingService for always-on compass reading
-    final headingService = HeadingService();
-    await headingService.initialize();
     
     // Initialize sensor availability service
     final sensorAvailabilityService = SensorAvailabilityService();
@@ -425,6 +451,7 @@ void _runMinimalApp() {
   final cacheService = CacheService();
   final flightService = FlightService(
     barometerService: barometerService,
+    headingService: headingService,
     logBookService: logBookService,
     airportService: airportService,
   );
