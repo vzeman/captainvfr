@@ -78,6 +78,11 @@ class FlightService with ChangeNotifier {
       },
     );
     
+    // Listen to heading updates from HeadingService if available
+    if (_headingService != null) {
+      _headingService.addListener(_onHeadingServiceUpdate);
+    }
+    
     // Initialize location tracker
     _locationTracker = LocationTracker(
       onLocationUpdate: (flightPoint) {
@@ -90,6 +95,13 @@ class FlightService with ChangeNotifier {
     
     // Initialize segment tracker
     _segmentTracker = SegmentTracker(flightState: _flightState);
+  }
+  
+  void _onHeadingServiceUpdate() {
+    // Update flight state with heading from HeadingService
+    if (_headingService != null) {
+      _flightState.setCurrentHeading(_headingService.currentHeading);
+    }
   }
   
   Future<void> _initializeStorage() async {
@@ -381,6 +393,10 @@ class FlightService with ChangeNotifier {
   
   @override
   void dispose() {
+    // Remove heading listener if it was added
+    if (_headingService != null) {
+      _headingService.removeListener(_onHeadingServiceUpdate);
+    }
     _sensorManager.dispose();
     _locationTracker.dispose();
     _barometerSubscription?.cancel();
