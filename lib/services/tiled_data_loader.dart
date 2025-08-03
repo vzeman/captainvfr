@@ -393,7 +393,6 @@ class TiledDataLoader {
         return dataRows;
       }
     } catch (e) {
-      _logger.e('Error loading tile $tileKey: $e');
       // Mark as loaded even if it doesn't exist to prevent repeated attempts
       _loadedTiles.add(cacheKey);
     }
@@ -984,7 +983,6 @@ class TiledDataLoader {
     for (final index in _spatialIndexes.values) {
       index.clear();
     }
-    _logger.i('Cleared tile cache and spatial indexes');
   }
   
   /// Clear cache for specific data type
@@ -993,6 +991,5 @@ class TiledDataLoader {
     _loadedTiles.removeWhere((key) => key.startsWith('$dataType:'));
     // Clear spatial index for this data type
     _spatialIndexes[dataType]?.clear();
-    _logger.i('Cleared cache and spatial index for $dataType');
   }
 }

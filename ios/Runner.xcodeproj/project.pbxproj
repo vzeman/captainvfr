@@ -250,17 +250,6 @@
 				LastUpgradeCheck = 1510;
 				ORGANIZATIONNAME = "";
 				TargetAttributes = {
-					2928DEC22E2CCF2600718D4A = {
-						CreatedOnToolsVersion = 16.4;
-					};
-					2928DECE2E2CCF2700718D4A = {
-						CreatedOnToolsVersion = 16.4;
-						TestTargetID = 2928DEC22E2CCF2600718D4A;
-					};
-					2928DED82E2CCF2700718D4A = {
-						CreatedOnToolsVersion = 16.4;
-						TestTargetID = 2928DEC22E2CCF2600718D4A;
-					};
 					331C8080294A63A400263BE5 = {
 						CreatedOnToolsVersion = 14.0;
 						TestTargetID = 97C146ED1CF9000F007C117D;

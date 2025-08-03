@@ -114,7 +114,6 @@ class PlatformServices {
       return Map<String, dynamic>.from(result as Map);
     } on MissingPluginException {
       // Method channel not implemented - this is expected on some platforms
-      _logger.d('Network diagnostics not available - platform method not implemented');
       return {'available': false, 'reason': 'Method not implemented'};
     } catch (e) {
       _logger.e('Error getting network diagnostics', error: e);
@@ -124,24 +123,5 @@ class PlatformServices {
 
   /// Log network state on app startup for debugging
   static Future<void> logNetworkState() async {
-    _logger.i('=== CaptainVFR Network State Check ===');
-    
-    if (kIsWeb) {
-      _logger.i('Platform: Web Browser');
-      _logger.i('Network: Managed by browser');
-    } else {
-      final status = await checkNetworkStatus();
-      _logger.i('Network Status: $status');
-
-      final diagnostics = await getNetworkDiagnostics();
-      _logger.i('Network Diagnostics: $diagnostics');
-
-      if (!status['isConnected'] || !status['hasInternet']) {
-        _logger.w('Network connectivity issues detected!');
-        _logger.w('Please check your internet connection and app permissions');
-      }
-    }
-
-    _logger.i('=====================================');
   }
 }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import 'dart:math' as math;
 import '../models/airport.dart';
 import '../models/runway.dart';
 import '../models/navaid.dart';
@@ -15,6 +14,7 @@ import 'obstacle_marker.dart';
 import 'hotspot_marker.dart';
 import '../utils/geo_constants.dart';
 import '../constants/map_marker_constants.dart';
+import '../constants/app_theme.dart';
 
 /// An optimized marker layer that only builds markers within the visible bounds
 class OptimizedMarkerLayer extends StatelessWidget {
@@ -492,7 +492,7 @@ class OptimizedReportingPointsLayer extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppTheme.defaultRadius,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.2),

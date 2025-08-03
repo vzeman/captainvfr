@@ -79,21 +79,14 @@ class BarometerService {
   Future<bool> _checkBarometerAvailability() async {
     // Barometer is not available on web
     if (kIsWeb) {
-      _logger.d('Barometer not available on web platform');
       return false;
     }
     
     try {
       return await _methodChannel.invokeMethod('isBarometerAvailable') ?? false;
-    } on PlatformException catch (e) {
-      if (e.code == 'UNAVAILABLE') {
-        _logger.d('Barometer sensor not available: ${e.message}');
-      } else {
-        _logger.w('Error checking barometer availability: ${e.code} - ${e.message}');
-      }
+    } on PlatformException catch(_) {
       return false;
-    } on MissingPluginException catch (e) {
-      _logger.d('Barometer plugin not implemented on this platform: $e');
+    } on MissingPluginException catch (_) {
       return false;
     }
   }
@@ -107,8 +100,6 @@ class BarometerService {
     }
 
     _isListening = true;
-    _logger.i('Starting barometer listening');
-
     try {
       if (_isBarometerAvailable) {
         // Start native barometer sensor (not on web)
@@ -117,7 +108,6 @@ class BarometerService {
             await _methodChannel.invokeMethod('startPressureUpdates');
           } on PlatformException catch (e) {
             if (e.code == 'UNAVAILABLE') {
-              _logger.d('Barometer not available when starting updates: ${e.message}');
               _isBarometerAvailable = false;
               _startSimulatedPressureUpdates();
               return;
@@ -135,7 +125,6 @@ class BarometerService {
           );
         } on PlatformException catch (e) {
           if (e.code == 'UNAVAILABLE') {
-            _logger.d('Barometer sensor not available on this device: ${e.message}');
             _isBarometerAvailable = false;
             _isListening = false;
             // Fallback to simulated data
@@ -151,17 +140,14 @@ class BarometerService {
         }
       } else {
         // Fallback to simulated pressure data for testing
-        _logger.d('Barometer not available, using simulated data');
         _startSimulatedPressureUpdates();
       }
-    } on MissingPluginException catch (e) {
-      _logger.d('Barometer plugin not implemented: $e');
+    } on MissingPluginException catch (_) {
       _isBarometerAvailable = false;
       _isListening = false;
       // Fallback to simulation if native plugin is missing
       _startSimulatedPressureUpdates();
-    } catch (e) {
-      _logger.w('Error starting barometer: $e');
+    } catch (_) {
       _isListening = false;
       // Fallback to simulation if native fails
       _startSimulatedPressureUpdates();
@@ -236,7 +222,6 @@ class BarometerService {
   void _handleSensorError(dynamic error) {
     // Check if it's a PlatformException for unavailable sensor
     if (error is PlatformException && error.code == 'UNAVAILABLE') {
-      _logger.d('Barometer sensor not available on this device: ${error.message}');
       _isBarometerAvailable = false;
       _isListening = false;
       // Cancel the current subscription
@@ -248,7 +233,6 @@ class BarometerService {
     
     // For other errors, log as warning instead of error if it's a known issue
     if (error is PlatformException) {
-      _logger.w('Barometer platform error: ${error.code} - ${error.message}');
       _isBarometerAvailable = false;
       _isListening = false;
       // Cancel the current subscription
@@ -266,8 +250,6 @@ class BarometerService {
   void _startSimulatedPressureUpdates() {
     // Cancel any existing subscription to prevent duplicates
     _sensorSubscription?.cancel();
-    
-    _logger.d('Using simulated barometer data (device has no barometer sensor)');
 
     double basePressure = 1013.25;
     int counter = 0;
@@ -289,9 +271,6 @@ class BarometerService {
   void setSeaLevelPressure(double pressureHPa) {
     if (pressureHPa > 900 && pressureHPa < 1100) {
       _seaLevelPressure = pressureHPa;
-      _logger.i(
-        'Sea level pressure set to: ${pressureHPa.toStringAsFixed(2)} hPa',
-      );
 
       // Recalculate altitude with new sea level pressure
       if (_pressureHPa != null) {
@@ -322,7 +301,6 @@ class BarometerService {
     if (!_isListening) return;
 
     _isListening = false;
-    _logger.i('Stopping barometer listening');
 
     try {
       await _sensorSubscription?.cancel();

@@ -32,6 +32,7 @@ import '../services/tiled_data_loader.dart';
 import '../services/runway_service.dart';
 import '../services/navaid_service.dart';
 import '../services/flight_service.dart';
+import '../services/heading_service.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
 import '../services/offline_map_service.dart';
@@ -63,7 +64,6 @@ import '../models/reporting_point.dart';
 import '../utils/airspace_utils.dart';
 import '../widgets/loading_progress_bar.dart';
 import '../widgets/themed_dialog.dart';
-import '../widgets/performance_overlay_widget.dart';
 import '../widgets/map_zoom_controls.dart';
 import '../services/cache_service.dart';
 import '../services/notam_service_v3.dart';
@@ -91,6 +91,7 @@ class MapScreenState extends State<MapScreen>
   
   // Services
   late final FlightService _flightService;
+  late final HeadingService _headingService;
   late final AirportService _airportService;
   late final RunwayService _runwayService;
   late final NavaidService _navaidService;
@@ -176,6 +177,7 @@ class MapScreenState extends State<MapScreen>
 
   // Location and map state
   Position? _currentPosition;
+  double? _cachedHeading; // Cache current heading to avoid repeated property access
   List<LatLng> _flightPathPoints = [];
   List<flight_seg.FlightSegment> _flightSegments = [];
   List<Airport> _airports = [];
@@ -248,6 +250,7 @@ class MapScreenState extends State<MapScreen>
     if (!_servicesInitialized) {
       try {
         _flightService = Provider.of<FlightService>(context, listen: false);
+        _headingService = Provider.of<HeadingService>(context, listen: false);
         _locationService = Provider.of<LocationService>(context, listen: false);
         _airportService = Provider.of<AirportService>(context, listen: false);
         _runwayService = RunwayService();
@@ -353,6 +356,7 @@ class MapScreenState extends State<MapScreen>
   void _setupFlightServiceListener() {
     _flightService.addListener(_onFlightPathUpdated);
     _flightPlanService.addListener(_onFlightPlanUpdated);
+    _headingService.addListener(_onHeadingUpdated);
   }
 
   // Handle flight path updates from the flight service
@@ -399,34 +403,40 @@ class MapScreenState extends State<MapScreen>
               context,
               listen: false,
             );
-            if (settings.rotateMapWithHeading) {
-              // Move and rotate map
-              _mapController.moveAndRotate(
-                LatLng(lastPoint.latitude, lastPoint.longitude),
-                _mapController.camera.zoom,
-                -(_flightService.currentHeading ??
-                    lastPoint.heading), // Negate for map rotation
-              );
-            } else {
-              // Just move map
-              _mapController.move(
-                LatLng(lastPoint.latitude, lastPoint.longitude),
-                _mapController.camera.zoom,
-              );
+            
+            // Handle different map rotation modes
+            switch (settings.mapRotationMode) {
+              case MapRotationMode.mapRotates:
+                // Map rotates, aircraft marker points north
+                _mapController.moveAndRotate(
+                  LatLng(lastPoint.latitude, lastPoint.longitude),
+                  _mapController.camera.zoom,
+                  -(_flightService.currentHeading ??
+                      lastPoint.heading), // Negate for map rotation
+                );
+                break;
+              case MapRotationMode.aircraftRotates:
+              case MapRotationMode.none:
+                // Map fixed north-up, aircraft marker rotates
+                _mapController.move(
+                  LatLng(lastPoint.latitude, lastPoint.longitude),
+                  _mapController.camera.zoom,
+                );
+                break;
             }
           }
         } else if (!_flightService.isTracking && _currentPosition != null) {
-          // When not tracking, still update heading from sensors if available
-          final currentHeading = _flightService.currentHeading;
-          if (currentHeading != null &&
-              (_currentPosition!.heading - currentHeading).abs() > 1.0) {
+          // When not tracking, still update heading from HeadingService for always-on heading
+          _updateCachedHeading();
+          if (_cachedHeading != null &&
+              (_currentPosition!.heading - _cachedHeading!).abs() > 1.0) {
             _currentPosition = Position(
               latitude: _currentPosition!.latitude,
               longitude: _currentPosition!.longitude,
               timestamp: _currentPosition!.timestamp,
               accuracy: _currentPosition!.accuracy,
               altitude: _currentPosition!.altitude,
-              heading: currentHeading,
+              heading: _cachedHeading!,
               speed: _currentPosition!.speed,
               speedAccuracy: _currentPosition!.speedAccuracy,
               altitudeAccuracy: _currentPosition!.altitudeAccuracy,
@@ -435,6 +445,57 @@ class MapScreenState extends State<MapScreen>
           }
         }
       });
+    }
+  }
+
+  /// Update cached heading to avoid repeated property accesses
+  void _updateCachedHeading() {
+    final headingServiceHeading = _headingService.currentHeading;
+    final flightServiceHeading = _flightService.currentHeading;
+    _cachedHeading = headingServiceHeading ?? flightServiceHeading;
+  }
+
+  /// Handle heading updates from HeadingService
+  void _onHeadingUpdated() {
+    if (!mounted) return;
+    
+    // Update cached heading
+    _updateCachedHeading();
+    
+    // Always update position with new heading if we have a position
+    if (_currentPosition != null && _cachedHeading != null) {
+      // Skip if flight is tracking (flight service handles updates in that case)
+      if (_flightService.isTracking) return;
+      
+      setState(() {
+        // Update the current position with new heading
+        _currentPosition = Position(
+          latitude: _currentPosition!.latitude,
+          longitude: _currentPosition!.longitude,
+          timestamp: _currentPosition!.timestamp,
+          accuracy: _currentPosition!.accuracy,
+          altitude: _currentPosition!.altitude,
+          heading: _cachedHeading!,
+          speed: _currentPosition!.speed,
+          speedAccuracy: _currentPosition!.speedAccuracy,
+          altitudeAccuracy: _currentPosition!.altitudeAccuracy,
+          headingAccuracy: _currentPosition!.headingAccuracy,
+        );
+      });
+      
+      // Read current settings to ensure we use the latest value
+      final settingsService = context.read<SettingsService>();
+      
+      // Update map rotation if position tracking is enabled and auto-centering is on
+      if (_positionTrackingEnabled && _autoCenteringEnabled && !_hasInputFocus) {
+        if (settingsService.mapRotationMode == MapRotationMode.mapRotates) {
+          _mapController.moveAndRotate(
+            LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+            _mapController.camera.zoom,
+            -_cachedHeading!,
+          );
+        }
+      }
     }
   }
 
@@ -501,7 +562,9 @@ class MapScreenState extends State<MapScreen>
       // Ensure panel stays within screen bounds
       // Maximum bottom distance is screen height minus panel height minus top safe area
       final maxBottomDistance = screenSize.height - panelHeight - safeAreaTop - 50; // 50px minimum from top
-      bottomDistance = bottomDistance.clamp(16.0, maxBottomDistance);
+      // Ensure max is at least equal to min to avoid clamp error
+      final clampMax = maxBottomDistance < 16.0 ? 16.0 : maxBottomDistance;
+      bottomDistance = bottomDistance.clamp(16.0, clampMax);
       
       _flightDataPanelPosition = Offset(
         isPhone ? minMargin : newX, // On phones, keep centered
@@ -589,8 +652,11 @@ class MapScreenState extends State<MapScreen>
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const AlertDialog(
-            content: Row(
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: AppTheme.dialogRadius,
+            ),
+            content: const Row(
               children: [
                 CircularProgressIndicator(),
                 SizedBox(width: 16),
@@ -628,6 +694,9 @@ class MapScreenState extends State<MapScreen>
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: AppTheme.dialogRadius,
+        ),
         title: const Text('Missing Map Tiles'),
         content: SingleChildScrollView(
           child: Column(
@@ -704,6 +773,7 @@ class MapScreenState extends State<MapScreen>
     
     _flightService.removeListener(_onFlightPathUpdated);
     _flightPlanService.removeListener(_onFlightPlanUpdated);
+    _headingService.removeListener(_onHeadingUpdated);
     _cacheService.removeListener(_onCacheUpdated);
     _debounceTimer?.cancel();
     _airspaceDebounceTimer?.cancel();
@@ -887,14 +957,22 @@ class MapScreenState extends State<MapScreen>
       if (mounted && _currentPosition != null) {
         try {
           final settings = Provider.of<SettingsService>(context, listen: false);
-          if (settings.rotateMapWithHeading &&
-              _flightService.isTracking &&
-              _flightService.currentHeading != null) {
-            _mapController.moveAndRotate(
-              LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-              MapConstants.initialZoom,
-              -_flightService.currentHeading!,
-            );
+          
+          // Handle different map rotation modes
+          if (_flightService.isTracking && settings.mapRotationMode == MapRotationMode.mapRotates) {
+            _updateCachedHeading();
+            if (_cachedHeading != null) {
+              _mapController.moveAndRotate(
+                LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                MapConstants.initialZoom,
+                -_cachedHeading!,
+              );
+            } else {
+              _mapController.move(
+                LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                MapConstants.initialZoom,
+              );
+            }
           } else {
             _mapController.move(
               LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
@@ -1489,11 +1567,34 @@ class MapScreenState extends State<MapScreen>
         // Cancel any existing timers
         _autoCenteringTimer?.cancel();
         _countdownTimer?.cancel();
+        
+        // Retry starting HeadingService now that we have location permission
+        if (!_headingService.isRunning) {
+          await _headingService.retryStart();
+        }
 
-        _mapController.move(
-          LatLng(position.latitude, position.longitude),
-          _mapController.camera.zoom,
-        );
+        // Handle different map rotation modes
+        if (!mounted) return;
+        final settingsService = context.read<SettingsService>();
+        switch (settingsService.mapRotationMode) {
+          case MapRotationMode.mapRotates:
+            // Update cached heading from HeadingService
+            _updateCachedHeading();
+            final heading = _cachedHeading ?? position.heading;
+            _mapController.moveAndRotate(
+              LatLng(position.latitude, position.longitude),
+              _mapController.camera.zoom,
+              -heading,
+            );
+            break;
+          case MapRotationMode.aircraftRotates:
+          case MapRotationMode.none:
+            _mapController.move(
+              LatLng(position.latitude, position.longitude),
+              _mapController.camera.zoom,
+            );
+            break;
+        }
         _loadAirports();
       }
     } catch (e) {
@@ -1546,17 +1647,25 @@ class MapScreenState extends State<MapScreen>
 
         final settingsService = context.read<SettingsService>();
         
-        if (settingsService.rotateMapWithHeading) {
-          _mapController.moveAndRotate(
-            LatLng(position.latitude, position.longitude),
-            _mapController.camera.zoom,
-            -position.heading,
-          );
-        } else {
-          _mapController.move(
-            LatLng(position.latitude, position.longitude),
-            _mapController.camera.zoom,
-          );
+        // Handle different map rotation modes
+        switch (settingsService.mapRotationMode) {
+          case MapRotationMode.mapRotates:
+            // Update cached heading from HeadingService
+            _updateCachedHeading();
+            final heading = _cachedHeading ?? position.heading;
+            _mapController.moveAndRotate(
+              LatLng(position.latitude, position.longitude),
+              _mapController.camera.zoom,
+              -heading,
+            );
+            break;
+          case MapRotationMode.aircraftRotates:
+          case MapRotationMode.none:
+            _mapController.move(
+              LatLng(position.latitude, position.longitude),
+              _mapController.camera.zoom,
+            );
+            break;
         }
       }
     } catch (e) {
@@ -2353,7 +2462,6 @@ class MapScreenState extends State<MapScreen>
     Navigator.of(context).pop();
     
     // Debug logging
-    print('Selected airport from search: ${airport.icao} - ${airport.name} (type: ${airport.type})');
     
     // Focus map on the selected airport
     _mapController.move(
@@ -3460,8 +3568,26 @@ class MapScreenState extends State<MapScreen>
               if (_currentPosition != null)
                 Consumer<SettingsService>(
                   builder: (context, settings, child) {
-                    // Aircraft marker should always rotate by heading angle
-                    final markerRotation = (_currentPosition?.heading ?? 0) * math.pi / 180;
+                    // Calculate aircraft marker rotation based on map rotation mode
+                    double markerRotation;
+                    _updateCachedHeading();
+                    final currentHeading = _cachedHeading ?? _currentPosition?.heading ?? 0;
+                    
+                    switch (settings.mapRotationMode) {
+                      case MapRotationMode.mapRotates:
+                        // Map rotates, aircraft needs to compensate for map rotation
+                        // Get current map rotation and adjust aircraft icon
+                        final mapRotation = _mapController.camera.rotation;
+                        // Icons.flight points up (North) by default, so no correction needed
+                        markerRotation = (currentHeading - mapRotation) * math.pi / 180;
+                        break;
+                      case MapRotationMode.aircraftRotates:
+                      case MapRotationMode.none:
+                        // Map fixed north-up, aircraft marker rotates to show heading
+                        // Icons.flight points up (North) by default, so no correction needed
+                        markerRotation = currentHeading * math.pi / 180;
+                        break;
+                    }
                     
                     return MarkerLayer(
                       markers: [
@@ -4334,19 +4460,6 @@ class MapScreenState extends State<MapScreen>
             ),
           ),
           
-          // Performance overlay when development mode is enabled
-          Consumer<SettingsService>(
-            builder: (context, settings, child) {
-              if (settings.developmentMode) {
-                return const PerformanceOverlayWidget(
-                  showFPS: true,
-                  showOperations: true,
-                  alignRight: true,
-                );
-              }
-              return const SizedBox.shrink();
-            },
-          ),
           // Zoom control buttons in bottom left corner
           Positioned(
             bottom: 16,

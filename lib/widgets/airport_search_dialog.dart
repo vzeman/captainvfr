@@ -72,7 +72,7 @@ class _AirportSearchDialogState extends State<AirportSearchDialog> {
     return Dialog(
       backgroundColor: AppColors.dialogBackgroundColor,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppTheme.extraLargeRadius,
       ),
       child: Container(
         width: MediaQuery.of(context).size.width * 0.9,
@@ -111,11 +111,11 @@ class _AirportSearchDialogState extends State<AirportSearchDialog> {
                     : null,
                 enabledBorder: OutlineInputBorder(
                   borderSide: BorderSide(color: AppColors.primaryAccent.withValues(alpha: 0.3)),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppTheme.extraLargeRadius,
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderSide: BorderSide(color: AppColors.primaryAccent),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppTheme.extraLargeRadius,
                 ),
                 fillColor: AppColors.fillColorFaint,
                 filled: true,
