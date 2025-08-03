@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'flight/models/flight_constants.dart';
+import 'flight/helpers/analytics_wrapper.dart';
 
 /// Service that provides always-on heading data independent from flight tracking
 /// Uses the compass sensor to continuously monitor heading when the app is running
@@ -22,6 +23,12 @@ class HeadingService extends ChangeNotifier {
   bool _isRunning = false;
   bool _hasError = false;
   String? _errorMessage;
+  
+  // Retry mechanism
+  Timer? _retryTimer;
+  int _retryCount = 0;
+  static const int _maxRetries = 5;
+  static const Duration _baseRetryDelay = Duration(seconds: 2);
   
   // Getters
   double? get currentHeading => _currentHeading;
@@ -45,32 +52,48 @@ class HeadingService extends ChangeNotifier {
       // The service will work when permissions are granted later
       await startHeadingUpdates();
       
-      // If not running yet, schedule periodic retries
+      // If not running yet, schedule retries with exponential backoff
       if (!_isRunning) {
-        _schedulePeriodicRetry();
+        _scheduleRetryWithBackoff();
       }
     } catch (e) {
       _hasError = true;
       _errorMessage = e.toString();
       notifyListeners();
+      // Schedule retry with exponential backoff on error
+      _scheduleRetryWithBackoff();
     }
   }
   
-  /// Schedule periodic retry attempts to start compass
-  void _schedulePeriodicRetry() {
-    int retryCount = 0;
-    Timer.periodic(const Duration(seconds: 10), (timer) {
-      if (_isRunning) {
-        timer.cancel();
-      } else if (_hasError) {
-        // Stop retrying if there's a permanent error
-        timer.cancel();
-      } else if (retryCount >= 6) {
-        // Stop retrying after 1 minute (6 attempts * 10 seconds)
-        timer.cancel();
-      } else {
-        retryCount++;
-        startHeadingUpdates();
+  /// Schedule retry with exponential backoff
+  void _scheduleRetryWithBackoff() {
+    if (_retryCount >= _maxRetries) {
+      // Max retries reached, stop trying
+      return;
+    }
+    
+    // Cancel any existing retry timer
+    _retryTimer?.cancel();
+    
+    // Calculate delay with exponential backoff: 2s, 4s, 8s, 16s, 32s
+    final delay = _baseRetryDelay * (1 << _retryCount);
+    _retryCount++;
+    
+    _retryTimer = Timer(delay, () async {
+      if (!_isRunning && !_hasError) {
+        try {
+          await startHeadingUpdates();
+          if (_isRunning) {
+            // Success! Reset retry count
+            _retryCount = 0;
+          } else {
+            // Still not running, schedule another retry
+            _scheduleRetryWithBackoff();
+          }
+        } catch (e) {
+          // Error occurred, schedule another retry
+          _scheduleRetryWithBackoff();
+        }
       }
     });
   }
@@ -231,19 +254,31 @@ class HeadingService extends ChangeNotifier {
   }
 
   /// Check if compass permissions are available
+  /// 
+  /// Note: On iOS, the permission_handler package has a known issue where it caches
+  /// permission status and may incorrectly report permissions as denied even after
+  /// the user grants them in Settings. This is a documented issue:
+  /// https://github.com/Baseflow/flutter-permission-handler/issues/844
+  /// 
+  /// As a workaround, on iOS we attempt to use the compass regardless of the reported
+  /// permission status. The compass will fail gracefully if permissions are truly denied.
+  /// 
+  /// On Android, we respect the permission status as reported since the caching issue
+  /// doesn't affect Android in the same way.
   Future<bool> _checkCompassPermissions() async {
     try {
       // On iOS and Android, location permission is required for compass
       if (Platform.isIOS || Platform.isAndroid) {
-        // For iOS, let's try to proceed regardless of permission status
-        // The compass might work even if permission_handler reports denied
-        // This can happen due to caching issues in the permission_handler package
-        
         var whenInUseStatus = await Permission.locationWhenInUse.status;
         
         // On iOS, if permission is reported as denied but the user says it's allowed,
         // try to use the compass anyway - it might work
         if (Platform.isIOS && (whenInUseStatus.isDenied || whenInUseStatus.isPermanentlyDenied)) {
+          // Track this issue for monitoring
+          AnalyticsWrapper.track('compass_permission_denied_ios', {
+            'status': whenInUseStatus.toString(),
+            'workaround_applied': true,
+          });
           // Don't set error, just try to use compass
           return true; // Try anyway on iOS
         }
@@ -258,7 +293,18 @@ class HeadingService extends ChangeNotifier {
         // Only request permission on Android
         if (Platform.isAndroid && whenInUseStatus.isDenied) {
           whenInUseStatus = await Permission.locationWhenInUse.request();
+          if (whenInUseStatus.isPermanentlyDenied) {
+            // Track when Android users permanently deny permission
+            AnalyticsWrapper.track('compass_permission_permanently_denied_android');
+          }
           return whenInUseStatus.isGranted || whenInUseStatus.isLimited;
+        }
+        
+        // Track if we're falling through without permission
+        if (Platform.isAndroid) {
+          AnalyticsWrapper.track('compass_permission_denied_android', {
+            'status': whenInUseStatus.toString(),
+          });
         }
         
         return false;
@@ -273,6 +319,7 @@ class HeadingService extends ChangeNotifier {
   
   @override
   void dispose() {
+    _retryTimer?.cancel();
     stopHeadingUpdates();
     super.dispose();
   }
