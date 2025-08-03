@@ -650,32 +650,46 @@ class MapScreenState extends State<MapScreen>
       final flightPlans = _flightPlanService.savedFlightPlans;
       if (flightPlans.isEmpty) return;
       
-      // Show progress indicator
+      // Show non-modal notification at the bottom
       if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: AppTheme.dialogRadius,
-            ),
-            content: const Row(
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(width: 16),
-                Expanded(child: Text('Checking flight plan map tiles...')),
-              ],
-            ),
+        ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: const [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              SizedBox(width: 16),
+              Flexible(
+                child: Text(
+                  'Checking flight plan map tiles...',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
-        );
+          backgroundColor: AppColors.sectionBackgroundColor.withAlpha(230),
+          duration: const Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
       }
       
       // Validate all flight plans
       final validationResults = await _tileDownloadService!.validateAllFlightPlans(flightPlans);
       
-      // Close progress dialog
+      // Hide the notification
       if (mounted) {
-        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
       }
       
       // If there are missing tiles, show dialog
@@ -683,9 +697,9 @@ class MapScreenState extends State<MapScreen>
         await _showMissingTilesDialog(validationResults);
       }
     } catch (e) {
-      // Close progress dialog if still showing
-      if (mounted && Navigator.canPop(context)) {
-        Navigator.of(context).pop();
+      // Hide the notification if still showing
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
       }
     }
   }

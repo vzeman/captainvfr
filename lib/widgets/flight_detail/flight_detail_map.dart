@@ -3,29 +3,33 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 import '../../models/flight.dart';
 import '../../models/moving_segment.dart';
+import '../../constants/flight_detail_constants.dart';
 
 class FlightDetailMap extends StatefulWidget {
   final Flight flight;
   final dynamic selectedSegment;
   final Function(dynamic) onSegmentSelected;
+  final int? selectedChartPointIndex;
 
   const FlightDetailMap({
     super.key,
     required this.flight,
     this.selectedSegment,
     required this.onSegmentSelected,
+    this.selectedChartPointIndex,
   });
 
   @override
-  State<FlightDetailMap> createState() => _FlightDetailMapState();
+  State<FlightDetailMap> createState() => FlightDetailMapState();
 }
 
-class _FlightDetailMapState extends State<FlightDetailMap> {
+class FlightDetailMapState extends State<FlightDetailMap> {
   late final MapController _mapController;
   LatLngBounds? _flightBounds;
   final GlobalKey<State> _mapKey = GlobalKey();
   bool _isMapReady = false;
   bool _tilesLoaded = false;
+  LatLng? _selectedChartPoint;
 
   @override
   void initState() {
@@ -39,7 +43,9 @@ class _FlightDetailMapState extends State<FlightDetailMap> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         // Small delay to ensure map is fully initialized
-        Future.delayed(const Duration(milliseconds: 300), () {
+        Future.delayed(
+          const Duration(milliseconds: FlightDetailConstants.mapFitDelayMilliseconds),
+          () {
           if (mounted) {
             _fitBoundsWhenReady();
           }
@@ -54,6 +60,9 @@ class _FlightDetailMapState extends State<FlightDetailMap> {
     super.dispose();
   }
 
+  /// Calculates the geographical bounds of the flight path.
+  /// Adds 10% padding to ensure the entire flight track is visible
+  /// with some margin around the edges.
   void _calculateBounds() {
     if (widget.flight.path.isEmpty) return;
 
@@ -82,6 +91,9 @@ class _FlightDetailMapState extends State<FlightDetailMap> {
     );
   }
 
+  /// Attempts to fit the map view to show the entire flight path.
+  /// Includes retry logic in case the map controller isn't ready yet.
+  /// Also triggers a micro zoom adjustment to force tile loading.
   void _fitBoundsWhenReady() {
     if (_flightBounds == null || !mounted) return;
 
@@ -115,6 +127,46 @@ class _FlightDetailMapState extends State<FlightDetailMap> {
         }
       });
     }
+  }
+
+  /// Fits the map view to display the entire flight track.
+  /// This is called after the user finishes resizing the map panel
+  /// to ensure the flight path remains centered and visible.
+  void fitMapToTrack() {
+    if (_flightBounds == null || !mounted) return;
+    
+    try {
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: _flightBounds!,
+          padding: const EdgeInsets.all(40.0),
+        ),
+      );
+    } catch (e) {
+      // Silently fail if map is not ready
+    }
+  }
+
+  /// Shows a marker on the map at the GPS location corresponding to
+  /// the given data point index from the flight path.
+  /// 
+  /// [index] - The index in the flight path array (0-based)
+  /// 
+  /// This method is called when users interact with charts to visualize
+  /// the selected point's location on the map.
+  void showMarkerAtIndex(int index) {
+    if (!mounted || widget.flight.path.isEmpty) return;
+    
+    // Ensure index is within bounds
+    if (index < 0 || index >= widget.flight.path.length) {
+      return;
+    }
+    
+    final pathPoint = widget.flight.path[index];
+    final newPoint = LatLng(pathPoint.latitude, pathPoint.longitude);
+    setState(() {
+      _selectedChartPoint = newPoint;
+    });
   }
 
   @override
@@ -279,6 +331,37 @@ class _FlightDetailMapState extends State<FlightDetailMap> {
                           Icons.flight_land,
                           color: Colors.red,
                           size: 30,
+                        ),
+                      ),
+                    // Selected chart point marker
+                    if (_selectedChartPoint != null)
+                      Marker(
+                        point: _selectedChartPoint!,
+                        width: FlightDetailConstants.markerSize,
+                        height: FlightDetailConstants.markerSize,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.deepOrange,
+                            border: Border.all(
+                              color: Colors.white,
+                              width: FlightDetailConstants.markerBorderWidth,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withAlpha(102),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.circle,
+                              color: Colors.white,
+                              size: FlightDetailConstants.markerIconSize,
+                            ),
+                          ),
                         ),
                       ),
                   ],

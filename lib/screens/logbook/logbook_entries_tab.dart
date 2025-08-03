@@ -123,11 +123,14 @@ class _LogBookEntryTile extends StatelessWidget {
                   color: AppColors.secondaryTextColor,
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  dateFormat.format(entry.dateTimeStarted),
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.secondaryTextColor,
+                Flexible(
+                  child: Text(
+                    dateFormat.format(entry.dateTimeStarted),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.secondaryTextColor,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -137,11 +140,14 @@ class _LogBookEntryTile extends StatelessWidget {
                   color: AppColors.secondaryTextColor,
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  '${timeFormat.format(entry.dateTimeStarted)} - ${timeFormat.format(entry.dateTimeFinished)}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.secondaryTextColor,
+                Flexible(
+                  child: Text(
+                    '${timeFormat.format(entry.dateTimeStarted)} - ${timeFormat.format(entry.dateTimeFinished)}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.secondaryTextColor,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -156,22 +162,16 @@ class _LogBookEntryTile extends StatelessWidget {
                     color: AppColors.secondaryTextColor,
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    entry.aircraftType!,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.primaryTextColor,
-                    ),
-                  ),
-                  if (entry.aircraftIdentification != null) ...[
-                    Text(
-                      ' (${entry.aircraftIdentification})',
+                  Flexible(
+                    child: Text(
+                      entry.aircraftType! + (entry.aircraftIdentification != null ? ' (${entry.aircraftIdentification})' : ''),
                       style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.secondaryTextColor,
+                        color: AppColors.primaryTextColor,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ],
+                  ),
                   const SizedBox(width: 16),
                 ],
                 if (entry.flightCondition != null) ...[

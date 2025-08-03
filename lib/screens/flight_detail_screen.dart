@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/flight.dart';
@@ -11,6 +12,7 @@ import '../widgets/flight_detail/flight_info_tab.dart';
 import '../widgets/flight_detail/flight_segments_tab.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_theme.dart';
+import '../constants/flight_detail_constants.dart';
 
 class FlightDetailScreen extends StatefulWidget {
   final Flight flight;
@@ -23,11 +25,81 @@ class FlightDetailScreen extends StatefulWidget {
 
 class _FlightDetailScreenState extends State<FlightDetailScreen> {
   dynamic _selectedSegment; // Can be MovingSegment or FlightSegment
+  double _mapHeightFraction = FlightDetailConstants.defaultMapHeightFraction;
+  bool _isDragging = false;
+  final GlobalKey<FlightDetailMapState> _mapKey = GlobalKey<FlightDetailMapState>();
+  int? _selectedChartPointIndex;
+  Timer? _touchDebounce;
 
   void _onSegmentSelected(dynamic segment) {
     setState(() {
       _selectedSegment = segment;
     });
+  }
+
+  /// Handles chart point selection with optional debouncing.
+  /// When debounce is 0, updates are immediate for smooth interaction.
+  void _onChartPointSelected(int index) {
+    // Cancel any existing timer
+    _touchDebounce?.cancel();
+    
+    if (FlightDetailConstants.touchDebounceMilliseconds == 0) {
+      // Immediate update for smooth interaction
+      if (mounted) {
+        setState(() {
+          _selectedChartPointIndex = index;
+        });
+        _mapKey.currentState?.showMarkerAtIndex(index);
+      }
+    } else {
+      // Debounced update for performance optimization
+      _touchDebounce = Timer(
+        const Duration(milliseconds: FlightDetailConstants.touchDebounceMilliseconds),
+        () {
+          if (mounted) {
+            setState(() {
+              _selectedChartPointIndex = index;
+            });
+            _mapKey.currentState?.showMarkerAtIndex(index);
+          }
+        },
+      );
+    }
+  }
+
+  /// Updates the map/chart split ratio based on vertical drag gesture.
+  /// The drag sensitivity is amplified by FlightDetailConstants.dragSensitivity
+  /// to make the interaction feel more responsive to user input.
+  void _onVerticalDragUpdate(DragUpdateDetails details, double totalHeight) {
+    setState(() {
+      // Calculate new height fraction based on drag with amplified sensitivity
+      final delta = (details.delta.dy / totalHeight) * FlightDetailConstants.dragSensitivity;
+      _mapHeightFraction = (_mapHeightFraction + delta).clamp(
+        FlightDetailConstants.minMapHeightFraction,
+        FlightDetailConstants.maxMapHeightFraction,
+      );
+    });
+  }
+
+  void _onDragStart() {
+    setState(() {
+      _isDragging = true;
+    });
+  }
+
+  void _onDragEnd() {
+    setState(() {
+      _isDragging = false;
+    });
+    // Fit the map to show the entire flight track after resizing
+    _mapKey.currentState?.fitMapToTrack();
+  }
+
+  @override
+  void dispose() {
+    // Clean up the timer to prevent memory leaks
+    _touchDebounce?.cancel();
+    super.dispose();
   }
 
   @override
@@ -66,7 +138,7 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
               child: TextButton.icon(
                 icon: const Icon(Icons.menu_book, color: AppColors.primaryTextColor),
                 label: const Text(
-                  'Add to Logbook',
+                  '+ Logbook',
                   style: TextStyle(color: AppColors.primaryTextColor),
                 ),
                 style: TextButton.styleFrom(
@@ -113,21 +185,121 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
             ),
           ],
         ),
-        body: Column(
-          children: [
-            // Map View
-            Expanded(
-              flex: 3,
-              child: FlightDetailMap(
-                flight: widget.flight,
-                selectedSegment: _selectedSegment,
-                onSegmentSelected: _onSegmentSelected,
-              ),
-            ),
-            // Tab Bar View
-            Expanded(
-              flex: 3,
-              child: TabBarView(
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final totalHeight = constraints.maxHeight;
+            final dividerHeight = FlightDetailConstants.dividerHeight;
+            final minPanelHeight = FlightDetailConstants.minPanelHeight;
+            
+            // Calculate map height with proper constraints
+            double mapHeight = (totalHeight - dividerHeight) * _mapHeightFraction;
+            
+            // Ensure both panels have minimum height
+            if (mapHeight < minPanelHeight) {
+              mapHeight = minPanelHeight;
+            } else if (mapHeight > totalHeight - dividerHeight - minPanelHeight) {
+              mapHeight = totalHeight - dividerHeight - minPanelHeight;
+            }
+            
+            // Calculate exact remaining height for info panel
+            final infoHeight = totalHeight - mapHeight - dividerHeight;
+
+            return Column(
+              children: [
+                // Map View
+                SizedBox(
+                  height: mapHeight,
+                  child: FlightDetailMap(
+                    key: _mapKey,
+                    flight: widget.flight,
+                    selectedSegment: _selectedSegment,
+                    onSegmentSelected: _onSegmentSelected,
+                    selectedChartPointIndex: _selectedChartPointIndex,
+                  ),
+                ),
+                
+                // Draggable Divider
+                GestureDetector(
+                    onVerticalDragStart: (_) => _onDragStart(),
+                    onVerticalDragUpdate: (details) => 
+                        _onVerticalDragUpdate(details, totalHeight),
+                    onVerticalDragEnd: (_) => _onDragEnd(),
+                    child: Container(
+                      height: FlightDetailConstants.dividerHeight,
+                      decoration: BoxDecoration(
+                        color: _isDragging 
+                            ? AppColors.primaryAccent.withAlpha(25)
+                            : AppColors.backgroundColor,
+                        border: Border(
+                          top: BorderSide(
+                            color: AppColors.sectionBorderColor.withAlpha(102),
+                            width: FlightDetailConstants.dividerBorderWidth,
+                          ),
+                          bottom: BorderSide(
+                            color: AppColors.sectionBorderColor.withAlpha(102),
+                            width: FlightDetailConstants.dividerBorderWidth,
+                          ),
+                        ),
+                      ),
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: FlightDetailConstants.dividerHandlePadding,
+                            vertical: 0,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _isDragging
+                                ? AppColors.primaryAccent
+                                : AppColors.sectionBackgroundColor.withAlpha(204),
+                            borderRadius: BorderRadius.circular(
+                              FlightDetailConstants.dividerHandleRadius,
+                            ),
+                            border: Border.all(
+                              color: _isDragging
+                                  ? AppColors.primaryAccent
+                                  : AppColors.sectionBorderColor.withAlpha(153),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.keyboard_arrow_up,
+                                size: FlightDetailConstants.dividerHandleIconSize,
+                                color: _isDragging
+                                    ? AppColors.primaryTextColor
+                                    : AppColors.primaryAccent,
+                              ),
+                              Container(
+                                height: FlightDetailConstants.dividerHandleBarHeight,
+                                width: FlightDetailConstants.dividerHandleBarWidth,
+                                margin: const EdgeInsets.symmetric(horizontal: 3),
+                                decoration: BoxDecoration(
+                                  color: _isDragging
+                                      ? AppColors.primaryTextColor.withAlpha(204)
+                                      : AppColors.primaryAccent.withAlpha(102),
+                                  borderRadius: BorderRadius.circular(1.5),
+                                ),
+                              ),
+                              Icon(
+                                Icons.keyboard_arrow_down,
+                                size: FlightDetailConstants.dividerHandleIconSize,
+                                color: _isDragging
+                                    ? AppColors.primaryTextColor
+                                    : AppColors.primaryAccent,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                
+                // Tab Bar View
+                SizedBox(
+                  height: infoHeight,
+                  child: TabBarView(
                 children: [
                   // Info Tab
                   FlightInfoTab(
@@ -157,6 +329,8 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                                     (a, b) => a > b ? a : b,
                                   )
                                 : null,
+                            startTimeZulu: widget.flight.recordingStartedZulu,
+                            onPointSelected: _onChartPointSelected,
                           )
                         : null,
                     Icons.speed,
@@ -177,6 +351,8 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                                     (a, b) => a > b ? a : b,
                                   )
                                 : null,
+                            startTimeZulu: widget.flight.recordingStartedZulu,
+                            onPointSelected: _onChartPointSelected,
                           )
                         : null,
                     Icons.vibration,
@@ -204,15 +380,19 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                                       ) +
                                       50
                                 : null,
+                            startTimeZulu: widget.flight.recordingStartedZulu,
+                            onPointSelected: _onChartPointSelected,
                           )
                         : null,
                     Icons.terrain,
                     'No altitude data available',
                   ),
-                ],
-              ),
-            ),
-          ],
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
