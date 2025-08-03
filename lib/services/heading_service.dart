@@ -98,9 +98,8 @@ class HeadingService extends ChangeNotifier {
       // Check permissions first but don't fail if denied
       final hasPermission = await _checkCompassPermissions();
       
-      // Debug: Log permission status
+      // Check current permission status
       final status = await Permission.locationWhenInUse.status;
-      print('DEBUG: HeadingService - Permission status: $status, hasPermission: $hasPermission');
       
       if (!hasPermission) {
         // Check if permission is permanently denied
@@ -125,10 +124,7 @@ class HeadingService extends ChangeNotifier {
       
       // Check if compass is available (may not be on some platforms like macOS)
       final compassEvents = FlutterCompass.events;
-      print('DEBUG: HeadingService - Compass events available: ${compassEvents != null}');
-      
       if (compassEvents == null) {
-        print('DEBUG: HeadingService - Compass events is null, compass not available');
         _hasError = true;
         _errorMessage = 'Compass not available on this device';
         notifyListeners();
@@ -137,14 +133,12 @@ class HeadingService extends ChangeNotifier {
       
       _compassSubscription = compassEvents.listen(
         (CompassEvent event) {
-          print('DEBUG: HeadingService - Received compass event: heading=${event.heading}, accuracy=${event.accuracy}');
           if (event.heading != null) {
             final oldHeading = _currentHeading;
             _currentHeading = event.heading;
             
             // Mark as running on first successful heading
             if (!_isRunning) {
-              print('DEBUG: HeadingService - First heading received, marking as running');
               _isRunning = true;
               _hasError = false;
               _errorMessage = null;
@@ -173,12 +167,10 @@ class HeadingService extends ChangeNotifier {
       );
       
       if (_compassSubscription != null) {
-        print('DEBUG: Compass subscription created successfully');
         // Don't mark as running yet - wait for first heading
         // Set a timeout to check if we receive any data
         Future.delayed(const Duration(seconds: 3), () {
           if (!_isRunning && _compassSubscription != null) {
-            print('DEBUG: No compass data received after 3 seconds');
             // Don't treat this as an error - compass might still initialize
             // This often happens on iOS Simulator where compass doesn't work
             _hasError = false;
@@ -187,14 +179,12 @@ class HeadingService extends ChangeNotifier {
           }
         });
       } else {
-        print('DEBUG: Compass subscription is null');
         // Don't treat this as a hard error
         _hasError = false;
         _errorMessage = null;
         notifyListeners();
       }
     } catch (e) {
-      print('DEBUG: Exception starting compass: $e');
       // Don't treat exceptions as hard errors
       _hasError = false;
       _errorMessage = null;
@@ -265,7 +255,6 @@ class HeadingService extends ChangeNotifier {
         var whenInUseStatus = await Permission.locationWhenInUse.status;
         var alwaysStatus = await Permission.locationAlways.status;
         
-        print('DEBUG: Permission check - whenInUse: $whenInUseStatus, always: $alwaysStatus');
         
         // If we have either permission, we're good
         if (whenInUseStatus.isGranted || whenInUseStatus.isLimited || 
@@ -278,7 +267,6 @@ class HeadingService extends ChangeNotifier {
         // If both are denied, try requesting whenInUse
         if (whenInUseStatus.isDenied) {
           whenInUseStatus = await Permission.locationWhenInUse.request();
-          print('DEBUG: Requested whenInUse permission, result: $whenInUseStatus');
           
           if (whenInUseStatus.isPermanentlyDenied) {
             _hasError = true;
@@ -298,7 +286,6 @@ class HeadingService extends ChangeNotifier {
       // For other platforms (macOS, Windows, etc.), assume available
       return true;
     } catch (e) {
-      print('DEBUG: Error checking permissions: $e');
       // Try to continue anyway - the compass might work
       return true;
     }

@@ -138,32 +138,31 @@ class _FlightDashboardState extends State<FlightDashboard> with WidgetsBindingOb
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: SizedBox(
-          height: 36,
-          child: Row(
-            children: [
-              const Icon(
-                Icons.location_off,
-                color: Colors.orange,
-                size: 18,
+        content: Row(
+          children: [
+            const Icon(
+              Icons.location_off,
+              color: Colors.orange,
+              size: 18,
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Location permission needed',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, height: 1.1),
+                  ),
+                  Text(
+                    'Enable for compass heading',
+                    style: TextStyle(fontSize: 10, color: Colors.white70, height: 1.1),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Location permission needed',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
-                    ),
-                    Text(
-                      'Enable for compass heading',
-                      style: TextStyle(fontSize: 10, color: Colors.white70),
-                    ),
-                  ],
-                ),
-              ),
+            ),
               TextButton(
                 onPressed: () {
                   ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -184,7 +183,6 @@ class _FlightDashboardState extends State<FlightDashboard> with WidgetsBindingOb
               ),
             ],
           ),
-        ),
         backgroundColor: const Color(0xE6000000),
         duration: const Duration(seconds: 5),
         behavior: SnackBarBehavior.floating,
