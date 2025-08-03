@@ -95,30 +95,13 @@ class HeadingService extends ChangeNotifier {
     }
     
     try {
-      // Check permissions first but don't fail if denied
+      // Check permissions but on iOS, try anyway even if denied
       final hasPermission = await _checkCompassPermissions();
       
-      // Check current permission status
-      final status = await Permission.locationWhenInUse.status;
-      
-      if (!hasPermission) {
-        // Check if permission is permanently denied
-        if (status.isPermanentlyDenied) {
-          _hasError = true;
-          _errorMessage = 'Location permission permanently denied. Please enable in Settings.';
-          notifyListeners(); // Notify listeners about the error state
-          return; // STOP RETRYING - permission is permanently denied
-        }
-        
-        // Don't schedule another retry if there's already an error
-        if (!_hasError) {
-          // Schedule a retry in 5 seconds (less aggressive)
-          Future.delayed(const Duration(seconds: 5), () {
-            if (!_isRunning && !_hasError) {
-              startHeadingUpdates();
-            }
-          });
-        }
+      // On iOS, always try to start compass even if permission check fails
+      // This works around permission_handler caching issues
+      if (!hasPermission && !Platform.isIOS) {
+        // Only block on Android if permission is denied
         return;
       }
       
@@ -151,8 +134,9 @@ class HeadingService extends ChangeNotifier {
                 FlightConstants.compassThrottleInterval.inMilliseconds) {
               _lastCompassUpdate = now;
               
-              // Only log significant changes to reduce log spam
+              // Log significant changes
               if (oldHeading == null || (oldHeading - _currentHeading!).abs() > 5) {
+                // Heading changed significantly
               }
               
               notifyListeners();
@@ -251,37 +235,33 @@ class HeadingService extends ChangeNotifier {
     try {
       // On iOS and Android, location permission is required for compass
       if (Platform.isIOS || Platform.isAndroid) {
-        // Check both whenInUse and always permissions
+        // For iOS, let's try to proceed regardless of permission status
+        // The compass might work even if permission_handler reports denied
+        // This can happen due to caching issues in the permission_handler package
+        
         var whenInUseStatus = await Permission.locationWhenInUse.status;
-        var alwaysStatus = await Permission.locationAlways.status;
         
+        // On iOS, if permission is reported as denied but the user says it's allowed,
+        // try to use the compass anyway - it might work
+        if (Platform.isIOS && (whenInUseStatus.isDenied || whenInUseStatus.isPermanentlyDenied)) {
+          // Don't set error, just try to use compass
+          return true; // Try anyway on iOS
+        }
         
-        // If we have either permission, we're good
-        if (whenInUseStatus.isGranted || whenInUseStatus.isLimited || 
-            alwaysStatus.isGranted || alwaysStatus.isLimited) {
+        // For Android or if permission is granted, proceed normally
+        if (whenInUseStatus.isGranted || whenInUseStatus.isLimited) {
           _hasError = false;
           _errorMessage = null;
           return true;
         }
         
-        // If both are denied, try requesting whenInUse
-        if (whenInUseStatus.isDenied) {
+        // Only request permission on Android
+        if (Platform.isAndroid && whenInUseStatus.isDenied) {
           whenInUseStatus = await Permission.locationWhenInUse.request();
-          
-          if (whenInUseStatus.isPermanentlyDenied) {
-            _hasError = true;
-            _errorMessage = 'Location permission permanently denied. Please enable in Settings.';
-            return false;
-          }
-        } else if (whenInUseStatus.isPermanentlyDenied) {
-          _hasError = true;
-          _errorMessage = 'Location permission permanently denied. Please enable in Settings.';
-          return false;
+          return whenInUseStatus.isGranted || whenInUseStatus.isLimited;
         }
         
-        // Check again after request
-        return whenInUseStatus.isGranted || whenInUseStatus.isLimited ||
-               alwaysStatus.isGranted || alwaysStatus.isLimited;
+        return false;
       }
       // For other platforms (macOS, Windows, etc.), assume available
       return true;
