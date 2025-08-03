@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
+import '../constants/app_colors.dart';
+import '../services/settings_service.dart';
 
 class SpeedChart extends StatelessWidget {
   final List<double> speedData; // In m/s
   final double? currentSpeed;
   final double? minSpeed;
   final double? maxSpeed;
+  final DateTime? startTimeZulu;
+  final Function(int)? onPointSelected;
 
   const SpeedChart({
     super.key,
@@ -13,43 +18,52 @@ class SpeedChart extends StatelessWidget {
     this.currentSpeed,
     this.minSpeed,
     this.maxSpeed,
+    this.startTimeZulu,
+    this.onPointSelected,
   });
 
   @override
   Widget build(BuildContext context) {
     if (speedData.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'No speed data available\nStart tracking to see speed changes',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey),
+          style: TextStyle(color: AppColors.tertiaryTextColor),
         ),
       );
     }
 
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    return Consumer<SettingsService>(
+      builder: (context, settings, child) {
+        final isMetric = settings.units == 'metric';
+        
+        // Convert m/s to appropriate unit for display
+        final displaySpeeds = isMetric
+            ? speedData.map((s) => s * 3.6).toList() // km/h
+            : speedData.map((s) => s * 2.23694).toList(); // mph
+        
+        final speedUnit = isMetric ? 'km/h' : 'mph';
+        
+        // Calculate min and max for the Y axis
+        final minY = 0.0; // Always start from 0 for speed
+        final conversionFactor = isMetric ? 3.6 : 2.23694;
+        final maxY = maxSpeed != null
+            ? maxSpeed! * conversionFactor * 1.1
+            : (displaySpeeds.isNotEmpty
+                  ? displaySpeeds.reduce((a, b) => a > b ? a : b) * 1.1
+                  : 100.0);
 
-    // Convert m/s to km/h for display
-    final speedsKmh = speedData.map((s) => s * 3.6).toList();
-    // Calculate min and max for the Y axis
-    final minY = 0.0; // Always start from 0 for speed
-    final maxY = maxSpeed != null
-        ? maxSpeed! * 3.6 * 1.1
-        : (speedsKmh.isNotEmpty
-              ? speedsKmh.reduce((a, b) => a > b ? a : b) * 1.1
-              : 100.0);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      height: 300,
+        return Container(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+      height: 320,
       child: LineChart(
         LineChartData(
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
             getDrawingHorizontalLine: (value) => FlLine(
-              color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+              color: AppColors.sectionBorderColor.withAlpha(76),
               strokeWidth: 1,
             ),
           ),
@@ -58,9 +72,16 @@ class SpeedChart extends StatelessWidget {
             rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
             topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
             bottomTitles: AxisTitles(
+              axisNameWidget: Text(
+                'Time (minutes)',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.secondaryTextColor,
+                ),
+              ),
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 30,
+                reservedSize: 40,
                 interval: (speedData.length / 4).ceilToDouble().clamp(
                   1,
                   double.infinity,
@@ -68,10 +89,28 @@ class SpeedChart extends StatelessWidget {
                 getTitlesWidget: (value, meta) {
                   final index = value.toInt();
                   if (index >= 0 && index < speedData.length) {
-                    final minutes = (index / 60).floor();
+                    // Assuming each data point is 1 second
+                    final totalSeconds = index;
+                    final minutes = totalSeconds ~/ 60;
+                    final seconds = totalSeconds % 60;
+                    
+                    // Show time in M:SS format for first few minutes, then just minutes
+                    String timeLabel;
+                    if (minutes < 5 && speedData.length < 600) {
+                      timeLabel = '$minutes:${seconds.toString().padLeft(2, '0')}';
+                    } else {
+                      timeLabel = '${minutes}m';
+                    }
+                    
                     return Padding(
                       padding: const EdgeInsets.only(top: 8.0),
-                      child: Text('${minutes}m'),
+                      child: Text(
+                        timeLabel,
+                        style: TextStyle(
+                          color: AppColors.secondaryTextColor,
+                          fontSize: 10,
+                        ),
+                      ),
                     );
                   }
                   return const Text('');
@@ -79,12 +118,25 @@ class SpeedChart extends StatelessWidget {
               ),
             ),
             leftTitles: AxisTitles(
+              axisNameWidget: Text(
+                'Speed ($speedUnit)',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.secondaryTextColor,
+                ),
+              ),
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 50,
+                reservedSize: 60,
                 interval: ((maxY - minY) / 4).clamp(1.0, double.infinity),
                 getTitlesWidget: (value, meta) {
-                  return Text('${value.toInt()}');
+                  return Text(
+                    '${value.toInt()}',
+                    style: TextStyle(
+                      color: AppColors.secondaryTextColor,
+                      fontSize: 10,
+                    ),
+                  );
                 },
               ),
             ),
@@ -92,7 +144,7 @@ class SpeedChart extends StatelessWidget {
           borderData: FlBorderData(
             show: true,
             border: Border.all(
-              color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+              color: AppColors.sectionBorderColor,
               width: 1,
             ),
           ),
@@ -102,37 +154,107 @@ class SpeedChart extends StatelessWidget {
           maxY: maxY,
           lineBarsData: [
             LineChartBarData(
-              spots: speedsKmh.asMap().entries.map((entry) {
+              spots: displaySpeeds.asMap().entries.map((entry) {
                 return FlSpot(entry.key.toDouble(), entry.value.toDouble());
               }).toList(),
               isCurved: true,
-              color: Colors.blue,
+              color: AppColors.primaryAccent,
               barWidth: 2,
               isStrokeCapRound: true,
               dotData: FlDotData(show: false),
               belowBarData: BarAreaData(
                 show: true,
-                color: Colors.blue.withValues(alpha: 0.2),
+                color: AppColors.primaryAccent.withAlpha(51),
               ),
             ),
           ],
           lineTouchData: LineTouchData(
+            touchCallback: (FlTouchEvent event, LineTouchResponse? response) {
+              // Handle all touch events that have a response with line bar spots
+              if (response != null && response.lineBarSpots != null && response.lineBarSpots!.isNotEmpty) {
+                final spotIndex = response.lineBarSpots!.first.x.toInt();
+                // Call for any touch event with valid response
+                onPointSelected?.call(spotIndex);
+              }
+            },
             touchTooltipData: LineTouchTooltipData(
+              getTooltipColor: (touchedSpots) => AppColors.sectionBackgroundColor.withAlpha(230),
+              tooltipBorderRadius: BorderRadius.circular(4),
+              tooltipBorder: BorderSide(color: AppColors.primaryTextColor.withAlpha(153), width: 0.5),
+              tooltipPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              tooltipMargin: 8,
+              maxContentWidth: 100,
+              fitInsideHorizontally: true,
+              fitInsideVertically: true,
+              showOnTopOfTheChartBoxArea: false,
               getTooltipItems: (List<LineBarSpot> spots) {
                 return spots.map((spot) {
+                  // Calculate actual time for this data point
+                  String timeString;
+                  if (startTimeZulu != null) {
+                    // Add seconds to start time to get actual timestamp
+                    final actualTime = startTimeZulu!.add(Duration(seconds: spot.x.toInt()));
+                    timeString = '${actualTime.hour.toString().padLeft(2, '0')}:${actualTime.minute.toString().padLeft(2, '0')}:${actualTime.second.toString().padLeft(2, '0')}';
+                  } else {
+                    // Fallback to elapsed time if start time not provided
+                    final totalSeconds = spot.x.toInt();
+                    timeString = '${(totalSeconds ~/ 60).toString().padLeft(2, '0')}:${(totalSeconds % 60).toString().padLeft(2, '0')}';
+                  }
+                  
                   return LineTooltipItem(
-                    '${spot.y.toStringAsFixed(1)} km/h\n${(spot.x / 60).toStringAsFixed(1)} min',
-                    TextStyle(
-                      color: isDark ? Colors.white : Colors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    '',
+                    const TextStyle(),
+                    children: [
+                      TextSpan(
+                        text: '$timeString Z',
+                        style: TextStyle(
+                          color: AppColors.warningColor,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          height: 1.2,
+                        ),
+                      ),
+                      TextSpan(
+                        text: '\n${spot.y.toStringAsFixed(1)} $speedUnit',
+                        style: TextStyle(
+                          color: AppColors.primaryTextColor,
+                          fontSize: 9,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
                   );
                 }).toList();
               },
             ),
+            handleBuiltInTouches: true,
+            getTouchedSpotIndicator: (LineChartBarData barData, List<int> spotIndexes) {
+              return spotIndexes.map((index) {
+                return TouchedSpotIndicatorData(
+                  FlLine(
+                    color: AppColors.primaryAccent.withAlpha(51),
+                    strokeWidth: 1,
+                    dashArray: [3, 3],
+                  ),
+                  FlDotData(
+                    show: true,
+                    getDotPainter: (spot, percent, barData, index) {
+                      return FlDotCirclePainter(
+                        radius: 3,
+                        color: AppColors.primaryAccent,
+                        strokeWidth: 1.5,
+                        strokeColor: AppColors.primaryTextColor,
+                      );
+                    },
+                  ),
+                );
+              }).toList();
+            },
           ),
         ),
       ),
+        );
+      },
     );
   }
 }

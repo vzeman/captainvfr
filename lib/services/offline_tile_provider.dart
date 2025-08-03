@@ -93,7 +93,7 @@ class OfflineTileImageProvider extends ImageProvider<OfflineTileImageProvider> {
                 'User-Agent': userAgentPackageName!,
             },
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final bytes = response.bodyBytes;
@@ -107,9 +107,14 @@ class OfflineTileImageProvider extends ImageProvider<OfflineTileImageProvider> {
         throw Exception('HTTP ${response.statusCode}');
       }
     } catch (e) {
-      logger.w(
-        '⚠️ Failed to load tile ${coordinates.z}/${coordinates.x}/${coordinates.y}: $e',
-      );
+      // Log the error but don't spam the console for timeouts
+      if (e.toString().contains('TimeoutException')) {
+        // Silent fail for timeouts - map will show blank tile
+      } else {
+        logger.w(
+          '⚠️ Failed to load tile ${coordinates.z}/${coordinates.x}/${coordinates.y}: $e',
+        );
+      }
 
       // Return a placeholder tile or rethrow the error
       throw Exception('Failed to load map tile: $e');

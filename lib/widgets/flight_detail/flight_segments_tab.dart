@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/flight.dart';
 import '../../models/moving_segment.dart';
 import '../../constants/app_theme.dart';
+import '../../constants/app_colors.dart';
+import '../../services/settings_service.dart';
 
 class FlightSegmentsTab extends StatelessWidget {
   final Flight flight;
@@ -25,7 +28,9 @@ class FlightSegmentsTab extends StatelessWidget {
           // Segments title
           Text(
             'Flight Segments',
-            style: Theme.of(context).textTheme.titleLarge,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppColors.primaryAccent,
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -38,98 +43,88 @@ class FlightSegmentsTab extends StatelessWidget {
               ),
             )
           else ...[
-            // Segments list
+            // Segments list with new design
             ...flight.movingSegments.asMap().entries.map((entry) {
               final index = entry.key;
               final segment = entry.value;
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 8.0),
-                child: InkWell(
-                  onTap: () {
-                    // Handle segment tap
-                    onSegmentSelected(
-                      selectedSegment == segment ? null : segment,
-                    );
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                child: GestureDetector(
+                  onTap: () => onSegmentSelected(
+                    selectedSegment == segment ? null : segment,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                    decoration: BoxDecoration(
+                      color: selectedSegment == segment
+                          ? AppColors.sectionBackgroundColor
+                          : AppColors.backgroundColor,
+                      borderRadius: AppTheme.defaultRadius,
+                      border: Border.all(
+                        color: selectedSegment == segment
+                            ? AppColors.primaryAccent
+                            : AppColors.sectionBorderColor,
+                        width: selectedSegment == segment ? 2 : 1,
+                      ),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        // Segment header with title and time info below
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Segment ${index + 1}',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                            Text(
-                              segment.formattedDuration,
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Started',
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
-                                        ),
-                                  ),
-                                  Text(
-                                    segment.startZuluFormatted,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
-                                  ),
-                                ],
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryTextColor,
+                                fontSize: 15,
                               ),
                             ),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    'Stopped',
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
-                                        ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.schedule,
+                                  size: 12,
+                                  color: AppColors.secondaryTextColor,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _getCompactTimeRange(segment),
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.secondaryTextColor,
+                                    fontSize: 11,
                                   ),
-                                  Text(
-                                    segment.endZuluFormatted,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
+                                ),
+                                const SizedBox(width: 12),
+                                Icon(
+                                  Icons.timer,
+                                  size: 12,
+                                  color: AppColors.secondaryTextColor,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  segment.formattedDuration,
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.primaryAccent,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
 
                         // Expanded segment data
                         if (selectedSegment == segment) ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
+                          Container(
+                            height: 1,
+                            color: AppColors.sectionBorderColor.withAlpha(76),
+                          ),
                           _buildSegmentDetails(context, segment),
                         ],
                       ],
@@ -144,152 +139,119 @@ class FlightSegmentsTab extends StatelessWidget {
     );
   }
 
+  String _getCompactTimeRange(MovingSegment segment) {
+    String startTime = segment.startZuluFormatted;
+    String endTime = segment.endZuluFormatted;
+    
+    // Extract just the time portion if it contains a space (date time format)
+    if (startTime.contains(' ')) {
+      startTime = startTime.split(' ').last;
+    }
+    if (endTime.contains(' ')) {
+      endTime = endTime.split(' ').last;
+    }
+    
+    // Truncate to HH:MM format if longer
+    if (startTime.length > 5) {
+      startTime = startTime.substring(0, 5);
+    }
+    if (endTime.length > 5) {
+      endTime = endTime.substring(0, 5);
+    }
+    
+    return '$startTime - $endTime';
+  }
+
   Widget _buildSegmentDetails(BuildContext context, MovingSegment segment) {
-    return Column(
-      children: [
-        // Speed and Heading Row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: _buildSegmentDataTile(
+    // Use Consumer to get unit settings
+    return Consumer<SettingsService>(
+      builder: (context, settings, child) {
+        final isMetric = settings.units == 'metric';
+        
+        // Format distance based on unit settings
+        final distanceValue = isMetric
+            ? '${(segment.distance / 1000).toStringAsFixed(2)} km'
+            : '${(segment.distance * 0.000621371).toStringAsFixed(2)} mi';
+        
+        return Padding(
+          padding: const EdgeInsets.only(top: 12.0),
+          child: Column(
+            children: [
+              // Speed
+              _buildSegmentDataRow(
                 context,
-                'Avg Speed',
-                segment.formattedAverageSpeed,
-                Icons.speed,
+                icon: Icons.speed,
+                title: 'Avg Speed',
+                value: segment.formattedAverageSpeed,
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildSegmentDataTile(
+              // Distance
+              _buildSegmentDataRow(
                 context,
-                'Heading',
-                segment.formattedHeading,
-                Icons.navigation,
+                icon: Icons.straighten,
+                title: 'Distance',
+                value: distanceValue,
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        // Distance and Altitude Change Row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: _buildSegmentDataTile(
+              // Heading
+              _buildSegmentDataRow(
                 context,
-                'Distance',
-                '${(segment.distance / 1000).toStringAsFixed(2)} km',
-                Icons.straighten,
+                icon: Icons.navigation,
+                title: 'Heading',
+                value: segment.formattedHeading,
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildSegmentDataTile(
+              // Start Altitude
+              _buildSegmentDataRow(
                 context,
-                'Alt Change',
-                segment.formattedAltitudeChange,
-                segment.altitudeChange >= 0
-                    ? Icons.trending_up
-                    : Icons.trending_down,
-                iconColor: segment.altitudeChange >= 0
-                    ? Colors.green
-                    : Colors.red,
+                icon: Icons.flight_takeoff,
+                title: 'Start Alt',
+                value: segment.formattedStartAltitude,
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        // Altitude Details Row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: _buildSegmentDataTile(
+              // End Altitude
+              _buildSegmentDataRow(
                 context,
-                'Start Alt',
-                segment.formattedStartAltitude,
-                Icons.flight_takeoff,
+                icon: Icons.flight_land,
+                title: 'End Alt',
+                value: segment.formattedEndAltitude,
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildSegmentDataTile(
-                context,
-                'End Alt',
-                segment.formattedEndAltitude,
-                Icons.flight_land,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        // Min/Max Altitude Row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: _buildSegmentDataTile(
-                context,
-                'Min Alt',
-                segment.formattedMinAltitude,
-                Icons.arrow_downward,
-                iconColor: Colors.orange,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildSegmentDataTile(
-                context,
-                'Max Alt',
-                segment.formattedMaxAltitude,
-                Icons.arrow_upward,
-                iconColor: Colors.blue,
-              ),
-            ),
-          ],
-        ),
-      ],
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildSegmentDataTile(
-    BuildContext context,
-    String title,
-    String value,
-    IconData icon, {
+  Widget _buildSegmentDataRow(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String value,
     Color? iconColor,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(8.0),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: AppTheme.extraLargeRadius,
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         children: [
           Icon(
             icon,
             size: 18,
-            color: iconColor ?? Theme.of(context).colorScheme.onSurfaceVariant,
+            color: iconColor ?? AppColors.primaryAccent,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               title,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                color: AppColors.secondaryTextColor,
+                fontSize: 13,
               ),
             ),
           ),
           Text(
             value,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: AppColors.primaryTextColor,
+              fontSize: 14,
+            ),
           ),
         ],
       ),

@@ -8,24 +8,27 @@ class FlightDetailMap extends StatefulWidget {
   final Flight flight;
   final dynamic selectedSegment;
   final Function(dynamic) onSegmentSelected;
+  final int? selectedChartPointIndex;
 
   const FlightDetailMap({
     super.key,
     required this.flight,
     this.selectedSegment,
     required this.onSegmentSelected,
+    this.selectedChartPointIndex,
   });
 
   @override
-  State<FlightDetailMap> createState() => _FlightDetailMapState();
+  State<FlightDetailMap> createState() => FlightDetailMapState();
 }
 
-class _FlightDetailMapState extends State<FlightDetailMap> {
+class FlightDetailMapState extends State<FlightDetailMap> {
   late final MapController _mapController;
   LatLngBounds? _flightBounds;
   final GlobalKey<State> _mapKey = GlobalKey();
   bool _isMapReady = false;
   bool _tilesLoaded = false;
+  LatLng? _selectedChartPoint;
 
   @override
   void initState() {
@@ -115,6 +118,38 @@ class _FlightDetailMapState extends State<FlightDetailMap> {
         }
       });
     }
+  }
+
+  // Public method to fit map to track, called when resizing ends
+  void fitMapToTrack() {
+    if (_flightBounds == null || !mounted) return;
+    
+    try {
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: _flightBounds!,
+          padding: const EdgeInsets.all(40.0),
+        ),
+      );
+    } catch (e) {
+      // Silently fail if map is not ready
+    }
+  }
+
+  // Public method to show a marker at a specific data point index
+  void showMarkerAtIndex(int index) {
+    if (!mounted || widget.flight.path.isEmpty) return;
+    
+    // Ensure index is within bounds
+    if (index < 0 || index >= widget.flight.path.length) {
+      return;
+    }
+    
+    final pathPoint = widget.flight.path[index];
+    final newPoint = LatLng(pathPoint.latitude, pathPoint.longitude);
+    setState(() {
+      _selectedChartPoint = newPoint;
+    });
   }
 
   @override
@@ -279,6 +314,37 @@ class _FlightDetailMapState extends State<FlightDetailMap> {
                           Icons.flight_land,
                           color: Colors.red,
                           size: 30,
+                        ),
+                      ),
+                    // Selected chart point marker
+                    if (_selectedChartPoint != null)
+                      Marker(
+                        point: _selectedChartPoint!,
+                        width: 24,
+                        height: 24,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.deepOrange,
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withAlpha(102),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.circle,
+                              color: Colors.white,
+                              size: 8,
+                            ),
+                          ),
                         ),
                       ),
                   ],

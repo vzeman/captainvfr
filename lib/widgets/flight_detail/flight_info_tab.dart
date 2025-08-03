@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../models/flight.dart';
-import '../../models/moving_segment.dart';
 import '../../services/settings_service.dart';
 import '../../constants/app_theme.dart';
 import '../../constants/app_colors.dart';
@@ -31,6 +30,24 @@ class FlightInfoTab extends StatelessWidget {
     }
   }
 
+  // Calculate average speed
+  String _calculateAverageSpeed(Flight flight, bool isMetric) {
+    if (flight.movingTime.inSeconds == 0) {
+      return isMetric ? '0 km/h' : '0 mph';
+    }
+    
+    // Distance in meters, time in seconds
+    final avgSpeedMps = flight.distanceTraveled / flight.movingTime.inSeconds;
+    
+    if (isMetric) {
+      final avgSpeedKmh = avgSpeedMps * 3.6;
+      return '${avgSpeedKmh.toStringAsFixed(1)} km/h';
+    } else {
+      final avgSpeedMph = avgSpeedMps * 2.23694;
+      return '${avgSpeedMph.toStringAsFixed(1)} mph';
+    }
+  }
+
   // Format Zulu time
   String _formatZuluTime(DateTime dateTime) {
     final utc = dateTime.toUtc();
@@ -41,42 +58,23 @@ class FlightInfoTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('MMM d, y • HH:mm');
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Flight summary
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Flight Summary',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppColors.primaryTextColor,
-                ),
-              ),
-              Text(
-                _formatDuration(flight.duration),
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppColors.primaryAccent,
-                ),
-              ),
-            ],
+          Text(
+            'Flight Summary',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppColors.primaryTextColor,
+            ),
           ),
           const SizedBox(height: 16),
 
           // Recording Times Section
           _buildTimeTrackingSection(context),
           const SizedBox(height: 20),
-
-          // Moving Segments Section
-          if (flight.movingSegments.isNotEmpty) ...[
-            _buildMovingSegmentsSection(context),
-            const SizedBox(height: 20),
-          ],
 
           // Airport information section if available
           if (flight.departureAirportCode != null || 
@@ -121,15 +119,6 @@ class FlightInfoTab extends StatelessWidget {
                         width: (MediaQuery.of(context).size.width - 48) / 2,
                         child: _buildInfoTile(
                           context,
-                          icon: Icons.calendar_today,
-                          title: 'Date',
-                          value: dateFormat.format(flight.startTime),
-                        ),
-                      ),
-                      SizedBox(
-                        width: (MediaQuery.of(context).size.width - 48) / 2,
-                        child: _buildInfoTile(
-                          context,
                           icon: Icons.speed,
                           title: 'Max Speed',
                           value: speedValue,
@@ -157,18 +146,9 @@ class FlightInfoTab extends StatelessWidget {
                         width: (MediaQuery.of(context).size.width - 48) / 2,
                         child: _buildInfoTile(
                           context,
-                          icon: Icons.timer,
-                          title: 'Moving Time',
-                          value: _formatDuration(flight.movingTime),
-                        ),
-                      ),
-                      SizedBox(
-                        width: (MediaQuery.of(context).size.width - 48) / 2,
-                        child: _buildInfoTile(
-                          context,
-                          icon: Icons.assessment,
-                          title: 'Points',
-                          value: '${flight.path.length}',
+                          icon: Icons.speed,
+                          title: 'Avg Speed',
+                          value: _calculateAverageSpeed(flight, isMetric),
                         ),
                       ),
                     ],
@@ -183,6 +163,8 @@ class FlightInfoTab extends StatelessWidget {
   }
 
   Widget _buildTimeTrackingSection(BuildContext context) {
+    final dateFormat = DateFormat('MMM d, y');
+    
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
@@ -205,7 +187,7 @@ class FlightInfoTab extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Time Tracking (Zulu Times)',
+                  'Time Tracking',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: AppColors.primaryAccent,
                   ),
@@ -215,6 +197,16 @@ class FlightInfoTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
+
+          // Date
+          _buildTimeRow(
+            context,
+            'Date',
+            dateFormat.format(flight.startTime),
+            Icons.calendar_today,
+          ),
+
+          const SizedBox(height: 8),
 
           // Recording Times
           _buildTimeRow(
@@ -241,13 +233,18 @@ class FlightInfoTab extends StatelessWidget {
               _formatZuluTime(flight.movingStartedZulu!),
               Icons.directions_run,
             ),
-          if (flight.movingStoppedZulu != null)
-            _buildTimeRow(
-              context,
-              'Last Movement',
-              _formatZuluTime(flight.movingStoppedZulu!),
-              Icons.pause,
+          // Always show Last Movement - use recording stopped time if moving stopped is null
+          _buildTimeRow(
+            context,
+            'Last Movement',
+            _formatZuluTime(
+              flight.movingStoppedZulu ?? 
+              flight.recordingStoppedZulu ?? 
+              flight.endTime?.toUtc() ?? 
+              DateTime.now().toUtc()
             ),
+            Icons.pause,
+          ),
 
           const SizedBox(height: 8),
 
@@ -279,14 +276,14 @@ class FlightInfoTab extends StatelessWidget {
                   Text(
                     'Total Moving',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.secondaryTextColor,
+                      color: Colors.orange,
                     ),
                   ),
                   Text(
                     _formatDuration(flight.movingTime),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primaryAccent,
+                      color: AppColors.primaryTextColor,
                     ),
                   ),
                 ],
@@ -298,280 +295,7 @@ class FlightInfoTab extends StatelessWidget {
     );
   }
 
-  Widget _buildMovingSegmentsSection(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: AppColors.backgroundColor,
-        borderRadius: AppTheme.extraLargeRadius,
-        border: Border.all(
-          color: AppColors.sectionBorderColor,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.timeline,
-                color: AppColors.primaryAccent,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Moving Segments (${flight.movingSegments.length})',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.primaryAccent,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
 
-          // Moving segments list
-          ...flight.movingSegments.asMap().entries.map((entry) {
-            final index = entry.key;
-            final segment = entry.value;
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4.0),
-              child: GestureDetector(
-                onTap: () => onSegmentSelected(segment),
-                child: Container(
-                  padding: const EdgeInsets.all(12.0),
-                  decoration: BoxDecoration(
-                    color: selectedSegment == segment
-                        ? AppColors.sectionBackgroundColor
-                        : AppColors.backgroundColor,
-                    borderRadius: AppTheme.defaultRadius,
-                    border: Border.all(
-                      color: selectedSegment == segment
-                          ? AppColors.primaryAccent
-                          : AppColors.sectionBorderColor,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Segment ${index + 1}',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primaryTextColor,
-                                ),
-                          ),
-                          Text(
-                            segment.formattedDuration,
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: AppColors.primaryAccent,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Started',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: AppColors.secondaryTextColor,
-                                    ),
-                              ),
-                              Text(
-                                segment.startZuluFormatted,
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.primaryTextColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                'Stopped',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: AppColors.secondaryTextColor,
-                                    ),
-                              ),
-                              Text(
-                                segment.endZuluFormatted,
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.primaryTextColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      // Enhanced flight data section
-                      const SizedBox(height: 12),
-                      _buildSegmentDetails(context, segment),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }),
-
-          // Pause points summary
-          if (flight.pausePoints.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12.0),
-              decoration: BoxDecoration(
-                color: AppColors.errorColor.withAlpha(51), // 0.2 opacity
-                borderRadius: AppTheme.defaultRadius,
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.pause_circle,
-                    color: AppColors.errorColor,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '${flight.pausePoints.length} pause point${flight.pausePoints.length != 1 ? 's' : ''} recorded',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.primaryTextColor,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSegmentDetails(BuildContext context, MovingSegment segment) {
-    return Column(
-      children: [
-        // Speed and Heading Row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: _buildSegmentDataTile(
-                context,
-                'Avg Speed',
-                segment.formattedAverageSpeed,
-                Icons.speed,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildSegmentDataTile(
-                context,
-                'Heading',
-                segment.formattedHeading,
-                Icons.navigation,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        // Distance and Altitude Change Row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: _buildSegmentDataTile(
-                context,
-                'Distance',
-                '${(segment.distance / 1000).toStringAsFixed(2)} km',
-                Icons.straighten,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildSegmentDataTile(
-                context,
-                'Alt Change',
-                segment.formattedAltitudeChange,
-                segment.altitudeChange >= 0
-                    ? Icons.trending_up
-                    : Icons.trending_down,
-                iconColor: segment.altitudeChange >= 0
-                    ? Colors.green
-                    : Colors.red,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        // Altitude Details Row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: _buildSegmentDataTile(
-                context,
-                'Start Alt',
-                segment.formattedStartAltitude,
-                Icons.flight_takeoff,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildSegmentDataTile(
-                context,
-                'End Alt',
-                segment.formattedEndAltitude,
-                Icons.flight_land,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        // Min/Max Altitude Row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: _buildSegmentDataTile(
-                context,
-                'Min Alt',
-                segment.formattedMinAltitude,
-                Icons.arrow_downward,
-                iconColor: Colors.orange,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildSegmentDataTile(
-                context,
-                'Max Alt',
-                segment.formattedMaxAltitude,
-                Icons.arrow_upward,
-                iconColor: Colors.blue,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 
   Widget _buildTimeRow(
     BuildContext context,
@@ -610,56 +334,7 @@ class FlightInfoTab extends StatelessWidget {
     );
   }
 
-  Widget _buildSegmentDataTile(
-    BuildContext context,
-    String title,
-    String value,
-    IconData icon, {
-    Color? iconColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(8.0),
-      decoration: BoxDecoration(
-        color: AppColors.sectionBackgroundColor,
-        borderRadius: AppTheme.defaultRadius,
-        border: Border.all(
-          color: AppColors.sectionBorderColor,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 18,
-            color: iconColor ?? AppColors.secondaryTextColor,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              title,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.secondaryTextColor,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Flexible(
-            child: Text(
-              value,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.primaryTextColor,
-              ),
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.end,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildInfoTile(
     BuildContext context, {
