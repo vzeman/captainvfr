@@ -41,8 +41,7 @@ class OptimizedHeatmapLayer extends StatelessWidget {
           future: FlightHeatmapProcessor.getHeatmapCells(renderZoom, viewport),
           builder: (context, snapshot) {
             if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              // Debug: show indicator when no data
-              print('Heatmap: No data at zoom $currentZoom (render zoom: $renderZoom)');
+              // Show indicator when no data
               return Center(
                 child: Container(
                   padding: const EdgeInsets.all(8),
@@ -58,7 +57,6 @@ class OptimizedHeatmapLayer extends StatelessWidget {
               );
             }
             
-            print('Heatmap: Rendering ${snapshot.data!.length} cells at zoom $currentZoom');
             return CustomPaint(
               painter: HeatmapPainter(
                 cells: snapshot.data!,

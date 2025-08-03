@@ -3925,6 +3925,8 @@ class MapScreenState extends State<MapScreen>
                 },
                 child: Container(
                   color: Colors.black.withValues(alpha: 0.3), // Overlay
+                  width: MediaQuery.of(context).size.width,
+                  height: MediaQuery.of(context).size.height,
                   child: Row(
                     children: [
                       // Spacer that handles taps to close
