@@ -100,7 +100,8 @@ class FlightService with ChangeNotifier {
   void _onHeadingServiceUpdate() {
     // Update flight state with heading from HeadingService
     if (_headingService != null) {
-      _flightState.setCurrentHeading(_headingService.currentHeading);
+      final heading = _headingService.currentHeading;
+      _flightState.setCurrentHeading(heading);
     }
   }
   
