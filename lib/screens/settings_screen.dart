@@ -77,19 +77,6 @@ class SettingsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _buildSection(
-                title: 'Development',
-                children: [
-                  _buildSwitchTile(
-                    title: 'Development Mode',
-                    subtitle: 'Show performance debug information',
-                    value: settings.developmentMode,
-                    onChanged: (value) =>
-                        settings.setDevelopmentMode(value),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildSection(
                 title: 'Unit Settings',
                 children: [
                   // Legacy unit selector for quick presets
@@ -541,12 +528,10 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
     final isLandscape = screenSize.width > screenSize.height;
     
     final responsiveWidth = isLandscape ? 
-      (screenSize.width * 0.6).clamp(500.0, 800.0) : 
-      (screenSize.width * 0.9).clamp(300.0, 500.0);
+      (screenSize.width * 0.9).clamp(600.0, 900.0) :
+      (screenSize.width * 0.9).clamp(350.0, 600.0);
     
-    final responsiveHeight = isLandscape ? 
-      screenSize.height * 0.85 : 
-      screenSize.height * 0.8;
+    final responsiveHeight = screenSize.height * 0.8;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -643,17 +628,6 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                     'Auto-create logbook',
                     settings.autoCreateLogbookEntry,
                     (value) => settings.setAutoCreateLogbookEntry(value),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              _buildCompactSection(
-                title: 'Development',
-                children: [
-                  _buildCompactSwitch(
-                    'Development mode',
-                    settings.developmentMode,
-                    (value) => settings.setDevelopmentMode(value),
                   ),
                 ],
               ),
@@ -760,12 +734,15 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Aviation Data Caches',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primaryTextColor,
+                  const Expanded(
+                    child: Text(
+                      'Aviation Data Caches',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryTextColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Row(
@@ -1365,10 +1342,14 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white70, fontSize: 11),
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
+          const SizedBox(width: 8),
           SizedBox(
             height: 28,
             child: DropdownButton<String>(

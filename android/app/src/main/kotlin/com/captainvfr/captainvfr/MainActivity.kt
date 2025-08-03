@@ -62,6 +62,7 @@ class MainActivity : FlutterActivity() {
         flutterEngine.plugins.add(AltitudePlugin())
         flutterEngine.plugins.add(NetworkPlugin())
         flutterEngine.plugins.add(VibrationPlugin())
+        flutterEngine.plugins.add(WatchConnectivityPlugin())
         
         Log.d(TAG, "Flutter plugins registered")
     }

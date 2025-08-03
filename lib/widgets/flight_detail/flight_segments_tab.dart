@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/flight.dart';
 import '../../models/moving_segment.dart';
+import '../../constants/app_theme.dart';
 
 class FlightSegmentsTab extends StatelessWidget {
   final Flight flight;
@@ -263,7 +264,7 @@ class FlightSegmentsTab extends StatelessWidget {
       padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(8.0),
+        borderRadius: AppTheme.extraLargeRadius,
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
         ),

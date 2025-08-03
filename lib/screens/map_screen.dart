@@ -66,7 +66,6 @@ import '../models/reporting_point.dart';
 import '../utils/airspace_utils.dart';
 import '../widgets/loading_progress_bar.dart';
 import '../widgets/themed_dialog.dart';
-import '../widgets/performance_overlay_widget.dart';
 import '../widgets/map_zoom_controls.dart';
 import '../services/cache_service.dart';
 import '../services/notam_service_v3.dart';
@@ -420,7 +419,6 @@ class MapScreenState extends State<MapScreen>
                 break;
               case MapRotationMode.aircraftRotates:
               case MapRotationMode.none:
-              default:
                 // Map fixed north-up, aircraft marker rotates
                 _mapController.move(
                   LatLng(lastPoint.latitude, lastPoint.longitude),
@@ -465,7 +463,6 @@ class MapScreenState extends State<MapScreen>
     
     // Update cached heading
     _updateCachedHeading();
-    debugPrint('MapScreen: Heading updated to ${_cachedHeading?.toStringAsFixed(1)}°, tracking: ${_flightService.isTracking}, position tracking: $_positionTrackingEnabled');
     
     // Always update position with new heading if we have a position
     if (_currentPosition != null && _cachedHeading != null) {
@@ -567,7 +564,9 @@ class MapScreenState extends State<MapScreen>
       // Ensure panel stays within screen bounds
       // Maximum bottom distance is screen height minus panel height minus top safe area
       final maxBottomDistance = screenSize.height - panelHeight - safeAreaTop - 50; // 50px minimum from top
-      bottomDistance = bottomDistance.clamp(16.0, maxBottomDistance);
+      // Ensure max is at least equal to min to avoid clamp error
+      final clampMax = maxBottomDistance < 16.0 ? 16.0 : maxBottomDistance;
+      bottomDistance = bottomDistance.clamp(16.0, clampMax);
       
       _flightDataPanelPosition = Offset(
         isPhone ? minMargin : newX, // On phones, keep centered
@@ -655,8 +654,11 @@ class MapScreenState extends State<MapScreen>
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const AlertDialog(
-            content: Row(
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: AppTheme.dialogRadius,
+            ),
+            content: const Row(
               children: [
                 CircularProgressIndicator(),
                 SizedBox(width: 16),
@@ -694,6 +696,9 @@ class MapScreenState extends State<MapScreen>
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: AppTheme.dialogRadius,
+        ),
         title: const Text('Missing Map Tiles'),
         content: SingleChildScrollView(
           child: Column(
@@ -1564,8 +1569,14 @@ class MapScreenState extends State<MapScreen>
         // Cancel any existing timers
         _autoCenteringTimer?.cancel();
         _countdownTimer?.cancel();
+        
+        // Retry starting HeadingService now that we have location permission
+        if (!_headingService.isRunning) {
+          await _headingService.retryStart();
+        }
 
         // Handle different map rotation modes
+        if (!mounted) return;
         final settingsService = context.read<SettingsService>();
         switch (settingsService.mapRotationMode) {
           case MapRotationMode.mapRotates:
@@ -1580,7 +1591,6 @@ class MapScreenState extends State<MapScreen>
             break;
           case MapRotationMode.aircraftRotates:
           case MapRotationMode.none:
-          default:
             _mapController.move(
               LatLng(position.latitude, position.longitude),
               _mapController.camera.zoom,
@@ -1653,7 +1663,6 @@ class MapScreenState extends State<MapScreen>
             break;
           case MapRotationMode.aircraftRotates:
           case MapRotationMode.none:
-          default:
             _mapController.move(
               LatLng(position.latitude, position.longitude),
               _mapController.camera.zoom,
@@ -2461,7 +2470,6 @@ class MapScreenState extends State<MapScreen>
     Navigator.of(context).pop();
     
     // Debug logging
-    print('Selected airport from search: ${airport.icao} - ${airport.name} (type: ${airport.type})');
     
     // Focus map on the selected airport
     _mapController.move(
@@ -3588,15 +3596,14 @@ class MapScreenState extends State<MapScreen>
                         // Map rotates, aircraft needs to compensate for map rotation
                         // Get current map rotation and adjust aircraft icon
                         final mapRotation = _mapController.camera.rotation;
-                        // Subtract 90 degrees to correct for aircraft icon orientation
-                        markerRotation = (currentHeading - mapRotation - 90) * math.pi / 180;
+                        // Icons.flight points up (North) by default, so no correction needed
+                        markerRotation = (currentHeading - mapRotation) * math.pi / 180;
                         break;
                       case MapRotationMode.aircraftRotates:
                       case MapRotationMode.none:
-                      default:
                         // Map fixed north-up, aircraft marker rotates to show heading
-                        // Subtract 90 degrees to correct for aircraft icon orientation
-                        markerRotation = (currentHeading - 90) * math.pi / 180;
+                        // Icons.flight points up (North) by default, so no correction needed
+                        markerRotation = currentHeading * math.pi / 180;
                         break;
                     }
                     
@@ -4479,19 +4486,6 @@ class MapScreenState extends State<MapScreen>
             ),
           ),
           
-          // Performance overlay when development mode is enabled
-          Consumer<SettingsService>(
-            builder: (context, settings, child) {
-              if (settings.developmentMode) {
-                return const PerformanceOverlayWidget(
-                  showFPS: true,
-                  showOperations: true,
-                  alignRight: true,
-                );
-              }
-              return const SizedBox.shrink();
-            },
-          ),
           // Zoom control buttons in bottom left corner
           Positioned(
             bottom: 16,

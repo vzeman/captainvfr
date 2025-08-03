@@ -9,6 +9,7 @@ import '../models/flight_point.dart';
 import '../models/aircraft.dart';
 import '../models/flight_segment.dart';
 import 'barometer_service.dart';
+import 'heading_service.dart';
 import 'watch_connectivity_service.dart';
 import 'flight/helpers/analytics_wrapper.dart';
 import 'flight/models/flight_state.dart';
@@ -32,6 +33,7 @@ class FlightService with ChangeNotifier {
   
   // Services
   final BarometerService? _barometerService;
+  final HeadingService? _headingService;
   final LogBookService? _logBookService;
   final AirportService? _airportService;
   final WatchConnectivityService _watchService = WatchConnectivityService();
@@ -56,9 +58,11 @@ class FlightService with ChangeNotifier {
   FlightService({
     this.onFlightPathUpdated,
     BarometerService? barometerService,
+    HeadingService? headingService,
     LogBookService? logBookService,
     AirportService? airportService,
   }) : _barometerService = barometerService ?? BarometerService(),
+       _headingService = headingService,
        _logBookService = logBookService,
        _airportService = airportService {
     _initializeComponents();
@@ -67,11 +71,8 @@ class FlightService with ChangeNotifier {
   }
   
   void _initializeComponents() {
-    // Initialize sensor manager
+    // Initialize sensor manager (compass handled by HeadingService)
     _sensorManager = SensorManager(
-      onHeadingChanged: (heading) {
-        _flightState.setCurrentHeading(heading);
-      },
       onSensorDataUpdated: () {
         _throttledNotifyListeners();
       },
@@ -138,7 +139,7 @@ class FlightService with ChangeNotifier {
   double get verticalSpeed => FlightCalculator.calculateVerticalSpeed(_flightState.flightPath);
   
   // Sensor data getters
-  double? get currentHeading => _flightState.currentHeading;
+  double? get currentHeading => _headingService?.currentHeading ?? _flightState.currentHeading;
   double? get barometricAltitude => _flightState.currentBaroAltitude;
   double? get barometricPressure => _barometerService?.pressureHPa;
   double get currentGForce => _sensorManager.currentGForce;

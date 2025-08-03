@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
-import 'package:flutter_compass/flutter_compass.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import '../models/flight_constants.dart';
 
@@ -10,7 +9,7 @@ class SensorManager {
   // Sensor data streams
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
-  StreamSubscription<CompassEvent>? _compassSubscription;
+  // Compass is now handled by HeadingService, not here
   
   // Current sensor values
   double _currentXAccel = 0.0;
@@ -19,17 +18,11 @@ class SensorManager {
   double _currentXGyro = 0.0;
   double _currentYGyro = 0.0;
   double _currentZGyro = 0.0;
-  double? _currentHeading;
   
   // Callbacks
-  final Function(double? heading) onHeadingChanged;
   final Function() onSensorDataUpdated;
-  
-  // Throttling
-  DateTime? _lastCompassUpdate;
-  
+
   SensorManager({
-    required this.onHeadingChanged,
     required this.onSensorDataUpdated,
   });
   
@@ -40,7 +33,6 @@ class SensorManager {
   double get currentXGyro => _currentXGyro;
   double get currentYGyro => _currentYGyro;
   double get currentZGyro => _currentZGyro;
-  double? get currentHeading => _currentHeading;
   
   /// Get current G-force
   double get currentGForce {
@@ -105,34 +97,12 @@ class SensorManager {
       debugPrint('Gyroscope not supported on this platform');
     }
     
-    // Compass - throttle updates
-    // Note: Compass may not be available on all platforms (e.g., macOS)
-    try {
-      _compassSubscription = FlutterCompass.events?.listen((CompassEvent event) {
-        if (event.heading != null) {
-          _currentHeading = event.heading;
-          // Throttle compass updates to max 2 per second
-          final now = DateTime.now();
-          if (_lastCompassUpdate == null ||
-              now.difference(_lastCompassUpdate!).inMilliseconds > 
-              FlightConstants.compassThrottleInterval.inMilliseconds) {
-            _lastCompassUpdate = now;
-            onHeadingChanged(_currentHeading);
-            onSensorDataUpdated();
-          }
-        }
-      }, onError: (error) {
-        debugPrint('Compass error: $error');
-      });
-    } catch (e) {
-      debugPrint('Failed to initialize compass: $e');
-    }
+    // Compass is now handled by HeadingService for always-on heading
+    // This avoids conflicts and ensures heading works even when not tracking
   }
   
   /// Stop all sensor subscriptions
   void stopSensors() {
-    _compassSubscription?.cancel();
-    _compassSubscription = null;
     _accelerometerSubscription?.cancel();
     _accelerometerSubscription = null;
     _gyroscopeSubscription?.cancel();

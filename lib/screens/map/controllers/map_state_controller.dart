@@ -2,11 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:logger/logger.dart';
 import '../constants/map_constants.dart';
 
 class MapStateController extends ChangeNotifier {
-  final Logger _logger = Logger(level: Level.warning);
 
   // Location and map state
   Position? _currentPosition;

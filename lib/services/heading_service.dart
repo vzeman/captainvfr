@@ -33,40 +33,122 @@ class HeadingService extends ChangeNotifier {
   
   /// Initialize the heading service
   Future<void> initialize() async {
-    if (_isInitialized) return;
+    if (_isInitialized) {
+      return;
+    }
     
     try {
-      // Check compass permissions first
-      if (!await _checkCompassPermissions()) {
-        _hasError = true;
-        _errorMessage = 'Compass permission denied';
-        _isInitialized = true;
-        debugPrint('❌ HeadingService: Compass permission denied');
-        return;
-      }
-      
-      // Start compass immediately upon initialization
-      await startHeadingUpdates();
+      // Mark as initialized early to prevent multiple initialization attempts
       _isInitialized = true;
-      debugPrint('✅ HeadingService initialized successfully');
+      
+      // Try to start compass updates regardless of permissions
+      // The service will work when permissions are granted later
+      await startHeadingUpdates();
+      
+      // If not running yet, schedule periodic retries
+      if (!_isRunning) {
+        _schedulePeriodicRetry();
+      }
     } catch (e) {
-      debugPrint('❌ HeadingService initialization failed: $e');
       _hasError = true;
       _errorMessage = e.toString();
-      _isInitialized = true; // Mark as initialized to avoid retry loops
+      notifyListeners();
     }
+  }
+  
+  /// Schedule periodic retry attempts to start compass
+  void _schedulePeriodicRetry() {
+    int retryCount = 0;
+    Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (_isRunning) {
+        timer.cancel();
+      } else if (_hasError) {
+        // Stop retrying if there's a permanent error
+        timer.cancel();
+      } else if (retryCount >= 6) {
+        // Stop retrying after 1 minute (6 attempts * 10 seconds)
+        timer.cancel();
+      } else {
+        retryCount++;
+        startHeadingUpdates();
+      }
+    });
+  }
+  
+  /// Retry starting heading updates (called when permissions are granted)
+  Future<void> retryStart() async {
+    if (_isRunning) {
+      return;
+    }
+    
+    // Reset error state to allow fresh permission check
+    _hasError = false;
+    _errorMessage = null;
+    
+    await startHeadingUpdates();
   }
   
   /// Start compass updates
   Future<void> startHeadingUpdates() async {
-    if (_isRunning) return;
+    if (_isRunning) {
+      return;
+    }
     
     try {
+      // Check permissions first but don't fail if denied
+      final hasPermission = await _checkCompassPermissions();
+      
+      // Debug: Log permission status
+      final status = await Permission.locationWhenInUse.status;
+      print('DEBUG: HeadingService - Permission status: $status, hasPermission: $hasPermission');
+      
+      if (!hasPermission) {
+        // Check if permission is permanently denied
+        if (status.isPermanentlyDenied) {
+          _hasError = true;
+          _errorMessage = 'Location permission permanently denied. Please enable in Settings.';
+          notifyListeners(); // Notify listeners about the error state
+          return; // STOP RETRYING - permission is permanently denied
+        }
+        
+        // Don't schedule another retry if there's already an error
+        if (!_hasError) {
+          // Schedule a retry in 5 seconds (less aggressive)
+          Future.delayed(const Duration(seconds: 5), () {
+            if (!_isRunning && !_hasError) {
+              startHeadingUpdates();
+            }
+          });
+        }
+        return;
+      }
+      
       // Check if compass is available (may not be on some platforms like macOS)
-      _compassSubscription = FlutterCompass.events?.listen(
+      final compassEvents = FlutterCompass.events;
+      print('DEBUG: HeadingService - Compass events available: ${compassEvents != null}');
+      
+      if (compassEvents == null) {
+        print('DEBUG: HeadingService - Compass events is null, compass not available');
+        _hasError = true;
+        _errorMessage = 'Compass not available on this device';
+        notifyListeners();
+        return;
+      }
+      
+      _compassSubscription = compassEvents.listen(
         (CompassEvent event) {
+          print('DEBUG: HeadingService - Received compass event: heading=${event.heading}, accuracy=${event.accuracy}');
           if (event.heading != null) {
+            final oldHeading = _currentHeading;
             _currentHeading = event.heading;
+            
+            // Mark as running on first successful heading
+            if (!_isRunning) {
+              print('DEBUG: HeadingService - First heading received, marking as running');
+              _isRunning = true;
+              _hasError = false;
+              _errorMessage = null;
+            }
             
             // Throttle compass updates to max 2 per second to avoid excessive UI updates
             final now = DateTime.now();
@@ -74,24 +156,48 @@ class HeadingService extends ChangeNotifier {
                 now.difference(_lastCompassUpdate!).inMilliseconds > 
                 FlightConstants.compassThrottleInterval.inMilliseconds) {
               _lastCompassUpdate = now;
-              debugPrint('HeadingService: Heading updated to ${event.heading?.toStringAsFixed(1)}°');
+              
+              // Only log significant changes to reduce log spam
+              if (oldHeading == null || (oldHeading - _currentHeading!).abs() > 5) {
+              }
+              
               notifyListeners();
             }
+          } else {
           }
         },
         onError: (error) {
-          debugPrint('Compass error in HeadingService: $error');
+          _hasError = true;
+          _errorMessage = error.toString();
         },
       );
       
       if (_compassSubscription != null) {
-        _isRunning = true;
-        debugPrint('✅ Compass updates started in HeadingService');
+        print('DEBUG: Compass subscription created successfully');
+        // Don't mark as running yet - wait for first heading
+        // Set a timeout to check if we receive any data
+        Future.delayed(const Duration(seconds: 3), () {
+          if (!_isRunning && _compassSubscription != null) {
+            print('DEBUG: No compass data received after 3 seconds');
+            // Don't treat this as an error - compass might still initialize
+            // This often happens on iOS Simulator where compass doesn't work
+            _hasError = false;
+            _errorMessage = null;
+            notifyListeners();
+          }
+        });
       } else {
-        debugPrint('⚠️ Compass not available on this platform');
+        print('DEBUG: Compass subscription is null');
+        // Don't treat this as a hard error
+        _hasError = false;
+        _errorMessage = null;
+        notifyListeners();
       }
     } catch (e) {
-      debugPrint('❌ Failed to start compass updates: $e');
+      print('DEBUG: Exception starting compass: $e');
+      // Don't treat exceptions as hard errors
+      _hasError = false;
+      _errorMessage = null;
     }
   }
   
@@ -102,7 +208,6 @@ class HeadingService extends ChangeNotifier {
     _compassSubscription?.cancel();
     _compassSubscription = null;
     _isRunning = false;
-    debugPrint('🛑 Compass updates stopped in HeadingService');
   }
   
   /// Check if compass/heading is available
@@ -137,24 +242,65 @@ class HeadingService extends ChangeNotifier {
     
     return '---';
   }
+  
+  /// Request compass calibration (iOS will show calibration UI if needed)
+  Future<void> requestCalibration() async {
+    
+    // On iOS, we can trigger calibration by restarting the compass
+    if (Platform.isIOS) {
+      stopHeadingUpdates();
+      await Future.delayed(const Duration(milliseconds: 500));
+      await startHeadingUpdates();
+    } else {
+      // On Android, calibration is automatic with figure-8 motion
+    }
+  }
 
   /// Check if compass permissions are available
   Future<bool> _checkCompassPermissions() async {
     try {
-      // On iOS and Android, location permission is often required for compass
+      // On iOS and Android, location permission is required for compass
       if (Platform.isIOS || Platform.isAndroid) {
-        final status = await Permission.locationWhenInUse.status;
-        if (status.isDenied) {
-          final result = await Permission.locationWhenInUse.request();
-          return result.isGranted;
+        // Check both whenInUse and always permissions
+        var whenInUseStatus = await Permission.locationWhenInUse.status;
+        var alwaysStatus = await Permission.locationAlways.status;
+        
+        print('DEBUG: Permission check - whenInUse: $whenInUseStatus, always: $alwaysStatus');
+        
+        // If we have either permission, we're good
+        if (whenInUseStatus.isGranted || whenInUseStatus.isLimited || 
+            alwaysStatus.isGranted || alwaysStatus.isLimited) {
+          _hasError = false;
+          _errorMessage = null;
+          return true;
         }
-        return status.isGranted;
+        
+        // If both are denied, try requesting whenInUse
+        if (whenInUseStatus.isDenied) {
+          whenInUseStatus = await Permission.locationWhenInUse.request();
+          print('DEBUG: Requested whenInUse permission, result: $whenInUseStatus');
+          
+          if (whenInUseStatus.isPermanentlyDenied) {
+            _hasError = true;
+            _errorMessage = 'Location permission permanently denied. Please enable in Settings.';
+            return false;
+          }
+        } else if (whenInUseStatus.isPermanentlyDenied) {
+          _hasError = true;
+          _errorMessage = 'Location permission permanently denied. Please enable in Settings.';
+          return false;
+        }
+        
+        // Check again after request
+        return whenInUseStatus.isGranted || whenInUseStatus.isLimited ||
+               alwaysStatus.isGranted || alwaysStatus.isLimited;
       }
       // For other platforms (macOS, Windows, etc.), assume available
       return true;
     } catch (e) {
-      debugPrint('❌ Error checking compass permissions: $e');
-      return false;
+      print('DEBUG: Error checking permissions: $e');
+      // Try to continue anyway - the compass might work
+      return true;
     }
   }
   

@@ -30,3 +30,12 @@ If you can do some tasks parallel, you can use multiple agents at the same time.
 - all images are in /hugo/static/images/ directory
 - always make sure hugo project build is successful after making changes
 - if you need to learn from other examples of website, check /Users/viktorzeman/work/FlowHunt-hugo/ - it is another website built with the same hugo theme, you can learn about structures of layouts, partials, shortcodes
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+
+# Debug Messages Policy
+Keep the codebase clean from unnecessary debug messages. Only add debugPrint statements when actively debugging a specific problem, and remove them once the issue is resolved. The production code should not contain debug logging unless it's essential for error reporting or monitoring critical functionality.
