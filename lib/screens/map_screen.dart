@@ -4306,7 +4306,7 @@ class MapScreenState extends State<MapScreen>
               icon: _mapStateController.showHeatmap
                   ? Icons.whatshot
                   : Icons.whatshot_outlined,
-              label: 'Flight Heatmap',
+              label: 'Heatmap',
               isActive: _mapStateController.showHeatmap,
               onPressed: _toggleHeatmap,
             ),
@@ -4329,7 +4329,7 @@ class MapScreenState extends State<MapScreen>
               icon: _showFlightPlanning
                   ? Icons.route
                   : Icons.route_outlined,
-              label: 'Flight Planning',
+              label: 'Planning',
               isActive: _showFlightPlanning,
               onPressed: () {
                 setState(() {
