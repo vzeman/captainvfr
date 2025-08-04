@@ -37,34 +37,55 @@ class FlightStorageService {
       Hive.registerAdapter(LatLngAdapter());
     }
 
-    // Open the boxes with error handling for corrupted data
+    // Check if we need to clear corrupted data first
+    bool shouldClearData = false;
+    
+    // Try to detect corruption by attempting to open boxes
     try {
-      await Hive.openBox<Flight>(_flightBox);
+      // First try opening the FlightPoint box since Flight depends on it
       await Hive.openBox<FlightPoint>(_flightPointsBox);
-    } catch (e) {
-      // If there's a corruption error, delete the boxes and recreate them
-      if (e.toString().contains('type cast') || 
-          e.toString().contains('Null') || 
-          e.toString().contains('is not a subtype')) {
-        debugPrint('⚠️ Corrupted flight data detected, clearing and recreating...');
-        
-        // Delete corrupted boxes
-        if (await Hive.boxExists(_flightBox)) {
-          await Hive.deleteBoxFromDisk(_flightBox);
-        }
-        if (await Hive.boxExists(_flightPointsBox)) {
-          await Hive.deleteBoxFromDisk(_flightPointsBox);
-        }
-        
-        // Recreate empty boxes
+      
+      // If that succeeds, try the Flight box
+      try {
         await Hive.openBox<Flight>(_flightBox);
-        await Hive.openBox<FlightPoint>(_flightPointsBox);
-        
-        debugPrint('✅ Flight data cleared and recreated');
-      } else {
-        // Re-throw if it's a different error
-        rethrow;
+      } catch (e) {
+        // Flight box is corrupted
+        shouldClearData = true;
+        // Close the successfully opened FlightPoint box
+        if (Hive.isBoxOpen(_flightPointsBox)) {
+          await Hive.box<FlightPoint>(_flightPointsBox).close();
+        }
       }
+    } catch (e) {
+      // FlightPoint box is corrupted
+      shouldClearData = true;
+    }
+    
+    // If corruption detected, clear and recreate
+    if (shouldClearData) {
+      debugPrint('⚠️ Corrupted flight data detected, clearing and recreating...');
+      
+      // Close any open boxes first
+      if (Hive.isBoxOpen(_flightBox)) {
+        await Hive.box<Flight>(_flightBox).close();
+      }
+      if (Hive.isBoxOpen(_flightPointsBox)) {
+        await Hive.box<FlightPoint>(_flightPointsBox).close();
+      }
+      
+      // Delete corrupted boxes
+      if (await Hive.boxExists(_flightBox)) {
+        await Hive.deleteBoxFromDisk(_flightBox);
+      }
+      if (await Hive.boxExists(_flightPointsBox)) {
+        await Hive.deleteBoxFromDisk(_flightPointsBox);
+      }
+      
+      // Recreate empty boxes
+      await Hive.openBox<FlightPoint>(_flightPointsBox);
+      await Hive.openBox<Flight>(_flightBox);
+      
+      debugPrint('✅ Flight data cleared and recreated');
     }
 
     _initialized = true;
