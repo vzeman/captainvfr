@@ -3891,31 +3891,28 @@ class MapScreenState extends State<MapScreen>
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             right: 16,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  _mapStateController.toggleMenuPanel();
-                },
-                borderRadius: AppTheme.largeRadius,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.9),
-                    borderRadius: AppTheme.largeRadius,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.menu,
-                    color: Colors.white,
-                    size: 24,
-                  ),
+            child: GestureDetector(
+              onTap: () {
+                debugPrint('Menu button tapped');
+                _mapStateController.toggleMenuPanel();
+              },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.9),
+                  borderRadius: AppTheme.largeRadius,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.menu,
+                  color: Colors.white,
+                  size: 24,
                 ),
               ),
             ),
