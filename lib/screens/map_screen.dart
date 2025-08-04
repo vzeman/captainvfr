@@ -3891,24 +3891,32 @@ class MapScreenState extends State<MapScreen>
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             right: 16,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.9),
-                borderRadius: AppTheme.largeRadius,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.menu, color: Colors.white),
-                onPressed: () {
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
                   _mapStateController.toggleMenuPanel();
                 },
-                tooltip: 'Menu',
+                borderRadius: AppTheme.largeRadius,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.9),
+                    borderRadius: AppTheme.largeRadius,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.menu,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
               ),
             ),
           ),
@@ -3920,6 +3928,7 @@ class MapScreenState extends State<MapScreen>
               right: 0,
               bottom: 0,
               child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: () {
                   _mapStateController.closeMenuPanel();
                 },
@@ -3930,9 +3939,19 @@ class MapScreenState extends State<MapScreen>
                   child: Row(
                     children: [
                       // Spacer that handles taps to close
-                      Expanded(child: SizedBox()),
-                      // The actual panel
-                      Container(
+                      Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            _mapStateController.closeMenuPanel();
+                          },
+                          child: Container(color: Colors.transparent),
+                        ),
+                      ),
+                      // The actual panel - wrap in GestureDetector to prevent closing
+                      GestureDetector(
+                        onTap: () {}, // Prevent tap from propagating to close
+                        child: Container(
                         width: math.min(MediaQuery.of(context).size.width * 0.8, 300),
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.9),
@@ -4001,6 +4020,7 @@ class MapScreenState extends State<MapScreen>
                           ),
                         ),
                       ),
+                      ), // Close GestureDetector for panel
                     ],
                   ),
                 ),
