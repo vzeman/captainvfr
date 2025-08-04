@@ -120,7 +120,17 @@ class BarometerService {
         try {
           _sensorSubscription = _eventChannel.receiveBroadcastStream().listen(
             _handlePressureUpdate,
-            onError: _handleSensorError,
+            onError: (error) {
+              // Handle errors in stream
+              _handleSensorError(error);
+              // Fallback to simulated data if barometer unavailable
+              if (error is PlatformException && error.code == 'UNAVAILABLE') {
+                _isBarometerAvailable = false;
+                _sensorSubscription?.cancel();
+                _sensorSubscription = null;
+                _startSimulatedPressureUpdates();
+              }
+            },
             cancelOnError: false, // Continue listening even if an error occurs
           );
         } on PlatformException catch (e) {

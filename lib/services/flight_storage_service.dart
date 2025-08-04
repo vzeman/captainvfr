@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart' as path_provider;
 import 'package:hive/hive.dart';
@@ -37,9 +37,35 @@ class FlightStorageService {
       Hive.registerAdapter(LatLngAdapter());
     }
 
-    // Open the boxes
-    await Hive.openBox<Flight>(_flightBox);
-    await Hive.openBox<FlightPoint>(_flightPointsBox);
+    // Open the boxes with error handling for corrupted data
+    try {
+      await Hive.openBox<Flight>(_flightBox);
+      await Hive.openBox<FlightPoint>(_flightPointsBox);
+    } catch (e) {
+      // If there's a corruption error, delete the boxes and recreate them
+      if (e.toString().contains('type cast') || 
+          e.toString().contains('Null') || 
+          e.toString().contains('is not a subtype')) {
+        debugPrint('⚠️ Corrupted flight data detected, clearing and recreating...');
+        
+        // Delete corrupted boxes
+        if (await Hive.boxExists(_flightBox)) {
+          await Hive.deleteBoxFromDisk(_flightBox);
+        }
+        if (await Hive.boxExists(_flightPointsBox)) {
+          await Hive.deleteBoxFromDisk(_flightPointsBox);
+        }
+        
+        // Recreate empty boxes
+        await Hive.openBox<Flight>(_flightBox);
+        await Hive.openBox<FlightPoint>(_flightPointsBox);
+        
+        debugPrint('✅ Flight data cleared and recreated');
+      } else {
+        // Re-throw if it's a different error
+        rethrow;
+      }
+    }
 
     _initialized = true;
   }
