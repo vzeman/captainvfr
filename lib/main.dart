@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'l10n/app_localizations.dart';
 import 'screens/map_screen.dart';
 import 'screens/offline_data_screen.dart';
 import 'services/location_service.dart';
@@ -54,6 +56,7 @@ import 'utils/performance_monitor.dart';
 import 'services/analytics_service.dart';
 import 'services/pilot_service.dart';
 import 'services/logbook_service.dart';
+import 'services/localization_service.dart';
 import 'constants/app_theme.dart';
 
 void main() {
@@ -278,6 +281,10 @@ Future<void> _initializeApp() async {
     // Initialize Settings service
     final settingsService = SettingsService();
     
+    // Initialize Localization service
+    final localizationService = LocalizationService();
+    await localizationService.initialize();
+    
     // Initialize sensor availability service
     final sensorAvailabilityService = SensorAvailabilityService();
     // Check sensors after a short delay to avoid blocking startup
@@ -357,6 +364,7 @@ Future<void> _initializeApp() async {
           ChangeNotifierProvider<PilotService>.value(value: pilotService),
           ChangeNotifierProvider<LogBookService>.value(value: logBookService),
           ChangeNotifierProvider<SettingsService>.value(value: settingsService),
+          ChangeNotifierProvider<LocalizationService>.value(value: localizationService),
           ChangeNotifierProvider<HeadingService>.value(value: headingService),
           Provider<AirportService>.value(value: airportService),
           ChangeNotifierProvider<CacheService>.value(value: cacheService),
@@ -451,6 +459,8 @@ void _runMinimalApp() {
     aircraftService: aircraftSettingsService,
   );
   final settingsService = SettingsService();
+  final localizationService = LocalizationService();
+  localizationService.initialize();
   final headingService = HeadingService();
   final cacheService = CacheService();
   final flightService = FlightService(
@@ -487,6 +497,7 @@ void _runMinimalApp() {
         ChangeNotifierProvider<PilotService>.value(value: pilotService),
         ChangeNotifierProvider<LogBookService>.value(value: logBookService),
         ChangeNotifierProvider<SettingsService>.value(value: settingsService),
+        ChangeNotifierProvider<LocalizationService>.value(value: localizationService),
         ChangeNotifierProvider<HeadingService>.value(value: headingService),
         Provider<AirportService>.value(value: airportService),
         ChangeNotifierProvider<CacheService>.value(value: cacheService),
@@ -613,10 +624,20 @@ class _CaptainVFRAppState extends State<CaptainVFRApp> {
 
   @override
   Widget build(BuildContext context) {
+    final localizationService = Provider.of<LocalizationService>(context);
+    
     return MaterialApp(
       navigatorKey: _navigatorKey,
       title: 'CaptainVFR',
       debugShowCheckedModeBanner: false,
+      locale: localizationService.currentLocale,
+      supportedLocales: LocalizationService.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF1E88E5), // Blue shade

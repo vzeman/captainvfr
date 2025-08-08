@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
+import '../l10n/app_localizations.dart';
 import '../widgets/themed_dialog.dart';
 import '../services/settings_service.dart';
+import '../services/localization_service.dart';
 import '../services/offline_map_service.dart';
 import '../services/cache_service.dart';
 import '../services/airport_service.dart';
@@ -29,11 +31,30 @@ class SettingsScreen extends StatelessWidget {
         backgroundColor: const Color(0xE6000000),
       ),
       backgroundColor: Colors.black87,
-      body: Consumer<SettingsService>(
-        builder: (context, settings, child) {
+      body: Consumer2<SettingsService, LocalizationService>(
+        builder: (context, settings, localizationService, child) {
+          final l10n = AppLocalizations.of(context);
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              _buildSection(
+                title: l10n?.language ?? 'Language',
+                children: [
+                  ListTile(
+                    title: Text(
+                      l10n?.language ?? 'Language',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    subtitle: Text(
+                      LocalizationService.languageNames[localizationService.currentLocale.languageCode] ?? 'English',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 16),
+                    onTap: () => _showLanguageDialog(context, localizationService),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               _buildSection(
                 title: 'Map Settings',
                 children: [
@@ -448,6 +469,50 @@ class SettingsScreen extends StatelessWidget {
         break;
     }
   }
+  
+  void _showLanguageDialog(BuildContext context, LocalizationService localizationService) {
+    final l10n = AppLocalizations.of(context);
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return ThemedDialog(
+          title: l10n?.selectLanguage ?? 'Select Language',
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: LocalizationService.supportedLocales.map((locale) {
+              final languageName = LocalizationService.languageNames[locale.languageCode];
+              final isSelected = locale.languageCode == localizationService.currentLocale.languageCode;
+              
+              return ListTile(
+                title: Text(
+                  languageName ?? locale.languageCode,
+                  style: TextStyle(
+                    color: isSelected ? const Color(0xFF448AFF) : Colors.white,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                trailing: isSelected 
+                  ? const Icon(Icons.check, color: Color(0xFF448AFF))
+                  : null,
+                onTap: () async {
+                  await localizationService.setLocale(locale);
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                  }
+                },
+              );
+            }).toList(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(l10n?.cancel ?? 'Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
 /// Settings dialog that can be shown as a modal
@@ -566,9 +631,19 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                       indicatorColor: AppColors.primaryAccent,
                       labelColor: AppColors.primaryAccent,
                       unselectedLabelColor: AppColors.secondaryTextColor,
-                      tabs: const [
-                        Tab(text: 'Settings'),
-                        Tab(text: 'Offline Data'),
+                      tabs: [
+                        Tab(
+                          child: Text(
+                            AppLocalizations.of(context)?.settings ?? 'Settings',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                        Tab(
+                          child: Text(
+                            AppLocalizations.of(context)?.offlineData ?? 'Offline Data',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -598,18 +673,46 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
   }
 
   Widget _buildSettingsTab() {
-    return Consumer<SettingsService>(
-      builder: (context, settings, child) {
+    return Consumer2<SettingsService, LocalizationService>(
+      builder: (context, settings, localizationService, child) {
+        final l10n = AppLocalizations.of(context);
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildCompactSection(
-                title: 'Map',
+                title: l10n?.language ?? 'Language',
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            LocalizationService.languageNames[localizationService.currentLocale.languageCode] ?? 'English',
+                            style: const TextStyle(color: Colors.white70, fontSize: 11),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.language, size: 18),
+                          onPressed: () => _showLanguageDialog(context, localizationService),
+                          color: const Color(0xFF448AFF),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(maxHeight: 24, maxWidth: 24),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _buildCompactSection(
+                title: l10n?.map ?? 'Map',
                 children: [
                   _buildCompactSwitch(
-                    'Rotate with heading',
+                    l10n?.rotateWithHeading ?? 'Rotate with heading',
                     settings.rotateMapWithHeading,
                     (value) => settings.setRotateMapWithHeading(value),
                   ),
@@ -617,15 +720,15 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
               ),
               const SizedBox(height: 8),
               _buildCompactSection(
-                title: 'Tracking',
+                title: l10n?.tracking ?? 'Tracking',
                 children: [
                   _buildCompactSwitch(
-                    'High precision GPS',
+                    l10n?.highPrecisionGps ?? 'High precision GPS',
                     settings.highPrecisionTracking,
                     (value) => settings.setHighPrecisionTracking(value),
                   ),
                   _buildCompactSwitch(
-                    'Auto-create logbook',
+                    l10n?.autoCreateLogbook ?? 'Auto-create logbook',
                     settings.autoCreateLogbookEntry,
                     (value) => settings.setAutoCreateLogbookEntry(value),
                   ),
@@ -633,7 +736,7 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
               ),
               const SizedBox(height: 8),
               _buildCompactSection(
-                title: 'Units',
+                title: l10n?.units ?? 'Units',
                 children: [
                   // Quick Presets
                   Padding(
@@ -641,9 +744,9 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Presets',
-                          style: TextStyle(color: Colors.white70, fontSize: 11),
+                        Text(
+                          l10n?.presets ?? 'Presets',
+                          style: const TextStyle(color: Colors.white70, fontSize: 11),
                         ),
                         SizedBox(
                           height: 28,
@@ -1449,5 +1552,49 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
         await settings.setPressureUnit('inHg');
         break;
     }
+  }
+  
+  void _showLanguageDialog(BuildContext context, LocalizationService localizationService) {
+    final l10n = AppLocalizations.of(context);
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return ThemedDialog(
+          title: l10n?.selectLanguage ?? 'Select Language',
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: LocalizationService.supportedLocales.map((locale) {
+              final languageName = LocalizationService.languageNames[locale.languageCode];
+              final isSelected = locale.languageCode == localizationService.currentLocale.languageCode;
+              
+              return ListTile(
+                title: Text(
+                  languageName ?? locale.languageCode,
+                  style: TextStyle(
+                    color: isSelected ? const Color(0xFF448AFF) : Colors.white,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                trailing: isSelected 
+                  ? const Icon(Icons.check, color: Color(0xFF448AFF))
+                  : null,
+                onTap: () async {
+                  await localizationService.setLocale(locale);
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                  }
+                },
+              );
+            }).toList(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(l10n?.cancel ?? 'Cancel'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

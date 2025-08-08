@@ -4418,6 +4418,9 @@ class MapScreenState extends State<MapScreen>
         _buildMenuItem(
           icon: _positionTrackingEnabled ? Icons.my_location : Icons.location_searching,
           label: 'Center',
+          subtitle: _autoCenteringCountdown > 0 
+              ? 'Auto in: ${_formatCountdownTime(_autoCenteringCountdown)}' 
+              : null,
           onPressed: () {
             _mapStateController.closeMenuPanel();
             _togglePositionTracking();
@@ -4599,10 +4602,17 @@ class MapScreenState extends State<MapScreen>
     );
   }
 
+  String _formatCountdownTime(int seconds) {
+    final minutes = seconds ~/ 60;
+    final remainingSeconds = seconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+  }
+
   Widget _buildMenuItem({
     required IconData icon,
     required String label,
     required VoidCallback onPressed,
+    String? subtitle,
   }) {
     return InkWell(
       onTap: onPressed,
@@ -4623,12 +4633,28 @@ class MapScreenState extends State<MapScreen>
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.orange.shade400,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             const Icon(

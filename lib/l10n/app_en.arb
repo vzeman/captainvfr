@@ -1,0 +1,153 @@
+{
+  "@@locale": "en",
+  
+  "appTitle": "CaptainVFR",
+  "@appTitle": {
+    "description": "The title of the application"
+  },
+  
+  "settings": "Settings",
+  "@settings": {
+    "description": "Settings screen title"
+  },
+  
+  "language": "Language",
+  "@language": {
+    "description": "Language setting label"
+  },
+  
+  "selectLanguage": "Select Language",
+  "@selectLanguage": {
+    "description": "Language selection dialog title"
+  },
+  
+  "map": "Map",
+  "@map": {
+    "description": "Map screen title"
+  },
+  
+  "tracking": "Tracking",
+  "@tracking": {
+    "description": "Tracking settings section"
+  },
+  
+  "units": "Units",
+  "@units": {
+    "description": "Units settings section"
+  },
+  
+  "rotateWithHeading": "Rotate with heading",
+  "@rotateWithHeading": {
+    "description": "Map rotation setting"
+  },
+  
+  "highPrecisionGps": "High precision GPS",
+  "@highPrecisionGps": {
+    "description": "GPS precision setting"
+  },
+  
+  "autoCreateLogbook": "Auto-create logbook",
+  "@autoCreateLogbook": {
+    "description": "Auto logbook creation setting"
+  },
+  
+  "presets": "Presets",
+  "@presets": {
+    "description": "Unit presets label"
+  },
+  
+  "flightPlanning": "Flight Planning",
+  "@flightPlanning": {
+    "description": "Flight planning screen title"
+  },
+  
+  "weather": "Weather",
+  "@weather": {
+    "description": "Weather screen title"
+  },
+  
+  "flightLog": "Flight Log",
+  "@flightLog": {
+    "description": "Flight log screen title"
+  },
+  
+  "aircraft": "Aircraft",
+  "@aircraft": {
+    "description": "Aircraft screen title"
+  },
+  
+  "calculators": "Calculators",
+  "@calculators": {
+    "description": "Calculators screen title"
+  },
+  
+  "offlineData": "Offline Data",
+  "@offlineData": {
+    "description": "Offline data screen title"
+  },
+  
+  "licenses": "Licenses",
+  "@licenses": {
+    "description": "Licenses screen title"
+  },
+  
+  "checklist": "Checklist",
+  "@checklist": {
+    "description": "Checklist screen title"
+  },
+  
+  "cancel": "Cancel",
+  "@cancel": {
+    "description": "Cancel button label"
+  },
+  
+  "save": "Save",
+  "@save": {
+    "description": "Save button label"
+  },
+  
+  "delete": "Delete",
+  "@delete": {
+    "description": "Delete button label"
+  },
+  
+  "edit": "Edit",
+  "@edit": {
+    "description": "Edit button label"
+  },
+  
+  "add": "Add",
+  "@add": {
+    "description": "Add button label"
+  },
+  
+  "search": "Search",
+  "@search": {
+    "description": "Search placeholder text"
+  },
+  
+  "loading": "Loading...",
+  "@loading": {
+    "description": "Loading indicator text"
+  },
+  
+  "center": "Center",
+  "@center": {
+    "description": "Center button label for map"
+  },
+  
+  "layers": "Layers",
+  "@layers": {
+    "description": "Map layers button label"
+  },
+  
+  "airports": "Airports",
+  "@airports": {
+    "description": "Airports layer label"
+  },
+  
+  "airspaces": "Airspaces",
+  "@airspaces": {
+    "description": "Airspaces layer label"
+  }
+}
