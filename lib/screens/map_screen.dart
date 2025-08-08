@@ -3919,12 +3919,17 @@ class MapScreenState extends State<MapScreen>
           ),
 
           // Unified sliding menu panel from right side
-          if (_mapStateController.isMenuPanelOpen)
-            Positioned(
-              top: 0,
-              right: 0,
-              bottom: 0,
-              child: GestureDetector(
+          ListenableBuilder(
+            listenable: _mapStateController,
+            builder: (context, child) {
+              if (!_mapStateController.isMenuPanelOpen) {
+                return const SizedBox.shrink();
+              }
+              return Positioned(
+                top: 0,
+                right: 0,
+                bottom: 0,
+                child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () {
                   _mapStateController.closeMenuPanel();
@@ -4022,7 +4027,9 @@ class MapScreenState extends State<MapScreen>
                   ),
                 ),
               ),
-            ),
+            );
+            },
+          ),
 
           // License warning widget - only show when not tracking
           if (!_flightService.isTracking)
