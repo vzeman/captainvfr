@@ -3,7 +3,7 @@ date = "2025-07-27"
 title = "Introducing the CaptainVFR Digital Pilot Logbook"
 description = "We're excited to announce the launch of our comprehensive digital pilot logbook feature, making it easier than ever to maintain accurate flight records"
 keywords = ["digital logbook", "pilot logbook", "new feature", "flight logging", "pilot records"]
-author = "CaptainVFR Team"
+author = "Viktor Zeman"
 +++
 
 # Introducing the CaptainVFR Digital Pilot Logbook

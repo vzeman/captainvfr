@@ -91,17 +91,20 @@ class AirportMarker extends StatelessWidget {
       onTap: () {
         onTap?.call();
       },
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Stack for marker and runway visualization
-            Stack(
-              alignment: Alignment.center,
-              clipBehavior: Clip.none,
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: IntrinsicHeight(
+          child: IntrinsicWidth(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+              // Stack for marker and runway visualization
+              Stack(
+                alignment: Alignment.center,
+                clipBehavior: Clip.none,
+                children: [
                 // Runway visualization (behind the marker)
                 if (mapZoom >= GeoConstants.minZoomForRunways && runwayVisualizationSize > 0)
                   if (runways != null && runways!.isNotEmpty)
@@ -201,7 +204,9 @@ class AirportMarker extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );

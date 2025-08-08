@@ -1,7 +1,7 @@
 ---
 title: "Enhanced Heading & Navigation Features"
 date: 2025-08-03T12:00:00Z
-author: "CaptainVFR Team"
+author: "Viktor Zeman"
 tags: ["updates", "features", "navigation", "compass"]
 categories: ["App Updates"]
 description: "Major improvements to heading display, compass functionality, and map rotation modes for better situational awareness during flight"

@@ -20,6 +20,8 @@ migrate_working_dir/
 .idea/
 
 hugo/public/
+hugo/static/css/
+hugo/static/js/
 node_modules
 
 # The .vscode folder contains launch configuration and tasks you configure in

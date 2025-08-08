@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:universal_platform/universal_platform.dart';
 import 'flight/models/flight_constants.dart';
 import 'flight/helpers/analytics_wrapper.dart';
 
@@ -117,19 +117,37 @@ class HeadingService extends ChangeNotifier {
       return;
     }
     
+    // Skip compass on unsupported platforms
+    if (kIsWeb || UniversalPlatform.isMacOS || UniversalPlatform.isWindows || UniversalPlatform.isLinux) {
+      _hasError = false;
+      _errorMessage = 'Compass not available on this platform';
+      notifyListeners();
+      return;
+    }
+    
     try {
       // Check permissions but on iOS, try anyway even if denied
       final hasPermission = await _checkCompassPermissions();
       
       // On iOS, always try to start compass even if permission check fails
       // This works around permission_handler caching issues
-      if (!hasPermission && !Platform.isIOS) {
+      if (!hasPermission && !UniversalPlatform.isIOS) {
         // Only block on Android if permission is denied
         return;
       }
       
       // Check if compass is available (may not be on some platforms like macOS)
-      final compassEvents = FlutterCompass.events;
+      Stream<CompassEvent>? compassEvents;
+      try {
+        compassEvents = FlutterCompass.events;
+      } catch (e) {
+        // Handle MissingPluginException
+        _hasError = false;
+        _errorMessage = 'Compass plugin not available';
+        notifyListeners();
+        return;
+      }
+      
       if (compassEvents == null) {
         _hasError = true;
         _errorMessage = 'Compass not available on this device';
@@ -211,7 +229,7 @@ class HeadingService extends ChangeNotifier {
   bool get isCompassAvailable {
     // Check if platform supports compass
     final bool supportsCompass = !kIsWeb && 
-        (Platform.isIOS || Platform.isAndroid);
+        (UniversalPlatform.isIOS || UniversalPlatform.isAndroid);
     
     return supportsCompass && _compassSubscription != null;
   }
@@ -244,7 +262,7 @@ class HeadingService extends ChangeNotifier {
   Future<void> requestCalibration() async {
     
     // On iOS, we can trigger calibration by restarting the compass
-    if (Platform.isIOS) {
+    if (!kIsWeb && UniversalPlatform.isIOS) {
       stopHeadingUpdates();
       await Future.delayed(const Duration(milliseconds: 500));
       await startHeadingUpdates();
@@ -266,14 +284,19 @@ class HeadingService extends ChangeNotifier {
   /// On Android, we respect the permission status as reported since the caching issue
   /// doesn't affect Android in the same way.
   Future<bool> _checkCompassPermissions() async {
+    // Web doesn't support compass
+    if (kIsWeb) {
+      return false;
+    }
+    
     try {
       // On iOS and Android, location permission is required for compass
-      if (Platform.isIOS || Platform.isAndroid) {
+      if (UniversalPlatform.isIOS || UniversalPlatform.isAndroid) {
         var whenInUseStatus = await Permission.locationWhenInUse.status;
         
         // On iOS, if permission is reported as denied but the user says it's allowed,
         // try to use the compass anyway - it might work
-        if (Platform.isIOS && (whenInUseStatus.isDenied || whenInUseStatus.isPermanentlyDenied)) {
+        if (UniversalPlatform.isIOS && (whenInUseStatus.isDenied || whenInUseStatus.isPermanentlyDenied)) {
           // Track this issue for monitoring
           AnalyticsWrapper.track('compass_permission_denied_ios', properties: {
             'status': whenInUseStatus.toString(),
@@ -291,7 +314,7 @@ class HeadingService extends ChangeNotifier {
         }
         
         // Only request permission on Android
-        if (Platform.isAndroid && whenInUseStatus.isDenied) {
+        if (UniversalPlatform.isAndroid && whenInUseStatus.isDenied) {
           whenInUseStatus = await Permission.locationWhenInUse.request();
           if (whenInUseStatus.isPermanentlyDenied) {
             // Track when Android users permanently deny permission
@@ -301,7 +324,7 @@ class HeadingService extends ChangeNotifier {
         }
         
         // Track if we're falling through without permission
-        if (Platform.isAndroid) {
+        if (UniversalPlatform.isAndroid) {
           AnalyticsWrapper.track('compass_permission_denied_android', properties: {
             'status': whenInUseStatus.toString(),
           });

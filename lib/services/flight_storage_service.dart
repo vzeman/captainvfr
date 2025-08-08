@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart' as path_provider;
 import 'package:hive/hive.dart';
@@ -37,9 +37,56 @@ class FlightStorageService {
       Hive.registerAdapter(LatLngAdapter());
     }
 
-    // Open the boxes
-    await Hive.openBox<Flight>(_flightBox);
-    await Hive.openBox<FlightPoint>(_flightPointsBox);
+    // Check if we need to clear corrupted data first
+    bool shouldClearData = false;
+    
+    // Try to detect corruption by attempting to open boxes
+    try {
+      // First try opening the FlightPoint box since Flight depends on it
+      await Hive.openBox<FlightPoint>(_flightPointsBox);
+      
+      // If that succeeds, try the Flight box
+      try {
+        await Hive.openBox<Flight>(_flightBox);
+      } catch (e) {
+        // Flight box is corrupted
+        shouldClearData = true;
+        // Close the successfully opened FlightPoint box
+        if (Hive.isBoxOpen(_flightPointsBox)) {
+          await Hive.box<FlightPoint>(_flightPointsBox).close();
+        }
+      }
+    } catch (e) {
+      // FlightPoint box is corrupted
+      shouldClearData = true;
+    }
+    
+    // If corruption detected, clear and recreate
+    if (shouldClearData) {
+      debugPrint('⚠️ Corrupted flight data detected, clearing and recreating...');
+      
+      // Close any open boxes first
+      if (Hive.isBoxOpen(_flightBox)) {
+        await Hive.box<Flight>(_flightBox).close();
+      }
+      if (Hive.isBoxOpen(_flightPointsBox)) {
+        await Hive.box<FlightPoint>(_flightPointsBox).close();
+      }
+      
+      // Delete corrupted boxes
+      if (await Hive.boxExists(_flightBox)) {
+        await Hive.deleteBoxFromDisk(_flightBox);
+      }
+      if (await Hive.boxExists(_flightPointsBox)) {
+        await Hive.deleteBoxFromDisk(_flightPointsBox);
+      }
+      
+      // Recreate empty boxes
+      await Hive.openBox<FlightPoint>(_flightPointsBox);
+      await Hive.openBox<Flight>(_flightBox);
+      
+      debugPrint('✅ Flight data cleared and recreated');
+    }
 
     _initialized = true;
   }

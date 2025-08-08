@@ -508,35 +508,42 @@ class TiledDataLoader {
   
   /// Convert OpenAIP numeric type codes to string types
   String _convertOpenAIPTypeToString(String numericType) {
-    // Based on analysis of the data:
-    // 0 - Large/International airports (e.g., PARDUBICE, KBELY)
-    // 1 - Grass strips/Ultra-light fields  
-    // 2 - Regional/Medium airports (e.g., CHEB)
-    // 3 - Major airports (e.g., BERLIN-BRANDENBURG)
-    // 5 - Small airfields
-    // 6 - Small strips/fields
-    // 7 - Heliports (e.g., hospital heliports)
-    // 8 - Glider sites
-    // 9 - Regional airports with ultra-light capability (e.g., LKKU/KUNOVICE)
-    // 10 - Hang gliding sites
-    // 11 - Paragliding sites
+    // Based on OpenAIP documentation and data analysis:
+    // 0 - AF_CIVIL (Civil airports) - usually medium to large
+    // 1 - AF_MIL_CIVIL (Military/Civil) - usually medium to large
+    // 2 - AF_LIGHT_AIRCRAFT (Light aircraft/GA fields) - small airports
+    // 3 - AF_INTERNATIONAL (International airports) - large
+    // 4 - AF_MILITARY (Military only)
+    // 5 - AF_ULTRALIGHT (Ultralight fields) - small
+    // 6 - AF_GLIDER_SITE (Glider sites) - small/sport
+    // 7 - AF_HELIPORT (Heliports)
+    // 8 - AF_WATER (Water/seaplane bases)
+    // 9 - AF_CLOSED (Closed/abandoned)
+    // 10+ - Various sport aviation (hang gliding, paragliding, etc)
     switch (numericType) {
-      case '0':
-      case '3':
-        return 'large_airport';
-      case '2':
-      case '9':  // Include type 9 as medium airports (like LKKU)
+      case '0':  // Civil airports - check by name/size for better classification
+        return 'medium_airport';  // Most civil airports are at least medium
+      case '1':  // Military/Civil
         return 'medium_airport';
-      case '1':
-      case '5':
-      case '6':
+      case '2':  // Light aircraft/GA fields (like RUSOVCE)
+        return 'small_airport';  // These are definitely small airports
+      case '3':  // International
+        return 'large_airport';
+      case '4':  // Military only
+        return 'medium_airport';
+      case '5':  // Ultralight
+      case '6':  // Glider sites
         return 'small_airport';
       case '7':
         return 'heliport';
       case '8':
+        return 'seaplane_base';
+      case '9':
+        return 'closed';
       case '10':
       case '11':
-        return 'closed'; // Treat specialized sport aviation sites as closed
+      case '12':
+        return 'small_airport';  // Sport aviation sites
       default:
         return 'small_airport'; // Default fallback
     }

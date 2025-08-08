@@ -44,7 +44,6 @@ class FlightHeatmapProcessor {
   static Future<void> processFlightUpdate(Flight flight, {bool isRemoval = false}) async {
     await init();
     
-    print('Heatmap: Processing flight ${flight.id} with ${flight.path.length} points (removal: $isRemoval)');
     
     _scheduler.scheduleOperation(
       id: 'heatmap_update_${flight.id}',
@@ -57,7 +56,6 @@ class FlightHeatmapProcessor {
   static void _updateHeatmapCells(Flight flight, bool isRemoval) {
     if (flight.path.isEmpty) return;
 
-    int totalCellsUpdated = 0;
     for (final entry in _gridSizes.entries) {
       final zoomLevel = entry.key;
       final gridSize = entry.value;
@@ -66,10 +64,8 @@ class FlightHeatmapProcessor {
       
       for (final cellId in affectedCells) {
         _updateCellData(cellId, zoomLevel, gridSize, flight, isRemoval);
-        totalCellsUpdated++;
       }
     }
-    print('Heatmap: Updated $totalCellsUpdated cells across all zoom levels');
   }
 
   static Set<String> _getCellsForFlight(Flight flight, double gridSize) {
