@@ -24,22 +24,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get map => 'Carte';
 
   @override
-  String get tracking => 'Tracking';
+  String get tracking => 'Suivi';
 
   @override
-  String get units => 'Units';
+  String get units => 'Unités';
 
   @override
-  String get rotateWithHeading => 'Rotate with heading';
+  String get rotateWithHeading => 'Rotation avec cap';
 
   @override
-  String get highPrecisionGps => 'High precision GPS';
+  String get highPrecisionGps => 'GPS haute précision';
 
   @override
-  String get autoCreateLogbook => 'Auto-create logbook';
+  String get autoCreateLogbook => 'Création automatique du journal';
 
   @override
-  String get presets => 'Presets';
+  String get presets => 'Préréglages';
 
   @override
   String get flightPlanning => 'Planification de vol';

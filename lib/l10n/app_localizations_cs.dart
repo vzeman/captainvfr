@@ -24,22 +24,22 @@ class AppLocalizationsCs extends AppLocalizations {
   String get map => 'Mapa';
 
   @override
-  String get tracking => 'Tracking';
+  String get tracking => 'Sledování';
 
   @override
-  String get units => 'Units';
+  String get units => 'Jednotky';
 
   @override
-  String get rotateWithHeading => 'Rotate with heading';
+  String get rotateWithHeading => 'Otáčet s kurzem';
 
   @override
-  String get highPrecisionGps => 'High precision GPS';
+  String get highPrecisionGps => 'Vysoce přesné GPS';
 
   @override
-  String get autoCreateLogbook => 'Auto-create logbook';
+  String get autoCreateLogbook => 'Automaticky vytvořit záznam v deníku';
 
   @override
-  String get presets => 'Presets';
+  String get presets => 'Předvolby';
 
   @override
   String get flightPlanning => 'Plánování letu';
