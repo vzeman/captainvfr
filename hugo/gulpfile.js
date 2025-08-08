@@ -25,7 +25,10 @@ const argv = yargs(hideBin(process.argv))
 // CSS and JS source paths
 const cssSrc = 'themes/boilerplate/assets/css/main.css';
 const cssDest = 'static/css';
-const jsEntryPoints = ['themes/boilerplate/assets/js/main.js'];
+
+// Separate entry points for theme and app JS
+const jsThemeEntryPoints = ['themes/boilerplate/assets/js/main.js'];
+const jsAppEntryPoints = ['assets/js/app.js'];
 const jsDest = 'static/js';
 
 // CSS build with @import processing
@@ -40,22 +43,48 @@ function buildCSS() {
         .pipe(gulp.dest(cssDest));
 }
 
-// JavaScript build with ESBuild
-async function buildJS() {
+// Build theme JavaScript (main.js)
+async function buildThemeJS() {
     try {
         await esbuild.build({
-            entryPoints: jsEntryPoints,
+            entryPoints: jsThemeEntryPoints,
             bundle: true,
             minify: true,
             sourcemap: false,
             format: 'iife',
             outdir: jsDest,
-            platform: 'browser'
+            platform: 'browser',
+            target: ['es2020']
         });
     } catch (error) {
-        console.error('JavaScript build failed:', error);
+        console.error('Theme JavaScript build failed:', error);
         throw error;
     }
+}
+
+// Build app JavaScript (app.js)
+async function buildAppJS() {
+    try {
+        await esbuild.build({
+            entryPoints: jsAppEntryPoints,
+            bundle: true,
+            minify: true,
+            sourcemap: false,
+            format: 'iife',
+            outdir: jsDest,
+            platform: 'browser',
+            target: ['es2020']
+        });
+    } catch (error) {
+        console.error('App JavaScript build failed:', error);
+        throw error;
+    }
+}
+
+// Combined JavaScript build
+async function buildJS() {
+    await buildThemeJS();
+    await buildAppJS();
 }
 
 // Watch CSS files for changes
@@ -71,19 +100,42 @@ function watchCSS() {
     );
 }
 
-// Watch JavaScript files with ESBuild
-async function watchJS() {
+// Watch theme JavaScript files
+async function watchThemeJS() {
     const ctx = await esbuild.context({
-        entryPoints: jsEntryPoints,
+        entryPoints: jsThemeEntryPoints,
         bundle: true,
         minify: true,
         sourcemap: false,
         format: 'iife',
         outdir: jsDest,
-        platform: 'browser'
+        platform: 'browser',
+        target: ['es2020']
     });
     
     await ctx.watch();
+}
+
+// Watch app JavaScript files
+async function watchAppJS() {
+    const ctx = await esbuild.context({
+        entryPoints: jsAppEntryPoints,
+        bundle: true,
+        minify: true,
+        sourcemap: false,
+        format: 'iife',
+        outdir: jsDest,
+        platform: 'browser',
+        target: ['es2020']
+    });
+    
+    await ctx.watch();
+}
+
+// Combined JavaScript watch
+async function watchJS() {
+    await watchThemeJS();
+    await watchAppJS();
 }
 
 // Start Hugo server with configurable options
@@ -113,6 +165,8 @@ function startHugo(done) {
 // Export individual tasks
 exports.css = buildCSS;
 exports.js = buildJS;
+exports.themejs = buildThemeJS;
+exports.appjs = buildAppJS;
 exports.watch = gulp.parallel(watchCSS, watchJS);
 
 // Default task: build assets and start Hugo server

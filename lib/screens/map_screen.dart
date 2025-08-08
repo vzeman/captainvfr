@@ -73,8 +73,6 @@ import '../services/notam_service_v3.dart';
 // Extracted components
 import 'map/constants/map_constants.dart';
 import 'map/controllers/map_state_controller.dart';
-import 'map/components/position_tracking_button.dart';
-import 'map/components/layer_toggle_button.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -160,10 +158,6 @@ class MapScreenState extends State<MapScreen>
       false; // Control visibility of current airspace panel
   Offset? _airspacePanelPosition; // Will be calculated dynamically to center initially
 
-  // Toggle panel position
-  double _togglePanelRightPosition = 16.0; // Default position from right edge
-  double _togglePanelTopPosition =
-      0.02; // Default position as percentage from top (2% - very top)
 
   // Flight planning panel position and state
   Offset _flightPlanningPanelPosition = const Offset(
@@ -535,18 +529,6 @@ class MapScreenState extends State<MapScreen>
     final safeAreaTop = MediaQuery.of(context).padding.top;
     
     setState(() {
-      // Adjust toggle panel position to stay within bounds
-      final togglePanelWidth = 50.0;
-      final maxRightPosition = screenSize.width - togglePanelWidth - 16;
-      if (_togglePanelRightPosition > maxRightPosition) {
-        _togglePanelRightPosition = maxRightPosition;
-      }
-      
-      // Ensure toggle panel stays within vertical bounds
-      final maxTopPosition = (screenSize.height - safeAreaTop - 300) / screenSize.height;
-      if (_togglePanelTopPosition > maxTopPosition) {
-        _togglePanelTopPosition = maxTopPosition;
-      }
       
       // Adjust flight data panel position
       final isPhone = screenSize.width < 600;
@@ -3668,221 +3650,6 @@ class MapScreenState extends State<MapScreen>
                 ),
             ],
           ),
-          // Vertical layer controls - draggable in both directions
-          Positioned(
-            top: MediaQuery.of(context).padding.top + (MediaQuery.of(context).size.height * _togglePanelTopPosition),
-            right: _togglePanelRightPosition,
-            child: SizedBox(
-              width: 50, // Fixed width to constrain the draggable
-              child: Draggable<String>(
-                data: 'toggle_panel',
-                // Remove axis constraint to allow both horizontal and vertical movement
-                feedback: Material(
-                  color: Colors.transparent,
-                  child: Container(
-                    width: 50, // Fixed width for feedback
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      borderRadius: AppTheme.largeRadius,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.explore, size: 20, color: Colors.grey),
-                        SizedBox(height: 4),
-                        Icon(Icons.cloud, size: 20, color: Colors.grey),
-                        SizedBox(height: 4),
-                        Icon(Icons.adjust, size: 20, color: Colors.grey),
-                        SizedBox(height: 4),
-                        Icon(
-                          Icons.airplanemode_active,
-                          size: 20,
-                          color: Colors.grey,
-                        ),
-                        SizedBox(height: 4),
-                        Icon(Icons.layers, size: 20, color: Colors.grey),
-                        SizedBox(height: 4),
-                        Text(
-                          'A',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                childWhenDragging: const SizedBox(
-                  width: 50,
-                ), // Maintain space when dragging
-                onDragEnd: (details) {
-                  setState(() {
-                    final screenSize = MediaQuery.of(context).size;
-                    final safeAreaTop = MediaQuery.of(context).padding.top;
-                    final dragX = details.offset.dx;
-                    final dragY = details.offset.dy;
-
-                    // Calculate new right position
-                    // dragX is from left, we need distance from right
-                    double newRightPosition =
-                        screenSize.width - dragX - 50; // 50 is panel width
-
-                    // Calculate new top position as percentage, accounting for safe area
-                    double adjustedDragY = dragY - safeAreaTop;
-                    double newTopPosition = adjustedDragY / screenSize.height;
-
-                    // Constrain to screen bounds
-                    newRightPosition = newRightPosition.clamp(
-                      0.0,
-                      screenSize.width - 60,
-                    );
-                    newTopPosition = newTopPosition.clamp(
-                      0.0, // Allow positioning at the very top
-                      0.85,
-                    ); // Keep between 0% and 85% of screen height
-
-                    _togglePanelRightPosition = newRightPosition;
-                    _togglePanelTopPosition = newTopPosition;
-                  });
-                },
-                child: Container(
-                  width: 50, // Ensure consistent width
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    borderRadius: AppTheme.largeRadius,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Drag handle indicator
-                      Container(
-                        width: 50, // Fixed width instead of double.infinity
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Center(
-                          child: Container(
-                            width: 30,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.withValues(alpha: 0.3),
-                              borderRadius: AppTheme.smallRadius,
-                            ),
-                          ),
-                        ),
-                      ),
-                      _buildLayerToggle(
-                        icon: FontAwesomeIcons.helicopter,
-                        tooltip: 'Toggle Heliports',
-                        isActive: _mapStateController.showHeliports,
-                        onPressed: _toggleHeliports,
-                      ),
-                      _buildLayerToggle(
-                        icon: _mapStateController.showNavaids
-                            ? Icons.navigation
-                            : Icons.navigation_outlined,
-                        tooltip: 'Toggle Navaids (VOR/NDB)',
-                        isActive: _mapStateController.showNavaids,
-                        onPressed: _toggleNavaids,
-                      ),
-                      _buildLayerToggle(
-                        icon: _mapStateController.showMetar
-                            ? Icons.cloud
-                            : Icons.cloud_outlined,
-                        tooltip: 'Toggle METAR',
-                        isActive: _mapStateController.showMetar,
-                        onPressed: _toggleMetar,
-                      ),
-                      _buildLayerToggle(
-                        icon: _mapStateController.showAirspaces
-                            ? Icons.layers
-                            : Icons.layers_outlined,
-                        tooltip: 'Toggle Airspaces',
-                        isActive: _mapStateController.showAirspaces,
-                        onPressed: _toggleAirspaces,
-                      ),
-                      _buildLayerToggle(
-                        icon: Icons.warning_amber_rounded,
-                        tooltip: 'Toggle Obstacles',
-                        isActive: _mapStateController.showObstacles,
-                        onPressed: _toggleObstacles,
-                      ),
-                      _buildLayerToggle(
-                        icon: Icons.location_on,
-                        tooltip: 'Toggle Hotspots',
-                        isActive: _mapStateController.showHotspots,
-                        onPressed: _toggleHotspots,
-                      ),
-                      _buildLayerToggle(
-                        icon: _mapStateController.showHeatmap
-                            ? Icons.whatshot
-                            : Icons.whatshot_outlined,
-                        tooltip: 'Toggle Flight Heatmap',
-                        isActive: _mapStateController.showHeatmap,
-                        onPressed: _toggleHeatmap,
-                      ),
-                      _buildLayerToggle(
-                        icon: _showCurrentAirspacePanel
-                            ? Icons.account_tree
-                            : Icons.account_tree_outlined,
-                        tooltip: 'Toggle Current Airspace Panel',
-                        isActive: _showCurrentAirspacePanel,
-                        onPressed: () {
-                          setState(() {
-                            _showCurrentAirspacePanel =
-                                !_showCurrentAirspacePanel;
-                            // Reset position when toggling on to ensure it centers
-                            if (_showCurrentAirspacePanel) {
-                              _airspacePanelPosition = null;
-                            }
-                          });
-                          
-                        },
-                      ),
-                      _buildLayerToggle(
-                        icon: _showFlightPlanning
-                            ? Icons.route
-                            : Icons.route_outlined,
-                        tooltip: 'Toggle Flight Planning',
-                        isActive: _showFlightPlanning,
-                        onPressed: () {
-                          setState(() {
-                            _showFlightPlanning = !_showFlightPlanning;
-                            // Auto-create flight plan if none exists (with planning mode OFF)
-                            if (_showFlightPlanning &&
-                                _flightPlanService.currentFlightPlan == null) {
-                              _flightPlanService.createNewFlightPlan(
-                                enablePlanning: false,
-                              );
-                            }
-                            // Always show flight plan on map when it exists
-                            if (_flightPlanService.currentFlightPlan != null) {
-                              _flightPlanService.setFlightPlanVisibility(true);
-                            }
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
 
           // Flight dashboard overlay - show when toggle is active
           if (_mapStateController.showStats)
@@ -4134,222 +3901,149 @@ class MapScreenState extends State<MapScreen>
           
           ],
 
-          // Navigation and action controls positioned on the left side
+          // Menu button in top-right corner
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
-            left: 16, // Align with standard padding
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.6, // Limit to 60% of screen width
-              ),
+            right: 16,
+            child: GestureDetector(
+              onTap: () {
+                debugPrint('Menu button tapped');
+                _mapStateController.toggleMenuPanel();
+              },
               child: Container(
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: Colors.black.withValues(alpha: 0.9),
                   borderRadius: AppTheme.largeRadius,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
+                      color: Colors.black.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
                   ],
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.menu, color: Colors.black),
-                    tooltip: 'Menu',
-                    color: AppColors.dialogBackgroundColor, // Dark background
-                    shape: RoundedRectangleBorder(
-                      borderRadius: AppTheme.defaultRadius,
-                      side: BorderSide(color: AppColors.sectionBorderColor),
-                    ),
-                    onSelected: (value) {
-                      if (value == 'flight_log') {
-                        _pauseAllTimers();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const FlightLogScreen(),
-                          ),
-                        ).then((_) => _resumeAllTimers());
-                      } else if (value == 'logbook') {
-                        _pauseAllTimers();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const LogBookScreen(),
-                          ),
-                        ).then((_) => _resumeAllTimers());
-                      } else if (value == 'flight_plans') {
-                        _pauseAllTimers();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const FlightPlansScreen(),
-                          ),
-                        ).then((_) => _resumeAllTimers());
-                      } else if (value == 'toggle_flight_planning') {
-                        setState(() {
-                          _showFlightPlanning = !_showFlightPlanning;
-                          // Auto-create flight plan if none exists (with planning mode OFF)
-                          if (_showFlightPlanning &&
-                              _flightPlanService.currentFlightPlan == null) {
-                            _flightPlanService.createNewFlightPlan(
-                              enablePlanning: false,
-                            );
-                          }
-                          // Always show flight plan on map when it exists
-                          if (_flightPlanService.currentFlightPlan != null) {
-                            _flightPlanService.setFlightPlanVisibility(true);
-                          }
-                        });
-                        // Note: Planning mode is NOT automatically enabled when showing the panel
-                        // Users must explicitly enable it from within the panel
-                        // debugPrint('Flight planning panel toggled: $_showFlightPlanning');
-                      } else if (value == 'checklists') {
-                        _pauseAllTimers();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const ChecklistSettingsScreen(),
-                          ),
-                        ).then((_) => _resumeAllTimers());
-                      } else if (value == 'airplane_settings') {
-                        _pauseAllTimers();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const AircraftSettingsScreen(),
-                          ),
-                        ).then((_) => _resumeAllTimers());
-                      } else if (value == 'calculators') {
-                        _pauseAllTimers();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const CalculatorsScreen(),
-                          ),
-                        ).then((_) => _resumeAllTimers());
-                      } else if (value == 'settings') {
-                        _pauseAllTimers();
-                        SettingsDialog.show(
-                          context,
-                          currentMapBounds: _mapController.camera.visibleBounds,
-                        ).then((_) => _resumeAllTimers());
-                      } else if (value == 'website') {
-                        launchUrl(Uri.parse('https://www.captainvfr.com'));
-                      }
-                    },
-                    itemBuilder: (BuildContext context) => [
-                      PopupMenuItem(
-                        value: 'flight_plans',
-                        child: Row(
-                          children: [
-                            Icon(Icons.flight_takeoff, size: 20, color: AppColors.primaryTextColor),
-                            SizedBox(width: 8),
-                            Text('Flight Plans', style: TextStyle(color: AppColors.primaryTextColor)),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'flight_log',
-                        child: Row(
-                          children: [
-                            Icon(Icons.flight, size: 20, color: AppColors.primaryTextColor),
-                            SizedBox(width: 8),
-                            Text('Flight Log', style: TextStyle(color: AppColors.primaryTextColor)),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'logbook',
-                        child: Row(
-                          children: [
-                            Icon(Icons.menu_book, size: 20, color: AppColors.primaryTextColor),
-                            SizedBox(width: 8),
-                            Text('LogBook', style: TextStyle(color: AppColors.primaryTextColor)),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'checklists',
-                        child: Row(
-                          children: [
-                            Icon(Icons.list, size: 20, color: AppColors.primaryTextColor),
-                            SizedBox(width: 8),
-                            Text('Checklists', style: TextStyle(color: AppColors.primaryTextColor)),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'airplane_settings',
-                        child: Row(
-                          children: [
-                            Icon(Icons.flight, size: 20, color: AppColors.primaryTextColor),
-                            SizedBox(width: 8),
-                            Text('Aircrafts', style: TextStyle(color: AppColors.primaryTextColor)),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'calculators',
-                        child: Row(
-                          children: [
-                            Icon(Icons.calculate, size: 20, color: AppColors.primaryTextColor),
-                            SizedBox(width: 8),
-                            Text('Calculators', style: TextStyle(color: AppColors.primaryTextColor)),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'settings',
-                        child: Row(
-                          children: [
-                            Icon(Icons.settings, size: 20, color: AppColors.primaryTextColor),
-                            SizedBox(width: 8),
-                            Text('Settings', style: TextStyle(color: AppColors.primaryTextColor)),
-                          ],
-                        ),
-                      ),
-                      PopupMenuDivider(height: 1),
-                      PopupMenuItem(
-                        value: 'website',
-                        child: Row(
-                          children: [
-                            Icon(Icons.language, size: 20, color: AppColors.primaryTextColor),
-                            SizedBox(width: 8),
-                            Text('Visit www.captainvfr.com', style: TextStyle(color: AppColors.primaryTextColor)),
-                          ],
-                        ),
-                      ),
-                    ],
-                    offset: const Offset(0, 48), // Move popup down to avoid overlapping with top panel
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.search, color: Colors.black),
-                    onPressed: _showAirportSearch,
-                    tooltip: 'Search airports',
-                  ),
-                  _buildPositionTrackingButton(),
-                  IconButton(
-                    icon: Icon(
-                      _mapStateController.showStats ? Icons.dashboard : Icons.dashboard_outlined,
-                      color: _mapStateController.showStats ? Colors.blue : Colors.black,
-                    ),
-                    onPressed: _toggleStats,
-                    tooltip: 'Toggle flight dashboard',
-                  ),
-                ],
+                child: const Icon(
+                  Icons.menu,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
             ),
-            ),
           ),
-          // Location loading indicator is now handled by the notification system
 
+          // Unified sliding menu panel from right side
+          ListenableBuilder(
+            listenable: _mapStateController,
+            builder: (context, child) {
+              if (!_mapStateController.isMenuPanelOpen) {
+                return const SizedBox.shrink();
+              }
+              return Positioned(
+                top: 0,
+                right: 0,
+                bottom: 0,
+                child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  _mapStateController.closeMenuPanel();
+                },
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.3), // Overlay
+                  width: MediaQuery.of(context).size.width,
+                  height: MediaQuery.of(context).size.height,
+                  child: Row(
+                    children: [
+                      // Spacer that handles taps to close
+                      Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            _mapStateController.closeMenuPanel();
+                          },
+                          child: Container(color: Colors.transparent),
+                        ),
+                      ),
+                      // The actual panel - wrap in GestureDetector to prevent closing
+                      GestureDetector(
+                        onTap: () {}, // Prevent tap from propagating to close
+                        child: Container(
+                        width: math.min(MediaQuery.of(context).size.width * 0.8, 300),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.9),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              blurRadius: 16,
+                              offset: const Offset(-4, 0),
+                            ),
+                          ],
+                        ),
+                        child: SafeArea(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Panel header
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      width: 1,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.menu,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Text(
+                                      'Menu',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    IconButton(
+                                      icon: const Icon(Icons.close, color: Colors.white),
+                                      onPressed: () {
+                                        _mapStateController.closeMenuPanel();
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Scrollable content
+                              Expanded(
+                                child: SingleChildScrollView(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildUnifiedMenuContent(),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      ), // Close GestureDetector for panel
+                    ],
+                  ),
+                ),
+              ),
+            );
+            },
+          ),
 
           // License warning widget - only show when not tracking
           if (!_flightService.isTracking)
@@ -4574,28 +4268,6 @@ class MapScreenState extends State<MapScreen>
   
   // Show dialog to open app settings
 
-  Widget _buildPositionTrackingButton() {
-    return PositionTrackingButton(
-      positionTrackingEnabled: _positionTrackingEnabled,
-      autoCenteringEnabled: _autoCenteringEnabled,
-      autoCenteringCountdown: _autoCenteringCountdown,
-      onToggle: _togglePositionTracking,
-    );
-  }
-
-  Widget _buildLayerToggle({
-    required IconData icon,
-    required String tooltip,
-    required bool isActive,
-    required VoidCallback onPressed,
-  }) {
-    return LayerToggleButton(
-      icon: icon,
-      tooltip: tooltip,
-      isActive: isActive,
-      onPressed: onPressed,
-    );
-  }
 
 
   Color _getSegmentColor(String segmentType) {
@@ -4604,5 +4276,369 @@ class MapScreenState extends State<MapScreen>
 
   IconData _getSegmentIcon(String segmentType) {
     return SegmentUtils.getSegmentIcon(segmentType);
+  }
+
+  Widget _buildUnifiedMenuContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Layer Toggles Section
+        const Text(
+          'Map Layers',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        
+        // Responsive toggle buttons layout
+        Wrap(
+          spacing: 4,
+          runSpacing: 4,
+          children: [
+            _buildMenuToggleButton(
+              icon: FontAwesomeIcons.helicopter,
+              label: 'Heliports',
+              isActive: _mapStateController.showHeliports,
+              onPressed: _toggleHeliports,
+            ),
+            _buildMenuToggleButton(
+              icon: _mapStateController.showNavaids
+                  ? Icons.navigation
+                  : Icons.navigation_outlined,
+              label: 'Navaids',
+              isActive: _mapStateController.showNavaids,
+              onPressed: _toggleNavaids,
+            ),
+            _buildMenuToggleButton(
+              icon: _mapStateController.showMetar
+                  ? Icons.cloud
+                  : Icons.cloud_outlined,
+              label: 'METAR',
+              isActive: _mapStateController.showMetar,
+              onPressed: _toggleMetar,
+            ),
+            _buildMenuToggleButton(
+              icon: _mapStateController.showAirspaces
+                  ? Icons.layers
+                  : Icons.layers_outlined,
+              label: 'Airspaces',
+              isActive: _mapStateController.showAirspaces,
+              onPressed: _toggleAirspaces,
+            ),
+            _buildMenuToggleButton(
+              icon: Icons.warning_amber_rounded,
+              label: 'Obstacles',
+              isActive: _mapStateController.showObstacles,
+              onPressed: _toggleObstacles,
+            ),
+            _buildMenuToggleButton(
+              icon: Icons.location_on,
+              label: 'Hotspots',
+              isActive: _mapStateController.showHotspots,
+              onPressed: _toggleHotspots,
+            ),
+            _buildMenuToggleButton(
+              icon: _mapStateController.showHeatmap
+                  ? Icons.whatshot
+                  : Icons.whatshot_outlined,
+              label: 'Heatmap',
+              isActive: _mapStateController.showHeatmap,
+              onPressed: _toggleHeatmap,
+            ),
+            _buildMenuToggleButton(
+              icon: _showCurrentAirspacePanel
+                  ? Icons.account_tree
+                  : Icons.account_tree_outlined,
+              label: 'Current Airspace',
+              isActive: _showCurrentAirspacePanel,
+              onPressed: () {
+                setState(() {
+                  _showCurrentAirspacePanel = !_showCurrentAirspacePanel;
+                  if (_showCurrentAirspacePanel) {
+                    _airspacePanelPosition = null;
+                  }
+                });
+              },
+            ),
+            _buildMenuToggleButton(
+              icon: _showFlightPlanning
+                  ? Icons.route
+                  : Icons.route_outlined,
+              label: 'Planning',
+              isActive: _showFlightPlanning,
+              onPressed: () {
+                setState(() {
+                  _showFlightPlanning = !_showFlightPlanning;
+                  if (_showFlightPlanning &&
+                      _flightPlanService.currentFlightPlan == null) {
+                    _flightPlanService.createNewFlightPlan(
+                      enablePlanning: false,
+                    );
+                  }
+                  if (_flightPlanService.currentFlightPlan != null) {
+                    _flightPlanService.setFlightPlanVisibility(true);
+                  }
+                });
+              },
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Divider
+        Container(
+          height: 1,
+          color: Colors.white.withValues(alpha: 0.2),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Menu Items Section
+        const Text(
+          'Navigation',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildMenuItem(
+          icon: Icons.search,
+          label: 'Search',
+          onPressed: () {
+            _mapStateController.closeMenuPanel();
+            _showAirportSearch();
+          },
+        ),
+        _buildMenuItem(
+          icon: _positionTrackingEnabled ? Icons.my_location : Icons.location_searching,
+          label: 'Center',
+          onPressed: () {
+            _mapStateController.closeMenuPanel();
+            _togglePositionTracking();
+          },
+        ),
+        _buildMenuItem(
+          icon: _mapStateController.showStats ? Icons.dashboard : Icons.dashboard_outlined,
+          label: 'Flight',
+          onPressed: () {
+            _mapStateController.closeMenuPanel();
+            _toggleStats();
+          },
+        ),
+
+        _buildMenuItem(
+          icon: Icons.flight_takeoff,
+          label: 'Flight Log',
+          onPressed: () {
+            _mapStateController.closeMenuPanel();
+            _pauseAllTimers();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const FlightLogScreen(),
+              ),
+            ).then((_) => _resumeAllTimers());
+          },
+        ),
+        _buildMenuItem(
+          icon: Icons.menu_book,
+          label: 'Logbook',
+          onPressed: () {
+            _mapStateController.closeMenuPanel();
+            _pauseAllTimers();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const LogBookScreen(),
+              ),
+            ).then((_) => _resumeAllTimers());
+          },
+        ),
+        _buildMenuItem(
+          icon: Icons.route,
+          label: 'Planning',
+          onPressed: () {
+            _mapStateController.closeMenuPanel();
+            _pauseAllTimers();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const FlightPlansScreen(),
+              ),
+            ).then((_) => _resumeAllTimers());
+          },
+        ),
+        _buildMenuItem(
+          icon: Icons.checklist,
+          label: 'Checklists',
+          onPressed: () {
+            _mapStateController.closeMenuPanel();
+            _pauseAllTimers();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ChecklistSettingsScreen(),
+              ),
+            ).then((_) => _resumeAllTimers());
+          },
+        ),
+        _buildMenuItem(
+          icon: Icons.airplanemode_active,
+          label: 'Aircrafts',
+          onPressed: () {
+            _mapStateController.closeMenuPanel();
+            _pauseAllTimers();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AircraftSettingsScreen(),
+              ),  
+            ).then((_) => _resumeAllTimers());
+          },
+        ),
+        _buildMenuItem(
+          icon: Icons.calculate,
+          label: 'Calculators',
+          onPressed: () {
+            _mapStateController.closeMenuPanel();
+            _pauseAllTimers();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CalculatorsScreen(),
+              ),
+            ).then((_) => _resumeAllTimers());
+          },
+        ),
+        _buildMenuItem(
+          icon: Icons.settings,
+          label: 'Settings',
+          onPressed: () {
+            _mapStateController.closeMenuPanel();
+            _pauseAllTimers();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SettingsScreen(),
+              ),
+            ).then((_) => _resumeAllTimers());
+          },
+        ),
+        _buildMenuItem(
+          icon: Icons.language,
+          label: 'www.captainvfr.com',
+          onPressed: () {
+            _mapStateController.closeMenuPanel();
+            launchUrl(Uri.parse('https://www.captainvfr.com'));
+          },
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Divider
+        Container(
+          height: 1,
+          color: Colors.white.withValues(alpha: 0.2),
+        ),
+        
+        const SizedBox(height: 24),
+
+      ],
+    );
+  }
+
+  Widget _buildMenuToggleButton({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onPressed,
+  }) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: AppTheme.defaultRadius,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: isActive 
+              ? Colors.orange.withValues(alpha: 0.2)
+              : Colors.white.withValues(alpha: 0.1),
+          borderRadius: AppTheme.defaultRadius,
+          border: Border.all(
+            color: isActive 
+                ? Colors.orange
+                : Colors.white.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: isActive ? Colors.orange : Colors.white,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? Colors.orange : Colors.white,
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: AppTheme.defaultRadius,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: const EdgeInsets.only(bottom: 4),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: AppTheme.defaultRadius,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right,
+              size: 16,
+              color: Colors.grey,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

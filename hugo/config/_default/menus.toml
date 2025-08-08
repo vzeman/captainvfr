@@ -56,17 +56,17 @@
 
 [[footer_solutions]]
   identifier = "flight_planning"
-  url = "/flight-planning/"
+  url = "/features/flight-planning/"
   weight = 10
 
 [[footer_solutions]]
   identifier = "weather"
-  url = "/weather/"
+  url = "/features/weather-services/"
   weight = 20
 
 [[footer_solutions]]
   identifier = "airports"
-  url = "/airports/"
+  url = "/features/map-navigation/"
   weight = 30
 
 [[footer_solutions]]
@@ -75,24 +75,19 @@
   weight = 40
 
 [[footer_support]]
-  identifier = "tutorials"
-  url = "/tutorials/"
+  identifier = "features"
+  url = "/features/"
   weight = 10
-
-[[footer_support]]
-  identifier = "documentation"
-  url = "/docs/"
-  weight = 20
 
 [[footer_support]]
   identifier = "blog"
   url = "/blog/"
-  weight = 30
+  weight = 20
 
 [[footer_support]]
-  identifier = "faq"
-  url = "/faq/"
-  weight = 40
+  identifier = "contact"
+  url = "/contact/"
+  weight = 30
 
 [[footer_company]]
   identifier = "about"
@@ -106,7 +101,7 @@
 
 [[footer_legal]]
   identifier = "terms"
-  url = "/terms-of-service/"
+  url = "/privacy-policy/"
   weight = 10
 
 [[footer_legal]]

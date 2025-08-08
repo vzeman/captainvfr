@@ -1,5 +1,5 @@
 [params]
-  description = 'CaptainVFR - VFR Flight Planning'
+  description = 'CaptainVFR - Professional VFR flight planning application with real-time weather, interactive aviation maps, and comprehensive pilot tools for safe and efficient flight preparation.'
   dateFormat = 'January 2, 2006'
   mainSections = ["blog", "features", "tutorials"]
   featuredImageField = "image"

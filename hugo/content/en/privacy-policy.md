@@ -1,6 +1,6 @@
 +++
 title = "Privacy Policy"
-description = "CaptainVFR Privacy Policy - How we collect, use, and protect your data"
+description = "CaptainVFR Privacy Policy - Learn how we collect, use, and protect your personal data. We prioritize your privacy and security in our flight planning application for pilots."
 date = "2025-07-17T11:00:00Z"
 
 +++
