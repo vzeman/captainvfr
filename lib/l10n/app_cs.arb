@@ -1,0 +1,28 @@
+{
+  "@@locale": "cs",
+  
+  "appTitle": "CaptainVFR",
+  "settings": "Nastavení",
+  "language": "Jazyk",
+  "selectLanguage": "Vybrat jazyk",
+  "map": "Mapa",
+  "flightPlanning": "Plánování letu",
+  "weather": "Počasí",
+  "flightLog": "Letový deník",
+  "aircraft": "Letadlo",
+  "calculators": "Kalkulačky",
+  "offlineData": "Offline data",
+  "licenses": "Licence",
+  "checklist": "Kontrolní seznam",
+  "cancel": "Zrušit",
+  "save": "Uložit",
+  "delete": "Smazat",
+  "edit": "Upravit",
+  "add": "Přidat",
+  "search": "Hledat",
+  "loading": "Načítání...",
+  "center": "Vystředit",
+  "layers": "Vrstvy",
+  "airports": "Letiště",
+  "airspaces": "Vzdušné prostory"
+}

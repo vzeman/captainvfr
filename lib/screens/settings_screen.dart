@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
+import '../l10n/app_localizations.dart';
 import '../widgets/themed_dialog.dart';
 import '../services/settings_service.dart';
+import '../services/localization_service.dart';
 import '../services/offline_map_service.dart';
 import '../services/cache_service.dart';
 import '../services/airport_service.dart';
@@ -29,11 +31,30 @@ class SettingsScreen extends StatelessWidget {
         backgroundColor: const Color(0xE6000000),
       ),
       backgroundColor: Colors.black87,
-      body: Consumer<SettingsService>(
-        builder: (context, settings, child) {
+      body: Consumer2<SettingsService, LocalizationService>(
+        builder: (context, settings, localizationService, child) {
+          final l10n = AppLocalizations.of(context);
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              _buildSection(
+                title: l10n?.language ?? 'Language',
+                children: [
+                  ListTile(
+                    title: Text(
+                      l10n?.language ?? 'Language',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    subtitle: Text(
+                      LocalizationService.languageNames[localizationService.currentLocale.languageCode] ?? 'English',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 16),
+                    onTap: () => _showLanguageDialog(context, localizationService),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               _buildSection(
                 title: 'Map Settings',
                 children: [
@@ -447,6 +468,50 @@ class SettingsScreen extends StatelessWidget {
         await settings.setPressureUnit('inHg');
         break;
     }
+  }
+  
+  void _showLanguageDialog(BuildContext context, LocalizationService localizationService) {
+    final l10n = AppLocalizations.of(context);
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return ThemedDialog(
+          title: l10n?.selectLanguage ?? 'Select Language',
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: LocalizationService.supportedLocales.map((locale) {
+              final languageName = LocalizationService.languageNames[locale.languageCode];
+              final isSelected = locale.languageCode == localizationService.currentLocale.languageCode;
+              
+              return ListTile(
+                title: Text(
+                  languageName ?? locale.languageCode,
+                  style: TextStyle(
+                    color: isSelected ? const Color(0xFF448AFF) : Colors.white,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                trailing: isSelected 
+                  ? const Icon(Icons.check, color: Color(0xFF448AFF))
+                  : null,
+                onTap: () async {
+                  await localizationService.setLocale(locale);
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                  }
+                },
+              );
+            }).toList(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(l10n?.cancel ?? 'Cancel'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 

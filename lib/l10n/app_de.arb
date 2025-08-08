@@ -1,0 +1,28 @@
+{
+  "@@locale": "de",
+  
+  "appTitle": "CaptainVFR",
+  "settings": "Einstellungen",
+  "language": "Sprache",
+  "selectLanguage": "Sprache auswählen",
+  "map": "Karte",
+  "flightPlanning": "Flugplanung",
+  "weather": "Wetter",
+  "flightLog": "Fluglogbuch",
+  "aircraft": "Flugzeug",
+  "calculators": "Rechner",
+  "offlineData": "Offline-Daten",
+  "licenses": "Lizenzen",
+  "checklist": "Checkliste",
+  "cancel": "Abbrechen",
+  "save": "Speichern",
+  "delete": "Löschen",
+  "edit": "Bearbeiten",
+  "add": "Hinzufügen",
+  "search": "Suchen",
+  "loading": "Laden...",
+  "center": "Zentrieren",
+  "layers": "Ebenen",
+  "airports": "Flughäfen",
+  "airspaces": "Lufträume"
+}
