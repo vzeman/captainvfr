@@ -24,6 +24,24 @@ class AppLocalizationsIt extends AppLocalizations {
   String get map => 'Mappa';
 
   @override
+  String get tracking => 'Tracking';
+
+  @override
+  String get units => 'Units';
+
+  @override
+  String get rotateWithHeading => 'Rotate with heading';
+
+  @override
+  String get highPrecisionGps => 'High precision GPS';
+
+  @override
+  String get autoCreateLogbook => 'Auto-create logbook';
+
+  @override
+  String get presets => 'Presets';
+
+  @override
   String get flightPlanning => 'Pianificazione volo';
 
   @override

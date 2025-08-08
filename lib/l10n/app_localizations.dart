@@ -138,6 +138,42 @@ abstract class AppLocalizations {
   /// **'Map'**
   String get map;
 
+  /// Tracking settings section
+  ///
+  /// In en, this message translates to:
+  /// **'Tracking'**
+  String get tracking;
+
+  /// Units settings section
+  ///
+  /// In en, this message translates to:
+  /// **'Units'**
+  String get units;
+
+  /// Map rotation setting
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate with heading'**
+  String get rotateWithHeading;
+
+  /// GPS precision setting
+  ///
+  /// In en, this message translates to:
+  /// **'High precision GPS'**
+  String get highPrecisionGps;
+
+  /// Auto logbook creation setting
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-create logbook'**
+  String get autoCreateLogbook;
+
+  /// Unit presets label
+  ///
+  /// In en, this message translates to:
+  /// **'Presets'**
+  String get presets;
+
   /// Flight planning screen title
   ///
   /// In en, this message translates to:

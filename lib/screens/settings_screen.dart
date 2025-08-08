@@ -631,17 +631,17 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                       indicatorColor: AppColors.primaryAccent,
                       labelColor: AppColors.primaryAccent,
                       unselectedLabelColor: AppColors.secondaryTextColor,
-                      tabs: const [
+                      tabs: [
                         Tab(
                           child: Text(
-                            'Settings',
-                            style: TextStyle(fontSize: 14),
+                            AppLocalizations.of(context)?.settings ?? 'Settings',
+                            style: const TextStyle(fontSize: 14),
                           ),
                         ),
                         Tab(
                           child: Text(
-                            'Offline Data',
-                            style: TextStyle(fontSize: 14),
+                            AppLocalizations.of(context)?.offlineData ?? 'Offline Data',
+                            style: const TextStyle(fontSize: 14),
                           ),
                         ),
                       ],
@@ -709,10 +709,10 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
               ),
               const SizedBox(height: 8),
               _buildCompactSection(
-                title: 'Map',
+                title: l10n?.map ?? 'Map',
                 children: [
                   _buildCompactSwitch(
-                    'Rotate with heading',
+                    l10n?.rotateWithHeading ?? 'Rotate with heading',
                     settings.rotateMapWithHeading,
                     (value) => settings.setRotateMapWithHeading(value),
                   ),
@@ -720,15 +720,15 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
               ),
               const SizedBox(height: 8),
               _buildCompactSection(
-                title: 'Tracking',
+                title: l10n?.tracking ?? 'Tracking',
                 children: [
                   _buildCompactSwitch(
-                    'High precision GPS',
+                    l10n?.highPrecisionGps ?? 'High precision GPS',
                     settings.highPrecisionTracking,
                     (value) => settings.setHighPrecisionTracking(value),
                   ),
                   _buildCompactSwitch(
-                    'Auto-create logbook',
+                    l10n?.autoCreateLogbook ?? 'Auto-create logbook',
                     settings.autoCreateLogbookEntry,
                     (value) => settings.setAutoCreateLogbookEntry(value),
                   ),
@@ -736,7 +736,7 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
               ),
               const SizedBox(height: 8),
               _buildCompactSection(
-                title: 'Units',
+                title: l10n?.units ?? 'Units',
                 children: [
                   // Quick Presets
                   Padding(
@@ -744,9 +744,9 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Presets',
-                          style: TextStyle(color: Colors.white70, fontSize: 11),
+                        Text(
+                          l10n?.presets ?? 'Presets',
+                          style: const TextStyle(color: Colors.white70, fontSize: 11),
                         ),
                         SizedBox(
                           height: 28,

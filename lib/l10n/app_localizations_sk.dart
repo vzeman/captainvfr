@@ -24,6 +24,24 @@ class AppLocalizationsSk extends AppLocalizations {
   String get map => 'Mapa';
 
   @override
+  String get tracking => 'Sledovanie';
+
+  @override
+  String get units => 'Jednotky';
+
+  @override
+  String get rotateWithHeading => 'Otáčať s kurzom';
+
+  @override
+  String get highPrecisionGps => 'Vysoká presnosť GPS';
+
+  @override
+  String get autoCreateLogbook => 'Automaticky vytvoriť záznam v denníku';
+
+  @override
+  String get presets => 'Predvoľby';
+
+  @override
   String get flightPlanning => 'Plánovanie letu';
 
   @override

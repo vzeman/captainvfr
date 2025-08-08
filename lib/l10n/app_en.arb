@@ -26,6 +26,36 @@
     "description": "Map screen title"
   },
   
+  "tracking": "Tracking",
+  "@tracking": {
+    "description": "Tracking settings section"
+  },
+  
+  "units": "Units",
+  "@units": {
+    "description": "Units settings section"
+  },
+  
+  "rotateWithHeading": "Rotate with heading",
+  "@rotateWithHeading": {
+    "description": "Map rotation setting"
+  },
+  
+  "highPrecisionGps": "High precision GPS",
+  "@highPrecisionGps": {
+    "description": "GPS precision setting"
+  },
+  
+  "autoCreateLogbook": "Auto-create logbook",
+  "@autoCreateLogbook": {
+    "description": "Auto logbook creation setting"
+  },
+  
+  "presets": "Presets",
+  "@presets": {
+    "description": "Unit presets label"
+  },
+  
   "flightPlanning": "Flight Planning",
   "@flightPlanning": {
     "description": "Flight planning screen title"
