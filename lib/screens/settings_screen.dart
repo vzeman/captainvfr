@@ -632,8 +632,18 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                       labelColor: AppColors.primaryAccent,
                       unselectedLabelColor: AppColors.secondaryTextColor,
                       tabs: const [
-                        Tab(text: 'Settings'),
-                        Tab(text: 'Offline Data'),
+                        Tab(
+                          child: Text(
+                            'Settings',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ),
+                        Tab(
+                          child: Text(
+                            'Offline Data',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -663,13 +673,41 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
   }
 
   Widget _buildSettingsTab() {
-    return Consumer<SettingsService>(
-      builder: (context, settings, child) {
+    return Consumer2<SettingsService, LocalizationService>(
+      builder: (context, settings, localizationService, child) {
+        final l10n = AppLocalizations.of(context);
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              _buildCompactSection(
+                title: l10n?.language ?? 'Language',
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            LocalizationService.languageNames[localizationService.currentLocale.languageCode] ?? 'English',
+                            style: const TextStyle(color: Colors.white70, fontSize: 11),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.language, size: 18),
+                          onPressed: () => _showLanguageDialog(context, localizationService),
+                          color: const Color(0xFF448AFF),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(maxHeight: 24, maxWidth: 24),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
               _buildCompactSection(
                 title: 'Map',
                 children: [
@@ -1514,5 +1552,49 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
         await settings.setPressureUnit('inHg');
         break;
     }
+  }
+  
+  void _showLanguageDialog(BuildContext context, LocalizationService localizationService) {
+    final l10n = AppLocalizations.of(context);
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return ThemedDialog(
+          title: l10n?.selectLanguage ?? 'Select Language',
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: LocalizationService.supportedLocales.map((locale) {
+              final languageName = LocalizationService.languageNames[locale.languageCode];
+              final isSelected = locale.languageCode == localizationService.currentLocale.languageCode;
+              
+              return ListTile(
+                title: Text(
+                  languageName ?? locale.languageCode,
+                  style: TextStyle(
+                    color: isSelected ? const Color(0xFF448AFF) : Colors.white,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                trailing: isSelected 
+                  ? const Icon(Icons.check, color: Color(0xFF448AFF))
+                  : null,
+                onTap: () async {
+                  await localizationService.setLocale(locale);
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                  }
+                },
+              );
+            }).toList(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(l10n?.cancel ?? 'Cancel'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
