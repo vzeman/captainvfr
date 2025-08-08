@@ -33,8 +33,8 @@ class AirportMarker extends StatelessWidget {
     final icon = _getAirportIcon(airport.type);
     final color = _getAirportColor(airport.type);
     final borderColor = isSelected ? Colors.amber : color;
-    // Adjust border width based on zoom level
-    final borderWidth = isSelected ? (mapZoom >= 10 ? 2.0 : 3.0) : (mapZoom >= 10 ? 1.5 : 2.0);
+    // Adjust border width based on zoom level - thinner at lower zoom levels
+    final borderWidth = isSelected ? (mapZoom >= 10 ? 2.0 : 1.5) : (mapZoom >= 10 ? 1.5 : 1.0);
 
 
     // The visual size of the marker based on zoom
@@ -71,9 +71,9 @@ class AirportMarker extends StatelessWidget {
         // Ensure the size is valid (not NaN or infinite)
         if (calculatedSize.isFinite && calculatedSize > 0) {
           // Ensure minimum size for visibility
-          // At zoom 10+, use actual calculated size without minimum to prevent overlap
-          // At lower zooms, enforce minimum size for visibility
-          runwayVisualizationSize = mapZoom >= 10 ? calculatedSize : math.max(visualSize * 1.5, calculatedSize);
+          // At zoom 10+, use actual calculated size to show realistic runway proportions
+          // At lower zooms, use a reasonable size for visibility
+          runwayVisualizationSize = mapZoom >= 10 ? calculatedSize : visualSize * 2.0;
         } else {
           runwayVisualizationSize = visualSize * 3.5; // Default size
         }
